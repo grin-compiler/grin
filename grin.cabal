@@ -1,0 +1,49 @@
+name:                grin
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/grin#readme
+license:             GPL3
+license-file:        LICENSE
+author:              Andor Penzes, Csaba Hruska
+maintainer:          andor.penzes@gmail.com
+copyright:           2017 Andor Penzes, Csaba Hruska
+category:            Compiler
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Grin
+    ParseGrin
+    ReduceGrin
+
+  build-depends:
+    base,
+    containers,
+    mtl,
+    megaparsec
+  default-language:    Haskell2010
+
+executable grin-exe
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , grin
+  default-language:    Haskell2010
+
+test-suite grin-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , grin
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/andorp/grin
