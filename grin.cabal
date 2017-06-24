@@ -3,7 +3,7 @@ version:             0.1.0.0
 -- synopsis:
 -- description:
 homepage:            https://github.com/githubuser/grin#readme
-license:             GPL3
+license:             BSD3
 license-file:        LICENSE
 author:              Andor Penzes, Csaba Hruska
 maintainer:          andor.penzes@gmail.com
