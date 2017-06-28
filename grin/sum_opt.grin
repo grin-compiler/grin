@@ -1,0 +1,12 @@
+main =
+  n13 <- sum 0 1 100000
+  intPrint n13
+
+sum n29 n30 n31 =
+  b2 <- intGT n30 n31
+  if b2 then
+    return n29
+  else
+    n18 <- intAdd n30 1
+    n28 <- intAdd n29 n30
+    sum n28 n18 n31
