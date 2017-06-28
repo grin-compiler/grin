@@ -7,6 +7,7 @@ import Control.Monad (void)
 import Text.Megaparsec
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
+import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
 import ReduceGrin
@@ -109,6 +110,6 @@ eval fname = do
   case result of
     Left err -> print err
     Right e  -> do
-      print e
+      pPrint e
       putStrLn "-------"
-      print $ reduceFun e "main"
+      pPrint $ reduceFun e "main"

@@ -24,7 +24,8 @@ library
     base,
     containers,
     mtl,
-    megaparsec
+    megaparsec,
+    pretty-show
   default-language:    Haskell2010
 
 executable grin-exe
