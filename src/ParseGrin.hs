@@ -94,8 +94,8 @@ simpleValue = Lit <$> literal <|>
               Var <$> var
 
 value = Unit <$ op "()" <|>
-        parens (TagNode <$> tag <*> many simpleValue) <|>
-        parens (VarNode <$> var <*> many simpleValue) <|>
+        parens (ConstTagNode <$> tag <*> many simpleValue) <|>
+        parens (VarTagNode <$> var <*> many simpleValue) <|>
         ValTag <$> tag <|>
         simpleValue
 

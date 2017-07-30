@@ -28,9 +28,9 @@ data SimpleExp
 type LPat = Val
 type SimpleVal = Val
 data Val
-  = TagNode   Tag  [SimpleVal]
-  | VarNode   Name [SimpleVal]
-  | ValTag    Tag
+  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
+  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
+  | ValTag        Tag
   | Unit
   -- simple val
   | Lit Lit
@@ -55,6 +55,6 @@ data CPat
 data TagType = C | F | P
   deriving (Eq,Show)
 
-data Tag = Tag TagType Name Int
+data Tag = Tag TagType Name Int -- is this arity?
   deriving (Eq,Show)
 

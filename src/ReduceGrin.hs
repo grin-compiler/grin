@@ -12,6 +12,7 @@ import Control.Monad.Reader
 
 import Grin
 
+-- models computer memory
 data StoreMap
   = StoreMap
   { storeMap  :: IntMap Val
@@ -20,6 +21,7 @@ data StoreMap
 
 emptyStore = StoreMap mempty 0
 
+-- models cpu registers
 type Env = Map Name Val
 type GrinM = ReaderT Prog (State StoreMap)
 
@@ -36,14 +38,14 @@ bindPat env v p = case p of
               Lit{}     -> Map.insert n v env
               Loc{}     -> Map.insert n v env
               Undefined -> Map.insert n v env
-              _ -> {-trace ("bindPat - illegal value: " ++ show v) $ -}Map.insert n v env
+              _ -> {-trace ("bindPat - illegal value: " ++ show v) $ -}Map.insert n v env -- WTF????
               _ -> error $ "bindPat - illegal value: " ++ show v
-  TagNode t l -> case v of
-                  TagNode vt vl | vt == t -> bindPatMany env vl l
-                  _ -> error $ "bindPat - illegal value for TagNode: " ++ show v
-  VarNode n l -> case v of
-                  TagNode vt vl -> bindPatMany (Map.insert n (ValTag vt) env) vl l
-                  _ -> error $ "bindPat - illegal value for TagNode: " ++ show v
+  ConstTagNode t l -> case v of
+                  ConstTagNode vt vl | vt == t -> bindPatMany env vl l
+                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show v
+  VarTagNode n l -> case v of
+                  ConstTagNode vt vl -> bindPatMany (Map.insert n (ValTag vt) env) vl l
+                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show v
   _ | p == v -> env
     | otherwise -> error $ "bindPat - pattern mismatch" ++ show (v,p)
 
@@ -57,11 +59,11 @@ evalVal :: Env -> Val -> Val
 evalVal env = \case
   v@Lit{}     -> v
   Var n       -> lookupEnv n env
-  TagNode t a -> TagNode t $ map (evalVal env) a
-  VarNode n a -> case lookupEnv n env of
-                  Var n     -> VarNode n $ map (evalVal env) a
-                  ValTag t  -> TagNode t $ map (evalVal env) a
-                  x -> error $ "evalVal - invalid VarNode tag: " ++ show x
+  ConstTagNode t a -> ConstTagNode t $ map (evalVal env) a
+  VarTagNode n a -> case lookupEnv n env of
+                  Var n     -> VarTagNode n $ map (evalVal env) a
+                  ValTag t  -> ConstTagNode t $ map (evalVal env) a
+                  x -> error $ "evalVal - invalid VarTagNode tag: " ++ show x
   v@ValTag{}  -> v
   v@Unit      -> v
   v@Loc{}     -> v
@@ -107,7 +109,8 @@ evalExp :: Env -> Exp -> GrinM Val
 evalExp env = \case
   Bind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
   Case v alts -> case evalVal env v of
-    TagNode t l -> let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
+    ConstTagNode t l ->
+                   let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
                        go a [] [] = a
                        go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                        go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
