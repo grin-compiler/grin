@@ -26,7 +26,8 @@ library
     mtl,
     megaparsec,
     pretty-show,
-    vector
+    vector,
+    deepseq
   default-language:    Haskell2010
 
 executable grin-exe
@@ -45,6 +46,17 @@ test-suite grin-test
                      , grin
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
+
+benchmark grin-benchmark
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Benchmark.hs
+  build-depends:       base
+                     , grin
+                     , criterion
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
 
 source-repository head
   type:     git

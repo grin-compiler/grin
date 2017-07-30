@@ -113,3 +113,10 @@ eval fname = do
       pPrint e
       putStrLn "-------"
       pPrint $ reduceFun e "main"
+
+eval' :: String -> IO Val
+eval' fname = do
+  result <- parseFromFile (some def <* sc <* eof) fname
+  case result of
+    Left err -> error $ show err
+    Right e  -> return $ reduceFun e "main"

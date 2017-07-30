@@ -1,6 +1,9 @@
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Grin where
 
+import Control.DeepSeq
 import Data.Map (Map)
+import GHC.Generics (Generic)
 
 type Name = String
 
@@ -13,7 +16,7 @@ data Exp
   = Bind  SimpleExp LPat Exp
   | Case  Val [Alt]
   | SExp  SimpleExp
-  deriving Show
+  deriving (Generic, NFData, Eq, Show)
 
 data SimpleExp
   = App     Name [SimpleVal]
@@ -23,7 +26,7 @@ data SimpleExp
 --  | FetchI  Name Int -- fetch node component
   | Update  Name Val
   | Block   Exp
-  deriving Show
+  deriving (Generic, NFData, Eq, Show)
 
 type LPat = Val
 type SimpleVal = Val
@@ -38,23 +41,23 @@ data Val
   -- extra
   | Loc Int
   | Undefined
-  deriving (Eq,Show)
+  deriving (Generic, NFData, Eq, Show)
 
 data Lit = LFloat Float
-  deriving (Eq,Show)
+  deriving (Generic, NFData, Eq, Show)
 
 data Alt = Alt CPat Exp
-  deriving Show
+  deriving (Generic, NFData, Eq, Show)
 
 data CPat
   = NodePat Tag [Name]
   | TagPat  Tag
   | LitPat  Lit
-  deriving Show
+  deriving (Generic, NFData, Eq, Show)
 
 data TagType = C | F | P
-  deriving (Eq,Show)
+  deriving (Generic, NFData, Eq, Show)
 
 data Tag = Tag TagType Name Int -- is this arity?
-  deriving (Eq,Show)
+  deriving (Generic, NFData, Eq, Show)
 
