@@ -29,7 +29,8 @@ library
     megaparsec,
     pretty-show,
     vector,
-    deepseq
+    deepseq,
+    unbound
   default-language:    Haskell2010
 
 executable grin-exe
