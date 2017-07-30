@@ -103,20 +103,3 @@ literal :: Parser Lit
 literal = LFloat . realToFrac <$> try signedFloat <|> LFloat . fromIntegral <$> signedInteger
 
 parseFromFile p file = runParser p file <$> readFile file
-
-eval :: String -> IO ()
-eval fname = do
-  result <- parseFromFile (some def <* sc <* eof) fname
-  case result of
-    Left err -> print err
-    Right e  -> do
-      pPrint e
-      putStrLn "-------"
-      pPrint $ reduceFun e "main"
-
-eval' :: String -> IO Val
-eval' fname = do
-  result <- parseFromFile (some def <* sc <* eof) fname
-  case result of
-    Left err -> error $ show err
-    Right e  -> return $ reduceFun e "main"

@@ -3,7 +3,7 @@ module Main where
 import Criterion
 import Criterion.Main
 
-import ParseGrin
+import Eval
 
 
 fact :: Integer -> Integer
@@ -14,6 +14,8 @@ main :: IO ()
 main = do
   defaultMainWith
     defaultConfig
-    [ bench "sum_opt" $ nfIO $ eval' "grin/sum_opt.grin"
-    , bench "sum_simple" $ nfIO $ eval' "grin/sum_simple.grin"
+    [ bench "sum_opt" $ nfIO $ eval' PureReducer "grin/sum_opt.grin"
+    , bench "sum_opt" $ nfIO $ eval' STReducer "grin/sum_opt.grin"
+    , bench "do" $ nfIO $ eval' PureReducer "grin/do.grin"
+    , bench "do" $ nfIO $ eval' STReducer "grin/do.grin"
     ]

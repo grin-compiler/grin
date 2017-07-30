@@ -24,7 +24,7 @@ data SStore s = SStore {
   }
 
 emptyStore1 :: ST s (SStore s)
-emptyStore1 = SStore <$> (new 1024 >>= newSTRef) <*> newSTRef 0
+emptyStore1 = SStore <$> (new (10 * 1024 * 1024) >>= newSTRef) <*> newSTRef 0
 
 -- models cpu registers
 type Env = Map Name Val

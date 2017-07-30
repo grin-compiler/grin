@@ -16,9 +16,11 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
+    Eval
     Grin
     ParseGrin
     ReduceGrin
+    STReduceGrin
 
   build-depends:
     base,
