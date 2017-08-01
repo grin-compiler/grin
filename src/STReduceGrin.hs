@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
--- {-# LANGUAGE Strict #-}
+{-# LANGUAGE Strict #-}
 module STReduceGrin (reduceFun) where
 
 import Debug.Trace
@@ -29,7 +29,6 @@ emptyStore1 = SStore <$> new (10 * 1024 * 1024) <*> newSTRef 0
 
 -- models cpu registers
 type Env = Map Name Val
--- type GrinS s a = ReaderT Prog (StateT (SStore s) (ST s)) a
 type GrinS s a = RWST Prog () (SStore s) (ST s) a
 
 getProg :: GrinS s Prog
