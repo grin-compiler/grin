@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE Strict #-}
+-- {-# LANGUAGE Strict #-}
 module STReduceGrin (reduceFun) where
 
 import Debug.Trace
@@ -14,53 +14,52 @@ import Control.Monad.Reader
 import Data.Vector.Mutable as Vector
 import Data.STRef.Strict
 import Control.Monad.ST
+import Control.Monad.RWS.Strict hiding (Alt)
 
 import Grin
 
 -- models computer memory
 data SStore s = SStore {
-    sVector :: STRef s (STVector s Val)
+    sVector :: STVector s Val
   , sLast   :: STRef s Int
   }
 
 emptyStore1 :: ST s (SStore s)
-emptyStore1 = SStore <$> (new (10 * 1024 * 1024) >>= newSTRef) <*> newSTRef 0
+emptyStore1 = SStore <$> new (10 * 1024 * 1024) <*> newSTRef 0
 
 -- models cpu registers
 type Env = Map Name Val
-type GrinS s a = ReaderT (Prog, SStore s) (ST s) a
+-- type GrinS s a = ReaderT Prog (StateT (SStore s) (ST s)) a
+type GrinS s a = RWST Prog () (SStore s) (ST s) a
 
 getProg :: GrinS s Prog
-getProg = reader fst
+getProg = reader id
 
 getStore :: GrinS s (SStore s)
-getStore = reader snd
+getStore = get
 
 getLength :: SStore s -> GrinS s Int
-getLength (SStore sr _) = Vector.length <$> lift (readSTRef sr)
+getLength (SStore v _) = return $ Vector.length v
 
 -- TODO: Resize
 insertStore :: Val -> GrinS s ()
 insertStore x = do
-  (SStore vr l) <- getStore
+  (SStore v l) <- getStore
   lift $ do
     n <- readSTRef l
-    v <- readSTRef vr
     Vector.write v n x
     writeSTRef l (n + 1)
 
 lookupStore :: Int -> GrinS s Val
 lookupStore n = do
-  (SStore vr _) <- getStore
+  (SStore v _) <- getStore
   lift $ do
-    v <- readSTRef vr
     Vector.read v n
 
 updateStore :: Int -> Val -> GrinS s ()
 updateStore n x = do
-  (SStore vr _) <- getStore
+  (SStore v _) <- getStore
   lift $ do
-    v <- readSTRef vr
     Vector.write v n x
 
 bindPatMany :: Env -> [Val] -> [LPat] -> Env
@@ -171,12 +170,14 @@ primMul x = error $ "primMul - invalid arguments: " ++ show x
 reduce :: Exp -> Val
 reduce e = runST $ do
   store <- emptyStore1
-  runReaderT (evalExp mempty e) (mempty, store)
+  (val, _, _) <- runRWST (evalExp mempty e) mempty store
+  return val
 
 reduceFun :: [Def] -> Name -> Val
 reduceFun l n = runST $ do
   store <- emptyStore1
-  runReaderT (evalExp mempty e) (m, store)
+  (val, _, _) <- runRWST (evalExp mempty e) m store
+  return val
   where
     m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
     e = case Map.lookup n m of
