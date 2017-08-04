@@ -37,17 +37,15 @@ getProg = reader id
 getStore :: GrinS s (SStore s)
 getStore = get
 
-getLength :: SStore s -> GrinS s Int
-getLength (SStore v _) = return $ Vector.length v
-
 -- TODO: Resize
-insertStore :: Val -> GrinS s ()
+insertStore :: Val -> GrinS s Int
 insertStore x = do
   (SStore v l) <- getStore
   lift $ do
     n <- readSTRef l
     Vector.write v n x
     writeSTRef l (n + 1)
+    pure n
 
 lookupStore :: Int -> GrinS s Val
 lookupStore n = do
@@ -82,8 +80,8 @@ bindPat env v p = case p of
   VarTagNode n l -> case v of
                   ConstTagNode vt vl -> bindPatMany (Map.insert n (ValTag vt) env) vl l
                   _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show v
-  _ | p == v -> env
-    | otherwise -> error $ "bindPat - pattern mismatch" ++ show (v,p)
+  Unit -> env
+  _ -> error $ "bindPat - pattern mismatch" ++ show (v,p)
 
 lookupEnv :: Name -> Env -> Val
 lookupEnv n env = Map.findWithDefault (error $ "missing variable: " ++ n) n env
@@ -102,8 +100,16 @@ evalVal env = \case
   v@Loc{}     -> v
   x -> error $ "evalVal: " ++ show x
 
+pprint exp = trace (f exp) exp where
+  f = \case
+    Bind  a b _ -> unwords ["Bind", "{",show a,"} to {", show b, "}"]
+    Case  a _ -> unwords ["Case", show a]
+    SExp  (Block {}) -> "Block"
+    SExp  a -> show a
+
+
 evalExp :: Env -> Exp -> GrinS s Val
-evalExp env = \case
+evalExp env exp = case {-pprint-} exp of
   Bind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
   Case v alts -> case evalVal env v of
     ConstTagNode t l ->
@@ -136,9 +142,8 @@ evalSimpleExp env = \case
                   evalExp (go env vars args) body
   Return v -> return $ evalVal env v
   Store v -> do
-              l <- getLength =<< getStore
               let v' = evalVal env v
-              insertStore v'  
+              l <- insertStore v'
               -- modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               return $ Loc l
   Fetch n -> case lookupEnv n env of

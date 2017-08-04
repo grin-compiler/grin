@@ -14,8 +14,8 @@ main = do
       ]
 
     , bgroup "ST"
-      [ {-bench "sum_simple" $ nfIO $ eval' STReducer "grin/sum_simple.grin"
-      , -}bench "sum_opt" $ nfIO $ eval' STReducer "grin/sum_opt.grin"
+      [ bench "sum_simple" $ nfIO $ eval' STReducer "grin/sum_simple.grin"
+      , bench "sum_opt" $ nfIO $ eval' STReducer "grin/sum_opt.grin"
       ]
 {-
     , bgroup "Other"

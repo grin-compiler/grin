@@ -46,8 +46,8 @@ bindPat env v p = case p of
   VarTagNode n l -> case v of
                   ConstTagNode vt vl -> bindPatMany (Map.insert n (ValTag vt) env) vl l
                   _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show v
-  _ | p == v -> env
-    | otherwise -> error $ "bindPat - pattern mismatch" ++ show (v,p)
+  Unit -> env
+  _ -> error $ "bindPat - pattern mismatch" ++ show (v,p)
 
 lookupEnv :: Name -> Env -> Val
 lookupEnv n env = Map.findWithDefault (error $ "missing variable: " ++ n) n env
