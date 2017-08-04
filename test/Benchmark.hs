@@ -5,17 +5,22 @@ import Criterion.Main
 
 import Eval
 
-
-fact :: Integer -> Integer
-fact 1 = 1
-fact n = n * fact (n - 1)
-
 main :: IO ()
 main = do
-  defaultMainWith
-    defaultConfig
-    [ bench "sum_opt" $ nfIO $ eval' PureReducer "grin/sum_opt.grin"
-    , bench "sum_opt" $ nfIO $ eval' STReducer "grin/sum_opt.grin"
-    , bench "do" $ nfIO $ eval' PureReducer "grin/do.grin"
-    , bench "do" $ nfIO $ eval' STReducer "grin/do.grin"
+  defaultMainWith defaultConfig
+    [ bgroup "Pure"
+      [ bench "sum_simple" $ nfIO $ eval' PureReducer "grin/sum_simple.grin"
+      , bench "sum_opt" $ nfIO $ eval' PureReducer "grin/sum_opt.grin"
+      ]
+
+    , bgroup "ST"
+      [ {-bench "sum_simple" $ nfIO $ eval' STReducer "grin/sum_simple.grin"
+      , -}bench "sum_opt" $ nfIO $ eval' STReducer "grin/sum_opt.grin"
+      ]
+{-
+    , bgroup "Other"
+      [ bench "do/pure" $ nfIO $ eval' PureReducer "grin/do.grin"
+--      , bench "do/st" $ nfIO $ eval' STReducer "grin/do.grin"
+      ]
+-}
     ]

@@ -1,5 +1,5 @@
 main =
-  n13 <- sum 0 1 100000
+  n13 <- sum 0 1 10000
   intPrint n13
 
 sum n29 n30 n31 =

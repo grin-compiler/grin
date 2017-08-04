@@ -1,5 +1,5 @@
 main = t1 <- store (CInt 1)
-       t2 <- store (CInt 100000)
+       t2 <- store (CInt 10000)
        t3 <- store (Fupto t1 t2)
        t4 <- store (Fsum t3)
        (CInt i') <- eval t4
