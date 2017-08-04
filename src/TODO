@@ -1,0 +1,47 @@
+done - ST Monad based GRIN reducer
+done - add frontend language (LC example from unbound)
+- implement closure conversion for the frontend language
+- change GRIN AST and parser to use unbound
+- implement lazy lc -> grin transformation
+  - generate eval
+  - generate apply
+
+- better representation of grin
+  HINT: change the AST to make it easy to grasp the semantics; e.g. typed reified DSL operations
+  - reified statement chaining (binding)
+  - statements
+  - values
+  - patterns
+
+WHY:
+  - practice unbound
+  - learn grin
+  - practice writing transformations
+  - etimate the raw performance of grin
+
+EXPERIMENTAL:
+  - try to JIT GRIN
+  - how would partial evaluation look like with GRIN
+
+THOUGHTS:
+  Is GRIN optimization and transformation a computation?
+    IDEA: What if:
+      - the non optimizing compiler is just a one pass (non recursive) map function to the target language i.e. machine code
+      - the optimization (source to source) passes are computations in an earlier stage at a multistage setting
+    If so, is the optimizing compiler just a library in a multi stage language?
+    And the only part that needs to be provided is just the simple non optimizing mapper to the target language.
+  Can that computation be optimized? Or is it just an earlier stage of the multistage compilation pipeline?
+
+  QUESTIONS:
+    Is it possibe to save the reduction results of the earlier stages?
+    Is the type inference also a stage?
+
+  Model how these are related
+    program execution is evaluation
+    program optimization is evaluation
+    type inference/check is evaluation
+
+micro TODO:
+  - compile LC_SmallStep
+  - closure conversion
+  - compile to grin

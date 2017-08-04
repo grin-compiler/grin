@@ -1,0 +1,9 @@
+use cofree instead of fix to have an annotated AST
+use recursion schemes (ekmett lib)
+
+reactive compiler = recompile only that part of the ast that are affected
+
+
+fixplate + unbound
+  solution:
+    move Fix definition to backpack
