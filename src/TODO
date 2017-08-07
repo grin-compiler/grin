@@ -45,3 +45,6 @@ micro TODO:
   - compile LC_SmallStep
   - closure conversion
   - compile to grin
+
+ST reduce optimization related:
+  read: https://ro-che.info/articles/2017-08-06-manage-allocated-memory-haskell
