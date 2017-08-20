@@ -48,3 +48,9 @@ micro TODO:
 
 ST reduce optimization related:
   read: https://ro-che.info/articles/2017-08-06-manage-allocated-memory-haskell
+
+JIT TODO:
+  NOTE: use x86-64bit package; machine code EDSL
+  - register allocator monad
+  - grin AST serialization and read back (machine code layout mapping)
+  - generate garbage collector
