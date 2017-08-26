@@ -2,7 +2,8 @@
 {-# LANGUAGE DeriveFoldable, DeriveTraversable #-}
 {-# LANGUAGE DataKinds, GADTs, KindSignatures, ConstraintKinds #-}
 {-# LANGUAGE LambdaCase, RankNTypes #-}
-module Grin where
+{-# LANGUAGE ScopedTypeVariables, PatternSynonyms, ViewPatterns #-}
+module Grin5 where
 
 import Data.Functor.Foldable as Foldable
 import Control.DeepSeq
@@ -21,21 +22,62 @@ type SimpleExp = Exp
 type Alt = Exp
 
 data ExpKind = E | S | A
+
 class ExpG (a :: ExpKind -> *) where
   bindG :: a S -> LPat -> a E -> a E    
-  caseG :: Val -> [a A]          -> a E
-  sExpG :: a S                   -> a E
+  caseG :: Val -> [a A]       -> a E
+  sexpG :: a S                -> a E
 
-  appG    :: Name -> [SimpleVal]    -> a S
-  returnG :: Val                    -> a S
-  storeG  :: Val                    -> a S
-  fetchG  :: Name                   -> a S
-  updateG :: Name -> Val            -> a S
+  appG    :: Name -> [SimpleVal] -> a S
+  returnG :: Val                 -> a S
+  storeG  :: Val                 -> a S
+  fetchG  :: Name                -> a S
+  updateG :: Name -> Val         -> a S
   blockG  :: a E                 -> a S
 
   altG    :: CPat -> a E         -> a A
 
-newtype ExpGT a = ExpGT Exp
+newtype ExpGT (a :: ExpKind) = ExpGT { unExpGT :: Exp }
+
+pattern BindG :: ExpGT S -> LPat -> ExpGT E -> ExpGT E
+pattern BindG se lpat e <- ExpGT (EBind (ExpGT -> se) lpat (ExpGT -> e))
+  where BindG se lpat e =  ExpGT (EBind (unExpGT se)  lpat (unExpGT e))
+
+pattern CaseG :: Val -> [ExpGT A] -> ExpGT E
+pattern CaseG val alts <- ExpGT (ECase val (map ExpGT -> alts))
+  where CaseG val alts =  ExpGT (ECase val (map unExpGT alts))
+
+pattern SExpG :: ExpGT S -> ExpGT E
+pattern SExpG se <- ExpGT (ESExp (ExpGT -> se))
+  where SExpG se =  ExpGT (ESExp (unExpGT se))
+
+pattern AppG :: Name -> [SimpleVal] -> ExpGT S
+pattern AppG name simpleVals <- ExpGT (SApp name simpleVals)
+  where AppG name simpleVals =  ExpGT (SApp name simpleVals)
+
+pattern ReturnG :: Val -> ExpGT S
+pattern ReturnG val <- ExpGT (SReturn val)
+  where ReturnG val =  ExpGT (SReturn val)
+
+pattern StoreG :: Val -> ExpGT S
+pattern StoreG val <- ExpGT (SStore val)
+  where StoreG val =  ExpGT (SStore val)
+
+pattern FetchG :: Name -> ExpGT S
+pattern FetchG name <- ExpGT (SFetch name)
+  where FetchG name =  ExpGT (SFetch name)
+
+pattern UpdateG :: Name -> Val -> ExpGT S
+pattern UpdateG name val <- ExpGT (SUpdate name val)
+  where UpdateG name val =  ExpGT (SUpdate name val)
+
+pattern BlockG :: ExpGT E -> ExpGT S
+pattern BlockG e <- ExpGT (SBlock (ExpGT -> e))
+  where BlockG e =  ExpGT (SBlock (unExpGT e))
+
+pattern AltG :: CPat -> ExpGT E -> ExpGT A
+pattern AltG cpat e <- ExpGT (Alt cpat (ExpGT -> e))
+  where AltG cpat e =  ExpGT (Alt cpat (unExpGT e))
 
 data Exp
   = EBind    SimpleExp LPat Exp
@@ -51,7 +93,7 @@ data Exp
   -- Alt
   | Alt CPat Exp
   deriving (Generic, NFData, Eq, Show)
-
+{-
 fromExpG :: forall (e :: ExpKind) . ExpG e -> Exp
 fromExpG = \case
   BindG simpleExp lpat exp -> EBind (fromExpG simpleExp) lpat (fromExpG exp)
@@ -84,6 +126,7 @@ toExpGS = \case
 toExpGA :: Exp -> ExpG A
 toExpGA = \case
   Alt cpat exp             -> AltG cpat (toExpGE exp)
+-}
 
 type LPat = Val
 type SimpleVal = Val
