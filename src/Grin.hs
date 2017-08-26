@@ -1,6 +1,8 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
+{-# LANGUAGE DeriveFoldable, DeriveTraversable #-}
 module Grin where
 
+import Data.Functor.Foldable as Foldable
 import Control.DeepSeq
 import Data.Map (Map)
 import GHC.Generics (Generic)
@@ -12,20 +14,22 @@ type Prog = Map Name Def
 data Def = Def Name [Name] Exp
   deriving Show
 
-data Exp
-  = Bind  SimpleExp LPat Exp
-  | Case  Val [Alt]
-  | SExp  SimpleExp
-  deriving (Generic, NFData, Eq, Show)
 
-data SimpleExp
-  = App     Name [SimpleVal]
-  | Return  Val
-  | Store   Val
-  | Fetch   Name
---  | FetchI  Name Int -- fetch node component
-  | Update  Name Val
-  | Block   Exp
+type SimpleExp = Exp
+type Alt = Exp
+
+data Exp
+  = EBind    SimpleExp LPat Exp
+  | ECase    Val [Alt]
+  -- Simple Expr
+  | SApp     Name [SimpleVal]
+  | SReturn  Val
+  | SStore   Val
+  | SFetch   Name
+  | SUpdate  Name Val
+  | SBlock   Exp
+  -- Alt
+  | Alt CPat Exp
   deriving (Generic, NFData, Eq, Show)
 
 type LPat = Val
@@ -46,9 +50,6 @@ data Val
 data Lit = LFloat Float
   deriving (Generic, NFData, Eq, Show)
 
-data Alt = Alt CPat Exp
-  deriving (Generic, NFData, Eq, Show)
-
 data CPat
   = NodePat Tag [Name]
   | TagPat  Tag
@@ -61,3 +62,45 @@ data TagType = C | F | P
 data Tag = Tag TagType Name Int -- is this arity?
   deriving (Generic, NFData, Eq, Show)
 
+-- * shahe functors
+
+data ExpF a
+  = EBindF    a LPat a
+  | ECaseF    Val [a]
+  -- Simple Expr
+  | SAppF     Name [SimpleVal]
+  | SReturnF  Val
+  | SStoreF   Val
+  | SFetchF   Name
+  | SUpdateF  Name Val
+  | SBlockF   a
+  -- Alt
+  | AltF CPat a
+  deriving (Generic, NFData, Eq, Show, Functor, Foldable, Traversable)
+
+type instance Base Exp = ExpF
+instance Recursive Exp where
+  project (EBind    simpleExp lpat exp) = EBindF simpleExp lpat exp
+  project (ECase    val alts) = ECaseF val alts
+  -- Simple Expr
+  project (SApp     name simpleVals) = SAppF name simpleVals
+  project (SReturn  val) = SReturnF val
+  project (SStore   val) = SStoreF val
+  project (SFetch   name) = SFetchF name
+  project (SUpdate  name val) = SUpdateF name val
+  project (SBlock   exp) = SBlockF exp
+  -- Alt
+  project (Alt cpat exp) = AltF cpat exp
+
+instance Corecursive Exp where
+  embed (EBindF    simpleExp lpat exp) = EBind simpleExp lpat exp
+  embed (ECaseF    val alts) = ECase val alts
+  -- Simple Expr
+  embed (SAppF     name simpleVals) = SApp name simpleVals
+  embed (SReturnF  val) = SReturn val
+  embed (SStoreF   val) = SStore val
+  embed (SFetchF   name) = SFetch name
+  embed (SUpdateF  name val) = SUpdate name val
+  embed (SBlockF   exp) = SBlock exp
+  -- Alt
+  embed (AltF cpat exp) = Alt cpat exp

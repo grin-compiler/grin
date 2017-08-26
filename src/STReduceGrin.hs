@@ -19,28 +19,28 @@ import Control.Monad.RWS.Strict hiding (Alt)
 import Grin
 
 -- models computer memory
-data SStore s = SStore {
+data STStore s = STStore {
     sVector :: STVector s Val
   , sLast   :: STRef s Int
   }
 
-emptyStore1 :: ST s (SStore s)
-emptyStore1 = SStore <$> new (10 * 1024 * 1024) <*> newSTRef 0
+emptyStore1 :: ST s (STStore s)
+emptyStore1 = STStore <$> new (10 * 1024 * 1024) <*> newSTRef 0
 
 -- models cpu registers
 type Env = Map Name Val
-type GrinS s a = RWST Prog () (SStore s) (ST s) a
+type GrinS s a = RWST Prog () (STStore s) (ST s) a
 
 getProg :: GrinS s Prog
 getProg = reader id
 
-getStore :: GrinS s (SStore s)
+getStore :: GrinS s (STStore s)
 getStore = get
 
 -- TODO: Resize
 insertStore :: Val -> GrinS s Int
 insertStore x = do
-  (SStore v l) <- getStore
+  (STStore v l) <- getStore
   lift $ do
     n <- readSTRef l
     Vector.write v n x
@@ -49,13 +49,13 @@ insertStore x = do
 
 lookupStore :: Int -> GrinS s Val
 lookupStore n = do
-  (SStore v _) <- getStore
+  (STStore v _) <- getStore
   lift $ do
     Vector.read v n
 
 updateStore :: Int -> Val -> GrinS s ()
 updateStore n x = do
-  (SStore v _) <- getStore
+  (STStore v _) <- getStore
   lift $ do
     Vector.write v n x
 
@@ -102,16 +102,16 @@ evalVal env = \case
 
 pprint exp = trace (f exp) exp where
   f = \case
-    Bind  a b _ -> unwords ["Bind", "{",show a,"} to {", show b, "}"]
-    Case  a _ -> unwords ["Case", show a]
-    SExp  (Block {}) -> "Block"
-    SExp  a -> show a
+    EBind  a b _ -> unwords ["Bind", "{",show a,"} to {", show b, "}"]
+    ECase  a _ -> unwords ["Case", show a]
+    SBlock {} -> "Block"
+    a -> show a
 
 
 evalExp :: Env -> Exp -> GrinS s Val
 evalExp env exp = case {-pprint-} exp of
-  Bind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
-  Case v alts -> case evalVal env v of
+  EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
+  ECase v alts -> case evalVal env v of
     ConstTagNode t l ->
                    let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
                        go a [] [] = a
@@ -121,12 +121,11 @@ evalExp env exp = case {-pprint-} exp of
     ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
     Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
     x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
-  SExp exp -> evalSimpleExp env exp
-  x -> error $ "evalExp: " ++ show x
+  exp -> evalSimpleExp env exp
 
 evalSimpleExp :: Env -> SimpleExp -> GrinS s Val
 evalSimpleExp env = \case
-  App n a -> do
+  SApp n a -> do
               let args = map (evalVal env) a
                   go a [] [] = a
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
@@ -140,22 +139,22 @@ evalSimpleExp env = \case
                 _ -> do
                   Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ n) n) <$> getProg
                   evalExp (go env vars args) body
-  Return v -> return $ evalVal env v
-  Store v -> do
+  SReturn v -> return $ evalVal env v
+  SStore v -> do
               let v' = evalVal env v
               l <- insertStore v'
               -- modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               return $ Loc l
-  Fetch n -> case lookupEnv n env of
+  SFetch n -> case lookupEnv n env of
               Loc l -> lookupStore l
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
 --  | FetchI  Name Int -- fetch node component
-  Update n v -> do
+  SUpdate n v -> do
               let v' = evalVal env v
               case lookupEnv n env of
                 Loc l -> updateStore l v' >> return v'
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
-  Block a -> evalExp env a
+  SBlock a -> evalExp env a
   x -> error $ "evalSimpleExp: " ++ show x
 
 -- primitive functions
@@ -189,6 +188,6 @@ reduceFun l n = runST $ do
           Just (Def _ [] a) -> a
           _ -> error $ "function " ++ n ++ " has arguments"
 
-sadd = App "add" [Lit $ LFloat 3, Lit $ LFloat 2]
-test = SExp sadd
-test2 = Bind sadd (Var "a") $ SExp $ App "mul" [Var "a", Var "a"]
+sadd = SApp "add" [Lit $ LFloat 3, Lit $ LFloat 2]
+test = sadd
+test2 = EBind sadd (Var "a") $ SApp "mul" [Var "a", Var "a"]
