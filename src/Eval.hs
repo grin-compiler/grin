@@ -15,7 +15,7 @@ data Reducer
 
 eval' :: Reducer -> String -> IO Val
 eval' reducer fname = do
-  result <- parseFromFile (some def <* sc <* eof) fname
+  result <- parseGrin fname
   case result of
     Left err -> error $ show err
     Right e  -> return $ 

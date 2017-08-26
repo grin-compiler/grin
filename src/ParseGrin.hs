@@ -102,4 +102,8 @@ value = Unit <$ op "()" <|>
 literal :: Parser Lit
 literal = LFloat . realToFrac <$> try signedFloat <|> LFloat . fromIntegral <$> signedInteger
 
+--parseFromFile :: Parser _ -> String -> IO _
 parseFromFile p file = runParser p file <$> readFile file
+
+--parseGrin :: String -> IO (Either _ [Def])
+parseGrin fname = parseFromFile (some def <* sc <* eof) fname
