@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DataKinds, GADTs, KindSignatures, ConstraintKinds #-}
+{-# LANGUAGE LambdaCase, RankNTypes #-}
 module Grin where
 
 import Data.Functor.Foldable as Foldable
@@ -18,9 +20,25 @@ data Def = Def Name [Name] Exp
 type SimpleExp = Exp
 type Alt = Exp
 
+data ExpKind = E | S | A
+data ExpG (a :: ExpKind) where
+  BindG :: ExpG S -> LPat -> ExpG E -> ExpG E    
+  CaseG :: Val -> [ExpG A]          -> ExpG E
+  SExpG :: ExpG S                   -> ExpG E
+
+  AppG    :: Name -> [SimpleVal]    -> ExpG S
+  ReturnG :: Val                    -> ExpG S
+  StoreG  :: Val                    -> ExpG S
+  FetchG  :: Name                   -> ExpG S
+  UpdateG :: Name -> Val            -> ExpG S
+  BlockG  :: ExpG E                 -> ExpG S
+
+  AltG    :: CPat -> ExpG E         -> ExpG A
+
 data Exp
   = EBind    SimpleExp LPat Exp
   | ECase    Val [Alt]
+  | ESExp    SimpleExp
   -- Simple Expr
   | SApp     Name [SimpleVal]
   | SReturn  Val
@@ -31,6 +49,39 @@ data Exp
   -- Alt
   | Alt CPat Exp
   deriving (Generic, NFData, Eq, Show)
+
+fromExpG :: forall (e :: ExpKind) . ExpG e -> Exp
+fromExpG = \case
+  BindG simpleExp lpat exp -> EBind (fromExpG simpleExp) lpat (fromExpG exp)
+  CaseG val alts           -> ECase val (fmap fromExpG alts)
+  SExpG exp                -> ESExp (fromExpG exp)
+
+  AppG    name simpleVals -> SApp name simpleVals
+  ReturnG val             -> SReturn val
+  StoreG  val             -> SStore val
+  FetchG  name            -> SFetch name
+  UpdateG name val        -> SUpdate name val
+  BlockG  exp             -> SBlock (fromExpG exp)
+
+  AltG cpat exp           -> Alt cpat (fromExpG exp)
+
+toExpGE :: Exp -> ExpG E
+toExpGE = \case
+  EBind simpleExp lpat exp -> BindG (toExpGS simpleExp) lpat (toExpGE exp)
+  ECase val alts           -> CaseG val (fmap toExpGA alts)
+  ESExp simpleExp          -> SExpG (toExpGS simpleExp)
+
+toExpGS :: Exp -> ExpG S
+toExpGS = \case
+  SApp name simpleVals     -> AppG name simpleVals
+  SReturn val              -> ReturnG val
+  SStore val               -> StoreG val
+  SFetch name              -> FetchG name
+  SUpdate name val         -> UpdateG name val
+
+toExpGA :: Exp -> ExpG A
+toExpGA = \case
+  Alt cpat exp             -> AltG cpat (toExpGE exp)
 
 type LPat = Val
 type SimpleVal = Val
@@ -67,6 +118,7 @@ data Tag = Tag TagType Name Int -- is this arity?
 data ExpF a
   = EBindF    a LPat a
   | ECaseF    Val [a]
+  | ESExpF    a
   -- Simple Expr
   | SAppF     Name [SimpleVal]
   | SReturnF  Val
@@ -80,8 +132,10 @@ data ExpF a
 
 type instance Base Exp = ExpF
 instance Recursive Exp where
+  -- Expression
   project (EBind    simpleExp lpat exp) = EBindF simpleExp lpat exp
   project (ECase    val alts) = ECaseF val alts
+  project (ESExp    simpleExp) = ESExpF simpleExp
   -- Simple Expr
   project (SApp     name simpleVals) = SAppF name simpleVals
   project (SReturn  val) = SReturnF val
@@ -93,8 +147,10 @@ instance Recursive Exp where
   project (Alt cpat exp) = AltF cpat exp
 
 instance Corecursive Exp where
+  -- Expression
   embed (EBindF    simpleExp lpat exp) = EBind simpleExp lpat exp
   embed (ECaseF    val alts) = ECase val alts
+  embed (ESExpF    simpleExp) = ESExp simpleExp
   -- Simple Expr
   embed (SAppF     name simpleVals) = SApp name simpleVals
   embed (SReturnF  val) = SReturn val
