@@ -12,29 +12,37 @@ printGrin defs = putDoc $ vcat (map pretty defs)
 keyword :: String -> Doc
 keyword = yellow . text
 
+keywordR = red . text
+
+-- TODO
+--  nice colors for syntax highlight
+--  precedence support
+--  better node type syntax (C | F | P)
+
 instance Pretty Def where
-  pretty (Def name args exp) = text name <+> hsep (map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
+  pretty (Def name args exp) = hsep (text name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
 
 instance Pretty Exp where
   pretty = cata folder where
     folder = \case
       -- Exp
+      EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
       ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
-      SAppF name args   -> text name <+> hsep (map pretty args)
-      SReturnF val      -> keyword "return" <+> pretty val
-      SStoreF val       -> keyword "store" <+> pretty val
-      SFetchF name      -> keyword "fetch" <+> text name
-      SUpdateF name val -> keyword "update" <+> text name <+> pretty val
-      SBlockF exp       -> keyword "do" <$$> indent 2 (pretty exp)
+      SAppF name args   -> hsep (text name : map pretty args)
+      SReturnF val      -> text "return" <+> pretty val
+      SStoreF val       -> keywordR "store" <+> pretty val
+      SFetchF name      -> keywordR "fetch" <+> text name
+      SUpdateF name val -> keywordR "update" <+> text name <+> pretty val
+      SBlockF exp       -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
       AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
 
 instance Pretty Val where
   pretty = \case
-    ConstTagNode tag args -> pretty tag <+> hsep (map pretty args)
-    VarTagNode name args  -> text name <+> hsep (map pretty args)
+    ConstTagNode tag args -> hsep (pretty tag : map pretty args)
+    VarTagNode name args  -> hsep (text name : map pretty args)
     ValTag tag  -> pretty tag
     Unit        -> parens empty
     -- simple val
@@ -49,15 +57,15 @@ instance Pretty Lit where
 
 instance Pretty CPat where
   pretty = \case
-    NodePat tag vars  -> pretty tag <+> hsep (map text vars)
+    NodePat tag vars  -> hsep (pretty tag : map text vars)
     TagPat  tag       -> pretty tag
     LitPat  lit       -> pretty lit
 
 instance Pretty TagType where
-  pretty = \case
-    C -> keyword "C"
-    F -> keyword "F"
-    P -> keyword "P"
+  pretty = green . \case
+    C -> text "C"
+    F -> text "F"
+    P -> text "P"
 
 instance Pretty Tag where
   pretty (Tag tagtype name _) = pretty tagtype <> text name

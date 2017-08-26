@@ -43,6 +43,8 @@ executable grin
   build-depends:       base
                      , grin
                      , recursion-schemes
+                     , monad-gen
+                     , ansi-wl-pprint
   default-language:    Haskell2010
 
 test-suite grin-test
