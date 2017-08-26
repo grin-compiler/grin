@@ -9,6 +9,9 @@ import Grin
 printGrin :: [Def] -> IO ()
 printGrin defs = putDoc $ vcat (map pretty defs)
 
+keyword :: String -> Doc
+keyword = yellow . text
+
 instance Pretty Def where
   pretty (Def name args exp) = text name <+> hsep (map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
 
@@ -17,14 +20,14 @@ instance Pretty Exp where
     folder = \case
       -- Exp
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
-      ECaseF val alts   -> text "case" <+> pretty val <+> text "of" <$$> indent 2 (vsep (map pretty alts))
+      ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
       SAppF name args   -> text name <+> hsep (map pretty args)
-      SReturnF val      -> text "return" <+> pretty val
-      SStoreF val       -> text "store" <+> pretty val
-      SFetchF name      -> text "fetch" <+> text name
-      SUpdateF name val -> text "update" <+> text name <+> pretty val
-      SBlockF exp       -> text "do" <$$> indent 2 (pretty exp)
+      SReturnF val      -> keyword "return" <+> pretty val
+      SStoreF val       -> keyword "store" <+> pretty val
+      SFetchF name      -> keyword "fetch" <+> text name
+      SUpdateF name val -> keyword "update" <+> text name <+> pretty val
+      SBlockF exp       -> keyword "do" <$$> indent 2 (pretty exp)
       -- Alt
       AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
 
@@ -38,8 +41,8 @@ instance Pretty Val where
     Lit lit     -> pretty lit
     Var name    -> text name
     -- extra
-    Loc a       -> text "loc" <+> int a
-    Undefined   -> text "undefined"
+    Loc a       -> keyword "loc" <+> int a
+    Undefined   -> keyword "undefined"
 
 instance Pretty Lit where
   pretty (LFloat a) = float a
@@ -52,9 +55,9 @@ instance Pretty CPat where
 
 instance Pretty TagType where
   pretty = \case
-    C -> text "C"
-    F -> text "F"
-    P -> text "P"
+    C -> keyword "C"
+    F -> keyword "F"
+    P -> keyword "P"
 
 instance Pretty Tag where
   pretty (Tag tagtype name _) = pretty tagtype <> text name
