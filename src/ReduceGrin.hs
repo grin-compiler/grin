@@ -71,7 +71,7 @@ evalVal env = \case
 
 evalSimpleExp :: Env -> SimpleExp -> GrinM Val
 evalSimpleExp env = \case
-  App n a -> {-# SCC eSE_App #-}do
+  SApp n a -> {-# SCC eSE_App #-}do
               let args = map (evalVal env) a
                   go a [] [] = a
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
@@ -85,30 +85,30 @@ evalSimpleExp env = \case
                 _ -> do
                   Def _ vars body <- reader $ Map.findWithDefault (error $ "unknown function: " ++ n) n
                   evalExp (go env vars args) body
-  Return v -> {-# SCC eSE_Return #-}return $ evalVal env v
-  Store v -> {-# SCC eSE_Store #-}do
+  SReturn v -> {-# SCC eSE_Return #-}return $ evalVal env v
+  SStore v -> {-# SCC eSE_Store #-}do
               l <- {-# SCC eSE_Store_size #-}gets storeSize
               let v' = evalVal env v
               modify' ({-# SCC eSE_Store_insert #-}\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               return $ Loc l
-  Fetch n -> {-# SCC eSE_Fetch #-}case lookupEnv n env of
+  SFetch n -> {-# SCC eSE_Fetch #-}case lookupEnv n env of
               Loc l -> gets $ lookupStore l
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
 --  | FetchI  Name Int -- fetch node component
-  Update n v -> {-# SCC eSE_Update #-}do
+  SUpdate n v -> {-# SCC eSE_Update #-}do
               let v' = evalVal env v
               case lookupEnv n env of
                 Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
                             False -> error $ "evalSimpleExp - Update unknown location: " ++ show l
                             True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> return Unit
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
-  Block a -> {-# SCC eSE_Block #-}evalExp env a
+  SBlock a -> {-# SCC eSE_Block #-}evalExp env a
   x -> error $ "evalSimpleExp: " ++ show x
 
 evalExp :: Env -> Exp -> GrinM Val
 evalExp env = \case
-  Bind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
-  Case v alts -> case evalVal env v of
+  EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
+  ECase v alts -> case evalVal env v of
     ConstTagNode t l ->
                    let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
                        go a [] [] = a
@@ -118,8 +118,7 @@ evalExp env = \case
     ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
     Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
     x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
-  SExp exp -> evalSimpleExp env exp
-  x -> error $ "evalExp: " ++ show x
+  exp -> evalSimpleExp env exp
 
 -- primitive functions
 primIntGT [Lit (LFloat a), Lit (LFloat b)] = return $ ValTag $ Tag C (if a > b then "True" else "False") 0
@@ -145,6 +144,6 @@ reduceFun l n = evalState (runReaderT (evalExp mempty e) m) emptyStore where
         Just (Def _ [] a) -> a
         _ -> error $ "function " ++ n ++ " has arguments"
 
-sadd = App "add" [Lit $ LFloat 3, Lit $ LFloat 2]
-test = SExp sadd
-test2 = Bind sadd (Var "a") $ SExp $ App "mul" [Var "a", Var "a"]
+sadd = SApp "add" [Lit $ LFloat 3, Lit $ LFloat 2]
+test = sadd
+test2 = EBind sadd (Var "a") $ SApp "mul" [Var "a", Var "a"]

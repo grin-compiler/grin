@@ -55,11 +55,11 @@ signedFloat = L.signed sc' float
 def = Def <$> try (L.indentGuard sc EQ (unsafePos 1) *> var) <*> many var <* op "=" <*> (L.indentGuard sc GT (unsafePos 1) >>= expr)
 
 expr i = L.indentGuard sc EQ i >>
-  (\pat e b -> Bind e pat b) <$> try (value <* op "<-") <*> simpleExp i <*> expr i <|>
-  Case <$ kw "case" <*> value <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
+  (\pat e b -> EBind e pat b) <$> try (value <* op "<-") <*> simpleExp i <*> expr i <|>
+  ECase <$ kw "case" <*> value <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
   ifThenElse i <|>
-  try ((\n v e -> Bind (Update n v) Unit e) <$ kw "update" <*> var <*> value <*> expr i) <|>
-  SExp <$> simpleExp i
+  try ((\n v e -> EBind (SUpdate n v) Unit e) <$ kw "update" <*> var <*> value <*> expr i) <|>
+  simpleExp i
 
 ifThenElse i = do
   kw "if"
@@ -69,16 +69,16 @@ ifThenElse i = do
   L.indentGuard sc EQ i
   kw "else"
   e <- (L.indentGuard sc GT i >>= expr)
-  return $ Case v [ Alt (TagPat (Tag C "True"  0)) t
-                  , Alt (TagPat (Tag C "False" 0)) e
-                  ]
+  return $ ECase v [ Alt (TagPat (Tag C "True"  0)) t
+                   , Alt (TagPat (Tag C "False" 0)) e
+                   ]
 
-simpleExp i = Return <$ kw "return" <*> value <|>
-              Store <$ kw "store" <*> value <|>
-              Fetch <$ kw "fetch" <*> var <|>
-              Update <$ kw "update" <*> var <*> value <|>
-              Block <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
-              App <$> var <*> some simpleValue
+simpleExp i = SReturn <$ kw "return" <*> value <|>
+              SStore <$ kw "store" <*> value <|>
+              SFetch <$ kw "fetch" <*> var <|>
+              SUpdate <$ kw "update" <*> var <*> value <|>
+              SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
+              SApp <$> var <*> some simpleValue
 
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 

@@ -30,7 +30,8 @@ library
     pretty-show,
     vector,
     deepseq,
-    unbound
+    unbound,
+    recursion-schemes
   default-language:    Haskell2010
 
 executable grin-exe
