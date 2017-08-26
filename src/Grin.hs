@@ -34,6 +34,7 @@ data Exp
 
 type LPat = Val
 type SimpleVal = Val
+-- TODO: use data types a la carte style to build different versions of Val?
 data Val
   = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
   | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
