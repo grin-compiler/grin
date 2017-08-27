@@ -58,6 +58,6 @@ collectTagInfo = execWriter . cata folder where
 
   add :: Val -> Writer (Set Tag) ()
   add = \case
-    ConstTagNode tag _  -> tell $ singleton tag
-    ValTag tag          -> tell $ singleton tag
+    ConstTagNode (Tag tagtype name _) args -> tell $ singleton (Tag tagtype name (length args))
+    ValTag tag            -> tell $ singleton tag
     _ -> pure ()
