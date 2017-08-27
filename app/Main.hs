@@ -18,7 +18,6 @@ main = do
   args <- getArgs
   case args of
     [] -> putStrLn "usage: grin GRIN_SOURCE"
-    --x   -> forM_ x $ \a -> eval' PureReducer a >>= print
     x -> forM_ x $ \fname -> do
       grin <- either (fail . show) id <$> parseGrin fname
       let result = [printf "stores %s %d" name $ countStores exp | Def name _ exp <- grin]
@@ -27,3 +26,6 @@ main = do
       putStrLn . show . collectTagInfoPure $ Program grin
       putStrLn . show . ondullblue . pretty . generateEval $ Program grin
       printGrin grin
+
+      -- grin code evaluation
+      --eval' PureReducer fname >>= print . pretty
