@@ -11,17 +11,17 @@ type Name = String
 
 type Prog = Map Name Def
 
-data Def = Def Name [Name] Exp
-  deriving Show
-
-
 type SimpleExp = Exp
 type Alt = Exp
+type Def = Exp
 
 data Exp
-  = EBind    SimpleExp LPat Exp
+  = Program  [Def]
+  | Def      Name [Name] Exp
+  -- Exp
+  | EBind    SimpleExp LPat Exp
   | ECase    Val [Alt]
-  -- Simple Expr
+  -- Simple Exp
   | SApp     Name [SimpleVal]
   | SReturn  Val
   | SStore   Val
@@ -66,7 +66,10 @@ data Tag = Tag TagType Name Int -- is this arity?
 -- * shahe functors
 
 data ExpF a
-  = EBindF    a LPat a
+  = ProgramF  [a]
+  | DefF      Name [Name] a
+  -- Exp
+  | EBindF    a LPat a
   | ECaseF    Val [a]
   -- Simple Expr
   | SAppF     Name [SimpleVal]
@@ -81,6 +84,9 @@ data ExpF a
 
 type instance Base Exp = ExpF
 instance Recursive Exp where
+  project (Program  defs) = ProgramF defs
+  project (Def      name args exp) = DefF name args exp
+  -- Exp
   project (EBind    simpleExp lpat exp) = EBindF simpleExp lpat exp
   project (ECase    val alts) = ECaseF val alts
   -- Simple Expr
@@ -94,6 +100,9 @@ instance Recursive Exp where
   project (Alt cpat exp) = AltF cpat exp
 
 instance Corecursive Exp where
+  embed (ProgramF  defs) = Program defs
+  embed (DefF      name args exp) = Def name args exp
+  -- Exp
   embed (EBindF    simpleExp lpat exp) = EBind simpleExp lpat exp
   embed (ECaseF    val alts) = ECase val alts
   -- Simple Expr

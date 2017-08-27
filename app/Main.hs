@@ -58,6 +58,5 @@ main = do
       grin <- either (fail . show) id <$> parseGrin fname
       let result = [printf "stores %s %d" name $ testCata exp | Def name _ exp <- grin]
       putStrLn $ unlines result
-      let result = [show $ pretty $ vectorisation exp | Def name _ exp <- grin]
-      putStrLn $ unlines result
+      putStrLn . show . pretty . vectorisation $ Program grin
       printGrin grin

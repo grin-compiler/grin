@@ -7,7 +7,7 @@ import Text.PrettyPrint.ANSI.Leijen
 import Grin
 
 printGrin :: [Def] -> IO ()
-printGrin defs = putDoc $ vcat (map pretty defs)
+printGrin = putDoc . pretty . Program
 
 keyword :: String -> Doc
 keyword = yellow . text
@@ -19,12 +19,11 @@ keywordR = red . text
 --  precedence support
 --  better node type syntax (C | F | P)
 
-instance Pretty Def where
-  pretty (Def name args exp) = hsep (text name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
-
 instance Pretty Exp where
   pretty = cata folder where
     folder = \case
+      ProgramF defs       -> vcat (map pretty defs)
+      DefF name args exp  -> hsep (text name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
       -- Exp
       EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
