@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Transformations where
 
+import Data.Monoid
 import Data.Set (Set, singleton)
 import Control.Monad
 import Control.Monad.Gen
@@ -61,3 +62,26 @@ collectTagInfo = execWriter . cata folder where
     ConstTagNode (Tag tagtype name _) args -> tell $ singleton (Tag tagtype name (length args))
     ValTag tag            -> tell $ singleton tag
     _ -> pure ()
+
+collectTagInfoPure :: Exp -> Set Tag
+collectTagInfoPure = cata folder where
+  folder = \case
+    ProgramF a      -> mconcat a
+    DefF _ _ a      -> a
+    -- Exp
+    EBindF    a _ b -> a <> b
+    ECaseF val alts -> mconcat $ add val : alts
+    -- Simple Exp
+    SAppF     name vals -> mconcat $ map add vals
+    SReturnF  val   -> add val
+    SStoreF   val   -> add val
+    SUpdateF  _ val -> add val
+    SFetchF   _     -> mempty
+    SBlockF   a     -> a
+    -- Alt
+    AltF _ a        -> a
+
+  add = \case
+    ConstTagNode (Tag tagtype name _) args -> singleton (Tag tagtype name (length args))
+    ValTag tag          -> singleton tag
+    _                   -> mempty
