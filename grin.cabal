@@ -22,6 +22,7 @@ library
     ParseGrin
     ReduceGrin
     STReduceGrin
+    Transformations
 
   build-depends:
     base,
@@ -33,7 +34,8 @@ library
     deepseq,
     unbound,
     recursion-schemes,
-    ansi-wl-pprint
+    ansi-wl-pprint,
+    monad-gen
   default-language:    Haskell2010
 
 executable grin
@@ -43,7 +45,6 @@ executable grin
   build-depends:       base
                      , grin
                      , recursion-schemes
-                     , monad-gen
                      , ansi-wl-pprint
   default-language:    Haskell2010
 
