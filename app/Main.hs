@@ -25,4 +25,5 @@ main = do
       putStrLn $ unlines result
       putStrLn . show . pretty . vectorisation $ Program grin
       putStrLn . show . collectTagInfoPure $ Program grin
+      putStrLn . show . pretty . generateEval $ Program grin
       printGrin grin

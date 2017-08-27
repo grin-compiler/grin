@@ -14,6 +14,7 @@ type Prog = Map Name Def
 type SimpleExp = Exp
 type Alt = Exp
 type Def = Exp
+type Program = Exp
 
 data Exp
   = Program  [Def]
