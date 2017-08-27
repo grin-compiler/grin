@@ -1,8 +1,9 @@
 {-# LANGUAGE LambdaCase #-}
 module Transformations where
 
-import Data.Monoid
+import Data.Monoid hiding (Alt)
 import Data.Maybe
+import Data.Set (Set, singleton, toList)
 import Control.Monad
 import Control.Monad.Gen
 import Control.Monad.Writer hiding (Alt)
@@ -87,7 +88,7 @@ collectTagInfoPure = cata folder where
     _                   -> mempty
 
 generateEval :: Program -> Program
-generateEval program@(Program defs) = Program $ defs ++ [evalDef (collectTagInfo program)]
+generateEval program@(Program defs) = Program $ defs ++ [evalDef (collectTagInfoPure program)]
 generateEval _ = error "generateEval - Program required"
 
 evalDef :: Set Tag -> Def
