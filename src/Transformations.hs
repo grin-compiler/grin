@@ -11,8 +11,8 @@ import Data.Functor.Foldable as Foldable
 
 import Grin
 
-testCata :: Exp -> Int
-testCata = cata folder where
+countStores :: Exp -> Int
+countStores = cata folder where
   folder = \case
     ProgramF a      -> sum a
     DefF _ _ a      -> a

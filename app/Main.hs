@@ -21,7 +21,7 @@ main = do
     --x   -> forM_ x $ \a -> eval' PureReducer a >>= print
     x -> forM_ x $ \fname -> do
       grin <- either (fail . show) id <$> parseGrin fname
-      let result = [printf "stores %s %d" name $ testCata exp | Def name _ exp <- grin]
+      let result = [printf "stores %s %d" name $ countStores exp | Def name _ exp <- grin]
       putStrLn $ unlines result
       putStrLn . show . pretty . vectorisation $ Program grin
       putStrLn . show . collectTagInfoPure $ Program grin
