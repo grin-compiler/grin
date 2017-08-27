@@ -58,10 +58,10 @@ data CPat
   deriving (Generic, NFData, Eq, Show)
 
 data TagType = C | F | P
-  deriving (Generic, NFData, Eq, Show)
+  deriving (Generic, NFData, Eq, Ord, Show)
 
 data Tag = Tag TagType Name Int -- is this arity?
-  deriving (Generic, NFData, Eq, Show)
+  deriving (Generic, NFData, Eq, Ord, Show)
 
 -- * shahe functors
 

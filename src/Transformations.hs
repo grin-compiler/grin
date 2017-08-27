@@ -1,8 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 module Transformations where
 
+import Data.Set (Set, singleton)
 import Control.Monad
 import Control.Monad.Gen
+import Control.Monad.Writer
 import Data.Functor.Foldable as Foldable
 
 import Grin
@@ -10,6 +12,9 @@ import Grin
 testCata :: Exp -> Int
 testCata = cata folder where
   folder = \case
+    ProgramF a      -> sum a
+    DefF _ _ a      -> a
+    -- Exp
     EBindF    a _ b -> a + b
     ECaseF    _ a   -> sum a
     -- Simple Expr
@@ -34,3 +39,25 @@ vectorisation = runGen . cata folder where
       args <- map Var <$> replicateM 3 newName
       EBind <$> simpleexp <*> pure (VarTagNode tag args) <*> exp
     e -> embed <$> sequence e
+
+{-
+  TODO:
+    write a monoid version instead of writer monad
+    write ana version of if possible at all
+-}
+collectTagInfo :: Exp -> Set Tag
+collectTagInfo = execWriter . cata folder where
+  folder = \case
+    -- Exp
+    ECaseF val alts -> add val >> sequence_ alts
+    -- Simple Exp
+    SReturnF  val   -> add val
+    SStoreF   val   -> add val
+    SUpdateF  _ val -> add val
+    e -> sequence_ e
+
+  add :: Val -> Writer (Set Tag) ()
+  add = \case
+    ConstTagNode tag _  -> tell $ singleton tag
+    ValTag tag          -> tell $ singleton tag
+    _ -> pure ()

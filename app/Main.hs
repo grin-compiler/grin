@@ -24,4 +24,5 @@ main = do
       let result = [printf "stores %s %d" name $ testCata exp | Def name _ exp <- grin]
       putStrLn $ unlines result
       putStrLn . show . pretty . vectorisation $ Program grin
+      putStrLn . show . collectTagInfo $ Program grin
       printGrin grin
