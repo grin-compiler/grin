@@ -17,18 +17,19 @@ type Def = Exp
 type Program = Exp
 
 data Exp
-  = Program  [Def]
-  | Def      Name [Name] Exp
+  = Program     [Def]
+  | Def         Name [Name] Exp
   -- Exp
-  | EBind    SimpleExp LPat Exp
-  | ECase    Val [Alt]
+  | EBind       SimpleExp LPat Exp
+  | ECase       Val [Alt]
   -- Simple Exp
-  | SApp     Name [SimpleVal]
-  | SReturn  Val
-  | SStore   Val
-  | SFetch   Name
-  | SUpdate  Name Val
-  | SBlock   Exp
+  | SApp        Name [SimpleVal]
+  | SReturn     Val
+  | SStore      Val
+  | SFetch      Name
+--  | SFetchItem  Name Int
+  | SUpdate     Name Val
+  | SBlock      Exp
   -- Alt
   | Alt CPat Exp
   deriving (Generic, NFData, Eq, Show)

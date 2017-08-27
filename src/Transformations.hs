@@ -153,3 +153,15 @@ renameVaribales substituitons = ana builder where
     NodePat tag names -> NodePat (substTag tag) (substName <$> names)
     TagPat  tag       -> TagPat  (substTag tag)
     LitPat  lit       -> LitPat  lit
+
+splitFetch :: Exp -> Exp
+splitFetch = cata folder where
+  folder = \case
+    EBindF (SFetch name) (ConstTagNode _ args) exp -> EBind (SBlock $ newBinds name $ zip [1..] args) Unit exp
+    EBindF (SFetch name) (VarTagNode tagvar args) exp -> EBind (SBlock $ newBinds name $ zip [0..] $ Var tagvar : args) Unit exp
+    e -> embed e
+
+  newBinds name [] = SReturn Unit
+  newBinds name ((i, var) : vars) = EBind (fetchItem name i) var $ newBinds name vars
+
+  fetchItem name i = SFetch name -- TODO: use FetchItem
