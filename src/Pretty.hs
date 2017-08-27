@@ -40,8 +40,8 @@ instance Pretty Exp where
 
 instance Pretty Val where
   pretty = \case
-    ConstTagNode tag args -> hsep (pretty tag : map pretty args)
-    VarTagNode name args  -> hsep (text name : map pretty args)
+    ConstTagNode tag args -> parens $ hsep (pretty tag : map pretty args)
+    VarTagNode name args  -> parens $ hsep (text name : map pretty args)
     ValTag tag  -> pretty tag
     Unit        -> parens empty
     -- simple val
