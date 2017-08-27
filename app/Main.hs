@@ -4,7 +4,7 @@ module Main where
 import Control.Monad
 import System.Environment
 import Text.Printf
-import Text.PrettyPrint.ANSI.Leijen (pretty)
+import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import Eval
 import ParseGrin
@@ -23,7 +23,7 @@ main = do
       grin <- either (fail . show) id <$> parseGrin fname
       let result = [printf "stores %s %d" name $ countStores exp | Def name _ exp <- grin]
       putStrLn $ unlines result
-      putStrLn . show . pretty . vectorisation $ Program grin
+      putStrLn . show . ondullblack . pretty . vectorisation $ Program grin
       putStrLn . show . collectTagInfoPure $ Program grin
-      putStrLn . show . pretty . generateEval $ Program grin
+      putStrLn . show . ondullblue . pretty . generateEval $ Program grin
       printGrin grin
