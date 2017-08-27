@@ -1,9 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 module Transformations where
 
-import Data.Monoid hiding (Alt)
 import Data.Maybe
 import Data.Set (Set, singleton, toList)
+import qualified Data.Map as Map
+import Data.Monoid hiding (Alt)
 import Control.Monad
 import Control.Monad.Gen
 import Control.Monad.Writer hiding (Alt)
@@ -104,7 +105,7 @@ evalDef tagInfo = Def "generated_eval" ["p"] $
     -}
     -- TODO: create GRIN AST builder EDSL
     tagAlt tag@(Tag C name arity) = Just $ Alt (NodePat tag (newNames arity)) $ SReturn (Var "v")
-    tagAlt tag@(Tag F name arity) = Just $ Alt (NodePat tag names) $ 
+    tagAlt tag@(Tag F name arity) = Just $ Alt (NodePat tag names) $
                                       EBind (SApp name $ map Var names) (Var "w") $
                                       EBind (SUpdate "p" $ Var "w")      Unit $
                                       SReturn $ Var "w"
@@ -113,3 +114,42 @@ evalDef tagInfo = Def "generated_eval" ["p"] $
     tagAlt (Tag P _ _) = Nothing
 
     newNames n = ['_' : show i | i <- [1..n]]
+
+renameVaribales :: Map.Map Name Name -> Exp -> Exp
+renameVaribales substituitons = ana builder where
+  builder :: Exp -> ExpF Exp
+  builder = \case
+    Program  defs               -> ProgramF defs
+    Def      name names exp     -> DefF name (substName <$> names) exp
+    -- Exp
+    EBind    simpleExp lpat exp -> EBindF simpleExp (subst lpat) exp
+    ECase    val alts           -> ECaseF (subst val) alts
+    -- Simple Exp
+    SApp     name simpleVals    -> SAppF    (substName name) (subst <$> simpleVals)
+    SReturn  val                -> SReturnF (subst val)
+    SStore   val                -> SStoreF  (subst val)
+    SFetch   name               -> SFetchF  name
+    SUpdate  name val           -> SUpdateF name (subst val)
+    SBlock   exp                -> SBlockF  exp
+    -- Alt
+    Alt pat exp                 -> AltF (substCPat pat) exp
+
+  subst :: Val -> Val
+  subst (Var name) = Var $ substName name
+  subst (ConstTagNode tag simpleVals) = ConstTagNode (substTag tag) (subst <$> simpleVals)
+  subst (ValTag tag)                  = ValTag (substTag tag)
+  subst other                         = other
+
+  substName :: Name -> Name
+  substName old = case Map.lookup old substituitons of
+    Nothing  -> old
+    Just new -> new
+
+  substTag :: Tag -> Tag
+  substTag (Tag ttype name arity) = Tag ttype (substName name) arity
+
+  substCPat :: CPat -> CPat
+  substCPat = \case
+    NodePat tag names -> NodePat (substTag tag) (substName <$> names)
+    TagPat  tag       -> TagPat  (substTag tag)
+    LitPat  lit       -> LitPat  lit

@@ -12,6 +12,12 @@ import Grin
 import Pretty
 import Transformations
 
+import Data.Map as Map
+
+pipeline :: Exp -> Exp
+pipeline =
+  renameVaribales (fromList [("i'", "i''"), ("a", "a'")]) .
+  generateEval
 
 main :: IO ()
 main = do
@@ -24,8 +30,8 @@ main = do
       putStrLn $ unlines result
       putStrLn . show . ondullblack . pretty . vectorisation $ Program grin
       putStrLn . show . collectTagInfoPure $ Program grin
-      putStrLn . show . ondullblue . pretty . generateEval $ Program grin
-      printGrin grin
+      putStrLn . show . ondullblue . pretty . pipeline $ Program grin
+      printGrin $ Program grin
 
       -- grin code evaluation
       --eval' PureReducer fname >>= print . pretty

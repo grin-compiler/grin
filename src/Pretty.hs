@@ -6,8 +6,8 @@ import Text.PrettyPrint.ANSI.Leijen
 
 import Grin
 
-printGrin :: [Def] -> IO ()
-printGrin = putDoc . pretty . Program
+printGrin :: Exp -> IO ()
+printGrin = putDoc . pretty
 
 keyword :: String -> Doc
 keyword = yellow . text
