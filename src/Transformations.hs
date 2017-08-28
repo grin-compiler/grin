@@ -10,6 +10,8 @@ import Control.Monad.Gen
 import Control.Monad.Writer hiding (Alt)
 import Data.Functor.Foldable as Foldable
 
+import qualified Data.Foldable
+
 import Grin
 
 countStores :: Exp -> Int
@@ -82,6 +84,23 @@ collectTagInfoPure = cata folder where
     SBlockF   a     -> a
     -- Alt
     AltF _ a        -> a
+
+  add = \case
+    ConstTagNode (Tag tagtype name _) args -> singleton (Tag tagtype name (length args))
+    ValTag tag          -> singleton tag
+    _                   -> mempty
+
+collectTagInfoPure2 :: Exp -> Set Tag
+collectTagInfoPure2 = cata folder where
+  folder = \case
+    -- Exp
+    ECaseF val alts -> mconcat $ add val : alts
+    -- Simple Exp
+    SAppF     name vals -> mconcat $ map add vals
+    SReturnF  val   -> add val
+    SStoreF   val   -> add val
+    SUpdateF  _ val -> add val
+    e -> Data.Foldable.fold e
 
   add = \case
     ConstTagNode (Tag tagtype name _) args -> singleton (Tag tagtype name (length args))
