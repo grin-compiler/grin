@@ -17,20 +17,8 @@ import Grin
 countStores :: Exp -> Int
 countStores = cata folder where
   folder = \case
-    ProgramF a      -> sum a
-    DefF _ _ a      -> a
-    -- Exp
-    EBindF    a _ b -> a + b
-    ECaseF    _ a   -> sum a
-    -- Simple Expr
-    SAppF     {}    -> 0
-    SReturnF  {}    -> 0
-    SStoreF   {}    -> 1
-    SFetchF   {}    -> 0
-    SUpdateF  {}    -> 0
-    SBlockF   a     -> a
-    -- Alt
-    AltF _ a        -> a
+    SStoreF {} -> 1
+    e -> Data.Foldable.sum e
 
 type GenM = Gen Integer
 
@@ -76,6 +64,7 @@ collectTagInfoPure = cata folder where
     EBindF    a _ b -> a <> b
     ECaseF val alts -> mconcat $ add val : alts
     -- Simple Exp
+    SAppF     name vals -> mconcat $ map add vals
     SReturnF  val   -> add val
     SStoreF   val   -> add val
     SUpdateF  _ val -> add val
