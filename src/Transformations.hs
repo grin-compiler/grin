@@ -76,7 +76,6 @@ collectTagInfoPure = cata folder where
     EBindF    a _ b -> a <> b
     ECaseF val alts -> mconcat $ add val : alts
     -- Simple Exp
-    SAppF     name vals -> mconcat $ map add vals
     SReturnF  val   -> add val
     SStoreF   val   -> add val
     SUpdateF  _ val -> add val
@@ -96,7 +95,6 @@ collectTagInfoPure2 = cata folder where
     -- Exp
     ECaseF val alts -> mconcat $ add val : alts
     -- Simple Exp
-    SAppF     name vals -> mconcat $ map add vals
     SReturnF  val   -> add val
     SStoreF   val   -> add val
     SUpdateF  _ val -> add val
