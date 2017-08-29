@@ -9,6 +9,7 @@ import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 import Control.Monad.State
 import Control.Monad.Reader
+import Text.Printf
 
 import Grin
 
@@ -33,20 +34,9 @@ bindPatMany _ vals lpats = error $ "bindPatMany - pattern mismatch: " ++ show (v
 
 bindPat :: Env -> Val -> LPat -> Env
 bindPat env val lpat = case lpat of
-  Var n -> case val of
-              ValTag{}  -> Map.insert n val env
-              Unit      -> Map.insert n val env
-              Lit{}     -> Map.insert n val env
-              Loc{}     -> Map.insert n val env
-              Undefined -> Map.insert n val env
-              _ -> {-trace ("bindPat - illegal value: " ++ show val) $ -}Map.insert n val env -- WTF????
-              _ -> error $ "bindPat - illegal value: " ++ show val
-  ConstTagNode ptag pargs -> case val of
-                  ConstTagNode vtag vargs | ptag == vtag -> bindPatMany env vargs pargs
-                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
-  VarTagNode varname pargs -> case val of
-                  ConstTagNode vtag vargs -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
-                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
+  Var n -> Map.insert n val env
+  ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
+  VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
   Unit -> env
   _ -> error $ "bindPat - pattern mismatch" ++ show (val,lpat)
 

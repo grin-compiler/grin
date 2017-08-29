@@ -23,6 +23,7 @@ library
     ReduceGrin
     STReduceGrin
     Transformations
+--    AbstractRunGrin
 
   build-depends:
     base,

@@ -35,4 +35,4 @@ main = do
       printGrin $ Program grin
 
       -- grin code evaluation
-      --eval' PureReducer fname >>= print . pretty
+      eval' PureReducer fname >>= print . pretty
