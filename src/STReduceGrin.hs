@@ -171,12 +171,6 @@ primAdd x = error $ "primAdd - invalid arguments: " ++ show x
 primMul [Lit (LFloat a), Lit (LFloat b)] = return $ Lit $ LFloat $ a * b
 primMul x = error $ "primMul - invalid arguments: " ++ show x
 
-reduce :: Exp -> Val
-reduce e = runST $ do
-  store <- emptyStore1
-  (val, _, _) <- runRWST (evalExp mempty e) mempty store
-  return val
-
 reduceFun :: [Def] -> Name -> Val
 reduceFun l n = runST $ do
   store <- emptyStore1
@@ -188,7 +182,3 @@ reduceFun l n = runST $ do
           Nothing -> error $ "missing function: " ++ n
           Just (Def _ [] a) -> a
           _ -> error $ "function " ++ n ++ " has arguments"
-
-sadd = SApp "add" [Lit $ LFloat 3, Lit $ LFloat 2]
-test = sadd
-test2 = EBind sadd (Var "a") $ SApp "mul" [Var "a", Var "a"]

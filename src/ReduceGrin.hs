@@ -124,9 +124,6 @@ primAdd x = error $ "primAdd - invalid arguments: " ++ show x
 primMul [Lit (LFloat a), Lit (LFloat b)] = return $ Lit $ LFloat $ a * b
 primMul x = error $ "primMul - invalid arguments: " ++ show x
 
-reduce :: Exp -> Val
-reduce e = evalState (runReaderT (evalExp mempty e) mempty) emptyStore
-
 reduceFun :: [Def] -> Name -> Val
 reduceFun l n = evalState (runReaderT (evalExp mempty e) m) emptyStore where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
@@ -134,7 +131,3 @@ reduceFun l n = evalState (runReaderT (evalExp mempty e) m) emptyStore where
         Nothing -> error $ "missing function: " ++ n
         Just (Def _ [] a) -> a
         _ -> error $ "function " ++ n ++ " has arguments"
-
-sadd = SApp "add" [Lit $ LFloat 3, Lit $ LFloat 2]
-test = sadd
-test2 = EBind sadd (Var "a") $ SApp "mul" [Var "a", Var "a"]
