@@ -26,7 +26,7 @@ sum l = u <- eval l
 
 eval p = v <- fetch p
          case v of
-          (CInt x')     -> return v
+          (CInt x'1)    -> return v
           (CNil)        -> return v
           (CCons x xs)  -> return v
           (Fupto a b)   -> w <- upto a b

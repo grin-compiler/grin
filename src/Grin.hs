@@ -48,10 +48,11 @@ data Val
   -- extra
   | Loc Int
   | Undefined
-  deriving (Generic, NFData, Eq, Show)
+  | BAS
+  deriving (Generic, NFData, Eq, Ord, Show)
 
 data Lit = LFloat Float
-  deriving (Generic, NFData, Eq, Show)
+  deriving (Generic, NFData, Eq, Ord, Show)
 
 data CPat
   = NodePat Tag [Name]
