@@ -29,7 +29,7 @@ type VectorisationAccumulator = (Map.Map Name Val, Exp)
 vectorisation :: Exp -> Exp
 vectorisation expression = apo folder (Map.empty, expression)
   where
-    maximumArity = maximum (map tagArity (Set.toList (collectTagInfo expression)))
+    maximumArity = maximum (0 : map tagArity (Set.toList (collectTagInfo expression)))
 
     folder :: VectorisationAccumulator -> ExpF (Either Exp VectorisationAccumulator)
     folder (nameStore, expression) =
