@@ -60,28 +60,29 @@ updateStore n x = do
     Vector.write v n x
 
 bindPatMany :: Env -> [Val] -> [LPat] -> Env
-bindPatMany a [] [] = a
-bindPatMany a (x:xs) (y:ys) = bindPatMany (bindPat a x y) xs ys
-bindPatMany _ x y = error $ "bindPatMany - pattern mismatch: " ++ show (x,y)
+bindPatMany env [] [] = env
+bindPatMany env (val : vals) (lpat : lpats) = bindPatMany (bindPat env val lpat) vals lpats
+bindPatMany env [] (lpat : lpats) = bindPatMany (bindPat env Undefined lpat) [] lpats
+bindPatMany _ vals lpats = error $ "bindPatMany - pattern mismatch: " ++ show (vals, lpats)
 
 bindPat :: Env -> Val -> LPat -> Env
-bindPat env v p = case p of
-  Var n -> case v of
-              ValTag{}  -> Map.insert n v env
-              Unit      -> Map.insert n v env
-              Lit{}     -> Map.insert n v env
-              Loc{}     -> Map.insert n v env
-              Undefined -> Map.insert n v env
-              _ -> {-trace ("bindPat - illegal value: " ++ show v) $ -}Map.insert n v env -- WTF????
-              _ -> error $ "bindPat - illegal value: " ++ show v
-  ConstTagNode t l -> case v of
-                  ConstTagNode vt vl | vt == t -> bindPatMany env vl l
-                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show v
-  VarTagNode n l -> case v of
-                  ConstTagNode vt vl -> bindPatMany (Map.insert n (ValTag vt) env) vl l
-                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show v
+bindPat env val lpat = case lpat of
+  Var n -> case val of
+              ValTag{}  -> Map.insert n val env
+              Unit      -> Map.insert n val env
+              Lit{}     -> Map.insert n val env
+              Loc{}     -> Map.insert n val env
+              Undefined -> Map.insert n val env
+              _ -> {-trace ("bindPat - illegal value: " ++ show val) $ -}Map.insert n val env -- WTF????
+              _ -> error $ "bindPat - illegal value: " ++ show val
+  ConstTagNode ptag pargs -> case val of
+                  ConstTagNode vtag vargs | ptag == vtag -> bindPatMany env vargs pargs
+                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
+  VarTagNode varname pargs -> case val of
+                  ConstTagNode vtag vargs -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
+                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
   Unit -> env
-  _ -> error $ "bindPat - pattern mismatch" ++ show (v,p)
+  _ -> error $ "bindPat - pattern mismatch" ++ show (val,lpat)
 
 lookupEnv :: Name -> Env -> Val
 lookupEnv n env = Map.findWithDefault (error $ "missing variable: " ++ n) n env

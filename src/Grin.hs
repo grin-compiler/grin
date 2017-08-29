@@ -69,7 +69,7 @@ data Tag = Tag
   }
   deriving (Generic, NFData, Eq, Ord, Show)
 
--- * shahe functors
+-- * shape functors
 
 data ExpF a
   = ProgramF  [a]
