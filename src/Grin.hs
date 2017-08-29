@@ -62,7 +62,11 @@ data CPat
 data TagType = C | F | P
   deriving (Generic, NFData, Eq, Ord, Show)
 
-data Tag = Tag TagType Name Int -- is this arity?
+data Tag = Tag
+  { tagType :: TagType
+  , tagName :: Name
+  , tagArity :: Int
+  }
   deriving (Generic, NFData, Eq, Ord, Show)
 
 -- * shahe functors

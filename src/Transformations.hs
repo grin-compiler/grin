@@ -9,6 +9,8 @@ import Control.Monad
 import Control.Monad.Gen
 import Control.Monad.Writer hiding (Alt)
 import Data.Functor.Foldable as Foldable
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import qualified Data.Foldable
 
@@ -22,16 +24,31 @@ countStores = cata folder where
 
 type GenM = Gen Integer
 
+type VectorisationAccumulator = (Map.Map Name Val, Exp)
+
 vectorisation :: Exp -> Exp
-vectorisation = runGen . cata folder where
-  folder :: ExpF (GenM Exp) -> GenM Exp
-  folder = \case
-    EBindF simpleexp (Var name) exp -> do
-      let newName = ('_' :) . show <$> gen
-      tag <- newName
-      args <- map Var <$> replicateM 3 newName
-      EBind <$> simpleexp <*> pure (VarTagNode tag args) <*> exp
-    e -> embed <$> sequence e
+vectorisation expression = apo folder (Map.empty, expression)
+  where
+    maximumArity = maximum (map tagArity (Set.toList (collectTagInfo expression)))
+
+    folder :: VectorisationAccumulator -> ExpF (Either Exp VectorisationAccumulator)
+    folder (nameStore, expression) =
+      case expression of
+        EBind simpleexp (Var name) exp ->
+          EBindF (Right (nameStore, simpleexp)) nodeContents (Right (newNameStore, exp))
+          where
+            nodeContents = VarTagNode (name <> show 0) (map (\i -> Var (name <> show i)) [1 .. maximumArity])
+            newNameStore = Map.insert name nodeContents nameStore
+        ECase (Var name) alts | Just nodeContents <- Map.lookup name nameStore -> ECaseF nodeContents (map (\subExpression -> Right (nameStore, subExpression)) alts)
+        SApp name vals -> SAppF name (map replaceVar vals)
+        SReturn (Var name) | Just nodeContents <- Map.lookup name nameStore -> SReturnF nodeContents
+        SStore (Var name) | Just nodeContents <- Map.lookup name nameStore -> SStoreF nodeContents
+        SUpdate updateName (Var name) | Just nodeContents <- Map.lookup name nameStore -> SUpdateF updateName nodeContents
+        e -> forwardRecursion
+      where
+        replaceVar (Var name) | Just val <- Map.lookup name nameStore = val
+        replaceVar var = var
+        forwardRecursion = fmap (\subExpression -> Right (nameStore, subExpression)) (project expression)
 
 {-
   TODO:
