@@ -36,10 +36,11 @@ data Computer
   { storeMap  :: IntMap NodeSet   -- models the computer memory
   , envMap    :: Map Name VarSet  -- models the CPU registers
   , steps     :: [Exp]
+  , counter   :: !Int
   }
   deriving Show
 
-emptyComputer = Computer mempty mempty mempty
+emptyComputer = Computer mempty mempty mempty 0
 
 type GrinM = ReaderT Prog (State Computer)
 
@@ -61,7 +62,7 @@ bindPat val lpat = case lpat of
   _ -> fail $ "ERROR: bindPat - pattern mismatch" ++ show (val,lpat)
 
 addStep :: SimpleExp -> GrinM ()
-addStep exp = modify' (\computer@Computer{..} -> computer {steps = exp : steps})
+addStep exp = modify' (\computer@Computer{..} -> computer {steps = exp : steps, counter = succ counter})
 
 addToEnv :: Name -> VarSet -> GrinM ()
 addToEnv name val = modify' (\computer@Computer{..} -> computer {envMap = Map.insertWith mappend name val envMap})
@@ -149,7 +150,11 @@ evalSimpleExp = \case
 
 evalExp :: Exp -> GrinM VarSet
 evalExp x = addStep x >> case x of
-  EBind op pat exp -> evalSimpleExp op >>= \v -> bindPat v pat >> evalExp exp
+  EBind op pat exp -> do
+    cnt <- gets counter
+    case cnt < 10 of
+      True  -> evalSimpleExp op >>= \v -> bindPat v pat >> evalExp exp
+      False -> pure basVarSet -- TERMINATE
 
   ECase v alts -> evalVal v >>= \vals -> do
     a <- mconcat <$> sequence [zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp | N (RTNode tag args) <- Set.toList vals, Alt (NodePat alttag names) exp <- alts, tag == alttag]
