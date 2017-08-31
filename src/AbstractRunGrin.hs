@@ -62,8 +62,12 @@ bindPat val lpat = case lpat of
   Unit -> pure ()
   _ -> fail $ "ERROR: bindPat - pattern mismatch" ++ show (val,lpat)
 
+
 addStep :: SimpleExp -> GrinM ()
-addStep exp = modify' (\computer@Computer{..} -> computer {steps = exp : steps, counter = succ counter})
+addStep exp = modify' (\computer@Computer{..} -> computer {steps = stripBind exp : steps, counter = succ counter}) where
+  stripBind = \case
+    EBind op pat _ -> EBind op pat (SApp "" [])
+    e -> e
 
 addToEnv :: Name -> VarSet -> GrinM ()
 addToEnv name val = modify' (\computer@Computer{..} -> computer {envMap = Map.insertWith mappend name val envMap})

@@ -56,7 +56,7 @@ instance Pretty Lit where
 
 instance Pretty CPat where
   pretty = \case
-    NodePat tag vars  -> hsep (pretty tag : map text vars)
+    NodePat tag vars  -> parens $ hsep (pretty tag : map text vars)
     TagPat  tag       -> pretty tag
     LitPat  lit       -> pretty lit
 

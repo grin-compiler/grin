@@ -45,4 +45,6 @@ main = do
       putStrLn "\nEnv"
       forM_ (Map.toList envMap) $ \(name, values) -> printf "\t%s = %s\n" name (show values)
       putStrLn "\nSteps"
-      forM_ (reverse steps) $ print . indent 4 . pretty
+      forM_ (reverse steps) $ \exp -> do
+        print . indent 4 . pretty $ exp
+        putStrLn "------"
