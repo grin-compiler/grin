@@ -11,6 +11,7 @@ import ParseGrin
 import Grin
 import Pretty
 import Transformations
+import AbstractRunGrin
 
 import Data.Map as Map
 
@@ -36,3 +37,5 @@ main = do
 
       -- grin code evaluation
       eval' PureReducer fname >>= print . pretty
+
+      print $ abstractRun grin "main"

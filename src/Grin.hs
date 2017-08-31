@@ -48,7 +48,6 @@ data Val
   -- extra
   | Loc Int
   | Undefined
-  | BAS
   deriving (Generic, NFData, Eq, Ord, Show)
 
 data Lit = LFloat Float

@@ -52,7 +52,8 @@ evalVal env = \case
   Var n       -> lookupEnv n env
   ConstTagNode t a -> ConstTagNode t $ map (evalVal env) a
   VarTagNode n a -> case lookupEnv n env of
-                  Var n     -> VarTagNode n $ map (evalVal env) a
+                  -- NOTE: must be impossible (I guess)
+                  -- Var n     -> VarTagNode n $ map (evalVal env) a
                   ValTag t  -> ConstTagNode t $ map (evalVal env) a
                   x -> error $ "evalVal - invalid VarTagNode tag: " ++ show x
   v@ValTag{}  -> v

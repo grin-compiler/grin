@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractRunGrin where
+module AbstractRunGrin (abstractRun) where
 
 import Debug.Trace
 
@@ -15,13 +15,28 @@ import Text.Printf
 
 import Grin
 
-type RTVal = Set Val
+data RTLocVal
+  = RTLoc Int
+  | BAS
+  deriving (Eq, Ord, Show)
+
+data RTNode = RTNode Tag [Set RTLocVal]
+  deriving (Eq, Ord, Show)
+
+data RTVar
+  = N RTNode
+  | V RTLocVal
+  deriving (Eq, Ord, Show)
+
+type NodeSet = Set RTNode
+type VarSet = Set RTVar -- HINT: VarVal in the paper
 
 data Computer
   = Computer
-  { storeMap  :: IntMap RTVal   -- models the computer memory
-  , envMap    :: Map Name RTVal -- models the CPU registers
+  { storeMap  :: IntMap NodeSet   -- models the computer memory
+  , envMap    :: Map Name VarSet  -- models the CPU registers
   }
+  deriving Show
 
 emptyComputer = Computer mempty mempty
 
@@ -34,84 +49,108 @@ bindPatMany env (val : vals) (lpat : lpats) = bindPatMany (bindPat env val lpat)
 bindPatMany env [] (lpat : lpats) = bindPatMany (bindPat env (Set.singleton Undefined) lpat) [] lpats
 bindPatMany _ vals lpats = error $ "bindPatMany - pattern mismatch: " ++ show (vals, lpats)
 -}
-bindPat :: RTVal -> LPat -> GrinM ()
+bindPat :: VarSet -> LPat -> GrinM ()
 bindPat val lpat = case lpat of
-  Var n -> modify' (\computer@Computer{..} -> computer {envMap = Map.insertWith mappend n val envMap})
+  Var n -> addToEnv n val
 {-
   ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
   VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
 -}
   Unit -> pure ()
-  _ -> fail $ "bindPat - pattern mismatch" ++ show (val,lpat)
+  _ -> fail $ "ERROR: bindPat - pattern mismatch" ++ show (val,lpat)
 
+addToEnv :: Name -> VarSet -> GrinM ()
+addToEnv name val = modify' (\computer@Computer{..} -> computer {envMap = Map.insertWith mappend name val envMap})
 
-lookupEnv :: Name -> GrinM RTVal
+lookupEnv :: Name -> GrinM VarSet
 lookupEnv n = Map.findWithDefault (error $ "missing variable: " ++ n) n <$> gets envMap
 
-lookupStore :: Int -> GrinM RTVal
+lookupStore :: Int -> GrinM NodeSet
 lookupStore i = IntMap.findWithDefault (error $ "missing location: " ++ show i) i <$> gets storeMap
 
-evalVal :: Val -> GrinM RTVal
+basVarSet = Set.singleton $ V BAS
+
+toRTLocVal :: RTVar -> RTLocVal
+toRTLocVal (V a) = a
+toRTLocVal a = error $ "toRTLocVal: illegal value " ++ show a
+
+toRTNode :: RTVar -> RTNode
+toRTNode (N a) = a
+toRTNode a = error $ "toRTNode: illegal value " ++ show a
+
+evalVal :: Val -> GrinM VarSet
 evalVal = \case
-  v@Lit{}     -> pure $ Set.singleton v
+  v@Lit{}     -> pure basVarSet
   Var n       -> lookupEnv n
+  ConstTagNode t a -> Set.singleton . N . RTNode t <$> mapM (\x -> Set.map toRTLocVal <$> evalVal x) a
 {-
-  ConstTagNode t a -> ConstTagNode t $ map (evalVal env) a
-  VarTagNode n a -> case lookupEnv n env of
-                  Var n     -> VarTagNode n $ map (evalVal env) a
-                  ValTag t  -> ConstTagNode t $ map (evalVal env) a
-                  x -> error $ "evalVal - invalid VarTagNode tag: " ++ show x
+  -- SKIP this now
+  VarTagNode n a -> do
+                  args <- mapM (\x -> Set.map toRTLocVal <$> evalVal x) a
+                  values <- Set.toList <$> lookupEnv
+                  -- TODO: support TagValue ; represent it as normal value instead of BAS
+                  pure $ Set.fromList [N $ RTNode t args | t <- values]
 -}
-  v@ValTag{}  -> pure $ Set.singleton v
-  v@Unit      -> pure $ Set.singleton v
-  v@Loc{}     -> pure $ Set.singleton v
-  x -> fail $ "evalVal: " ++ show x
+  v@ValTag{}  -> pure basVarSet
+  v@Unit      -> pure basVarSet
+  v@Loc{}     -> pure basVarSet
+  x -> fail $ "ERROR: evalVal: " ++ show x
 
 
-evalSimpleExp :: SimpleExp -> GrinM RTVal
+evalSimpleExp :: SimpleExp -> GrinM VarSet
 evalSimpleExp = \case
-{-
-  SApp n a -> do
-              let args = map (evalVal env) a
-                  go a [] [] = a
-                  go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                  go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
-              case n of
+
+  -- TODO: use bind
+  SApp n args -> case n of
+                "add" -> pure basVarSet
+                "mul" -> pure basVarSet
+                "intPrint" -> pure basVarSet
+                "intGT" -> pure basVarSet
+                "intAdd" -> pure basVarSet
                 _ -> do
                   Def _ vars body <- reader $ Map.findWithDefault (error $ "unknown function: " ++ n) n
-                  evalExp (go env vars args) body
--}
+                  unless (length vars == length args) $ fail "ERROR: SApp"
+                  rtVals <- mapM evalVal args -- Question: is this correct here?
+                  zipWithM_ bindPat rtVals (map Var vars)
+                  result <- evalExp body
+                  addToEnv n result
+                  pure result
+
   SReturn v -> evalVal v
 
   SStore v -> do
               let l = 0 -- TODO: make it constant for each store AST operation
-              v' <- evalVal v
+              v' <- Set.map toRTNode <$> evalVal v
               modify' (\computer@Computer{..} -> computer {storeMap = IntMap.insertWith mappend l v' storeMap})
-              pure $ Set.singleton $ Loc l
+              pure . Set.singleton . V $ RTLoc l
 
   SFetch n -> lookupEnv n >>= \vals -> mconcat <$> mapM fetch (Set.toList vals) where
                 fetch = \case
-                  Loc l -> lookupStore l
-                  x -> fail $ "evalSimpleExp - Fetch expected location, got: " ++ show x
+                  V (RTLoc l) -> Set.map N <$> lookupStore l
+                  x -> fail $ "ERROR: evalSimpleExp - Fetch expected location, got: " ++ show x
 
   SUpdate n v -> do
-              v' <- evalVal v
+              v' <- Set.map toRTNode <$> evalVal v
               let update = \case
-                    Loc l -> IntMap.member l <$> gets storeMap >>= \case
-                              False -> fail $ "evalSimpleExp - Update unknown location: " ++ show l
+                    V (RTLoc l) -> IntMap.member l <$> gets storeMap >>= \case
+                              False -> fail $ "ERROR: evalSimpleExp - Update unknown location: " ++ show l
                               True  -> modify' (\computer@Computer{..} -> computer {storeMap = IntMap.insertWith mappend l v' storeMap})
-                    x -> fail $ "evalSimpleExp - Update expected location, got: " ++ show x
-              lookupEnv n >>= \vals -> mapM_ update (Set.toList vals) >> pure (Set.singleton Unit)
+                    x -> fail $ "ERROR: evalSimpleExp - Update expected location, got: " ++ show x
+              lookupEnv n >>= \vals -> mapM_ update vals >> pure basVarSet
 
   SBlock a -> evalExp a
 
-  x -> fail $ "evalSimpleExp: " ++ show x
+  x -> fail $ "ERROR: evalSimpleExp: " ++ show x
 
-evalExp :: Exp -> GrinM RTVal
+
+evalExp :: Exp -> GrinM VarSet
 evalExp = \case
   EBind op pat exp -> evalSimpleExp op >>= \v -> bindPat v pat >> evalExp exp
+
+  ECase v alts -> evalVal v >>= \vals -> do
+    a <- mconcat <$> sequence [zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp | N (RTNode tag args) <- Set.toList vals, Alt (NodePat alttag names) exp <- alts, tag == alttag]
+    pure a
 {-
-  ECase v alts -> case evalVal env v of
     ConstTagNode t l ->
                    let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
                        go a [] [] = a
@@ -124,11 +163,10 @@ evalExp = \case
 -}
   exp -> evalSimpleExp exp
 
-reduceFun :: [Def] -> Name -> (RTVal, Computer)
-reduceFun l n = runState (runReaderT (evalExp e) m) emptyComputer where
+abstractRun :: [Def] -> Name -> (VarSet, Computer)
+abstractRun l n = runState (runReaderT (evalExp e) m) emptyComputer where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
   e = case Map.lookup n m of
         Nothing -> error $ "missing function: " ++ n
         Just (Def _ [] a) -> a
         _ -> error $ "function " ++ n ++ " has arguments"
-
