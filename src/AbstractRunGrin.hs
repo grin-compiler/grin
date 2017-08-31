@@ -58,6 +58,7 @@ bindPat val lpat = case lpat of
   ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
   VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
 -}
+  ConstTagNode {} -> pure () -- TODO
   Unit -> pure ()
   _ -> fail $ "ERROR: bindPat - pattern mismatch" ++ show (val,lpat)
 
