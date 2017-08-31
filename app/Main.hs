@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
 module Main where
 
 import Control.Monad
@@ -13,11 +13,12 @@ import Pretty
 import Transformations
 import AbstractRunGrin
 
+import Data.IntMap as IntMap
 import Data.Map as Map
 
 pipeline :: Exp -> Exp
 pipeline =
-  renameVaribales (fromList [("i'", "i''"), ("a", "a'")]) .
+  renameVaribales (Map.fromList [("i'", "i''"), ("a", "a'")]) .
   generateEval
 
 main :: IO ()
@@ -38,4 +39,10 @@ main = do
       -- grin code evaluation
       eval' PureReducer fname >>= print . pretty
 
-      print $ abstractRun grin "main"
+      let (result, Computer{..}) = abstractRun grin "main"
+      putStrLn "Store"
+      forM_ (IntMap.toList storeMap) $ \(loc, values) -> printf "\t%d = %s" loc (show values)
+      putStrLn "\nEnv"
+      forM_ (Map.toList envMap) $ \(name, values) -> printf "\t%s = %s\n" name (show values)
+      putStrLn "\nSteps"
+      forM_ (reverse steps) $ print . indent 4 . pretty

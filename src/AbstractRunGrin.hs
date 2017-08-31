@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractRunGrin (abstractRun) where
+module AbstractRunGrin (abstractRun, Computer(..)) where
 
 import Debug.Trace
 
@@ -35,10 +35,11 @@ data Computer
   = Computer
   { storeMap  :: IntMap NodeSet   -- models the computer memory
   , envMap    :: Map Name VarSet  -- models the CPU registers
+  , steps     :: [Exp]
   }
   deriving Show
 
-emptyComputer = Computer mempty mempty
+emptyComputer = Computer mempty mempty mempty
 
 type GrinM = ReaderT Prog (State Computer)
 
@@ -58,6 +59,9 @@ bindPat val lpat = case lpat of
 -}
   Unit -> pure ()
   _ -> fail $ "ERROR: bindPat - pattern mismatch" ++ show (val,lpat)
+
+addStep :: SimpleExp -> GrinM ()
+addStep exp = modify' (\computer@Computer{..} -> computer {steps = exp : steps})
 
 addToEnv :: Name -> VarSet -> GrinM ()
 addToEnv name val = modify' (\computer@Computer{..} -> computer {envMap = Map.insertWith mappend name val envMap})
@@ -144,7 +148,7 @@ evalSimpleExp = \case
 
 
 evalExp :: Exp -> GrinM VarSet
-evalExp = \case
+evalExp x = addStep x >> case x of
   EBind op pat exp -> evalSimpleExp op >>= \v -> bindPat v pat >> evalExp exp
 
   ECase v alts -> evalVal v >>= \vals -> do
