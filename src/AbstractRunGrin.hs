@@ -15,6 +15,16 @@ import Text.Printf
 
 import Grin
 
+{-
+  TODO:
+    addToStore ; remove direct inserts
+    log add to store/env as step (if it is new, return this info)
+    move termination check to SApp ; eval body only if it has new argument set (i.e. there was an env insertion)
+    computer pretty printer
+    decide the subset of grin (e.g. high level grin) that HPT should operate on ; what language constructs should be supported?
+    implement equasion solver for the specific example from the grin paper as a separate app
+-}
+
 data RTLocVal
   = RTLoc Int
   | BAS
