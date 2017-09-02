@@ -191,18 +191,6 @@ splitFetch = cata folder where
 
   fetchItem name i = SFetch name -- TODO: use FetchItem
 
-{-
-Minden node-hoz van egy intervallum amibol a tranzformacio tud nevet valasztani.
-A nevek egyediseget ket dolog garantalhatja, hanyadik tranzformacios lepesben lettek
-bevezetve, es mi a korrdinataja ahol eppen tartunk.
-
-Mindenhol ahol erteket talal es nem pattern, oda egy uj valtozot illeszt-be
-name case pattern-be
-store-nal
-update-nel
-
--}
-
 
 newVarName :: Exp -> Maybe [String]
 newVarName = \case
