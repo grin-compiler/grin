@@ -203,23 +203,56 @@ update-nel
 
 -}
 
+
+newVarName :: Exp -> Maybe [String]
+newVarName = \case
+  Program     defs               -> Nothing
+  Def         name names exp     -> Just [name]
+  EBind       simpleExp lpat exp -> Just ["b1", "b2"]
+  ECase       val alts           -> Just . map (\(i,_) -> "c" ++ show i) $ [0..] `zip` alts
+  SApp        name simpleVals    -> Just ["a"]
+  SReturn     val                -> Just ["r"]
+  SStore      val                -> Just ["s"]
+  SFetch      name               -> Nothing
+  SUpdate     name val           -> Just [name]
+  SBlock      exp                -> Nothing
+  Alt         cpat exp           -> Nothing
+
+
 registerIntroduction :: Exp -> Exp
-registerIntroduction e = ana builder ([], e) where
-  builder :: ([String], Exp) -> ExpF ([String], Exp)
+registerIntroduction e = apo builder ([], e) where
+  builder :: ([String], Exp) -> ExpF (Either Exp ([String], Exp))
   builder (path, exp) =
     case exp of
-      Program     defs               -> ProgramF (withPath <$> defs)
-      Def         name names exp     -> DefF name names (withNewPath name exp)
-      EBind       simpleExp lpat exp -> EBindF (withPath simpleExp) lpat (withNewPath "b2" exp)
-      ECase       val alts           -> ECaseF val (withNewPath "c" <$> alts)
-      SApp        name simpleVals    -> changeApp name simpleVals
-      SReturn     val                -> change SReturn SReturnF val
-      SStore      val                -> change SStore  SStoreF  val
-      SFetch      name               -> SFetchF name
-      SUpdate     name val           -> change (SUpdate name) (SUpdateF name) val
-      SBlock      exp                -> SBlockF (withPath exp)
-      Alt         cpat exp           -> AltF cpat (withNewPath "a" exp)
+--      Program     defs               -> ProgramF ((Right . withPath) <$> defs)
+--      Def         name names exp     -> DefF name names (Right $ withNewPath name exp)
+--      EBind (SStore val) lpat exp    -> EBindF (Left $ embed $ change SStore SStoreF val) lpat (Right $ withNewPath "b2" exp)
+      EBind (SStore (VarTagNode name vals)) lpat exp ->
+        let (vals', newVars) = changeSimpleVals vars vals
+        in fmap (Right . withPath' exp) . project $ foldr
+            (\(name, lit) e -> EBind (SReturn (Lit lit)) (Var name) e)
+            (EBind (SStore (VarTagNode name vals')) lpat exp)
+            newVars
+
+      EBind (SStore (ConstTagNode tag vals)) lpat exp ->
+        let (vals', newVars) = changeSimpleVals (tail vars) vals
+            varTag = vars !! 0
+        in fmap (Right . withPath' exp) . project $ foldr
+            (\(name, lit) e -> EBind (SReturn lit) (Var name) e)
+            (EBind (SStore (VarTagNode varTag vals')) lpat exp)
+            ((varTag, ValTag tag):map (second Lit) newVars)
+
+      EBind (SApp name vals) lpat exp ->
+        let (vals', newVars) = changeSimpleVals vars vals
+        in fmap (Right . withPath' exp) . project $ foldr
+            (\(name, lit) e -> EBind (SReturn lit) (Var name) e)
+            (EBind (SApp name vals') lpat exp)
+            (map (second Lit) newVars)
+
+      e -> fmap (Right .  withPath' exp) $ project e
+
     where
+      withPath' exp = maybe withPath (withNewPath . head) (newVarName exp)
       withPath e = (path, e)
       withNewPath p e = (p:path, e)
       vars = map (intercalate ".") $ zipWith (++) (map (pure . show) [1..]) (repeat path)
@@ -230,81 +263,3 @@ registerIntroduction e = ana builder ([], e) where
           changeVal (Lit lit) v = (Var v, Just (v, lit))
           changeVal (Var v)   _ = (Var v, Nothing)
           changeVal bad       _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
-
-      bindsAndEnd end vars vals =
-        let (newVals, newVars) = changeSimpleVals vars vals
-        in foldr
-            (\(name, lit) -> EBind (SReturn (Lit lit)) (Var name))
-            (end newVals)
-            newVars
-
-      changeApp name vals
-        = fmap withPath . project $ bindsAndEnd (SApp name) vars vals
-
-      change exp _expF (ConstTagNode tag vals)
-        = let tagVar = vars !! 0
-          in EBindF
-               (withNewPath "b1-1" $ SReturn (ValTag tag))
-               (Var tagVar)
-               (withNewPath "b2-2" $ bindsAndEnd (exp . VarTagNode tagVar) (tail vars) vals)
-
-      change exp _expF (VarTagNode name vals)
-        = fmap withPath . project $ bindsAndEnd (exp . VarTagNode name) vars vals
-
-      change exp _expF (Lit lit)
-        = let [v1] = take 1 vars
-          in EBindF
-               (withNewPath "b1-3" $ SReturn (Lit lit))
-               (Var v1)
-               (withNewPath "b2-4" $ exp (Var v1))
-      change _exp expF val = expF val
-
-{-
-
-  = Program     [Def]
-  | Def         Name [Name] Exp
-  -- Exp
-  | EBind       SimpleExp LPat Exp
-  | ECase       Val [Alt]
-  -- Simple Exp
-  | SApp        Name [SimpleVal]
-  | SReturn     Val
-  | SStore      Val
-  | SFetch      Name
---  | SFetchItem  Name Int
-  | SUpdate     Name Val
-  | SBlock      Exp
-  -- Alt
-  | Alt CPat Exp
-
-type LPat = Val
-type SimpleVal = Val
--- TODO: use data types a la carte style to build different versions of Val?
-data Val
-  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
-  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
-  | ValTag        Tag
-  | Unit
-  -- simple val
-  | Lit Lit
-  | Var Name
-  -- extra
-  | Loc Int
-  | Undefined
-  deriving (Generic, NFData, Eq, Ord, Show)
--}
-
-{-
-case exp of
-  Program     defs               -> program defs
-  Def         name names exp     -> def name names exp
-  EBind       simpleExp lpat exp -> ebind simpleExp lpat exp
-  ECase       val alts           -> ecase val alts
-  SApp        name simpleVals    -> sapp name simpleVals
-  SReturn     val                -> sreturn val
-  SStore      val                -> sstore  val
-  SFetch      name               -> sfetch  name
-  SUpdate     name val           -> supdate name val
-  SBlock      exp                -> sblock exp
-  Alt cpat exp                   -> alt cpat exp
--}
