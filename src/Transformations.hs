@@ -2,9 +2,11 @@
 module Transformations where
 
 import Data.Maybe
+import Data.List (intercalate)
 import Data.Set (Set, singleton, toList)
 import qualified Data.Map as Map
 import Data.Monoid hiding (Alt)
+import Control.Arrow (second)
 import Control.Monad
 import Control.Monad.Gen
 import Control.Monad.Writer hiding (Alt)
@@ -188,3 +190,121 @@ splitFetch = cata folder where
   newBinds name ((i, var) : vars) = EBind (fetchItem name i) var $ newBinds name vars
 
   fetchItem name i = SFetch name -- TODO: use FetchItem
+
+{-
+Minden node-hoz van egy intervallum amibol a tranzformacio tud nevet valasztani.
+A nevek egyediseget ket dolog garantalhatja, hanyadik tranzformacios lepesben lettek
+bevezetve, es mi a korrdinataja ahol eppen tartunk.
+
+Mindenhol ahol erteket talal es nem pattern, oda egy uj valtozot illeszt-be
+name case pattern-be
+store-nal
+update-nel
+
+-}
+
+registerIntroduction :: Exp -> Exp
+registerIntroduction e = ana builder ([], e) where
+  builder :: ([String], Exp) -> ExpF ([String], Exp)
+  builder (path, exp) =
+    case exp of
+      Program     defs               -> ProgramF (withPath <$> defs)
+      Def         name names exp     -> DefF name names (withNewPath name exp)
+      EBind       simpleExp lpat exp -> EBindF (withPath simpleExp) lpat (withNewPath "b2" exp)
+      ECase       val alts           -> ECaseF val (withNewPath "c" <$> alts)
+      SApp        name simpleVals    -> changeApp name simpleVals
+      SReturn     val                -> change SReturn SReturnF val
+      SStore      val                -> change SStore  SStoreF  val
+      SFetch      name               -> SFetchF name
+      SUpdate     name val           -> change (SUpdate name) (SUpdateF name) val
+      SBlock      exp                -> SBlockF (withPath exp)
+      Alt         cpat exp           -> AltF cpat (withNewPath "a" exp)
+    where
+      withPath e = (path, e)
+      withNewPath p e = (p:path, e)
+      vars = map (intercalate ".") $ zipWith (++) (map (pure . show) [1..]) (repeat path)
+
+      changeSimpleVals :: [Name] -> [SimpleVal] -> ([SimpleVal], [(Name, Lit)])
+      changeSimpleVals newVars svals = second catMaybes . unzip $ zipWith changeVal svals newVars
+        where
+          changeVal (Lit lit) v = (Var v, Just (v, lit))
+          changeVal (Var v)   _ = (Var v, Nothing)
+          changeVal bad       _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
+
+      bindsAndEnd end vars vals =
+        let (newVals, newVars) = changeSimpleVals vars vals
+        in foldr
+            (\(name, lit) -> EBind (SReturn (Lit lit)) (Var name))
+            (end newVals)
+            newVars
+
+      changeApp name vals
+        = fmap withPath . project $ bindsAndEnd (SApp name) vars vals
+
+      change exp _expF (ConstTagNode tag vals)
+        = let tagVar = vars !! 0
+          in EBindF
+               (withNewPath "b1-1" $ SReturn (ValTag tag))
+               (Var tagVar)
+               (withNewPath "b2-2" $ bindsAndEnd (exp . VarTagNode tagVar) (tail vars) vals)
+
+      change exp _expF (VarTagNode name vals)
+        = fmap withPath . project $ bindsAndEnd (exp . VarTagNode name) vars vals
+
+      change exp _expF (Lit lit)
+        = let [v1] = take 1 vars
+          in EBindF
+               (withNewPath "b1-3" $ SReturn (Lit lit))
+               (Var v1)
+               (withNewPath "b2-4" $ exp (Var v1))
+      change _exp expF val = expF val
+
+{-
+
+  = Program     [Def]
+  | Def         Name [Name] Exp
+  -- Exp
+  | EBind       SimpleExp LPat Exp
+  | ECase       Val [Alt]
+  -- Simple Exp
+  | SApp        Name [SimpleVal]
+  | SReturn     Val
+  | SStore      Val
+  | SFetch      Name
+--  | SFetchItem  Name Int
+  | SUpdate     Name Val
+  | SBlock      Exp
+  -- Alt
+  | Alt CPat Exp
+
+type LPat = Val
+type SimpleVal = Val
+-- TODO: use data types a la carte style to build different versions of Val?
+data Val
+  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
+  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
+  | ValTag        Tag
+  | Unit
+  -- simple val
+  | Lit Lit
+  | Var Name
+  -- extra
+  | Loc Int
+  | Undefined
+  deriving (Generic, NFData, Eq, Ord, Show)
+-}
+
+{-
+case exp of
+  Program     defs               -> program defs
+  Def         name names exp     -> def name names exp
+  EBind       simpleExp lpat exp -> ebind simpleExp lpat exp
+  ECase       val alts           -> ecase val alts
+  SApp        name simpleVals    -> sapp name simpleVals
+  SReturn     val                -> sreturn val
+  SStore      val                -> sstore  val
+  SFetch      name               -> sfetch  name
+  SUpdate     name val           -> supdate name val
+  SBlock      exp                -> sblock exp
+  Alt cpat exp                   -> alt cpat exp
+-}
