@@ -207,37 +207,28 @@ newVarName = \case
   Alt         cpat exp           -> Nothing
 
 
+type VariablePath = [String]
+
 registerIntroduction :: Exp -> Exp
-registerIntroduction e = apo builder ([], e) where
-  builder :: ([String], Exp) -> ExpF (Either Exp ([String], Exp))
+registerIntroduction e = ana builder ([], e) where
+  builder :: (VariablePath, Exp) -> ExpF (VariablePath, Exp)
   builder (path, exp) =
     case exp of
---      Program     defs               -> ProgramF ((Right . withPath) <$> defs)
---      Def         name names exp     -> DefF name names (Right $ withNewPath name exp)
---      EBind (SStore val) lpat exp    -> EBindF (Left $ embed $ change SStore SStoreF val) lpat (Right $ withNewPath "b2" exp)
-      EBind (SStore (VarTagNode name vals)) lpat exp ->
-        let (vals', newVars) = changeSimpleVals vars vals
-        in fmap (Right . withPath' exp) . project $ foldr
-            (\(name, lit) e -> EBind (SReturn (Lit lit)) (Var name) e)
-            (EBind (SStore (VarTagNode name vals')) lpat exp)
-            newVars
+      EBind (SStore (VarTagNode name vals))        lpat exp -> varTagNode   (\val -> EBind (SStore val) lpat exp)       name vals
+      EBind (SStore (ConstTagNode tag vals))       lpat exp -> constTagNode (\val -> EBind (SStore val) lpat exp)       tag vals
+      EBind (SUpdate name (VarTagNode tname vals)) lpat exp -> varTagNode   (\val -> EBind (SUpdate name val) lpat exp) tname vals
+      EBind (SUpdate name (ConstTagNode tag vals)) lpat exp -> constTagNode (\val -> EBind (SUpdate name val) lpat exp) tag vals
+      EBind (SReturn (VarTagNode name vals))       lpat exp -> varTagNode   (\val -> EBind (SReturn val) lpat exp)      name vals
+      EBind (SReturn (ConstTagNode tag vals))      lpat exp -> constTagNode (\val -> EBind (SReturn val) lpat exp)      tag vals
+      EBind (SApp name vals)                       lpat exp -> appExp       (\val -> EBind val lpat exp)                name vals
 
-      EBind (SStore (ConstTagNode tag vals)) lpat exp ->
-        let (vals', newVars) = changeSimpleVals (tail vars) vals
-            varTag = vars !! 0
-        in fmap (Right . withPath' exp) . project $ foldr
-            (\(name, lit) e -> EBind (SReturn lit) (Var name) e)
-            (EBind (SStore (VarTagNode varTag vals')) lpat exp)
-            ((varTag, ValTag tag):map (second Lit) newVars)
+      SReturn (VarTagNode name vals)        -> varTagNode SReturn           name vals
+      SReturn (ConstTagNode tag vals)       -> constTagNode SReturn         tag vals
+      SUpdate uname (VarTagNode tname vals) -> varTagNode (SUpdate uname)   tname vals
+      SUpdate uname (ConstTagNode tag vals) -> constTagNode (SUpdate uname) tag vals
+      SApp name vals                        -> appExp id                    name vals
 
-      EBind (SApp name vals) lpat exp ->
-        let (vals', newVars) = changeSimpleVals vars vals
-        in fmap (Right . withPath' exp) . project $ foldr
-            (\(name, lit) e -> EBind (SReturn lit) (Var name) e)
-            (EBind (SApp name vals') lpat exp)
-            (map (second Lit) newVars)
-
-      e -> fmap (Right .  withPath' exp) $ project e
+      e -> fmap (withPath' exp) $ project e
 
     where
       withPath' exp = maybe withPath (withNewPath . head) (newVarName exp)
@@ -245,9 +236,31 @@ registerIntroduction e = apo builder ([], e) where
       withNewPath p e = (p:path, e)
       vars = map (intercalate ".") $ zipWith (++) (map (pure . show) [1..]) (repeat path)
 
-      changeSimpleVals :: [Name] -> [SimpleVal] -> ([SimpleVal], [(Name, Lit)])
+      changeSimpleVals :: [Name] -> [SimpleVal] -> ([SimpleVal], [(Name, Val)])
       changeSimpleVals newVars svals = second catMaybes . unzip $ zipWith changeVal svals newVars
         where
-          changeVal (Lit lit) v = (Var v, Just (v, lit))
+          changeVal (Lit lit) v = (Var v, Just (v, Lit lit))
           changeVal (Var v)   _ = (Var v, Nothing)
           changeVal bad       _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
+
+      varTagNode context name vals =
+        let (vals', newVars) = changeSimpleVals vars vals
+        in fmap (withPath' exp) . project $ foldr
+            (\(name, lit) -> EBind (SReturn lit) (Var name))
+            (context (VarTagNode name vals'))
+            newVars
+
+      constTagNode context tag vals =
+        let (vals', newVars) = changeSimpleVals (tail vars) vals
+            varTag = vars !! 0
+        in fmap (withPath' exp) . project $ foldr
+            (\(name, lit) -> EBind (SReturn lit) (Var name))
+            (context (VarTagNode varTag vals'))
+            ((varTag, ValTag tag):newVars)
+
+      appExp context name vals =
+        let (vals', newVars) = changeSimpleVals vars vals
+        in fmap (withPath' exp) . project $ foldr
+            (\(name, lit) -> EBind (SReturn lit) (Var name))
+            (context (SApp name vals'))
+            newVars
