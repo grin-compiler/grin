@@ -216,16 +216,24 @@ registerIntroduction e = ana builder ([], e) where
     case exp of
       EBind (SStore (VarTagNode name vals))        lpat exp -> varTagNode   (\val -> EBind (SStore val) lpat exp)       name vals
       EBind (SStore (ConstTagNode tag vals))       lpat exp -> constTagNode (\val -> EBind (SStore val) lpat exp)       tag vals
+      EBind (SStore (Lit lit))                     lpat exp -> literal      (\val -> EBind (SStore val) lpat exp)       lit
       EBind (SUpdate name (VarTagNode tname vals)) lpat exp -> varTagNode   (\val -> EBind (SUpdate name val) lpat exp) tname vals
       EBind (SUpdate name (ConstTagNode tag vals)) lpat exp -> constTagNode (\val -> EBind (SUpdate name val) lpat exp) tag vals
+      EBind (SUpdate name (Lit lit))               lpat exp -> literal      (\val -> EBind (SUpdate name val) lpat exp)       lit
       EBind (SReturn (VarTagNode name vals))       lpat exp -> varTagNode   (\val -> EBind (SReturn val) lpat exp)      name vals
       EBind (SReturn (ConstTagNode tag vals))      lpat exp -> constTagNode (\val -> EBind (SReturn val) lpat exp)      tag vals
+
       EBind (SApp name vals)                       lpat exp -> appExp       (\val -> EBind val lpat exp)                name vals
 
-      SReturn (VarTagNode name vals)        -> varTagNode SReturn           name vals
+      SStore (VarTagNode name vals)         -> varTagNode   SStore          name vals
+      SStore (ConstTagNode tag vals)        -> constTagNode SStore          tag vals
+      SStore (Lit lit)                      -> literal      SStore          lit
+      SReturn (VarTagNode name vals)        -> varTagNode   SReturn         name vals
       SReturn (ConstTagNode tag vals)       -> constTagNode SReturn         tag vals
-      SUpdate uname (VarTagNode tname vals) -> varTagNode (SUpdate uname)   tname vals
+      SUpdate uname (VarTagNode tname vals) -> varTagNode   (SUpdate uname) tname vals
       SUpdate uname (ConstTagNode tag vals) -> constTagNode (SUpdate uname) tag vals
+      SUpdate uname (Lit lit)               -> literal      (SUpdate uname) lit
+
       SApp name vals                        -> appExp id                    name vals
 
       e -> fmap (withPath' exp) $ project e
@@ -242,6 +250,9 @@ registerIntroduction e = ana builder ([], e) where
           changeVal (Lit lit) v = (Var v, Just (v, Lit lit))
           changeVal (Var v)   _ = (Var v, Nothing)
           changeVal bad       _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
+
+      literal context lit =
+        fmap (withPath' exp) . project $ EBind (SReturn (Lit lit)) (Var (vars !! 0)) (context (Var $ vars !! 0))
 
       varTagNode context name vals =
         let (vals', newVars) = changeSimpleVals vars vals
