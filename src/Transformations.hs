@@ -285,6 +285,8 @@ idAna e = ana builder ([], e) where
     - AST builder monad. e.g.:
         registerIntroduction :: Val -> AST Val
         buildSExp $ SStore <$> registerIntroduction val
+  IDEA:
+    - shape functor over Val
 -}
 registerIntroduction2 :: Exp -> Exp
 registerIntroduction2 e = ana builder ([], e) where
