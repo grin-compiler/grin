@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 module Transformations where
 
 import Data.Maybe
@@ -268,3 +268,55 @@ registerIntroduction e = ana builder ([], e) where
         introduction
           (\(Just t) vs -> context $ VarTagNode t (tail vs))
           ((ValTag tag):vals)
+
+idAna :: Exp -> Exp
+idAna e = ana builder ([], e) where
+  builder :: (VariablePath, Exp) -> ExpF (VariablePath, Exp)
+  builder (path, exp) =
+    case exp of
+      SStore val -> SStoreF val
+      e -> ([],) <$> project e
+
+-- Work In Progress
+registerIntroduction2 :: Exp -> Exp
+registerIntroduction2 e = ana builder ([], e) where
+  builder :: (VariablePath, Exp) -> ExpF (VariablePath, Exp)
+  builder (path, exp) =
+    case exp of
+      SStore val        -> ([],) <$> project (build SStore val)
+
+      SUpdate uname val -> ([],) <$> project (build (SUpdate uname) val)
+      SReturn val       -> ([],) <$> project (build SReturn val) -- TODO: prevent generate non node values
+
+      --SApp name vals    | isNodeVal val -> appExp id                    name vals
+
+      e -> ([],) <$> project e
+
+build :: (Val -> SimpleExp) -> Val -> SimpleExp
+build expfun val = bindVals (expfun valVar) patvars where (valVar, patvars) = breakVal val
+
+bindVals :: SimpleExp -> [(LPat, Val)] -> SimpleExp
+bindVals exp [] = exp
+bindVals exp vals = SBlock $ foldr (\(lpat, val) e -> EBind (SReturn val) lpat e) exp vals
+
+breakVal :: Val -> (Val, [(LPat, Val)])
+breakVal = \case -- return new valueless Val + name-val list
+
+  VarTagNode tname vals -> (VarTagNode tname valVars, varvals) where
+    splitted_vals = map splitSVal vals
+    (valVars, _) = unzip splitted_vals
+    varvals = [(var, val) | (var, Just val) <- splitted_vals]
+
+  ConstTagNode tag vals -> (VarTagNode tname valVars, varvals) where
+    splitted_vals = map splitSVal (ValTag tag : vals)
+    (Var tname : valVars, _) = unzip splitted_vals
+    varvals = [(var, val) | (var, Just val) <- splitted_vals]
+
+  val -> case splitSVal val of
+    (var, Nothing)  -> (var, [])
+    (var, Just v)   -> (var, [(var, v)])
+
+splitSVal :: Val -> (Val, Maybe Val)
+splitSVal val = case val of
+  Var{} -> (val, Nothing)
+  _ -> (Var "newName", Just val)
