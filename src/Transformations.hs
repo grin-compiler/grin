@@ -278,6 +278,14 @@ idAna e = ana builder ([], e) where
       e -> ([],) <$> project e
 
 -- Work In Progress
+{-
+  TODO:
+    - mapping over Vals
+    - convenient fresh name API
+    - AST builder monad. e.g.:
+        registerIntroduction :: Val -> AST Val
+        buildSExp $ SStore <$> registerIntroduction val
+-}
 registerIntroduction2 :: Exp -> Exp
 registerIntroduction2 e = ana builder ([], e) where
   builder :: (VariablePath, Exp) -> ExpF (VariablePath, Exp)
