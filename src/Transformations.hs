@@ -219,7 +219,7 @@ registerIntroduction e = ana builder ([], e) where
       EBind (SStore (Lit lit))                     lpat exp -> literal      (\val -> EBind (SStore val) lpat exp)       lit
       EBind (SUpdate name (VarTagNode tname vals)) lpat exp -> varTagNode   (\val -> EBind (SUpdate name val) lpat exp) tname vals
       EBind (SUpdate name (ConstTagNode tag vals)) lpat exp -> constTagNode (\val -> EBind (SUpdate name val) lpat exp) tag vals
-      EBind (SUpdate name (Lit lit))               lpat exp -> literal      (\val -> EBind (SUpdate name val) lpat exp)       lit
+      EBind (SUpdate name (Lit lit))               lpat exp -> literal      (\val -> EBind (SUpdate name val) lpat exp) lit
       EBind (SReturn (VarTagNode name vals))       lpat exp -> varTagNode   (\val -> EBind (SReturn val) lpat exp)      name vals
       EBind (SReturn (ConstTagNode tag vals))      lpat exp -> constTagNode (\val -> EBind (SReturn val) lpat exp)      tag vals
 
@@ -247,31 +247,24 @@ registerIntroduction e = ana builder ([], e) where
       changeSimpleVals :: [Name] -> [SimpleVal] -> ([SimpleVal], [(Name, Val)])
       changeSimpleVals newVars svals = second catMaybes . unzip $ zipWith changeVal svals newVars
         where
-          changeVal (Lit lit) v = (Var v, Just (v, Lit lit))
-          changeVal (Var v)   _ = (Var v, Nothing)
-          changeVal bad       _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
+          changeVal (Lit lit)  v = (Var v, Just (v, Lit lit))
+          changeVal (Var v)    _ = (Var v, Nothing)
+          changeVal (ValTag g) v = (Var v, Just (v, ValTag g)) -- constTagNode only
+          changeVal bad        _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
 
       literal context lit =
         fmap (withPath' exp) . project $ EBind (SReturn (Lit lit)) (Var (vars !! 0)) (context (Var $ vars !! 0))
 
-      varTagNode context name vals =
+      introduction context vals =
         let (vals', newVars) = changeSimpleVals vars vals
         in fmap (withPath' exp) . project $ foldr
             (\(name, lit) -> EBind (SReturn lit) (Var name))
-            (context (VarTagNode name vals'))
+            (context (fst <$> listToMaybe newVars) vals') -- Tag is always first and stand for constTagNode only
             newVars
 
+      varTagNode   context name = introduction (const $ context . VarTagNode name)
+      appExp       context name = introduction (const $ context . SApp name)
       constTagNode context tag vals =
-        let (vals', newVars) = changeSimpleVals (tail vars) vals
-            varTag = vars !! 0
-        in fmap (withPath' exp) . project $ foldr
-            (\(name, lit) -> EBind (SReturn lit) (Var name))
-            (context (VarTagNode varTag vals'))
-            ((varTag, ValTag tag):newVars)
-
-      appExp context name vals =
-        let (vals', newVars) = changeSimpleVals vars vals
-        in fmap (withPath' exp) . project $ foldr
-            (\(name, lit) -> EBind (SReturn lit) (Var name))
-            (context (SApp name vals'))
-            newVars
+        introduction
+          (\(Just t) vs -> context $ VarTagNode t (tail vs))
+          ((ValTag tag):vals)
