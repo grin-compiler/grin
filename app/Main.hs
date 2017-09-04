@@ -41,6 +41,7 @@ main = do
       eval' PureReducer fname >>= print . pretty
 
       let (result, Computer{..}) = abstractRun grin "main"
+      putStrLn "* HPT *"
       putStrLn "Store"
       forM_ (IntMap.toList storeMap) $ \(loc, values) -> printf "\t%d = %s" loc (show values)
       putStrLn "\nEnv"

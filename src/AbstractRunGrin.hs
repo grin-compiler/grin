@@ -17,7 +17,6 @@ import Grin
 
 {-
   TODO:
-    addToStore ; remove direct inserts
     log add to store/env as step (if it is new, return this info)
     move termination check to SApp ; eval body only if it has new argument set (i.e. there was an env insertion)
     computer pretty printer
@@ -82,6 +81,9 @@ addStep exp = modify' (\computer@Computer{..} -> computer {steps = stripBind exp
 addToEnv :: Name -> VarSet -> GrinM ()
 addToEnv name val = modify' (\computer@Computer{..} -> computer {envMap = Map.insertWith mappend name val envMap})
 
+addToStore :: Int -> NodeSet -> GrinM ()
+addToStore loc val = modify' (\computer@Computer{..} -> computer {storeMap = IntMap.insertWith mappend loc val storeMap})
+
 lookupEnv :: Name -> GrinM VarSet
 lookupEnv n = Map.findWithDefault (error $ "missing variable: " ++ n) n <$> gets envMap
 
@@ -141,7 +143,7 @@ evalSimpleExp = \case
   SStore v -> do
               let l = 0 -- TODO: make it constant for each store AST operation
               v' <- Set.map toRTNode <$> evalVal v
-              modify' (\computer@Computer{..} -> computer {storeMap = IntMap.insertWith mappend l v' storeMap})
+              addToStore l v'
               pure . Set.singleton . V $ RTLoc l
 
   SFetch n -> lookupEnv n >>= \vals -> mconcat <$> mapM fetch (Set.toList vals) where
@@ -154,7 +156,7 @@ evalSimpleExp = \case
               let update = \case
                     V (RTLoc l) -> IntMap.member l <$> gets storeMap >>= \case
                               False -> fail $ "ERROR: evalSimpleExp - Update unknown location: " ++ show l
-                              True  -> modify' (\computer@Computer{..} -> computer {storeMap = IntMap.insertWith mappend l v' storeMap})
+                              True  -> addToStore l v'
                     x -> fail $ "ERROR: evalSimpleExp - Update expected location, got: " ++ show x
               lookupEnv n >>= \vals -> mapM_ update vals >> pure basVarSet
 
