@@ -45,11 +45,10 @@ data Computer
   { storeMap  :: IntMap NodeSet   -- models the computer memory
   , envMap    :: Map Name VarSet  -- models the CPU registers
   , steps     :: [Exp]
-  , counter   :: !Int
   }
   deriving Show
 
-emptyComputer = Computer mempty mempty mempty 0
+emptyComputer = Computer mempty mempty mempty
 
 type GrinM = ReaderT Prog (State Computer)
 
@@ -73,13 +72,14 @@ bindPat val lpat = case lpat of
 
 
 addStep :: SimpleExp -> GrinM ()
-addStep exp = modify' (\computer@Computer{..} -> computer {steps = stripBind exp : steps, counter = succ counter}) where
+addStep exp = modify' (\computer@Computer{..} -> computer {steps = stripBind exp : steps}) where
   stripBind = \case
     EBind op pat _ -> EBind op pat (SApp "" [])
     e -> e
 
 addToEnv :: Name -> VarSet -> GrinM Bool -- False if nothing has changed
 addToEnv name val = state updateEnv where
+  -- TODO: log new additions
   updateEnv computer@Computer{..}
     | isSubset envMap = (False, computer)
     | otherwise       = (True, computer {envMap = Map.insertWith mappend name val envMap})
@@ -88,6 +88,7 @@ addToEnv name val = state updateEnv where
     Nothing -> False
     Just v  -> val `Set.isSubsetOf` v
 
+-- TODO: log new additions
 addToStore :: Int -> NodeSet -> GrinM ()
 addToStore loc val = modify' (\computer@Computer{..} -> computer {storeMap = IntMap.insertWith mappend loc val storeMap})
 
