@@ -18,7 +18,6 @@ import Grin
 {-
   TODO:
     log add to store/env as step (if it is new, return this info)
-    move termination check to SApp ; eval body only if it has new argument set (i.e. there was an env insertion)
     computer pretty printer
     decide the subset of grin (e.g. high level grin) that HPT should operate on ; what language constructs should be supported?
     implement equasion solver for the specific example from the grin paper as a separate app
@@ -27,6 +26,7 @@ import Grin
 data RTLocVal
   = RTLoc Int
   | BAS
+  | RTVar Name -- HACK
   deriving (Eq, Ord, Show)
 
 data RTNode = RTNode Tag [Set RTLocVal]
@@ -60,15 +60,15 @@ bindPatMany env (val : vals) (lpat : lpats) = bindPatMany (bindPat env val lpat)
 bindPatMany env [] (lpat : lpats) = bindPatMany (bindPat env (Set.singleton Undefined) lpat) [] lpats
 bindPatMany _ vals lpats = error $ "bindPatMany - pattern mismatch: " ++ show (vals, lpats)
 -}
-bindPat :: VarSet -> LPat -> GrinM ()
+bindPat :: VarSet -> LPat -> GrinM Bool
 bindPat val lpat = case lpat of
   Var n -> addToEnv n val
 {-
   ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
   VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
 -}
-  ConstTagNode {} -> pure () -- TODO
-  Unit -> pure ()
+  ConstTagNode {} -> pure False -- TODO
+  Unit -> pure False
   _ -> fail $ "ERROR: bindPat - pattern mismatch" ++ show (val,lpat)
 
 
@@ -78,8 +78,15 @@ addStep exp = modify' (\computer@Computer{..} -> computer {steps = stripBind exp
     EBind op pat _ -> EBind op pat (SApp "" [])
     e -> e
 
-addToEnv :: Name -> VarSet -> GrinM ()
-addToEnv name val = modify' (\computer@Computer{..} -> computer {envMap = Map.insertWith mappend name val envMap})
+addToEnv :: Name -> VarSet -> GrinM Bool -- False if nothing has changed
+addToEnv name val = state updateEnv where
+  updateEnv computer@Computer{..}
+    | isSubset envMap = (False, computer)
+    | otherwise       = (True, computer {envMap = Map.insertWith mappend name val envMap})
+
+  isSubset envMap = case Map.lookup name envMap of
+    Nothing -> False
+    Just v  -> val `Set.isSubsetOf` v
 
 addToStore :: Int -> NodeSet -> GrinM ()
 addToStore loc val = modify' (\computer@Computer{..} -> computer {storeMap = IntMap.insertWith mappend loc val storeMap})
@@ -122,7 +129,6 @@ evalVal = \case
 evalSimpleExp :: SimpleExp -> GrinM VarSet
 evalSimpleExp = \case
 
-  -- TODO: use bind
   SApp n args -> case n of
                 "add" -> pure basVarSet
                 "mul" -> pure basVarSet
@@ -133,10 +139,15 @@ evalSimpleExp = \case
                   Def _ vars body <- reader $ Map.findWithDefault (error $ "unknown function: " ++ n) n
                   unless (length vars == length args) $ fail "ERROR: SApp"
                   rtVals <- mapM evalVal args -- Question: is this correct here?
-                  zipWithM_ bindPat rtVals (map Var vars)
-                  result <- evalExp body
-                  addToEnv n result
-                  pure result
+                  -- FIX
+                  new <- or <$> zipWithM bindPat rtVals (map Var vars)
+                  case new of
+                    False -> pure . Set.singleton . V $ RTVar n -- add placeholder TODO: include args
+                    True  -> do
+                      result <- evalExp body
+                      addToEnv n result
+                      -- TODO: remove placeholders which are subset in terms of args
+                      pure result
 
   SReturn v -> evalVal v
 
@@ -168,11 +179,12 @@ evalSimpleExp = \case
 evalExp :: Exp -> GrinM VarSet
 evalExp x = addStep x >> case x of
   EBind op pat exp -> do
-    cnt <- gets counter
-    case cnt < 10 of
-      True  -> evalSimpleExp op >>= \v -> bindPat v pat >> evalExp exp
-      False -> pure basVarSet -- TERMINATE
+    evalSimpleExp op >>= \v -> bindPat v pat >> evalExp exp
 
+  {-
+    TODO:
+      - evaluate a case if there was a new value in the pattern args (optimization)
+  -}
   ECase v alts -> evalVal v >>= \vals -> do
     a <- mconcat <$> sequence [zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp | N (RTNode tag args) <- Set.toList vals, Alt (NodePat alttag names) exp <- alts, tag == alttag]
     pure a
