@@ -19,6 +19,7 @@ library
     Eval
     Grin
     Pretty
+    PrettyHPT
     ParseGrin
     ReduceGrin
     STReduceGrin

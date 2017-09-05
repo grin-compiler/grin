@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractRunGrin (abstractRun, Computer(..)) where
+module AbstractRunGrin {-(abstractRun, Computer(..))-} where
 
 import Debug.Trace
 
@@ -44,8 +44,13 @@ data Computer
   = Computer
   { storeMap  :: IntMap NodeSet   -- models the computer memory
   , envMap    :: Map Name VarSet  -- models the CPU registers
-  , steps     :: [Exp]
+  , steps     :: [Step]
   }
+  deriving Show
+
+data Step
+  = StepExp     Exp
+  | StepAssign  Name VarSet
   deriving Show
 
 emptyComputer = Computer mempty mempty mempty
@@ -72,13 +77,16 @@ bindPat val lpat = case lpat of
 
 
 addStep :: SimpleExp -> GrinM ()
-addStep exp = modify' (\computer@Computer{..} -> computer {steps = stripBind exp : steps}) where
+addStep exp = modify' (\computer@Computer{..} -> computer {steps = StepExp (stripBind exp) : steps}) where
   stripBind = \case
     EBind op pat _ -> EBind op pat (SApp "" [])
     e -> e
 
+addAssign :: Name -> VarSet -> GrinM ()
+addAssign name val = modify' (\computer@Computer{..} -> computer {steps = StepAssign name val : steps}) where
+
 addToEnv :: Name -> VarSet -> GrinM Bool -- False if nothing has changed
-addToEnv name val = state updateEnv where
+addToEnv name val = addAssign name val >> state updateEnv where
   -- TODO: log new additions
   updateEnv computer@Computer{..}
     | isSubset envMap = (False, computer)
@@ -187,6 +195,7 @@ evalExp x = addStep x >> case x of
       - evaluate a case if there was a new value in the pattern args (optimization)
   -}
   ECase v alts -> evalVal v >>= \vals -> do
+    -- TODO: handle other patterns also
     a <- mconcat <$> sequence [zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp | N (RTNode tag args) <- Set.toList vals, Alt (NodePat alttag names) exp <- alts, tag == alttag]
     pure a
 {-

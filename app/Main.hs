@@ -10,6 +10,7 @@ import Eval
 import ParseGrin
 import Grin
 import Pretty
+import PrettyHPT
 import Transformations
 import AbstractRunGrin
 
@@ -40,13 +41,6 @@ main = do
       -- grin code evaluation
       eval' PureReducer fname >>= print . pretty
 
-      let (result, Computer{..}) = abstractRun grin "main"
+      let (result, computer) = abstractRun grin "main"
       putStrLn "* HPT *"
-      putStrLn "Store"
-      forM_ (IntMap.toList storeMap) $ \(loc, values) -> printf "\t%d = %s" loc (show values)
-      putStrLn "\nEnv"
-      forM_ (Map.toList envMap) $ \(name, values) -> printf "\t%s = %s\n" name (show values)
-      putStrLn "\nSteps"
-      forM_ (reverse steps) $ \exp -> do
-        print . indent 4 . pretty $ exp
-        putStrLn "------"
+      print . pretty $ computer
