@@ -40,10 +40,10 @@ instance Pretty RTVar where
     N node  -> pretty node
 
 instance (Pretty k, Pretty v) => Pretty (Map k v) where
-  pretty m = vsep [pretty k <+> text "->" <+> pretty v | (k,v) <- Map.toList m]
+  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- Map.toList m]
 
 instance Pretty v => Pretty (IntMap v) where
-  pretty m = vsep [pretty k <+> text "->" <+> pretty v | (k,v) <- IntMap.toList m]
+  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- IntMap.toList m]
 
 instance Pretty Computer where
   pretty Computer{..} = vsep
