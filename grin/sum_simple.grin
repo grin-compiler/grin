@@ -2,8 +2,8 @@ main = t1 <- store (CInt 1)
        t2 <- store (CInt 10000)
        t3 <- store (Fupto t1 t2)
        t4 <- store (Fsum t3)
-       (CInt i') <- eval t4
-       intPrint i'
+       (CInt r') <- eval t4
+       intPrint r'
 
 upto m n = (CInt m') <- eval m
            (CInt n') <- eval n
@@ -11,27 +11,27 @@ upto m n = (CInt m') <- eval m
            if b' then
             return (CNil)
            else
-            x' <- intAdd m' 1
-            t5 <- store (CInt x')
-            t6 <- store (Fupto t5 n)
-            return (CCons m t6)
+            m1' <- intAdd m' 1
+            m1 <- store (CInt m1')
+            p <- store (Fupto m1 n)
+            return (CCons m p)
 
-sum l = u <- eval l
-        case u of
+sum l = l2 <- eval l
+        case l2 of
           (CNil)       -> return (CInt 0)
-          (CCons t ts) -> (CInt t') <- eval t
-                          (CInt r') <- sum ts
-                          s' <- intAdd t' r'
-                          return (CInt s')
+          (CCons x xs) -> (CInt x') <- eval x
+                          (CInt s') <- sum xs
+                          ax' <- intAdd x' s'
+                          return (CInt ax')
 
-eval p = v <- fetch p
+eval q = v <- fetch q
          case v of
           (CInt x'1)    -> return v
           (CNil)        -> return v
-          (CCons x xs)  -> return v
+          (CCons y ys)  -> return v
           (Fupto a b)   -> w <- upto a b
-                           update p w
+                           update q w
                            return w
           (Fsum c)      -> z <- sum c
-                           update p z
+                           update q z
                            return z
