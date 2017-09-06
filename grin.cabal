@@ -37,7 +37,8 @@ library
     unbound,
     recursion-schemes,
     ansi-wl-pprint,
-    monad-gen
+    monad-gen,
+    free
   default-language:    Haskell2010
 
 executable grin

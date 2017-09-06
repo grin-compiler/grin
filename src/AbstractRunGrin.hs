@@ -13,7 +13,17 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Text.Printf
 
+import qualified Data.Functor.Foldable as Foldable
+import Control.Comonad.Cofree
+
 import Grin
+
+type AExp = Cofree ExpF Int
+type ASimpleExp = AExp
+type ADef = AExp
+type AProgram = AExp
+
+type ADefMap = Map Name ADef
 
 {-
   TODO:
@@ -35,7 +45,8 @@ data RTVar
   | V RTLocVal
   deriving (Eq, Ord, Show)
 
-type NodeSet = Set RTNode
+--type NodeSet = Set RTNode
+type NodeSet = VarSet
 type VarSet = Set RTVar -- HINT: VarVal in the paper
 
 data Computer
@@ -53,7 +64,7 @@ data Step
 
 emptyComputer = Computer mempty mempty mempty
 
-type GrinM = ReaderT Prog (State Computer)
+type GrinM = ReaderT ADefMap (State Computer)
 
 {-
 bindPatMany :: Env -> [RTVal] -> [LPat] -> Env
@@ -74,11 +85,11 @@ bindPat val lpat = case lpat of
   _ -> fail $ "ERROR: bindPat - pattern mismatch" ++ show (val,lpat)
 
 
-addStep :: SimpleExp -> GrinM ()
-addStep exp = modify' (\computer@Computer{..} -> computer {steps = StepExp (stripBind exp) : steps}) where
+addStep :: ASimpleExp -> GrinM ()
+addStep exp = modify' (\computer@Computer{..} -> computer {steps = StepExp (stripBind $ unwrap exp) : steps}) where
   stripBind = \case
-    EBind op pat _ -> EBind op pat (SApp "" [])
-    e -> e
+    EBindF op pat _ -> SApp "" [] -- EBind op pat (SApp "" [])
+    e -> SApp (show e) []
 
 addAssign :: Name -> VarSet -> GrinM ()
 addAssign name val = modify' (\computer@Computer{..} -> computer {steps = StepAssign name val : steps}) where
@@ -109,11 +120,11 @@ basVarSet = Set.singleton $ V BAS
 toRTLocVal :: RTVar -> RTLocVal
 toRTLocVal (V a) = a
 toRTLocVal a = error $ "toRTLocVal: illegal value " ++ show a
-
+{-
 toRTNode :: RTVar -> RTNode
 toRTNode (N a) = a
 toRTNode a = error $ "toRTNode: illegal value " ++ show a
-
+-}
 evalVal :: Val -> GrinM VarSet
 evalVal = \case
   v@Lit{}     -> pure basVarSet
@@ -133,44 +144,66 @@ evalVal = \case
   x -> fail $ "ERROR: evalVal: " ++ show x
 
 
-evalSimpleExp :: SimpleExp -> GrinM VarSet
+evalSFetchF :: VarSet -> GrinM VarSet
+evalSFetchF vals = mconcat <$> mapM fetch (Set.toList vals) where
+  fetch = \case
+    V (RTLoc l) -> {-Set.map N <$> -}lookupStore l
+    x -> fail $ "ERROR: evalSimpleExp - Fetch expected location, got: " ++ show x
+
+evalEval :: [Val] -> GrinM VarSet
+evalEval [val] = do
+  nodes <- evalVal val >>= evalSFetchF
+  {-
+    NOTE:
+      F nodes   - call the function
+      otherwise - keep the value
+  -}
+  evalNodes <- forM (Set.toList nodes) $ \case
+    N (RTNode (Tag F name _) args) -> evalSAppF name (map (Set.map V) args)
+    value -> pure $ Set.singleton value
+  pure $ mconcat evalNodes
+
+evalSAppF n rtVals = do
+  _ :< (DefF _ vars body) <- reader $ Map.findWithDefault (error $ "unknown function: " ++ n) n
+  unless (length vars == length rtVals) $ fail "ERROR: SApp"
+  -- FIX
+  new <- or <$> zipWithM bindPat rtVals (map Var vars)
+  case new of
+    False -> pure . Set.singleton . V $ RTVar n -- add placeholder TODO: include args
+    True  -> do
+      result <- evalExp body
+      addToEnv n result
+      -- TODO: remove placeholders which are subset in terms of args
+      pure result
+
+evalSimpleExp :: ASimpleExp -> GrinM VarSet
 evalSimpleExp = \case
 
-  SApp n args -> case n of
+  _ :< (SAppF n args) -> case n of
+                -- Special case
+                "eval" -> evalEval args
+                -- Primitives
                 "add" -> pure basVarSet
                 "mul" -> pure basVarSet
                 "intPrint" -> pure basVarSet
                 "intGT" -> pure basVarSet
                 "intAdd" -> pure basVarSet
+                -- User defined functions
                 _ -> do
-                  Def _ vars body <- reader $ Map.findWithDefault (error $ "unknown function: " ++ n) n
-                  unless (length vars == length args) $ fail "ERROR: SApp"
                   rtVals <- mapM evalVal args -- Question: is this correct here?
-                  -- FIX
-                  new <- or <$> zipWithM bindPat rtVals (map Var vars)
-                  case new of
-                    False -> pure . Set.singleton . V $ RTVar n -- add placeholder TODO: include args
-                    True  -> do
-                      result <- evalExp body
-                      addToEnv n result
-                      -- TODO: remove placeholders which are subset in terms of args
-                      pure result
+                  evalSAppF n rtVals
 
-  SReturn v -> evalVal v
+  _ :< (SReturnF v) -> evalVal v
 
-  SStore v -> do
-              let l = 0 -- TODO: make it constant for each store AST operation
-              v' <- Set.map toRTNode <$> evalVal v
+  l :< (SStoreF v) -> do
+              v' <- {-Set.map toRTNode <$> -}evalVal v
               addToStore l v'
               pure . Set.singleton . V $ RTLoc l
 
-  SFetch n -> lookupEnv n >>= \vals -> mconcat <$> mapM fetch (Set.toList vals) where
-                fetch = \case
-                  V (RTLoc l) -> Set.map N <$> lookupStore l
-                  x -> fail $ "ERROR: evalSimpleExp - Fetch expected location, got: " ++ show x
+  _ :< (SFetchF n) -> lookupEnv n >>= evalSFetchF
 
-  SUpdate n v -> do
-              v' <- Set.map toRTNode <$> evalVal v
+  _ :< (SUpdateF n v) -> do
+              v' <- {-Set.map toRTNode <$> -}evalVal v
               let update = \case
                     V (RTLoc l) -> IntMap.member l <$> gets storeMap >>= \case
                               False -> fail $ "ERROR: evalSimpleExp - Update unknown location: " ++ show l
@@ -178,24 +211,40 @@ evalSimpleExp = \case
                     x -> fail $ "ERROR: evalSimpleExp - Update expected location, got: " ++ show x
               lookupEnv n >>= \vals -> mapM_ update vals >> pure basVarSet
 
-  SBlock a -> evalExp a
+  _ :< (SBlockF a) -> evalExp a
 
   x -> fail $ "ERROR: evalSimpleExp: " ++ show x
 
 
-evalExp :: Exp -> GrinM VarSet
-evalExp x = addStep x >> case x of
-  EBind op pat exp -> do
+evalExp :: AExp -> GrinM VarSet
+evalExp x = {-addStep x >> -}case x of
+  _ :< (EBindF op pat exp) -> do
     evalSimpleExp op >>= \v -> bindPat v pat >> evalExp exp
 
   {-
     TODO:
       - evaluate a case if there was a new value in the pattern args (optimization)
   -}
-  ECase v alts -> evalVal v >>= \vals -> do
+  _ :< (ECaseF v alts) -> evalVal v >>= \vals -> do
     -- TODO: handle other patterns also
-    a <- mconcat <$> sequence [zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp | N (RTNode tag args) <- Set.toList vals, Alt (NodePat alttag names) exp <- alts, tag == alttag]
-    pure a
+    a <- mconcat <$> sequence
+      [ zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp 
+      | N (RTNode tag args) <- Set.toList vals
+      , AltF (NodePat alttag names) exp <- map unwrap alts
+      , tag == alttag
+      ]
+    case Set.member (V BAS) vals of
+      False -> pure a
+      True  -> do
+        let notNodePat = \case
+              NodePat{} -> False
+              _ -> True
+        b <- mconcat <$> sequence
+          [ evalExp exp 
+          | AltF pat exp <- map unwrap alts
+          , notNodePat pat
+          ]
+        pure $ mconcat [a, b]
 {-
     ConstTagNode t l ->
                    let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
@@ -209,10 +258,11 @@ evalExp x = addStep x >> case x of
 -}
   exp -> evalSimpleExp exp
 
-abstractRun :: [Def] -> Name -> (VarSet, Computer)
-abstractRun l n = runState (runReaderT (evalExp e) m) emptyComputer where
-  m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
+
+abstractRun :: AProgram -> Name -> (VarSet, Computer)
+abstractRun (_ :< ProgramF l) n = runState (runReaderT (evalExp e) m) emptyComputer where
+  m = Map.fromList [(n,d) | d@(_ :< (DefF n _ _)) <- l]
   e = case Map.lookup n m of
         Nothing -> error $ "missing function: " ++ n
-        Just (Def _ [] a) -> a
+        Just (_ :< (DefF _ [] a)) -> a
         _ -> error $ "function " ++ n ++ " has arguments"

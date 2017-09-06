@@ -41,6 +41,6 @@ main = do
       -- grin code evaluation
       eval' PureReducer fname >>= print . pretty
 
-      let (result, computer) = abstractRun grin "main"
+      let (result, computer) = abstractRun (assignStoreIDs $ Program grin) "main"
       putStrLn "* HPT *"
       print . pretty $ computer

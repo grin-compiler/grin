@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import qualified Data.Foldable
+import Control.Comonad.Cofree
 
 import Grin
 
@@ -330,3 +331,11 @@ splitSVal :: Val -> (Val, Maybe Val)
 splitSVal val = case val of
   Var{} -> (val, Nothing)
   _ -> (Var "newName", Just val)
+
+
+-- Assign Store IDs
+assignStoreIDs :: Exp -> Cofree ExpF Int
+assignStoreIDs = runGen . cata folder where
+  folder = \case
+    SStoreF v -> (:< SStoreF v) <$> gen
+    e -> (0 :<) <$> sequence e
