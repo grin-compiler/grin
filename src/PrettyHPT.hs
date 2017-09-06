@@ -29,7 +29,7 @@ instance Pretty RTLocVal where
   pretty = \case
     RTLoc l     -> int l
     BAS         -> text "BAS"
-    RTVar name  -> text name
+    RTVar name  -> ondullblack $ red $ text name
 
 instance Pretty RTNode where
   pretty (RTNode tag args) = pretty tag <> list (map pretty args)
