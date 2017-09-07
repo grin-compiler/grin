@@ -12,7 +12,7 @@ import qualified Data.Set as Set
 import Grin
 import ReduceGrin
 
-keywords = Set.fromList ["case","of","return","fetch","store","update","if","then","else","do"]
+keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do"]
 
 lineComment :: Parser ()
 lineComment = L.skipLineComment "--"
@@ -73,7 +73,7 @@ ifThenElse i = do
                    , Alt (TagPat (Tag C "False" 0)) e
                    ]
 
-simpleExp i = SReturn <$ kw "return" <*> value <|>
+simpleExp i = SReturn <$ kw "pure" <*> value <|>
               SStore <$ kw "store" <*> value <|>
               SFetch <$ kw "fetch" <*> var <|>
               SUpdate <$ kw "update" <*> var <*> value <|>

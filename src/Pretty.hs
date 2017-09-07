@@ -29,8 +29,8 @@ instance Pretty Exp where
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
       ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
-      SAppF name args   -> hsep (text name : map pretty args)
-      SReturnF val      -> text "return" <+> pretty val
+      SAppF name args   -> hsep ((cyan $ text name) : map pretty args)
+      SReturnF val      -> keyword "pure" <+> pretty val
       SStoreF val       -> keywordR "store" <+> pretty val
       SFetchF name      -> keywordR "fetch" <+> text name
       SUpdateF name val -> keywordR "update" <+> text name <+> pretty val

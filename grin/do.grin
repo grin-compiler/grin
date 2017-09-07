@@ -7,8 +7,8 @@ sum n29 n30 n31 =
   if b2 then
     x <- do
       case CFalse of
-        CFalse -> return ()
-    return n29
+        CFalse -> pure ()
+    pure n29
   else
     n18 <- intAdd n30 1
     n28 <- intAdd n29 n30
