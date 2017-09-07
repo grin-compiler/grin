@@ -230,10 +230,10 @@ evalExp x = {-addStep x >> -}case x of
 
   {-
     TODO:
-      - evaluate a case if there was a new value in the pattern args (optimization)
+      NEVER - evaluate a case if there was a new value in the pattern args (optimization)
+      ANSWER: the assumtion is wrong, the case alt binders does not capture all used variables of the given branch
   -}
   _ :< (ECaseF v alts) -> evalVal v >>= \vals -> do
-    -- TODO: handle other patterns also
     a <- mconcat <$> sequence
       [ zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp 
       | N (RTNode tag args) <- Set.toList vals
