@@ -150,16 +150,27 @@ evalSFetchF vals = mconcat <$> mapM fetch (Set.toList vals) where
     V (RTLoc l) -> {-Set.map N <$> -}lookupStore l
     x -> fail $ "ERROR: evalSimpleExp - Fetch expected location, got: " ++ show x
 
+evalSUpdateF vals v' = mapM_ update vals >> pure basVarSet where
+ update = \case
+   V (RTLoc l) -> IntMap.member l <$> gets storeMap >>= \case
+             False -> fail $ "ERROR: evalSimpleExp - Update unknown location: " ++ show l
+             True  -> addToStore l v'
+   x -> fail $ "ERROR: evalSimpleExp - Update expected location, got: " ++ show x
+
 evalEval :: [Val] -> GrinM VarSet
 evalEval [val] = do
-  nodes <- evalVal val >>= evalSFetchF
+  loc <- evalVal val
+  nodes <- evalSFetchF loc
   {-
     NOTE:
       F nodes   - call the function
       otherwise - keep the value
   -}
   evalNodes <- forM (Set.toList nodes) $ \case
-    N (RTNode (Tag F name _) args) -> evalSAppF name (map (Set.map V) args)
+    N (RTNode (Tag F name _) args) -> do
+      result <- evalSAppF name (map (Set.map V) args)
+      evalSUpdateF loc result
+      pure result
     value -> pure $ Set.singleton value
   pure $ mconcat evalNodes
 
@@ -204,12 +215,8 @@ evalSimpleExp = \case
 
   _ :< (SUpdateF n v) -> do
               v' <- {-Set.map toRTNode <$> -}evalVal v
-              let update = \case
-                    V (RTLoc l) -> IntMap.member l <$> gets storeMap >>= \case
-                              False -> fail $ "ERROR: evalSimpleExp - Update unknown location: " ++ show l
-                              True  -> addToStore l v'
-                    x -> fail $ "ERROR: evalSimpleExp - Update expected location, got: " ++ show x
-              lookupEnv n >>= \vals -> mapM_ update vals >> pure basVarSet
+              vals <- lookupEnv n
+              evalSUpdateF vals v'
 
   _ :< (SBlockF a) -> evalExp a
 
