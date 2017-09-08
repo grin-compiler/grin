@@ -295,17 +295,25 @@ assignStoreIDs = runGen . cata folder where
 -- Case Simplification
 type SubstMap = Map SimpleVal SimpleVal
 
-substSimpleVal :: SubstMap -> Exp -> Exp
-substSimpleVal env = id
+mapVals :: (Val -> Val) -> Exp -> Exp
+mapVals f = \case
+  SReturn val -> SReturn $ f val
+  SApp name vals -> SApp name (map f vals)
+  exp -> exp -- TODO
 
+substVals :: SubstMap -> Exp -> Exp
+substVals env = mapVals subst
+  where subst x = Map.findWithDefault x x env
+
+-- TODO: subst map composition
 caseSimplification :: Exp -> Exp
 caseSimplification e = ana builder (mempty, e) where
   builder :: (SubstMap, Exp) -> ExpF (SubstMap, Exp)
   builder (env, exp) =
     case exp of
-      ECase (VarTagNode tagVar vals) alts -> ECaseF (Var tagVar) (map (mkSubstAlt env vals) alts) -- TODO: alter envs for alts
-      e -> (env,) <$> project (substSimpleVal env e)
+      ECase (VarTagNode tagVar vals) alts -> ECaseF (Var tagVar) (map (substAlt env vals) alts)
+      e -> (env,) <$> project (substVals env e)
 
-  mkSubstAlt env vals (Alt (NodePat tag vars) e) = (altEnv, Alt (TagPat tag) e)
+  substAlt env vals (Alt (NodePat tag vars) e) = (altEnv, Alt (TagPat tag) e)
     where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) val m) env (zip vars vals)
-  mkSubstAlt env _ alt = (env, alt)
+  substAlt env _ alt = (env, alt)
