@@ -37,6 +37,11 @@ data Exp
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
 
+selectNodeItem :: Maybe Int -> Val -> Val
+selectNodeItem Nothing val = val
+selectNodeItem (Just 0) (ConstTagNode tag args) = ValTag tag
+selectNodeItem (Just i) (ConstTagNode tag args) = args !! (i - 1)
+
 type LPat = Val
 type SimpleVal = Val
 -- TODO: use data types a la carte style to build different versions of Val?

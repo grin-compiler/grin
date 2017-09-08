@@ -146,8 +146,8 @@ evalSimpleExp env = \case
               l <- insertStore v'
               -- modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               return $ Loc l
-  SFetch n -> case lookupEnv n env of
-              Loc l -> lookupStore l
+  SFetchI n index -> case lookupEnv n env of
+              Loc l -> selectNodeItem index <$> lookupStore l
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
 --  | FetchI  Name Int -- fetch node component
   SUpdate n v -> do

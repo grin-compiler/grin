@@ -144,10 +144,15 @@ evalVal = \case
   x -> fail $ "ERROR: evalVal: " ++ show x
 
 
-evalSFetchF :: VarSet -> GrinM VarSet
-evalSFetchF vals = mconcat <$> mapM fetch (Set.toList vals) where
+selectRTNodeItem :: Maybe Int -> RTVar -> VarSet
+selectRTNodeItem Nothing val = Set.singleton val
+selectRTNodeItem (Just 0) (N (RTNode tag args)) = basVarSet
+selectRTNodeItem (Just i) (N (RTNode tag args)) = Set.map V $ (args !! (i - 1))
+
+evalSFetchF :: Maybe Int -> VarSet -> GrinM VarSet
+evalSFetchF index vals = mconcat <$> mapM fetch (Set.toList vals) where
   fetch = \case
-    V (RTLoc l) -> {-Set.map N <$> -}lookupStore l
+    V (RTLoc l) -> {-Set.map N <$> -}mconcat . map (selectRTNodeItem index) . Set.toList <$> lookupStore l
     x -> fail $ "ERROR: evalSimpleExp - Fetch expected location, got: " ++ show x
 
 evalSUpdateF vals v' = mapM_ update vals >> pure basVarSet where
@@ -160,7 +165,7 @@ evalSUpdateF vals v' = mapM_ update vals >> pure basVarSet where
 evalEval :: [Val] -> GrinM VarSet
 evalEval [val] = do
   loc <- evalVal val
-  nodes <- evalSFetchF loc
+  nodes <- evalSFetchF Nothing loc
   {-
     NOTE:
       F nodes   - call the function
@@ -211,7 +216,7 @@ evalSimpleExp = \case
               addToStore l v'
               pure . Set.singleton . V $ RTLoc l
 
-  _ :< (SFetchF n) -> lookupEnv n >>= evalSFetchF
+  _ :< (SFetchIF n i) -> lookupEnv n >>= evalSFetchF i
 
   _ :< (SUpdateF n v) -> do
               v' <- {-Set.map toRTNode <$> -}evalVal v

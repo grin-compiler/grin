@@ -113,7 +113,7 @@ newVarName = \case
   SApp        name simpleVals    -> Just ["a"]
   SReturn     val                -> Just ["r"]
   SStore      val                -> Just ["s"]
-  SFetch      name               -> Nothing
+  SFetchI     name index         -> Nothing
   SUpdate     name val           -> Just [name]
   SBlock      exp                -> Nothing
   Alt         cpat exp           -> Nothing

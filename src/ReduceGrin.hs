@@ -83,8 +83,8 @@ evalSimpleExp env = \case
               let v' = evalVal env v
               modify' ({-# SCC eSE_Store_insert #-}\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               return $ Loc l
-  SFetch n -> {-# SCC eSE_Fetch #-}case lookupEnv n env of
-              Loc l -> gets $ lookupStore l
+  SFetchI n index -> {-# SCC eSE_Fetch #-}case lookupEnv n env of
+              Loc l -> gets $ (selectNodeItem index . lookupStore l)
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
 --  | FetchI  Name Int -- fetch node component
   SUpdate n v -> {-# SCC eSE_Update #-}do

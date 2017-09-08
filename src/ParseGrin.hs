@@ -75,7 +75,7 @@ ifThenElse i = do
 
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
               SStore <$ kw "store" <*> value <|>
-              SFetch <$ kw "fetch" <*> var <|>
+              SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
               SUpdate <$ kw "update" <*> var <*> value <|>
               SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
               SApp <$> var <*> some simpleValue

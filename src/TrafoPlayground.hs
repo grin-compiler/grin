@@ -57,7 +57,7 @@ collectTagInfoPure = cata folder where
     SReturnF  val   -> add val
     SStoreF   val   -> add val
     SUpdateF  _ val -> add val
-    SFetchF   _     -> mempty
+    SFetchIF  _ _   -> mempty
     SBlockF   a     -> a
     -- Alt
     AltF _ a        -> a
@@ -81,7 +81,7 @@ renameVaribales substituitons = ana builder where
     SApp     name simpleVals    -> SAppF    (substName name) (subst <$> simpleVals)
     SReturn  val                -> SReturnF (subst val)
     SStore   val                -> SStoreF  (subst val)
-    SFetch   name               -> SFetchF  name
+    SFetchI  name index         -> SFetchIF  name index
     SUpdate  name val           -> SUpdateF name (subst val)
     SBlock   exp                -> SBlockF  exp
     -- Alt
