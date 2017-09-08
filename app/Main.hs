@@ -20,7 +20,7 @@ import Data.Map as Map
 
 pipeline :: Exp -> Exp
 pipeline =
-  registerIntroduction .
+  registerIntroductionM 0 .
   renameVaribales (Map.fromList [("i'", "i''"), ("a", "a'")]) .
   generateEval
 

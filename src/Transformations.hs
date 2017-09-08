@@ -16,6 +16,7 @@ import qualified Data.Set as Set
 
 import qualified Data.Foldable
 import Control.Comonad.Cofree
+import Control.Monad.State
 
 import Grin
 
@@ -116,6 +117,54 @@ newVarName = \case
   SBlock      exp                -> Nothing
   Alt         cpat exp           -> Nothing
 
+type FreshM a = State Int a
+
+registerIntroductionM :: Int -> Exp -> Exp
+registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
+  folder :: ExpF (FreshM Exp) -> FreshM Exp
+  folder = \case
+    SStoreF (VarTagNode name vals)         -> SBlock <$> varTagNode SStore name vals
+    SStoreF (ConstTagNode tag vals)        -> SBlock <$> constTagNode SStore tag vals
+    SStoreF (Lit lit)                      -> SBlock <$> literal SStore lit
+    SReturnF (VarTagNode name vals)        -> SBlock <$> varTagNode SReturn name vals
+    SReturnF ctag@(ConstTagNode tag [])    -> pure $ SReturn ctag
+    SReturnF (ConstTagNode tag vals)       -> SBlock <$> constTagNode SReturn tag vals
+    SUpdateF uname (VarTagNode tname vals) -> SBlock <$> varTagNode (SUpdate uname) tname vals
+    SUpdateF uname (ConstTagNode tag vals) -> SBlock <$> constTagNode (SUpdate uname) tag vals
+    SUpdateF uname (Lit lit)               -> SBlock <$> literal SStore lit
+    e -> embed <$> sequence e
+
+    where
+      freshName :: FreshM String
+      freshName = do
+        n <- gets show
+        modify' (+1)
+        pure $ intercalate "." ["v", show nth, n]
+
+      changeSimpleVals :: [SimpleVal] -> FreshM ([SimpleVal], [(Name, Val)])
+      changeSimpleVals svals = (second catMaybes . unzip) <$> mapM changeVal svals
+        where
+          changeVal (Lit lit)  = do { v <- freshName; pure (Var v, Just (v, Lit lit)) }
+          changeVal (Var v)    = pure (Var v, Nothing)
+          changeVal (ValTag g) = do { v <- freshName; pure (Var v, Just (v, ValTag g)) }
+          changeVal bad        = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
+
+      literal context lit = do
+        v <- Var <$> freshName
+        pure $ EBind (SReturn (Lit lit)) v (context v)
+
+      varTagNode   context name = introduction (const $ context . VarTagNode name)
+      constTagNode context tag vals =
+        introduction
+          (\(Just t) vs -> context $ VarTagNode t (tail vs))
+          ((ValTag tag):vals)
+
+      introduction context vals = do
+        (vals', newVars) <- changeSimpleVals vals
+        pure $ foldr
+            (\(name, lit) -> EBind (SReturn lit) (Var name))
+            (context (fst <$> listToMaybe newVars) vals') -- Tag is always first and stand for constTagNode only
+            newVars
 
 type VariablePath = [String]
 
