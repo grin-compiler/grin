@@ -99,9 +99,7 @@ splitFetch = cata folder where
     e -> embed e
 
   newBinds name [] = SReturn Unit
-  newBinds name ((i, var) : vars) = EBind (fetchItem name i) var $ newBinds name vars
-
-  fetchItem name i = SFetchI name (Just i)
+  newBinds name ((i, var) : vars) = EBind (SFetchI name (Just i)) var $ newBinds name vars
 
 
 newVarName :: Exp -> Maybe [String]

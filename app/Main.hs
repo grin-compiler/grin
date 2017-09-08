@@ -36,12 +36,10 @@ main = do
       putStrLn $ unlines result
       putStrLn "* tag info *"
       putStrLn . show . collectTagInfo $ Program grin
-      putStrLn "* vectorisation *"
-      putStrLn . show . ondullblack . pretty . vectorisation $ Program grin
-      putStrLn "* split fetch operation *"
-      putStrLn . show . ondullgreen . pretty . splitFetch $ Program grin
+      putStrLn "* vectorisation / split fetch operation *"
+      putStrLn . show . ondullblack . pretty . splitFetch . vectorisation $ Program grin
       putStrLn "* generate eval / rename variables / register introduction *"
-      putStrLn . show . ondullblue . pretty . pipeline $ Program grin
+      putStrLn . show . ondullmagenta . pretty . pipeline $ Program grin
 
       putStrLn "* original program *"
       printGrin $ Program grin
