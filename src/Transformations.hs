@@ -2,8 +2,9 @@
 module Transformations where
 
 import Data.Maybe
-import Data.List (intercalate)
+import Data.List (intercalate, foldl')
 import Data.Set (Set, singleton, toList)
+import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Monoid hiding (Alt)
 import Control.Arrow (second)
@@ -291,12 +292,20 @@ assignStoreIDs = runGen . cata folder where
     SStoreF v -> (:< SStoreF v) <$> gen
     e -> (0 :<) <$> sequence e
 
--- TODO: substitute Vars with Vals
+-- Case Simplification
+type SubstMap = Map SimpleVal SimpleVal
+
+substSimpleVal :: SubstMap -> Exp -> Exp
+substSimpleVal env = id
+
 caseSimplification :: Exp -> Exp
-caseSimplification e = ana builder ([], e) where
-  builder :: (String, Exp) -> ExpF (String, Exp)
+caseSimplification e = ana builder (mempty, e) where
+  builder :: (SubstMap, Exp) -> ExpF (SubstMap, Exp)
   builder (env, exp) =
     case exp of
-      ECase (VarTagNode tagVar vals) alts -> ECaseF (Var tagVar) $ map (env,) alts -- TODO: alter envs for alts
-      Alt (NodePat tag vars) e -> AltF (TagPat tag) $ (env, e) -- TODO: substitute vars with vals
-      e -> (env,) <$> project e -- TODO: apply val substitution
+      ECase (VarTagNode tagVar vals) alts -> ECaseF (Var tagVar) (map (mkSubstAlt env vals) alts) -- TODO: alter envs for alts
+      e -> (env,) <$> project (substSimpleVal env e)
+
+  mkSubstAlt env vals (Alt (NodePat tag vars) e) = (altEnv, Alt (TagPat tag) e)
+    where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) val m) env (zip vars vals)
+  mkSubstAlt env _ alt = (env, alt)
