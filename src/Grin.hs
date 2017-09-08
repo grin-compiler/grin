@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
-{-# LANGUAGE DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 module Grin where
 
 import Data.Functor.Foldable as Foldable
@@ -26,13 +26,16 @@ data Exp
   | SApp        Name [SimpleVal]
   | SReturn     Val
   | SStore      Val
-  | SFetch      Name
+  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item
 --  | SFetchItem  Name Int
   | SUpdate     Name Val
   | SBlock      Exp
   -- Alt
   | Alt CPat Exp
   deriving (Generic, NFData, Eq, Show)
+
+pattern SFetch name = SFetchI name Nothing
+pattern SFetchF name = SFetchIF name Nothing
 
 type LPat = Val
 type SimpleVal = Val
@@ -81,7 +84,7 @@ data ExpF a
   | SAppF     Name [SimpleVal]
   | SReturnF  Val
   | SStoreF   Val
-  | SFetchF   Name
+  | SFetchIF  Name (Maybe Int)
   | SUpdateF  Name Val
   | SBlockF   a
   -- Alt
@@ -99,7 +102,7 @@ instance Recursive Exp where
   project (SApp     name simpleVals) = SAppF name simpleVals
   project (SReturn  val) = SReturnF val
   project (SStore   val) = SStoreF val
-  project (SFetch   name) = SFetchF name
+  project (SFetchI  name index) = SFetchIF name index
   project (SUpdate  name val) = SUpdateF name val
   project (SBlock   exp) = SBlockF exp
   -- Alt
@@ -115,7 +118,7 @@ instance Corecursive Exp where
   embed (SAppF     name simpleVals) = SApp name simpleVals
   embed (SReturnF  val) = SReturn val
   embed (SStoreF   val) = SStore val
-  embed (SFetchF   name) = SFetch name
+  embed (SFetchIF  name index) = SFetchI name index
   embed (SUpdateF  name val) = SUpdate name val
   embed (SBlockF   exp) = SBlock exp
   -- Alt

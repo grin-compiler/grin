@@ -24,6 +24,7 @@ library
     ReduceGrin
     STReduceGrin
     Transformations
+    TrafoPlayground
     AbstractRunGrin
 
   build-depends:

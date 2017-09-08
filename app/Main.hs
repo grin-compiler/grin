@@ -12,6 +12,7 @@ import Grin
 import Pretty
 import PrettyHPT
 import Transformations
+import TrafoPlayground
 import AbstractRunGrin
 
 import Data.IntMap as IntMap
@@ -34,7 +35,7 @@ main = do
       putStrLn $ unlines result
       putStrLn . show . ondullblack . pretty . vectorisation $ Program grin
       putStrLn . show . ondullgreen . pretty . splitFetch . vectorisation $ Program grin
-      putStrLn . show . collectTagInfoPure $ Program grin
+      putStrLn . show . collectTagInfo $ Program grin
       putStrLn . show . ondullblue . pretty . pipeline $ Program grin
       printGrin $ Program grin
 
