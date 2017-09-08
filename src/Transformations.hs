@@ -241,3 +241,13 @@ assignStoreIDs = runGen . cata folder where
   folder = \case
     SStoreF v -> (:< SStoreF v) <$> gen
     e -> (0 :<) <$> sequence e
+
+-- TODO: substitute Vars with Vals
+caseSimplification :: Exp -> Exp
+caseSimplification e = ana builder ([], e) where
+  builder :: (String, Exp) -> ExpF (String, Exp)
+  builder (env, exp) =
+    case exp of
+      ECase (VarTagNode tagVar vals) alts -> ECaseF (Var tagVar) $ map (env,) alts -- TODO: alter envs for alts
+      Alt (NodePat tag vars) e -> AltF (TagPat tag) $ (env, e) -- TODO: substitute vars with vals
+      e -> (env,) <$> project e -- TODO: apply val substitution
