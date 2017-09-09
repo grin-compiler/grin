@@ -18,8 +18,8 @@
 simplifaction transformations required by the codegen
 
 - [ ] vectorisation
-- [ ] case simplification
+- [x] case simplification
 - [x] split fetch operation
 - [ ] right hoist fetch operation
-- [ ] register introduction
+- [x] register introduction
 

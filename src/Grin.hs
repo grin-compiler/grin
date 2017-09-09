@@ -27,7 +27,6 @@ data Exp
   | SReturn     Val
   | SStore      Val
   | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item
---  | SFetchItem  Name Int
   | SUpdate     Name Val
   | SBlock      Exp
   -- Alt
