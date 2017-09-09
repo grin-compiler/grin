@@ -292,6 +292,28 @@ assignStoreIDs = runGen . cata folder where
     SStoreF v -> (:< SStoreF v) <$> gen
     e -> (0 :<) <$> sequence e
 
+-- Bind normalisation (EXTREME UGLY first version)
+bindNormalisation :: Exp -> Exp
+bindNormalisation = ($ id) . snd . cata folder where
+  folder :: ExpF (Bool, (Exp -> Exp) -> Exp) -> (Bool, (Exp -> Exp) -> Exp)
+  folder = \case
+
+    EBindF (hasSBlock, sexpf) pat (_, expf) -> case hasSBlock of
+      True  -> (False, \f -> sexpf $ \sexp -> EBind sexp pat (expf f))
+      False -> (False, \f -> EBind (sexpf id) pat (expf f))
+
+    SBlockF (_, f) -> (True, f)
+    -- SimpleExp: return, app, case, store, fetch, update
+    SAppF name vals -> (False, \f -> f (SApp name vals))
+    SReturnF val -> (False, \f -> f (SReturn val))
+    SStoreF val -> (False, \f -> f (SStore val))
+    SFetchIF name index -> (False, \f -> f (SFetchI name index))
+    SUpdateF name val -> (False, \f -> f (SUpdate name val))
+    AltF cpat (_, expf) -> (False, \f -> f (Alt cpat (expf id)))
+    ECaseF val altsf -> (False, \f -> f (ECase val (map (($ id) . snd) altsf)))
+    DefF name args (_, expf) -> (False, \f -> f (Def name args (expf id)))
+    ProgramF defs -> (False, \f -> f (Program (map (($ id) . snd) defs)))
+
 -- Case Simplification
 type SubstMap = Map SimpleVal SimpleVal
 
@@ -314,6 +336,7 @@ caseSimplification e = ana builder (mempty, e) where
       ECase (VarTagNode tagVar vals) alts -> ECaseF (Var tagVar) (map (substAlt env vals) alts)
       e -> (env,) <$> project (substVals env e)
 
-  substAlt env vals (Alt (NodePat tag vars) e) = (altEnv, Alt (TagPat tag) e)
-    where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) val m) env (zip vars vals)
-  substAlt env _ alt = (env, alt)
+  substAlt env vals = \case
+      Alt (NodePat tag vars) e -> (altEnv, Alt (TagPat tag) e)
+                             where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) val m) env (zip vars vals)
+      alt -> (env, alt)

@@ -36,10 +36,21 @@ main = do
       putStrLn $ unlines result
       putStrLn "* tag info *"
       putStrLn . show . collectTagInfo $ Program grin
+
       putStrLn "* vectorisation / split fetch operation / case simplifiaction*"
-      putStrLn . show . ondullblack . pretty . caseSimplification . splitFetch . vectorisation $ Program grin
+      let optProgram = caseSimplification . splitFetch . vectorisation $ Program grin
+      putStrLn . show . ondullblack . pretty $ optProgram
+      --putStrLn "* evaluation result *"
+      --print . pretty $ evalProgram PureReducer optProgram
+
       putStrLn "* generate eval / rename variables / register introduction *"
       putStrLn . show . ondullmagenta . pretty . pipeline $ Program grin
+
+      putStrLn "* register introduction *"
+      putStrLn . show . ondullred . pretty . registerIntroductionM 0 $ Program grin
+
+      putStrLn "* bind normalisation / register introduction *"
+      putStrLn . show . ondullcyan . pretty . bindNormalisation . registerIntroductionM 0 $ Program grin
 
       putStrLn "* original program *"
       printGrin $ Program grin

@@ -22,3 +22,9 @@ eval' reducer fname = do
       case reducer of
         PureReducer -> ReduceGrin.reduceFun e "main"
         STReducer   -> STReduceGrin.reduceFun e "main"
+
+evalProgram :: Reducer -> Program -> Val
+evalProgram reducer (Program defs) =
+  case reducer of
+    PureReducer -> ReduceGrin.reduceFun defs "main"
+    STReducer   -> STReduceGrin.reduceFun defs "main"

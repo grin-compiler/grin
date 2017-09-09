@@ -16,7 +16,6 @@ keywordR = red . text
 
 -- TODO
 --  nice colors for syntax highlight
---  precedence support
 --  better node type syntax (C | F | P)
 
 instance Pretty Exp where
