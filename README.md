@@ -1,6 +1,9 @@
 # GRIN
 
 The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction.
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=41">
+Read more.
+</a>
 
 <img src="https://raw.githubusercontent.com/andorp/grin/master/images/grin-syntax.png" width="500" >
 
