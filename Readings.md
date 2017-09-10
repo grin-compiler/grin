@@ -1,9 +1,32 @@
 # Readings
 
 http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html
-https://medium.com/@jaredtobin/practical-recursion-schemes-c10648ec1c29
+
+
+# Recursion schemes
+
+Resources for learning and using recursion schemes.
+
 https://github.com/passy/awesome-recursion-schemes
+
+## Thoughts
 
 Limits of recusrion schemes? Maybe a hylo can help to implement the list filter?
 
 -  https://stackoverflow.com/questions/18421926/list-filter-using-an-anamorphism
+
+## Articles
+
+- [Recursion Schemes: A Field Guide (Redux)](http://comonad.com/reader/2009/recursion-schemes/) -
+  List of various recursion schemes with code samples.
+- [Catamorphisms](https://wiki.haskell.org/Catamorphisms) - Definition on the Haskell Wiki.
+- [Catamorphisms](https://www.schoolofhaskell.com/user/edwardk/recursion-schemes/catamorphisms) -
+  Short definition with code on School of Haskell by Edward Kmett.
+- [Rotating Squares](https://jtobin.io/rotating-squares) - Using a hylomorphism to rotate a quadtree by Jared Tobin.
+- [Promorphisms, Pre and Post](https://jtobin.io/promorphisms-pre-post) - Pratical examples of pre- and postpromorphisms by Jared Tobin.
+- [Time Traveling Recursion Schemes](https://jtobin.io/time-traveling-recursion) - Exploring histo and futu by example by Jared Tobin.
+- [Correcting the Visitor pattern](http://logji.blogspot.co.uk/2012/02/correcting-visitor-pattern.html) - Showing that the Visitor pattern implements an f-algebra for use with a catamorphism (in Java).
+
+## Cheat Sheet
+
+<img src="images/recursion-schemes-cheat-sheet.svg" style="max-width: 100%; max-height: 100vh; height: auto;">
