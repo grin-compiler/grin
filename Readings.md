@@ -29,4 +29,10 @@ Limits of recusrion schemes? Maybe a hylo can help to implement the list filter?
 
 ## Cheat Sheet
 
+### Recursion schemes
+
 <img src="images/recursion-schemes-cheat-sheet.svg" style="max-width: 100%; max-height: 100vh; height: auto;">
+
+### Algebras
+
+<img src="images/algebras.svg" style="max-width: 100%; max-height: 100vh; height: auto;">
