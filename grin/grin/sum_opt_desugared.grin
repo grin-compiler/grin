@@ -1,0 +1,11 @@
+main =
+  n13 <- sum 0.0 1.0 10000.0
+  intPrint n13
+
+sum n29 n30 n31 =
+  b2 <- intGT n30 n31
+  case b2 of
+    CTrue -> pure n29
+    CFalse -> n18 <- intAdd n30 1.0
+              n28 <- intAdd n29 n30
+              sum n28 n18 n31

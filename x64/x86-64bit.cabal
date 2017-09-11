@@ -1,0 +1,87 @@
+name:                x86-64bit
+version:             0.4.5
+homepage:            https://github.com/divipp/x86-64
+synopsis:            Runtime code generation for x86 64 bit machine code
+description:         The primary goal of x86-64bit is to provide a lightweight assembler for machine generated 64 bit x86 assembly instructions. See README.md for further details.
+license:             BSD3
+license-file:        LICENSE
+author:              Péter Diviánszky
+maintainer:          divipp@gmail.com
+category:            Code Generation
+build-type:          Simple
+cabal-version:       >=1.10
+stability:           Experimental
+tested-with:         GHC == 8.0.1
+extra-source-files:  README.md
+                     CHANGELOG.md
+                     TODO.md
+
+source-repository head
+  type:     git
+  location: https://github.com/divipp/x86-64
+
+library
+  exposed-modules:
+    CodeGen.X86
+    CodeGen.X86.Examples
+  other-modules:
+    Control.DeeperSeq
+    CodeGen.X86.Asm
+    CodeGen.X86.CodeGen
+    CodeGen.X86.CallConv
+    CodeGen.X86.FFI
+    CodeGen.X86.Utils
+    CodeGen.X86.Tests
+
+  default-language:    Haskell2010
+  other-extensions:
+    NoMonomorphismRestriction
+    LambdaCase
+    PatternSynonyms
+    ViewPatterns
+    TypeSynonymInstances
+    FlexibleInstances
+    TypeFamilies
+    GADTs
+    RankNTypes
+    RecordWildCards
+    DeriveFunctor
+    DeriveFoldable
+    DeriveTraversable
+    DataKinds
+    GeneralizedNewtypeDeriving
+    OverloadedStrings
+    TupleSections
+    ExistentialQuantification
+    ScopedTypeVariables
+
+  build-depends:
+    base >=4.8 && <4.10,
+    monads-tf >=0.1 && <0.2,
+    tardis >= 0.4 && <0.5,
+    vector >=0.11 && <0.12,
+    QuickCheck >=2.8 && <2.10,
+    deepseq
+
+  if os(windows)
+    build-depends: Win32
+
+  default-language:    Haskell2010
+
+test-suite test-x86-64bit
+  type:       exitcode-stdio-1.0
+  main-is:    Test.hs
+
+  build-depends:
+    base >=4.8 && <4.10,
+    monads-tf >=0.1 && <0.2,
+    tardis >= 0.4 && <0.5,
+    vector >=0.11 && <0.12,
+    QuickCheck >=2.8 && <2.10,
+    deepseq
+
+  if os(windows)
+    build-depends: Win32
+
+  default-language:    Haskell2010
+

@@ -39,7 +39,8 @@ library
     recursion-schemes,
     ansi-wl-pprint,
     monad-gen,
-    free
+    free,
+    x86-64bit
   default-language:    Haskell2010
 
 executable grin
