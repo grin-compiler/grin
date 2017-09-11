@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
+{-# LANGUAGE LambdaCase #-}
 module Grin where
 
 import Data.Functor.Foldable as Foldable
@@ -56,6 +57,11 @@ data Val
   | Loc Int
   | Undefined
   deriving (Generic, NFData, Eq, Ord, Show)
+
+isLit :: Val -> Bool
+isLit = \case
+  Lit l -> True
+  _     -> False
 
 data Lit = LFloat Float
   deriving (Generic, NFData, Eq, Ord, Show)

@@ -137,10 +137,6 @@ registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
     e                                      -> embed  <$> sequence e
 
     where
-      isLit :: Val -> Bool
-      isLit (Lit _) = True
-      isLit _       = False
-
       freshName :: FreshM String
       freshName = do
         n <- gets show
@@ -176,21 +172,10 @@ registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
 type VariablePath = [String]
 
 registerIntroduction :: Exp -> Exp
-registerIntroduction e = ana builder ([], e) where
-  builder :: (VariablePath, Exp) -> ExpF (VariablePath, Exp)
+registerIntroduction e = apo builder ([], e) where
+  builder :: (VariablePath, Exp) -> ExpF (Either Exp (VariablePath, Exp))
   builder (path, exp) =
     case exp of
-      EBind (SStore (VarTagNode name vals))        lpat exp -> varTagNode   (\val -> EBind (SStore val) lpat exp)       name vals
-      EBind (SStore (ConstTagNode tag vals))       lpat exp -> constTagNode (\val -> EBind (SStore val) lpat exp)       tag vals
-      EBind (SStore (Lit lit))                     lpat exp -> literal      (\val -> EBind (SStore val) lpat exp)       lit
-      EBind (SUpdate name (VarTagNode tname vals)) lpat exp -> varTagNode   (\val -> EBind (SUpdate name val) lpat exp) tname vals
-      EBind (SUpdate name (ConstTagNode tag vals)) lpat exp -> constTagNode (\val -> EBind (SUpdate name val) lpat exp) tag vals
-      EBind (SUpdate name (Lit lit))               lpat exp -> literal      (\val -> EBind (SUpdate name val) lpat exp) lit
-      EBind (SReturn (VarTagNode name vals))       lpat exp -> varTagNode   (\val -> EBind (SReturn val) lpat exp)      name vals
-      EBind (SReturn (ConstTagNode tag vals))      lpat exp -> constTagNode (\val -> EBind (SReturn val) lpat exp)      tag vals
-
-      EBind (SApp name vals)                       lpat exp -> appExp       (\val -> EBind val lpat exp)                name vals
-
       SStore (VarTagNode name vals)         -> varTagNode   SStore          name vals
       SStore (ConstTagNode tag vals)        -> constTagNode SStore          tag vals
       SStore (Lit lit)                      -> literal      SStore          lit
@@ -199,10 +184,8 @@ registerIntroduction e = ana builder ([], e) where
       SUpdate uname (VarTagNode tname vals) -> varTagNode   (SUpdate uname) tname vals
       SUpdate uname (ConstTagNode tag vals) -> constTagNode (SUpdate uname) tag vals
       SUpdate uname (Lit lit)               -> literal      (SUpdate uname) lit
-
-      SApp name vals                        -> appExp id                    name vals
-
-      e -> fmap (withPath' exp) $ project e
+      SApp name vals                        -> appExp (if any isLit vals then SBlock else id) name vals
+      e -> fmap (Right . withPath' exp) $ project e
 
     where
       withPath' exp = maybe withPath (withNewPath . head) (newVarName exp)
@@ -219,19 +202,19 @@ registerIntroduction e = ana builder ([], e) where
           changeVal bad        _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
 
       literal context lit =
-        fmap (withPath' exp) . project $ EBind (SReturn (Lit lit)) (Var (vars !! 0)) (context (Var $ vars !! 0))
+        fmap Left . project $ EBind (SReturn (Lit lit)) (Var (vars !! 0)) (context (Var $ vars !! 0))
 
-      introduction context vals =
+      introduction block context vals =
         let (vals', newVars) = changeSimpleVals vars vals
-        in fmap (withPath' exp) . project $ foldr
+        in fmap Left . project . block $ foldr
             (\(name, lit) -> EBind (SReturn lit) (Var name))
             (context (fst <$> listToMaybe newVars) vals') -- Tag is always first and stand for constTagNode only
             newVars
 
-      varTagNode   context name = introduction (const $ context . VarTagNode name)
-      appExp       context name = introduction (const $ context . SApp name)
+      appExp       block name = introduction block (const $ SApp name)
+      varTagNode   context name = introduction id (const $ context . VarTagNode name)
       constTagNode context tag vals =
-        introduction
+        introduction SBlock
           (\(Just t) vs -> context $ VarTagNode t (tail vs))
           ((ValTag tag):vals)
 
