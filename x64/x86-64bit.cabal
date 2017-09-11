@@ -74,7 +74,8 @@ test-suite test-x86-64bit
 
   build-depends:
     base >=4.8 && <4.10,
-    monads-tf >=0.1 && <0.2,
+    --monads-tf >=0.1 && <0.2,
+    mtl,
     tardis >= 0.4 && <0.5,
     vector >=0.11 && <0.12,
     QuickCheck >=2.8 && <2.10,

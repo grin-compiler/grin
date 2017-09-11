@@ -10,7 +10,7 @@ maintainer:          andor.penzes@gmail.com
 copyright:           2017 Andor Penzes, Csaba Hruska
 category:            Compiler
 build-type:          Simple
-extra-source-files:  README.md
+--extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
