@@ -133,9 +133,14 @@ registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
     SUpdateF uname (VarTagNode tname vals) -> SBlock <$> varTagNode (SUpdate uname) tname vals
     SUpdateF uname (ConstTagNode tag vals) -> SBlock <$> constTagNode (SUpdate uname) tag vals
     SUpdateF uname (Lit lit)               -> SBlock <$> literal SStore lit
-    e -> embed <$> sequence e
+    SAppF name vals | any isLit vals       -> SBlock <$> appExp name vals
+    e                                      -> embed  <$> sequence e
 
     where
+      isLit :: Val -> Bool
+      isLit (Lit _) = True
+      isLit _       = False
+
       freshName :: FreshM String
       freshName = do
         n <- gets show
@@ -155,6 +160,7 @@ registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
         pure $ EBind (SReturn (Lit lit)) v (context v)
 
       varTagNode   context name = introduction (const $ context . VarTagNode name)
+      appExp               name = introduction (const $ SApp name)
       constTagNode context tag vals =
         introduction
           (\(Just t) vs -> context $ VarTagNode t (tail vs))
