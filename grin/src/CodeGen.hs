@@ -125,6 +125,21 @@ codeGen = void . flip runStateT mempty . cata folder where
         mov (bpRel resultStackIndex) rax
       pure resultStackIndex
 
+    -- TODO
+    ECaseF val alts -> sequence alts >> pure 0
+    AltF _ exp -> exp
+
+    SAppF "intAdd" [a, b] -> do
+      lift $ do
+        add rax rbx -- TODO
+      pure 0
+        {-
+                "add" -> primAdd args
+                "mul" -> primMul args
+                "intPrint" -> primIntPrint args
+                "intGT" -> primIntGT args
+                "intAdd" -> primAdd args
+        -}
     SAppF name args -> do
       -- push arguments to stack
       forM_ args $ \val -> do
