@@ -52,7 +52,7 @@ instance Pretty Val where
     Undefined   -> keyword "undefined"
 
 instance Pretty Lit where
-  pretty (LFloat a) = float a
+  pretty (LInt a) = int a
 
 instance Pretty CPat where
   pretty = \case

@@ -332,3 +332,20 @@ caseSimplification e = ana builder (mempty, e) where
       Alt (NodePat tag vars) e -> (altEnv, Alt (TagPat tag) e)
                              where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) (subst env val) m) env (zip vars vals)
       alt -> (env, alt)
+
+-- Right hoist fetch operations
+rightHoistFetch :: Exp -> Exp
+rightHoistFetch e = ana builder (mempty, e) where
+  builder :: (SubstMap, Exp) -> ExpF (SubstMap, Exp)
+  builder (env, exp) =
+    case exp of
+      -- TODO: collect 
+      --EBind (SFetchI{}) pat exp
+      e -> (env,) <$> project e
+
+-- linter for low level grin
+lintLowLevelGrin :: Exp -> All -- TODO: collect errors
+lintLowLevelGrin = cata folder where
+  folder = \case
+    SReturnF  val   -> mempty
+    e -> Data.Foldable.fold e

@@ -63,7 +63,7 @@ isLit = \case
   Lit l -> True
   _     -> False
 
-data Lit = LFloat Float
+data Lit = LInt Int
   deriving (Generic, NFData, Eq, Ord, Show)
 
 data CPat

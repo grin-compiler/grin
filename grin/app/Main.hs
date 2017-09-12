@@ -14,6 +14,7 @@ import PrettyHPT
 import Transformations
 import TrafoPlayground
 import AbstractRunGrin
+import CodeGen
 
 import Data.IntMap as IntMap
 import Data.Map as Map
@@ -62,3 +63,6 @@ main = do
       let (result, computer) = abstractRun (assignStoreIDs $ Program grin) "main"
       putStrLn "* HPT *"
       print . pretty $ computer
+
+      putStrLn "* x86 64bit codegen *"
+      print . codeGen $ Program grin

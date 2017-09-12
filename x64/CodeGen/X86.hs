@@ -25,7 +25,7 @@ module CodeGen.X86
     -- ** SSE registers
     , xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7
     -- * Addresses
-    , Addr (..), BaseReg, IndexReg, Scale, Displacement, Address
+    , Addr (..), BaseReg, IndexReg (..), Scale, s1, s2, s4, s8, Displacement, Address
     , addr
     , addr8
     , addr16

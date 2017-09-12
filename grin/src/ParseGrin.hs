@@ -100,7 +100,7 @@ value = Unit <$ op "()" <|>
         simpleValue
 
 literal :: Parser Lit
-literal = LFloat . realToFrac <$> try signedFloat <|> LFloat . fromIntegral <$> signedInteger
+literal = LInt . fromIntegral <$> signedInteger
 
 --parseFromFile :: Parser _ -> String -> IO _
 parseFromFile p file = runParser p file <$> readFile file
