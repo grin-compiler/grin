@@ -56,6 +56,7 @@ getStackIndex name = do
     Just i -> pure (i * 8)
     Nothing -> modify' (\_ -> StackMap (Map.insert name localCounter stackMap) i) >> pure (i * 8) where i = succ localCounter
 
+-- TODO: remove $result$ and store the result in rax (now only ints and tags are supported for binds)
 resultVarName = "$result$" -- to store sexp values
 resultIndex = getStackIndex resultVarName
 
@@ -113,7 +114,6 @@ codeGenBinOp a b op = do
     mov (bpRel resultStackIndex) rax
   pure resultStackIndex
 
--- TODO: create environment that contains the local stack index for variables
 codeGen :: Exp -> Code
 codeGen = void . flip runStateT emptyStackMap . para folder where
   folder :: ExpF (Exp, X64 StackIndex) -> X64 StackIndex
