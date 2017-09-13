@@ -29,50 +29,10 @@ sum n29 n30 n31 =
               sum n28 n18 n31
 -}
 
-{-
-  TODO
-    - compile functions separately
-    - Def
-    * - function call
-    done - bind operator
-    * - case
-    - memory operations
-      - fetch
-      - store
-      - update
--}
-
 regRel reg offset = MemOp $ Addr (Just reg) (Just offset) NoIndex
 bpRel = regRel rbp
 
-mainCode :: Code
-mainCode = saveNonVolatile $ do
-    mov result arg1
-    ret
-    mov rcx (addr64 (0 :: Address S64))
-    mainFun <- label
-    -- init
-    push rbp
-    mov rbp rsp
-    sub rsp 32 -- space for local variables
-
-    -- get args from stack
-    mov rcx (bpRel 0)
-
-    -- fetch nodes
-    mov rax (regRel rcx 0) -- get tag   ; fetchI 0
-    mov rbx (regRel rcx 8) -- get val1  ; fetchI 1
-
-    -- app / function call
-    push rbx
-    call (ipRelValue mainFun)
-    ret
-
 -- QUESTION: from where will we know the labels when generating call op?
-
--- HINT: the most important part of codegen is EBind
-
--- IDEA: variable / register handling: use Var Name -> stack index mapping ; clear the map when leaving a Def
 
 type StackIndex = Int32
 type StackMap = Map Name StackIndex
@@ -237,7 +197,6 @@ codeGen = void . flip runStateT mempty . para folder where
     e -> sequence_ (snd <$> e) >> pure 0
 
 {-
-data Exp
  * TODO
     Program     [Def]
       - call main
@@ -253,14 +212,4 @@ data Exp
  * Node support:
   | SStore      Val
   | SUpdate     Name Val
-
- * DONE
-  -- Exp
-  done | EBind       SimpleExp LPat Exp
-  done | ECase       Val [Alt]
-  done | Alt CPat Exp
-  -- Simple Exp
-  done | SReturn     Val
-  done | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item
-  done | SBlock      Exp
 -}
