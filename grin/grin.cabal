@@ -27,6 +27,7 @@ library
     TrafoPlayground
     AbstractRunGrin
     CodeGen
+    FreshNames
 
   build-depends:
     base,
