@@ -54,38 +54,31 @@ getStackIndex name = do
   StackMap{..} <- get
   case Map.lookup name stackMap of
     Just i -> pure (i * 8)
-    Nothing -> modify' (\_ -> StackMap (Map.insert name localCounter stackMap) i) >> pure (i * 8) where i = succ localCounter
+    Nothing -> fail $ "unknown vairable: " ++ name
+
+newLocalVariable :: Name -> X64 StackIndex
+newLocalVariable name = do
+  StackMap{..} <- get
+  modify' (\_ -> StackMap (Map.insert name localCounter stackMap) (succ localCounter))
+  pure (localCounter * 8)
 
 -- TODO: remove $result$ and store the result in rax (now only ints and tags are supported for binds)
-resultVarName = "$result$" -- to store sexp values
-resultIndex = getStackIndex resultVarName
 
-codeGenVal :: Val -> X64 StackIndex
+codeGenVal :: Val -> X64 ()
 codeGenVal = \case
-  Unit -> pure 0 -- QUESTION: is this correct?
+  Unit -> pure () -- QUESTION: is this correct?
 
   Var name -> do
-    idx <- getStackIndex resultVarName
     varIdx <- getStackIndex name
-    lift $ do
-        mov rax (bpRel varIdx)
-        mov (bpRel idx) rax
-    pure idx
+    lift $ mov rax (bpRel varIdx)
 
-  Lit (LInt v)  -> do
-    idx <- getStackIndex resultVarName
-    lift $ do
-      mov rax (fromIntegral v)
-      mov (bpRel idx) rax
-    pure idx
+  Lit (LInt v) -> lift $ mov rax (fromIntegral v)
 
   ValTag (Tag Grin.C tagname _) -> do
-    idx <- getStackIndex resultVarName
-    lift $ mov (bpRel idx :: Operand RW S64) $ case tagname of
+    lift $ mov rax $ case tagname of
       "True"  -> 1 -- FIXME: hardcode it for now
       "False" -> 0
       _ -> 2 -- TODO
-    pure idx
 
 codeGenPat :: CPat -> X64 ()
 codeGenPat = \case
@@ -97,26 +90,20 @@ codeGenPat = \case
   LitPat (LInt v) -> lift $ mov rax (fromIntegral v)
 
 codeGenBinOp a b op = do
-  resultStackIndex <- getStackIndex resultVarName
-  -- load a value to register
-  aIdx <- codeGenVal a
-  lift $ mov rax (bpRel aIdx)
 
   -- load b value to register
-  bIdx <- codeGenVal b
-  lift $ do
-    mov rbx (bpRel bIdx)
+  codeGenVal b
+  lift $ mov rbx rax
 
+  -- load a value to register
+  codeGenVal a
+  lift $ do
     -- do the work
     op -- a in rax, b in rbx, result should go to rax
 
-    -- copy to result
-    mov (bpRel resultStackIndex) rax
-  pure resultStackIndex
-
 codeGen :: Exp -> Code
 codeGen = void . flip runStateT emptyStackMap . para folder where
-  folder :: ExpF (Exp, X64 StackIndex) -> X64 StackIndex
+  folder :: ExpF (Exp, X64 ()) -> X64 ()
   folder = \case
     --ProgramF defs -> mapM id
     DefF name args (_,exp) -> do
@@ -129,9 +116,7 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
           mov rbp rsp
           sub rsp (fromIntegral $ localVarCount * 8) -- create space for local variables
 
-        result <- exp
-
-        lift $ mov rax (bpRel result) -- load return value
+        exp
 
         localVarCount <- gets localCounter
       lift $ do
@@ -139,49 +124,42 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
         pop rbp
         ret
       put emptyStackMap -- clean up local variable map
-      pure $ result
 
     SReturnF val -> codeGenVal val
 
     EBindF (_,sexp) lpat (_,exp) -> do
-      valStackIndex <- sexp
+      sexp
       case lpat of
         Var name -> do
-          varStackIndex <- getStackIndex name -- lookup or create local var
+          varStackIndex <- newLocalVariable name -- create local var
           -- copy val to var
-          lift $ do
-            mov rax (bpRel valStackIndex)
-            mov (bpRel varStackIndex) rax
+          lift $ mov (bpRel varStackIndex) rax
         _ -> pure ()
       exp
 
     SFetchIF name (Just index) -> do
-      resultStackIndex <- getStackIndex resultVarName
       nameStackIndex <- getStackIndex name
       lift $ do
         -- node address
         mov rsi (bpRel nameStackIndex)
         -- fetch node item
         mov rax (regRel rsi (8 * fromIntegral index))
-        -- copy to result
-        mov (bpRel resultStackIndex) rax
-      pure resultStackIndex
 
     ECaseF val alts -> do
-      valIdx <- codeGenVal val
-      lift $ mov rdx (bpRel valIdx) -- val
+      codeGenVal val
+      lift $ mov rdx rax -- val
 
       rec
         _ <- forM_ alts $ \((Alt pat _), exp) -> do
           codeGenPat pat -- will load the tag to rax
           lift $ cmp rax rdx
           rec _ <- lift $ j NZ not_match
-              result <- exp
+              exp
               lift $ jmp exit
               not_match <- lift label
-          pure result
+          pure ()
         exit <- lift label
-      resultIndex -- QUESTION: is this correct?
+      pure ()
 
     SAppF "intAdd" [a, b] -> codeGenBinOp a b $ add rax rbx
 
@@ -198,21 +176,17 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
     SAppF name args -> do
       -- push arguments to stack
       forM_ args $ \val -> do
-          valIdx <- codeGenVal val
-          lift $ push (bpRel valIdx)
+          codeGenVal val
+          lift $ push rax
 
-      resultIdx <- resultIndex
       lift $ do
         nameLabel <- label -- TODO
 
         call (ipRelValue nameLabel)
         -- remove arguments from stack
         add rsp (fromIntegral $ length args * 8)
-        mov (bpRel resultIdx) rax -- save result
 
-      pure resultIdx
-
-    e -> sequence_ (snd <$> e) >> pure 0
+    e -> sequence_ (snd <$> e)
 
 {-
  * TODO
