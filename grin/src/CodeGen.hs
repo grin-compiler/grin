@@ -53,7 +53,13 @@ codeGenVal :: Val -> X64 StackIndex
 codeGenVal = \case
   Unit -> pure 0 -- QUESTION: is this correct?
 
-  Var name -> getStackIndex name
+  Var name -> do
+    idx <- getStackIndex resultVarName
+    varIdx <- getStackIndex name
+    lift $ do
+        mov rax (bpRel varIdx)
+        mov (bpRel idx) rax
+    pure idx
 
   Lit (LInt v)  -> do
     idx <- getStackIndex resultVarName
