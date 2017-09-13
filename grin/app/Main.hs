@@ -15,6 +15,7 @@ import Transformations
 import TrafoPlayground
 import AbstractRunGrin
 import CodeGen
+import FreshNames
 
 import Data.IntMap as IntMap
 import Data.Map as Map
@@ -52,6 +53,9 @@ main = do
 
       putStrLn "* bind normalisation / register introduction *"
       putStrLn . show . ondullcyan . pretty . bindNormalisation . registerIntroductionM 0 $ Program grin
+
+      putStrLn "* codes *"
+      putStrLn . show . nodeCode $ Program grin
 
       putStrLn "* original program *"
       printGrin $ Program grin
