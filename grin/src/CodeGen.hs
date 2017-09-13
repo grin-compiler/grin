@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, DataKinds #-}
+{-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo #-}
 
 module CodeGen where
 
@@ -87,86 +87,180 @@ getStackIndex name = do
     Nothing -> modify' (Map.insert name i) >> pure (i * 8) where i = fromIntegral $ Map.size stackMap
 
 resultVarName = "$result$" -- to store sexp values
+resultIndex = getStackIndex resultVarName
+
+codeGenVal :: Val -> X64 StackIndex
+codeGenVal = \case
+  Unit -> pure 0 -- QUESTION: is this correct?
+
+  Var name -> getStackIndex name
+
+  Lit (LInt v)  -> do
+    idx <- getStackIndex resultVarName
+    lift $ do
+      mov rax (fromIntegral v)
+      mov (bpRel idx) rax
+    pure idx
+
+  ValTag (Tag Grin.C tagname _) -> do
+    idx <- getStackIndex resultVarName
+    lift $ mov (bpRel idx :: Operand RW S64) $ case tagname of
+      "True"  -> 1 -- FIXME: hardcode it for now
+      "False" -> 0
+      _ -> 2 -- TODO
+    pure idx
+
+codeGenPat :: CPat -> X64 ()
+codeGenPat = \case
+  TagPat (Tag Grin.C tagname _) -> do
+    lift $ mov rax $ case tagname of
+      "True"  -> 1 -- FIXME: hardcode it for now
+      "False" -> 0
+      _ -> 2 -- TODO
+  LitPat (LInt v) -> lift $ mov rax (fromIntegral v)
+
+codeGenBinOp a b op = do
+  resultStackIndex <- getStackIndex resultVarName
+  -- load a value to register
+  aIdx <- codeGenVal a
+  lift $ mov rax (bpRel aIdx)
+
+  -- load b value to register
+  bIdx <- codeGenVal b
+  lift $ do
+    mov rbx (bpRel bIdx)
+
+    -- do the work
+    op -- a in rax, b in rbx, result should go to rax
+
+    -- copy to result
+    mov (bpRel resultStackIndex) rax
+  pure resultStackIndex
 
 -- TODO: create environment that contains the local stack index for variables
 codeGen :: Exp -> Code
-codeGen = void . flip runStateT mempty . cata folder where
+codeGen = void . flip runStateT mempty . para folder where
+  folder :: ExpF (Exp, X64 StackIndex) -> X64 StackIndex
   folder = \case
-    ProgramF defs -> sequence defs >> pure 0
-    DefF name args exp -> do
+    --ProgramF defs -> mapM id
+    DefF name args (_,exp) -> do
       -- pop the return values from the stack
       -- generate the entry code ; sub rsp LOCAL_VAR_SPACE_SIZE
-      exp
-      -- push the return value to the stack
-
-    SReturnF val -> case val of
-      Lit (LInt v)  -> do
-        idx <- getStackIndex resultVarName
+      rec
         lift $ do
-          mov rax (fromIntegral v)
-          mov (bpRel idx) rax
-        pure idx
-      Var name -> getStackIndex name
+          push rbp
+          mov rbp rsp
+          sub rsp (fromIntegral $ localVarCount * 8) -- create space for local variables
+        result <- exp
 
-    EBindF sexp (Var name) exp -> do
-      valStackIndex <- sexp
-      varStackIndex <- getStackIndex name -- lookup or create local var
+        lift $ mov rax (bpRel result) -- load return value
+
+        localVarCount <- gets Map.size
       lift $ do
-        mov rax (bpRel valStackIndex)
-        mov (bpRel varStackIndex) rax
+        mov rsp rbp
+        pop rbp
+        ret
+      put mempty -- clean up local variable map
+      pure $ result
+
+    SReturnF val -> codeGenVal val
+
+    EBindF (_,sexp) lpat (_,exp) -> do
+      valStackIndex <- sexp
+      case lpat of
+        Var name -> do
+          varStackIndex <- getStackIndex name -- lookup or create local var
+          -- copy val to var
+          lift $ do
+            mov rax (bpRel valStackIndex)
+            mov (bpRel varStackIndex) rax
+        _ -> pure ()
       exp
 
     SFetchIF name (Just index) -> do
       resultStackIndex <- getStackIndex resultVarName
       nameStackIndex <- getStackIndex name
       lift $ do
+        -- node address
         mov rsi (bpRel nameStackIndex)
+        -- fetch node item
         mov rax (regRel rsi (8 * fromIntegral index))
+        -- copy to result
         mov (bpRel resultStackIndex) rax
       pure resultStackIndex
 
-    -- TODO
-    ECaseF val alts -> sequence alts >> pure 0
-    AltF _ exp -> exp
+    ECaseF val alts -> do
+      valIdx <- codeGenVal val
+      lift $ mov rdx (bpRel valIdx) -- val
 
-    SAppF "intAdd" [a, b] -> do
-      lift $ do
-        add rax rbx -- TODO
-      pure 0
+      rec
+        _ <- forM_ alts $ \((Alt pat _), exp) -> do
+          codeGenPat pat -- will load the tag to rax
+          lift $ cmp rax rdx
+          rec _ <- lift $ j NZ not_match
+              result <- exp
+              lift $ jmp exit
+              not_match <- lift label
+          pure result
+        exit <- lift label
+      resultIndex -- QUESTION: is this correct?
+
+    SAppF "intAdd" [a, b] -> codeGenBinOp a b $ add rax rbx
+
+    SAppF "intGT" [a, b] -> codeGenBinOp a b $ do
+      mov rdx 1
+      mov rcx rax
+      xor_ rax rax
+      sub rcx rbx
+      cmov G rax rdx
+
         {-
-                "add" -> primAdd args
-                "mul" -> primMul args
                 "intPrint" -> primIntPrint args
-                "intGT" -> primIntGT args
-                "intAdd" -> primAdd args
         -}
     SAppF name args -> do
       -- push arguments to stack
       forM_ args $ \val -> do
-          let nameStackIndex = 0 -- TODO
-          lift $ push (bpRel nameStackIndex)
-      lift $ do
-        nameLabel <- label-- TODO
-        call (ipRelValue nameLabel)
-      -- TODO: pop return values and copy them to binders
-      pure 0 -- TODO: create local var for result
+          valIdx <- codeGenVal val
+          lift $ push (bpRel valIdx)
 
-    e -> pure 0
+      resultIdx <- resultIndex
+      lift $ do
+        nameLabel <- label -- TODO
+
+        call (ipRelValue nameLabel)
+        -- remove arguments from stack
+        add rsp (fromIntegral $ length args * 8)
+        mov (bpRel resultIdx) rax -- save result
+
+      pure resultIdx
+
+    e -> sequence_ (snd <$> e) >> pure 0
 
 {-
 data Exp
-  = Program     [Def]
-  | Def         Name [Name] Exp
-  -- Exp
-  | EBind       SimpleExp LPat Exp
-  | ECase       Val [Alt]
-  -- Simple Exp
-  | SApp        Name [SimpleVal]
-  | SReturn     Val
+ * TODO
+    Program     [Def]
+      - call main
+
+    Def         Name [Name] Exp
+      - save function label
+      - process arguments
+      done - pass result back to caller ; now it's hardcoded to rax
+
+    SApp        Name [SimpleVal]
+      - lookup function label
+
+ * Node support:
   | SStore      Val
-  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item
   | SUpdate     Name Val
-  | SBlock      Exp
-  -- Alt
-  | Alt CPat Exp
+
+ * DONE
+  -- Exp
+  done | EBind       SimpleExp LPat Exp
+  done | ECase       Val [Alt]
+  done | Alt CPat Exp
+  -- Simple Exp
+  done | SReturn     Val
+  done | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item
+  done | SBlock      Exp
 -}
