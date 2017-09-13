@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo #-}
+{-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards #-}
 
 module CodeGen where
 
@@ -35,16 +35,26 @@ bpRel = regRel rbp
 -- QUESTION: from where will we know the labels when generating call op?
 
 type StackIndex = Int32
-type StackMap = Map Name StackIndex
+
+data StackMap
+  = StackMap
+  { stackMap :: Map Name StackIndex
+  , localCounter :: Int32
+  }
+
+emptyStackMap = StackMap mempty 0
 
 type X64 = StateT StackMap CodeM
 
+addLocalVar :: Name -> StackIndex -> X64 ()
+addLocalVar name index = modify' (\sm@StackMap{..} -> sm {stackMap = Map.insert name index stackMap})
+
 getStackIndex :: Name -> X64 StackIndex
 getStackIndex name = do
-  stackMap <- get
+  StackMap{..} <- get
   case Map.lookup name stackMap of
     Just i -> pure (i * 8)
-    Nothing -> modify' (Map.insert name i) >> pure (i * 8) where i = fromIntegral $ Map.size stackMap
+    Nothing -> modify' (\_ -> StackMap (Map.insert name localCounter stackMap) i) >> pure (i * 8) where i = succ localCounter
 
 resultVarName = "$result$" -- to store sexp values
 resultIndex = getStackIndex resultVarName
@@ -105,28 +115,30 @@ codeGenBinOp a b op = do
 
 -- TODO: create environment that contains the local stack index for variables
 codeGen :: Exp -> Code
-codeGen = void . flip runStateT mempty . para folder where
+codeGen = void . flip runStateT emptyStackMap . para folder where
   folder :: ExpF (Exp, X64 StackIndex) -> X64 StackIndex
   folder = \case
     --ProgramF defs -> mapM id
     DefF name args (_,exp) -> do
-      -- pop the return values from the stack
-      -- generate the entry code ; sub rsp LOCAL_VAR_SPACE_SIZE
+      put emptyStackMap -- clean up local variable map
+      forM_ (zip (reverse args) [0..]) $ \(arg, idx) -> do
+        addLocalVar arg (-(idx + 2 + 1))
       rec
         lift $ do
           push rbp
           mov rbp rsp
           sub rsp (fromIntegral $ localVarCount * 8) -- create space for local variables
+
         result <- exp
 
         lift $ mov rax (bpRel result) -- load return value
 
-        localVarCount <- gets Map.size
+        localVarCount <- gets localCounter
       lift $ do
         mov rsp rbp
         pop rbp
         ret
-      put mempty -- clean up local variable map
+      put emptyStackMap -- clean up local variable map
       pure $ result
 
     SReturnF val -> codeGenVal val
