@@ -40,11 +40,15 @@ data StackMap
   = StackMap
   { stackMap :: Map Name StackIndex
   , localCounter :: Int32
+  , defMap :: Map Name Label
   }
 
-emptyStackMap = StackMap mempty 0
+emptyStackMap = StackMap mempty 0 mempty
 
 type X64 = StateT StackMap CodeM
+
+clearLocalVarMap :: X64 ()
+clearLocalVarMap = modify' (\sm -> sm {stackMap = mempty, localCounter = 0})
 
 addLocalVar :: Name -> StackIndex -> X64 ()
 addLocalVar name index = modify' (\sm@StackMap{..} -> sm {stackMap = Map.insert name index stackMap})
@@ -59,7 +63,7 @@ getStackIndex name = do
 newLocalVariable :: Name -> X64 StackIndex
 newLocalVariable name = do
   StackMap{..} <- get
-  modify' (\_ -> StackMap (Map.insert name localCounter stackMap) (succ localCounter))
+  modify' (\sm -> sm {stackMap = Map.insert name localCounter stackMap, localCounter = succ localCounter})
   pure (localCounter * 8)
 
 -- TODO: remove $result$ and store the result in rax (now only ints and tags are supported for binds)
@@ -107,7 +111,10 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
   folder = \case
     --ProgramF defs -> mapM id
     DefF name args (_,exp) -> do
-      put emptyStackMap -- clean up local variable map
+      funLabel <- lift label
+      modify' (\sm@StackMap{..} -> sm {defMap = Map.insert name funLabel defMap})
+
+      clearLocalVarMap -- clean up local variable map
       forM_ (zip (reverse args) [0..]) $ \(arg, idx) -> do
         addLocalVar arg (-(idx + 2 + 1))
       rec
@@ -123,7 +130,7 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
         mov rsp rbp
         pop rbp
         ret
-      put emptyStackMap -- clean up local variable map
+      clearLocalVarMap -- clean up local variable map
 
     SReturnF val -> codeGenVal val
 
@@ -161,6 +168,8 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
         exit <- lift label
       pure ()
 
+    SAppF "intPrint" [a] -> codeGenVal a -- TODO
+
     SAppF "intAdd" [a, b] -> codeGenBinOp a b $ add rax rbx
 
     SAppF "intGT" [a, b] -> codeGenBinOp a b $ do
@@ -174,14 +183,19 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
                 "intPrint" -> primIntPrint args
         -}
     SAppF name args -> do
+      {-
+      dm <- gets defMap
+      nameLabel <- Map.lookup name <$> gets defMap >>= \case
+        Nothing -> fail $ "unknown function: " ++ name ++ " labels: " ++ show dm
+        Just l -> pure l
+      -}
       -- push arguments to stack
       forM_ args $ \val -> do
           codeGenVal val
           lift $ push rax
 
       lift $ do
-        nameLabel <- label -- TODO
-
+        nameLabel <- label -- HACK
         call (ipRelValue nameLabel)
         -- remove arguments from stack
         add rsp (fromIntegral $ length args * 8)
