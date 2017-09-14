@@ -151,6 +151,8 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
 
     SAppF "intPrint" [a] -> codeGenVal a -- TODO
 
+    SAppF "intAdd" [a, Lit (LInt 1)] -> codeGenVal a >> lift (inc rax)
+    SAppF "intAdd" [Lit (LInt 1), b] -> codeGenVal b >> lift (inc rax)
     SAppF "intAdd" [a, b] -> codeGenBinOp a b $ add rax rbx
 
     SAppF "intGT" [a, b] -> codeGenBinOp a b $ do
