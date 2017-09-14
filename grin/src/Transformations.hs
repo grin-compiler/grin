@@ -104,19 +104,14 @@ splitFetch = cata folder where
   newBinds name ((i, var) : vars) = EBind (SFetchI name (Just i)) var $ newBinds name vars
 
 
-newVarName :: Exp -> Maybe [String]
+newVarName :: Exp -> Maybe String
 newVarName = \case
-  Program     defs               -> Nothing
-  Def         name names exp     -> Just [name]
-  EBind       simpleExp lpat exp -> Just ["b1", "b2"]
-  ECase       val alts           -> Just . map (\(i,_) -> "c" ++ show i) $ [0..] `zip` alts
-  SApp        name simpleVals    -> Just ["a"]
-  SReturn     val                -> Just ["r"]
-  SStore      val                -> Just ["s"]
-  SFetchI     name index         -> Nothing
-  SUpdate     name val           -> Just [name]
-  SBlock      exp                -> Nothing
-  Alt         cpat exp           -> Nothing
+  Def         name names exp     -> Just name
+  SApp        name simpleVals    -> Just "a"
+  SReturn     val                -> Just "r"
+  SStore      val                -> Just "s"
+  SUpdate     name val           -> Just name
+  _                              -> Nothing
 
 type FreshM a = State Int a
 
@@ -171,8 +166,8 @@ registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
 
 type VariablePath = [String]
 
-registerIntroduction :: Exp -> Exp
-registerIntroduction e = apo builder ([], e) where
+registerIntroduction :: Int -> Exp -> Exp
+registerIntroduction nth e = apo builder ([show nth], e) where
   builder :: (VariablePath, Exp) -> ExpF (Either Exp (VariablePath, Exp))
   builder (path, exp) =
     case exp of
@@ -185,10 +180,14 @@ registerIntroduction e = apo builder ([], e) where
       SUpdate uname (ConstTagNode tag vals) -> constTagNode (SUpdate uname) tag vals
       SUpdate uname (Lit lit)               -> literal      (SUpdate uname) lit
       SApp name vals                        -> appExp (if any isLit vals then SBlock else id) name vals
+
+      EBind sexp lpat exp                   -> EBindF (Right ("b1":path, sexp)) lpat (Right ("b2":path, exp))
+      ECase val alts                        -> ECaseF val $ zipWith (\i a -> Right (("a" ++ show i):path, a)) [0..] alts
+
       e -> fmap (Right . withPath' exp) $ project e
 
     where
-      withPath' exp = maybe withPath (withNewPath . head) (newVarName exp)
+      withPath' exp = maybe withPath withNewPath (newVarName exp)
       withPath e = (path, e)
       withNewPath p e = (p:path, e)
       vars = map (intercalate ".") $ zipWith (++) (map (pure . show) [1..]) (repeat path)
@@ -339,7 +338,7 @@ rightHoistFetch e = ana builder (mempty, e) where
   builder :: (SubstMap, Exp) -> ExpF (SubstMap, Exp)
   builder (env, exp) =
     case exp of
-      -- TODO: collect 
+      -- TODO: collect
       --EBind (SFetchI{}) pat exp
       e -> (env,) <$> project e
 
