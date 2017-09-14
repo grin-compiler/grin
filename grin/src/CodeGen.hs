@@ -15,20 +15,6 @@ import CodeGen.X86.Examples
 
 import Grin
 
-{-
-main =
-  n13 <- sum 0.0 1.0 10000.0
-  intPrint n13
-
-sum n29 n30 n31 =
-  b2 <- intGT n30 n31
-  case b2 of
-    CTrue -> pure n29
-    CFalse -> n18 <- intAdd n30 1.0
-              n28 <- intAdd n29 n30
-              sum n28 n18 n31
--}
-
 regRel reg offset = MemOp $ Addr (Just reg) (Just offset) NoIndex
 bpRel = regRel rbp
 
@@ -66,8 +52,6 @@ newLocalVariable name = do
   modify' (\sm -> sm {stackMap = Map.insert name localCounter stackMap, localCounter = succ localCounter})
   pure (localCounter * 8)
 
--- TODO: remove $result$ and store the result in rax (now only ints and tags are supported for binds)
-
 codeGenVal :: Val -> X64 ()
 codeGenVal = \case
   Unit -> pure () -- QUESTION: is this correct?
@@ -94,16 +78,14 @@ codeGenPat = \case
   LitPat (LInt v) -> lift $ mov rax (fromIntegral v)
 
 codeGenBinOp a b op = do
-
   -- load b value to register
   codeGenVal b
   lift $ mov rbx rax
 
   -- load a value to register
   codeGenVal a
-  lift $ do
-    -- do the work
-    op -- a in rax, b in rbx, result should go to rax
+
+  lift op -- do the work ; a in rax, b in rbx, result should go to rax
 
 codeGen :: Exp -> Code
 codeGen = void . flip runStateT emptyStackMap . para folder where
@@ -155,7 +137,6 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
     ECaseF val alts -> do
       codeGenVal val
       lift $ mov rdx rax -- val
-
       rec
         _ <- forM_ alts $ \((Alt pat _), exp) -> do
           codeGenPat pat -- will load the tag to rax
@@ -179,9 +160,6 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
       sub rcx rbx
       cmov G rax rdx
 
-        {-
-                "intPrint" -> primIntPrint args
-        -}
     SAppF name args -> do
       {-
       dm <- gets defMap
@@ -201,21 +179,3 @@ codeGen = void . flip runStateT emptyStackMap . para folder where
         add rsp (fromIntegral $ length args * 8)
 
     e -> sequence_ (snd <$> e)
-
-{-
- * TODO
-    Program     [Def]
-      - call main
-
-    Def         Name [Name] Exp
-      - save function label
-      - process arguments
-      done - pass result back to caller ; now it's hardcoded to rax
-
-    SApp        Name [SimpleVal]
-      - lookup function label
-
- * Node support:
-  | SStore      Val
-  | SUpdate     Name Val
--}
