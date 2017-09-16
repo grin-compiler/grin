@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, TypeApplications #-}
 module Transformations where
 
 import Data.Maybe
@@ -20,6 +20,7 @@ import Control.Comonad.Cofree
 import Control.Monad.State
 
 import Grin
+import VarGen
 
 type GenM = Gen Integer
 
@@ -104,15 +105,6 @@ splitFetch = cata folder where
   newBinds name ((i, var) : vars) = EBind (SFetchI name (Just i)) var $ newBinds name vars
 
 
-newVarName :: Exp -> Maybe String
-newVarName = \case
-  Def         name names exp     -> Just name
-  SApp        name simpleVals    -> Just "a"
-  SReturn     val                -> Just "r"
-  SStore      val                -> Just "s"
-  SUpdate     name val           -> Just name
-  _                              -> Nothing
-
 type FreshM a = State Int a
 
 registerIntroductionM :: Int -> Exp -> Exp
@@ -164,11 +156,9 @@ registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
             (context (fst <$> listToMaybe newVars) vals') -- Tag is always first and stand for constTagNode only
             newVars
 
-type VariablePath = [String]
-
 registerIntroduction :: Int -> Exp -> Exp
-registerIntroduction nth e = apo builder ([show nth], e) where
-  builder :: (VariablePath, Exp) -> ExpF (Either Exp (VariablePath, Exp))
+registerIntroduction nth e = apo builder (branchVar nth newVarGen, e) where
+  builder :: (VPM Mod10, Exp) -> ExpF (Either Exp (VPM Mod10, Exp))
   builder (path, exp) =
     case exp of
       SStore (VarTagNode name vals)         -> varTagNode   SStore          name vals
@@ -181,16 +171,17 @@ registerIntroduction nth e = apo builder ([show nth], e) where
       SUpdate uname (Lit lit)               -> literal      (SUpdate uname) lit
       SApp name vals                        -> appExp (if any isLit vals then SBlock else id) name vals
 
-      EBind sexp lpat exp                   -> EBindF (Right ("b1":path, sexp)) lpat (Right ("b2":path, exp))
-      ECase val alts                        -> ECaseF val $ zipWith (\i a -> Right (("a" ++ show i):path, a)) [0..] alts
+      Def name names exp                    -> DefF name names (Right (branch name path, exp))
+      EBind sexp lpat exp                   -> EBindF (Right (branchVar 1 path, sexp)) lpat (Right (branchVar 2 path, exp))
+      ECase val alts                        -> ECaseF val $ zipWith (\i a -> Right (branchVar i path, a)) [0..] alts
 
       e -> fmap (Right . withPath' exp) $ project e
 
     where
-      withPath' exp = maybe withPath withNewPath (newVarName exp)
+      withPath' exp = maybe withPath withNewPath (newVarName path exp)
       withPath e = (path, e)
-      withNewPath p e = (p:path, e)
-      vars = map (intercalate ".") $ zipWith (++) (map (pure . show) [1..]) (repeat path)
+      withNewPath p e = (extendVarGen p path, e)
+      evars = vars path
 
       changeSimpleVals :: [Name] -> [SimpleVal] -> ([SimpleVal], [(Name, Val)])
       changeSimpleVals newVars svals = second catMaybes . unzip $ zipWith changeVal svals newVars
@@ -201,10 +192,10 @@ registerIntroduction nth e = apo builder ([show nth], e) where
           changeVal bad        _ = error $ unwords ["registerIntroduction changeSimpleVals: invalid simple literal:", show bad]
 
       literal context lit =
-        fmap Left . project $ EBind (SReturn (Lit lit)) (Var (vars !! 0)) (context (Var $ vars !! 0))
+        fmap Left . project $ EBind (SReturn (Lit lit)) (Var (evars !! 0)) (context (Var $ evars !! 0))
 
       introduction block context vals =
-        let (vals', newVars) = changeSimpleVals vars vals
+        let (vals', newVars) = changeSimpleVals evars vals
         in fmap Left . project . block $ foldr
             (\(name, lit) -> EBind (SReturn lit) (Var name))
             (context (fst <$> listToMaybe newVars) vals') -- Tag is always first and stand for constTagNode only
@@ -219,6 +210,7 @@ registerIntroduction nth e = apo builder ([show nth], e) where
 
 
 -- Work In Progress
+type VariablePath = [String]
 {-
   TODO:
     - mapping over Vals
