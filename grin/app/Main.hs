@@ -16,6 +16,7 @@ import TrafoPlayground
 import AbstractRunGrin
 import qualified CodeGenX64 as CGX64
 import FreshNames
+import CodeGen
 
 import Data.IntMap as IntMap
 import Data.Map as Map
@@ -53,9 +54,6 @@ main = do
 
       putStrLn "* bind normalisation / register introduction *"
       putStrLn . show . ondullcyan . pretty . bindNormalisation . registerIntroduction 0 $ Program grin
-
-      putStrLn "* codes *"
-      putStrLn . show . nodeCode $ Program grin
 
       putStrLn "* original program *"
       printGrin $ Program grin
