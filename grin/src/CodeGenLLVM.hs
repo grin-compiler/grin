@@ -2,6 +2,7 @@
 
 module CodeGenLLVM where
 
+import Text.Printf
 import Control.Monad as M
 import Control.Monad.State
 import Data.Functor.Foldable as Foldable
@@ -126,6 +127,11 @@ data Val
   | Var Name
 -}
 
+{-
+  TODO:
+    collect basic blocks
+    collect global definitions
+-}
 data Env
   = Env
   { envInstructions :: [Named Instruction]
@@ -151,6 +157,21 @@ codeGenVal = \case
                       Just operand  -> pure operand
   Lit (LInt v)  -> pure $ ConstantOperand $ Int 64 (fromIntegral v)
   ValTag tag -> pure $ ConstantOperand $ getTagId tag
+  -- TODO: support nodes
+
+getCPatConstant :: CPat -> Constant
+getCPatConstant = \case
+  NodePat tag _     -> getTagId tag
+  TagPat  tag       -> getTagId tag
+  LitPat  (LInt v)  -> Int 64 (fromIntegral v)
+
+getCPatName :: CPat -> String
+getCPatName = \case
+  NodePat tag _     -> tagName tag
+  TagPat  tag       -> tagName tag
+  LitPat  (LInt v)  -> "int_" ++ show v
+ where
+  tagName (Tag c name n) = printf "%s%s%d" (show c) name n
 
 data Result
   = I Instruction
@@ -213,14 +234,33 @@ codeGen = M.void . para folder where
           finish the current basic block with the switch terminator
       -}
       -- TODO: emit switch basic block terminator
+      opVal <- codeGenVal val
+      -- TODO: collect alt basic blocks
+      let altBlocks = [(getCPatConstant cpat, mkName (getCPatName cpat)) | (Alt cpat _, m) <- alts]
+          terminator = Switch
+            { operand0'   = opVal
+            , defaultDest = mkName "impossible" -- TODO :: Name,
+            , dests       = altBlocks
+            , metadata'   = []
+            }
       O <$> unit
+
+    DefF name args (_,body) -> do
+      -- TODO collect function definition
+      let def = GlobalDefinition functionDefaults
+            { name = mkName name
+            , parameters = ([Parameter (getType a) (mkName a) [] | a <- args], False) -- HINT: False - no var args
+            , returnType = getType name
+            , basicBlocks = [] -- TODO
+            }
+      O <$> unit
+
     _ -> O <$> unit
 
 {-
   ProgramF  [a]
   DefF      Name [Name] a
 
-  ECaseF    Val [a]
   AltF CPat a
 
   SStoreF   Val
