@@ -28,7 +28,7 @@ library
     AbstractRunGrin
     CodeGenX64
     CodeGenLLVM
-    FreshNames
+    GenVars
 
   build-depends:
     base,

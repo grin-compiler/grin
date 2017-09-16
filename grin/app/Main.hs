@@ -15,8 +15,6 @@ import Transformations
 import TrafoPlayground
 import AbstractRunGrin
 import qualified CodeGenX64 as CGX64
-import FreshNames
-import CodeGen
 import VarGen
 
 import Data.IntMap as IntMap
