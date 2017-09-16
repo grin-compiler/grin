@@ -56,12 +56,12 @@ library
     ScopedTypeVariables
 
   build-depends:
-    base >=4.8 && <4.10,
+    base,
     -- monads-tf >=0.1 && <0.2,
     mtl,
-    tardis >= 0.4 && <0.5,
-    vector >=0.11 && <0.12,
-    QuickCheck >=2.8 && <2.10,
+    tardis,
+    vector,
+    QuickCheck,
     deepseq
 
   if os(windows)
@@ -74,12 +74,12 @@ test-suite test-x86-64bit
   main-is:    Test.hs
 
   build-depends:
-    base >=4.8 && <4.10,
+    base,
     --monads-tf >=0.1 && <0.2,
     mtl,
-    tardis >= 0.4 && <0.5,
-    vector >=0.11 && <0.12,
-    QuickCheck >=2.8 && <2.10,
+    tardis,
+    vector,
+    QuickCheck,
     deepseq
 
   if os(windows)

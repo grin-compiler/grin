@@ -26,7 +26,8 @@ library
     Transformations
     TrafoPlayground
     AbstractRunGrin
-    CodeGen
+    CodeGenX64
+    CodeGenLLVM
     FreshNames
 
   build-depends:
@@ -42,7 +43,10 @@ library
     ansi-wl-pprint,
     monad-gen,
     free,
-    x86-64bit
+    x86-64bit,
+    bytestring,
+    --llvm-hs,
+    llvm-hs-pure
   default-language:    Haskell2010
 
 executable grin

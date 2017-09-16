@@ -1,4 +1,4 @@
-resolver: lts-8.20
+resolver: lts-9.3
 
 packages:
 - 'grin'
@@ -6,5 +6,9 @@ packages:
 
 extra-deps:
   - monad-gen-0.3.0.1
+  - llvm-hs-pure-5.0.0
+#  - llvm-hs-5.0.0
 
-flags: {}
+#flags:
+#  llvm-hs:
+#    shared-llvm: true

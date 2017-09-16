@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards #-}
 
-module CodeGen where
+module CodeGenX64 where
 
 import Control.Monad
 import Control.Monad.State
