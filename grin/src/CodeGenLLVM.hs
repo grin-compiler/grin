@@ -25,32 +25,10 @@ import LLVM.AST.Global
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
-defAdd :: Definition
-defAdd = GlobalDefinition functionDefaults
-  { name = Name "add"
-  , parameters =
-      ( [ Parameter i64 (Name "a") []
-        , Parameter i64 (Name "b") [] ]
-      , False )
-  , returnType = i64
-  , basicBlocks = [body]
-  }
-  where
-    body = BasicBlock
-        (Name "entry")
-        [ Name "result" :=
-            Add False  -- no signed wrap
-                False  -- no unsigned wrap
-                (LocalReference i64 (Name "a"))
-                (LocalReference i64 (Name "b"))
-                []]
-        (Do $ Ret (Just (LocalReference i64 (Name "result"))) [])
-
-
 module_ :: AST.Module
 module_ = defaultModule
   { moduleName = "basic"
-  , moduleDefinitions = [defAdd]
+  , moduleDefinitions = []
   }
 
 {-
@@ -127,14 +105,11 @@ data Val
   | Var Name
 -}
 
-{-
-  TODO:
-    collect basic blocks
-    collect global definitions
--}
 data Env
   = Env
-  { envInstructions :: [Named Instruction]
+  { envDefinitions  :: [Definition]
+  , envBasicBlocks  :: [BasicBlock]
+  , envInstructions :: [Named Instruction]
   , constantMap     :: Map Grin.Name Operand
   }
 
@@ -178,6 +153,25 @@ data Result
   | O Operand
 
 -- https://stackoverflow.com/questions/6374355/llvm-assembly-assign-integer-constant-to-register
+{-
+  NOTE: if the cata result is a monad then it means the codegen is sequential
+
+  IDEA: write an untyped codegen ; which does not rely on HPT calculated types
+-}
+
+-- utils
+closeBlock :: Terminator -> CG ()
+closeBlock = undefined
+
+getOperand :: Result -> CG Operand
+getOperand = undefined
+
+startNewBlock :: AST.Name -> CG ()
+startNewBlock = undefined
+
+addBlock :: AST.Name -> CG a -> CG a
+addBlock = undefined
+
 codeGen :: Exp -> CG ()
 codeGen = M.void . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
@@ -196,7 +190,7 @@ codeGen = M.void . para folder where
 
     -- primops calls
     SAppF "intPrint" [a] -> O <$> unit -- TODO
-    SAppF "intGt" [a, b] -> do
+    SAppF "intGT" [a, b] -> do
       [opA, opB] <- mapM codeGenVal [a, b]
       pure . I $ ICmp
         { iPredicate  = SGT
@@ -227,43 +221,57 @@ codeGen = M.void . para folder where
         , metadata            = []
         }
 
+    AltF _ a -> snd a
     ECaseF val alts -> do
-      {-
-        TODO:
-          collect alternatives ; create new basic block for each with unique alt name (i.e. based on the tag name)
-          finish the current basic block with the switch terminator
-      -}
-      -- TODO: emit switch basic block terminator
       opVal <- codeGenVal val
-      -- TODO: collect alt basic blocks
-      let altBlocks = [(getCPatConstant cpat, mkName (getCPatName cpat)) | (Alt cpat _, m) <- alts]
-          terminator = Switch
+      let switchExit  = mkName "switch.exit" -- TODO: generate unique name ; this is the next block
+      (altDests, altValues) <- fmap unzip . forM alts $ \(Alt cpat _, altBody) -> do
+        let altBlockName  = mkName ("switch." ++ getCPatName cpat) -- TODO: generate unique names
+            altCPatVal    = getCPatConstant cpat
+        addBlock altBlockName $ do
+          result <- altBody
+          resultOp <- getOperand result
+          closeBlock $ Br
+            { dest      = switchExit
+            , metadata' = []
+            }
+          pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
+      closeBlock $ Switch
             { operand0'   = opVal
-            , defaultDest = mkName "impossible" -- TODO :: Name,
-            , dests       = altBlocks
+            , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+            , dests       = altDests
             , metadata'   = []
             }
-      O <$> unit
+      startNewBlock switchExit
+      pure . I $ Phi
+        { type'           = i64 -- TODO :: Type,
+        , incomingValues  = altValues
+        , metadata        = []
+        }
 
     DefF name args (_,body) -> do
-      -- TODO collect function definition
+      -- clear def local state
+      let clearDefState = modify' (\env -> env {envBasicBlocks = mempty, envInstructions = mempty, constantMap = mempty})
+      clearDefState
+      startNewBlock (mkName $ name ++ ".entry")
+      result <- body >>= getOperand
+      closeBlock $ Ret
+        { returnOperand = Just result
+        , metadata'     = []
+        }
+      blocks <- gets envBasicBlocks
       let def = GlobalDefinition functionDefaults
-            { name = mkName name
-            , parameters = ([Parameter (getType a) (mkName a) [] | a <- args], False) -- HINT: False - no var args
-            , returnType = getType name
-            , basicBlocks = [] -- TODO
+            { name        = mkName name
+            , parameters  = ([Parameter (getType a) (mkName a) [] | a <- args], False) -- HINT: False - no var args
+            , returnType  = getType name
+            , basicBlocks = blocks
             }
+      clearDefState
+      modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions})
       O <$> unit
 
-    _ -> O <$> unit
+    ProgramF defs -> sequence_ (map snd defs) >> O <$> unit
 
-{-
-  ProgramF  [a]
-  DefF      Name [Name] a
-
-  AltF CPat a
-
-  SStoreF   Val
-  SFetchIF  Name (Maybe Int)
-  SUpdateF  Name Val
--}
+    SStoreF{}   -> fail "SStoreF is not supported yet"
+    SFetchIF{}  -> fail "SFetchIF is not supported yet"
+    SUpdateF{}  -> fail "SUpdateF is not supported yet"
