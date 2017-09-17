@@ -27,17 +27,17 @@ import LLVM.Module
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
-toLLVM :: AST.Module -> IO ()
-toLLVM mod = withContext $ \ctx -> do
+toLLVM :: String -> AST.Module -> IO ()
+toLLVM fname mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
   BS.putStrLn llvm
+  BS.writeFile fname llvm
 
-
-printLLVM :: Exp -> IO ()
-printLLVM exp = do
+printLLVM :: String -> Exp -> IO ()
+printLLVM fname exp = do
   let mod = codeGen exp
   --pPrint mod
-  toLLVM mod
+  toLLVM fname mod
 
 tagMap :: Map Tag (Type, Constant)
 tagMap = Map.fromList
@@ -224,7 +224,7 @@ codeGen = toModule . flip execState emptyEnv . para folder where
     SAppF name args -> do
       operands <- mapM codeGenVal args
       pure . I $ Call
-        { tailCallKind        = Nothing
+        { tailCallKind        = Just Tail
         , callingConvention   = CC.C
         , returnAttributes    = []
         , function            = Right $ ConstantOperand $ GlobalReference (getType name) (mkName name)

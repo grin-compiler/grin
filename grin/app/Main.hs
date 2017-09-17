@@ -70,4 +70,4 @@ main = do
       print . CGX64.codeGen $ Program grin
 
       putStrLn "* LLVM codegen *"
-      CGLLVM.printLLVM $ Program grin
+      CGLLVM.printLLVM (printf "%s.ll" fname) $ Program grin
