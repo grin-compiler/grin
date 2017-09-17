@@ -1,4 +1,4 @@
-main =
+grinMain =
   n13 <- sum 0 1 10
   intPrint n13
 

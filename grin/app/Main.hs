@@ -16,6 +16,7 @@ import TrafoPlayground
 import AbstractRunGrin
 import qualified CodeGenX64 as CGX64
 import qualified CodeGenLLVM as CGLLVM
+import qualified JITLLVM
 import VarGen
 
 import Data.IntMap as IntMap
@@ -62,7 +63,7 @@ main = do
       putStrLn "* evaluation result *"
       eval' PureReducer fname >>= print . pretty
 
-      let (result, computer) = abstractRun (assignStoreIDs $ Program grin) "main"
+      let (result, computer) = abstractRun (assignStoreIDs $ Program grin) "grinMain"
       putStrLn "* HPT *"
       print . pretty $ computer
 
@@ -70,4 +71,8 @@ main = do
       print . CGX64.codeGen $ Program grin
 
       putStrLn "* LLVM codegen *"
-      CGLLVM.printLLVM (printf "%s.ll" fname) $ Program grin
+      let mod = CGLLVM.codeGen $ Program grin
+      CGLLVM.toLLVM (printf "%s.ll" fname) mod
+
+      putStrLn "* LLVM JIT run *"
+      print =<< JITLLVM.eagerJit mod

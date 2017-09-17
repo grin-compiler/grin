@@ -19,6 +19,7 @@ import LLVM.AST.AddrSpace
 import LLVM.AST.Constant hiding (Add, ICmp)
 import LLVM.AST.IntegerPredicate
 import qualified LLVM.AST.CallingConvention as CC
+import qualified LLVM.AST.Linkage as L
 import qualified LLVM.AST as AST
 import LLVM.AST.Global
 import LLVM.Context
@@ -55,7 +56,8 @@ typeMap = Map.fromList
   , ("n30", i64)
   , ("n31", i64)
   , ("sum", fun i64 [i64, i64, i64])
-  , ("main", fun i64 [])
+  , ("intPrint", fun i64 [i64])
+  , ("grinMain", fun i64 [])
   ] where
     fun ret args = PointerType
                     { pointerReferent = FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
@@ -201,7 +203,7 @@ codeGen = toModule . flip execState emptyEnv . para folder where
       exp
 
     -- primops calls
-    SAppF "intPrint" [a] -> pure . O $ undef i64 -- TODO
+    --SAppF "intPrint" [a] -> pure . O $ undef i64 -- TODO
     SAppF "intGT" [a, b] -> do
       [opA, opB] <- mapM codeGenVal [a, b]
       pure . I $ ICmp
@@ -285,8 +287,27 @@ codeGen = toModule . flip execState emptyEnv . para folder where
       modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions})
       O <$> unit
 
-    ProgramF defs -> sequence_ (map snd defs) >> O <$> unit
+    ProgramF defs -> do
+      -- register prim fun lib
+      external i64 (mkName "intPrint") [(i64, mkName "x")]
+      sequence_ (map snd defs) >> O <$> unit
 
     SStoreF{}   -> fail "SStoreF is not supported yet"
     SFetchIF{}  -> fail "SFetchIF is not supported yet"
     SUpdateF{}  -> fail "SUpdateF is not supported yet"
+
+-- prim fun lib
+{-
+foreign export ccall intPrint :: Int -> IO Int
+intPrint :: Int -> IO Int
+intPrint x = print x >> return x
+-}
+external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
+external retty label argtys = modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions}) where
+  def = GlobalDefinition $ functionDefaults
+    { name        = label
+    , linkage     = L.External
+    , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
+    , returnType  = retty
+    , basicBlocks = []
+    }

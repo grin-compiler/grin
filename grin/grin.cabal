@@ -28,6 +28,7 @@ library
     AbstractRunGrin
     CodeGenX64
     CodeGenLLVM
+    JITLLVM
     VarGen
 
   build-depends:
