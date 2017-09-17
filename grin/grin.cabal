@@ -45,7 +45,7 @@ library
     free,
     x86-64bit,
     bytestring,
-    --llvm-hs,
+    llvm-hs,
     llvm-hs-pure
   default-language:    Haskell2010
 

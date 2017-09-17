@@ -15,6 +15,7 @@ import Transformations
 import TrafoPlayground
 import AbstractRunGrin
 import qualified CodeGenX64 as CGX64
+import qualified CodeGenLLVM as CGLLVM
 import VarGen
 
 import Data.IntMap as IntMap
@@ -67,3 +68,6 @@ main = do
 
       putStrLn "* x86 64bit codegen *"
       print . CGX64.codeGen $ Program grin
+
+      putStrLn "* LLVM codegen *"
+      CGLLVM.printLLVM $ Program grin

@@ -2,6 +2,7 @@
 
 module CodeGenLLVM where
 
+import Text.Show.Pretty
 import Text.Printf
 import Control.Monad as M
 import Control.Monad.State
@@ -12,59 +13,31 @@ import qualified Data.Map as Map
 
 import Grin
 
-import LLVM.AST
+import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type
+import LLVM.AST.AddrSpace
 import LLVM.AST.Constant hiding (Add, ICmp)
 import LLVM.AST.IntegerPredicate
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST as AST
 import LLVM.AST.Global
---import LLVM.Context
---import LLVM.Module
+import LLVM.Context
+import LLVM.Module
 
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
-module_ :: AST.Module
-module_ = defaultModule
-  { moduleName = "basic"
-  , moduleDefinitions = []
-  }
-
-{-
 toLLVM :: AST.Module -> IO ()
 toLLVM mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
   BS.putStrLn llvm
 
 
-main2 :: IO ()
-main2 = toLLVM module_
--}
-{-
-main =
-  n13 <- sum 0 1 10000
-  intPrint n13
-
-sum n29 n30 n31 =
-  b2 <- intGT n30 n31
-  case b2 of
-    CTrue -> pure n29
-    CFalse -> n18 <- intAdd n30 1
-              n28 <- intAdd n29 n30
-              sum n28 n18 n31
--}
-
-{-
-    b2     -> {BAS}
-    n13    -> {BAS,sum}
-    n18    -> {BAS}
-    n28    -> {BAS}
-    n29    -> {BAS}
-    n30    -> {BAS}
-    n31    -> {BAS}
-    sum    -> {BAS,sum}
--}
+printLLVM :: Exp -> IO ()
+printLLVM exp = do
+  let mod = codeGen exp
+  --pPrint mod
+  toLLVM mod
 
 tagMap :: Map Tag (Type, Constant)
 tagMap = Map.fromList
@@ -81,9 +54,18 @@ typeMap = Map.fromList
   , ("n29", i64)
   , ("n30", i64)
   , ("n31", i64)
-  , ("sum", i64)
-  ]
+  , ("sum", fun i64 [i64, i64, i64])
+  , ("main", fun i64 [])
+  ] where
+    fun ret args = PointerType
+                    { pointerReferent = FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
+                    , pointerAddrSpace = AddrSpace 0
+                    }
+{-
+PointerType {pointerReferent = FunctionType {resultType = PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 64}, argumentTypes = [IntegerType {typeBits = 64},IntegerType {typeBits = 64},IntegerType {typeBits = 64}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}, argumentTypes = [IntegerType {typeBits = 64},IntegerType {typeBits = 64},IntegerType {typeBits = 64}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
 
+PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 64}, argumentTypes = [IntegerType {typeBits = 64},IntegerType {typeBits = 64},IntegerType {typeBits = 64}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
+-}
 getType :: Grin.Name -> Type
 getType name = case Map.lookup name typeMap of
   Nothing -> error $ "getType - unknown variable " ++ name
@@ -107,22 +89,36 @@ data Val
 
 data Env
   = Env
-  { envDefinitions  :: [Definition]
-  , envBasicBlocks  :: [BasicBlock]
-  , envInstructions :: [Named Instruction]
-  , constantMap     :: Map Grin.Name Operand
+  { envDefinitions    :: [Definition]
+  , envBasicBlocks    :: [BasicBlock]
+  , envInstructions   :: [Named Instruction]
+  , constantMap       :: Map Grin.Name Operand
+  , currentBlockName  :: AST.Name
+  , envTempCounter    :: Int
+  }
+
+emptyEnv = Env
+  { envDefinitions    = mempty
+  , envBasicBlocks    = mempty
+  , envInstructions   = mempty
+  , constantMap       = mempty
+  , currentBlockName  = mkName ""
+  , envTempCounter    = 0
   }
 
 type CG = State Env
 
 emit :: [Named Instruction] -> CG ()
-emit instructions = modify' (\env@Env{..} -> env {envInstructions = instructions ++ envInstructions})
+emit instructions = modify' (\env@Env{..} -> env {envInstructions = envInstructions ++ instructions})
 
 addConstant :: Grin.Name -> Operand -> CG ()
 addConstant name operand = modify' (\env@Env{..} -> env {constantMap = Map.insert name operand constantMap})
 
 unit :: CG Operand
 unit = pure $ ConstantOperand $ Undef VoidType
+
+undef :: Type -> Operand
+undef = ConstantOperand . Undef
 
 codeGenVal :: Val -> CG Operand
 codeGenVal = \case
@@ -161,19 +157,39 @@ data Result
 
 -- utils
 closeBlock :: Terminator -> CG ()
-closeBlock = undefined
-
-getOperand :: Result -> CG Operand
-getOperand = undefined
+closeBlock tr = modify' (\env@Env{..} -> env {envInstructions = mempty, envBasicBlocks = envBasicBlocks ++ [BasicBlock currentBlockName envInstructions (Do tr)]})
 
 startNewBlock :: AST.Name -> CG ()
-startNewBlock = undefined
+startNewBlock name = modify' (\env@Env{..} -> env {envInstructions = mempty, currentBlockName = name})
 
 addBlock :: AST.Name -> CG a -> CG a
-addBlock = undefined
+addBlock name block = do
+  instructions <- gets envInstructions
+  curBlockName <- gets currentBlockName
+  startNewBlock name
+  result <- block
+  modify' (\env@Env{..} -> env {envInstructions = instructions, currentBlockName = curBlockName})
+  pure result
 
-codeGen :: Exp -> CG ()
-codeGen = M.void . para folder where
+uniqueTempName :: CG AST.Name
+uniqueTempName = state (\env@Env{..} -> (mkName $ printf "tmp%d" envTempCounter, env {envTempCounter = succ envTempCounter}))
+
+getOperand :: Result -> CG Operand
+getOperand = \case
+  O a -> pure a
+  I i -> do
+          tmp <- uniqueTempName
+          emit [tmp := i]
+          pure $ LocalReference i64 tmp -- TODO: handle type
+
+toModule :: Env -> AST.Module
+toModule Env{..} = defaultModule
+  { moduleName = "basic"
+  , moduleDefinitions = envDefinitions
+  }
+
+codeGen :: Exp -> AST.Module
+codeGen = toModule . flip execState emptyEnv . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     SReturnF val -> O <$> codeGenVal val
@@ -236,6 +252,7 @@ codeGen = M.void . para folder where
             , metadata' = []
             }
           pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
+      curBlockName <- gets currentBlockName
       closeBlock $ Switch
             { operand0'   = opVal
             , defaultDest = switchExit -- QUESTION: do we want to catch this error?
@@ -245,7 +262,7 @@ codeGen = M.void . para folder where
       startNewBlock switchExit
       pure . I $ Phi
         { type'           = i64 -- TODO :: Type,
-        , incomingValues  = altValues
+        , incomingValues  = (undef i64, curBlockName) : altValues
         , metadata        = []
         }
 
@@ -263,8 +280,9 @@ codeGen = M.void . para folder where
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
             , parameters  = ([Parameter (getType a) (mkName a) [] | a <- args], False) -- HINT: False - no var args
-            , returnType  = getType name
+            , returnType  = i64 -- getType name -- TODO: get ret type
             , basicBlocks = blocks
+            , callingConvention = CC.C
             }
       clearDefState
       modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions})
