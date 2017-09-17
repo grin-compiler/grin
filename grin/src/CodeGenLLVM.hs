@@ -205,7 +205,7 @@ codeGen = toModule . flip execState emptyEnv . para folder where
       exp
 
     -- primops calls
-    SAppF "intPrint" [a] -> O <$> unit -- TODO
+    SAppF "intPrint" [a] -> pure . O $ undef i64 -- TODO
     SAppF "intGT" [a, b] -> do
       [opA, opB] <- mapM codeGenVal [a, b]
       pure . I $ ICmp
@@ -241,24 +241,25 @@ codeGen = toModule . flip execState emptyEnv . para folder where
     ECaseF val alts -> do
       opVal <- codeGenVal val
       let switchExit  = mkName "switch.exit" -- TODO: generate unique name ; this is the next block
-      (altDests, altValues) <- fmap unzip . forM alts $ \(Alt cpat _, altBody) -> do
-        let altBlockName  = mkName ("switch." ++ getCPatName cpat) -- TODO: generate unique names
-            altCPatVal    = getCPatConstant cpat
-        addBlock altBlockName $ do
-          result <- altBody
-          resultOp <- getOperand result
-          closeBlock $ Br
-            { dest      = switchExit
-            , metadata' = []
-            }
-          pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
-      curBlockName <- gets currentBlockName
-      closeBlock $ Switch
-            { operand0'   = opVal
-            , defaultDest = switchExit -- QUESTION: do we want to catch this error?
-            , dests       = altDests
-            , metadata'   = []
-            }
+      rec
+        curBlockName <- gets currentBlockName
+        closeBlock $ Switch
+              { operand0'   = opVal
+              , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+              , dests       = altDests
+              , metadata'   = []
+              }
+        (altDests, altValues) <- fmap unzip . forM alts $ \(Alt cpat _, altBody) -> do
+          let altBlockName  = mkName ("switch." ++ getCPatName cpat) -- TODO: generate unique names
+              altCPatVal    = getCPatConstant cpat
+          addBlock altBlockName $ do
+            result <- altBody
+            resultOp <- getOperand result
+            closeBlock $ Br
+              { dest      = switchExit
+              , metadata' = []
+              }
+            pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
       startNewBlock switchExit
       pure . I $ Phi
         { type'           = i64 -- TODO :: Type,
