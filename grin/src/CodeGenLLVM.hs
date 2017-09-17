@@ -61,11 +61,7 @@ typeMap = Map.fromList
                     { pointerReferent = FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
                     , pointerAddrSpace = AddrSpace 0
                     }
-{-
-PointerType {pointerReferent = FunctionType {resultType = PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 64}, argumentTypes = [IntegerType {typeBits = 64},IntegerType {typeBits = 64},IntegerType {typeBits = 64}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}, argumentTypes = [IntegerType {typeBits = 64},IntegerType {typeBits = 64},IntegerType {typeBits = 64}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
 
-PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 64}, argumentTypes = [IntegerType {typeBits = 64},IntegerType {typeBits = 64},IntegerType {typeBits = 64}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
--}
 getType :: Grin.Name -> Type
 getType name = case Map.lookup name typeMap of
   Nothing -> error $ "getType - unknown variable " ++ name
