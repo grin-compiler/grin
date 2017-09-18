@@ -75,4 +75,4 @@ main = do
       CGLLVM.toLLVM (printf "%s.ll" fname) mod
 
       putStrLn "* LLVM JIT run *"
-      print =<< JITLLVM.eagerJit mod
+      JITLLVM.eagerJit mod

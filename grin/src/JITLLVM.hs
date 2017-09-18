@@ -19,12 +19,22 @@ import Foreign.Ptr
 foreign import ccall "dynamic"
   mkMain :: FunPtr (IO Int64) -> IO Int64
 
+foreign import ccall "wrapper"
+  wrapIntPrint :: (Int64 -> IO Int64) -> IO (FunPtr (Int64 -> IO Int64))
+
 withTestModule :: AST.Module -> (LLVM.Module.Module -> IO a) -> IO a
 withTestModule mod f = withContext $ \context -> withModuleFromAST context mod f
 
-resolver :: MangledSymbol -> IRCompileLayer l -> MangledSymbol -> IO JITSymbol
-resolver testFunc compileLayer symbol
-  = findSymbol compileLayer symbol True
+myIntPrintImpl :: Int64 -> IO Int64
+myIntPrintImpl i = print i >> pure i
+
+resolver :: CompileLayer l => MangledSymbol -> l -> MangledSymbol -> IO JITSymbol
+resolver intPrint compileLayer symbol
+  | symbol == intPrint = do
+      funPtr <- wrapIntPrint myIntPrintImpl
+      let addr = ptrToWordPtr (castFunPtrToPtr funPtr)
+      return (JITSymbol addr (JITSymbolFlags False True))
+  | otherwise = findSymbol compileLayer symbol True
 
 nullResolver :: MangledSymbol -> IO JITSymbol
 nullResolver s = return (JITSymbol 0 (JITSymbolFlags False False))
@@ -38,13 +48,11 @@ eagerJit amod =
       withHostTargetMachine $ \tm ->
         withObjectLinkingLayer $ \objectLayer ->
           withIRCompileLayer objectLayer tm $ \compileLayer -> do
-            asm <- moduleLLVMAssembly mod
-            --BS.putStrLn asm
-            testFunc <- mangleSymbol compileLayer "grinMain"
+            intPrint <- mangleSymbol compileLayer "intPrint"
             withModule
               compileLayer
               mod
-              (SymbolResolver (resolver testFunc compileLayer) nullResolver) $
+              (SymbolResolver (resolver intPrint compileLayer) nullResolver) $
               \moduleSet -> do
                 mainSymbol <- mangleSymbol compileLayer "grinMain"
                 JITSymbol mainFn _ <- findSymbol compileLayer mainSymbol True
