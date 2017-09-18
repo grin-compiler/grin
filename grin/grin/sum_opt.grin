@@ -1,7 +1,6 @@
 grinMain =
   n13 <- sum 0 1 10000
-  --intPrint n13
-  pure n13
+  intPrint n13
 
 sum n29 n30 n31 =
   b2 <- intGT n30 n31
