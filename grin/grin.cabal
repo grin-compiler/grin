@@ -59,6 +59,7 @@ executable grin
                      , recursion-schemes
                      , ansi-wl-pprint
                      , containers
+                     , process
   default-language:    Haskell2010
 
 test-suite grin-test

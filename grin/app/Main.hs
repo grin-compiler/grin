@@ -18,6 +18,7 @@ import qualified CodeGenX64 as CGX64
 import qualified CodeGenLLVM as CGLLVM
 import qualified JITLLVM
 import VarGen
+import System.Process
 
 import Data.IntMap as IntMap
 import Data.Map as Map
@@ -72,7 +73,13 @@ main = do
 
       putStrLn "* LLVM codegen *"
       let mod = CGLLVM.codeGen $ Program grin
-      CGLLVM.toLLVM (printf "%s.ll" fname) mod
+          llName = printf "%s.ll" fname
+          sName = printf "%s.s" fname
+      CGLLVM.toLLVM llName mod
+
+      putStrLn "* LLVM X64 codegen *"
+      callProcess "llc-5.0" [llName]
+      readFile sName >>= putStrLn
 
       putStrLn "* LLVM JIT run *"
       JITLLVM.eagerJit mod
