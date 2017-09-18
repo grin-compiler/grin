@@ -28,17 +28,11 @@ import LLVM.Module
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
-toLLVM :: String -> AST.Module -> IO ()
+toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
-  BS.putStrLn llvm
   BS.writeFile fname llvm
-
-printLLVM :: String -> Exp -> IO ()
-printLLVM fname exp = do
-  let mod = codeGen exp
-  --pPrint mod
-  toLLVM fname mod
+  pure llvm
 
 tagMap :: Map Tag (Type, Constant)
 tagMap = Map.fromList

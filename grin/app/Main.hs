@@ -68,10 +68,10 @@ main = do
       putStrLn "* HPT *"
       print . pretty $ computer
 
-      putStrLn "* x86 64bit codegen *"
-      print . CGX64.codeGen $ Program grin
+      --putStrLn "* x86 64bit codegen *"
+      --print . CGX64.codeGen $ Program grin
 
-      putStrLn "* LLVM codegen *"
+      --putStrLn "* LLVM codegen *"
       let mod = CGLLVM.codeGen $ Program grin
           llName = printf "%s.ll" fname
           sName = printf "%s.s" fname
@@ -82,4 +82,4 @@ main = do
       readFile sName >>= putStrLn
 
       putStrLn "* LLVM JIT run *"
-      JITLLVM.eagerJit mod
+      JITLLVM.eagerJit mod "grinMain"

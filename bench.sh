@@ -1,1 +1,1 @@
-stack bench --benchmark-arguments '--output=$benchmark.html'
+stack bench grin --benchmark-arguments '--output=$benchmark.html'

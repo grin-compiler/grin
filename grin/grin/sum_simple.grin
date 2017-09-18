@@ -1,9 +1,9 @@
 grinMain = t1 <- store (CInt 1)
-       t2 <- store (CInt 10000)
-       t3 <- store (Fupto t1 t2)
-       t4 <- store (Fsum t3)
-       (CInt r') <- eval t4
-       intPrint r'
+           t2 <- store (CInt 10000)
+           t3 <- store (Fupto t1 t2)
+           t4 <- store (Fsum t3)
+           (CInt r') <- eval t4
+           intPrint r'
 
 upto m n = (CInt m') <- eval m
            (CInt n') <- eval n

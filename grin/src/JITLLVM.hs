@@ -3,6 +3,9 @@
 
 module JITLLVM where
 
+import Grin
+import Data.String
+
 import LLVM.Target
 import LLVM.Context
 import LLVM.Module
@@ -42,8 +45,8 @@ nullResolver s = return (JITSymbol 0 (JITSymbolFlags False False))
 failInIO :: ExceptT String IO a -> IO a
 failInIO = either fail return <=< runExceptT
 
-eagerJit :: AST.Module -> IO Int64
-eagerJit amod =
+eagerJit :: AST.Module -> String -> IO Grin.Val
+eagerJit amod mainName =
     withTestModule amod $ \mod ->
       withHostTargetMachine $ \tm ->
         withObjectLinkingLayer $ \objectLayer ->
@@ -54,7 +57,7 @@ eagerJit amod =
               mod
               (SymbolResolver (resolver intPrint compileLayer) nullResolver) $
               \moduleSet -> do
-                mainSymbol <- mangleSymbol compileLayer "grinMain"
+                mainSymbol <- mangleSymbol compileLayer (fromString mainName)
                 JITSymbol mainFn _ <- findSymbol compileLayer mainSymbol True
                 result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn))
-                return result
+                return $ Unit

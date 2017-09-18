@@ -21,7 +21,7 @@ hs_sum_opt = do
       sum n28 n18 n31
 
 hs_sum_pure :: IO Float
-hs_sum_pure = pure $ sum 0 1 10000
+hs_sum_pure = pure $ sum 0 1 100000
  where
   sum :: Float -> Float -> Float -> Float
   sum n29 n30 n31
@@ -29,7 +29,7 @@ hs_sum_pure = pure $ sum 0 1 10000
     | otherwise = sum (n29 + n30) (n30 + 1) n31
 
 hs_sum_naive :: IO Float
-hs_sum_naive = pure $ sum [1..10000]
+hs_sum_naive = pure $ sum [1..100000]
 
 main :: IO ()
 main = do
@@ -42,6 +42,9 @@ main = do
     , bgroup "ST"
       [ bench "sum_simple" $ nfIO $ eval' STReducer "grin/sum_simple.grin"
       , bench "sum_opt" $ nfIO $ eval' STReducer "grin/sum_opt.grin"
+      ]
+    , bgroup "LLVM"
+      [ bench "sum_opt" $ nfIO $ eval' LLVMReducer "grin/sum_opt.grin"
       ]
     , bgroup "GHC"
       [ bench "hs_sum_opt" $ nfIO $ hs_sum_opt
