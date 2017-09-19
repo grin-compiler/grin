@@ -52,10 +52,10 @@ main = do
       putStrLn . show . ondullmagenta . pretty . pipeline $ Program grin
 
       putStrLn "* register introduction *"
-      putStrLn . show . ondullred . pretty . registerIntroduction 0 $ Program grin
+      putStrLn . show . ondullred . pretty . registerIntroductionI 0 $ Program grin
 
       putStrLn "* bind normalisation / register introduction *"
-      putStrLn . show . ondullcyan . pretty . bindNormalisation . registerIntroduction 0 $ Program grin
+      putStrLn . show . ondullcyan . pretty . bindNormalisation . registerIntroductionI 0 $ Program grin
 
       putStrLn "* original program *"
       printGrin $ Program grin
