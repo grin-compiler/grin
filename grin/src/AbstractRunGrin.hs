@@ -49,6 +49,8 @@ data RTVar
 type NodeSet = VarSet
 type VarSet = Set RTVar -- HINT: VarVal in the paper
 
+type HPTResult = Computer
+
 data Computer
   = Computer
   { storeMap  :: IntMap NodeSet   -- models the computer memory

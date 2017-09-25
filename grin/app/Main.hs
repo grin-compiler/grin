@@ -29,6 +29,20 @@ pipeline =
   renameVaribales (Map.fromList [("i'", "i''"), ("a", "a'")]) .
   generateEval
 
+simplifyForOptimization :: HPTResult -> Exp -> Exp
+simplifyForOptimization hptResult =
+  caseSimplification .
+  vectorisation hptResult
+
+simplifyForCodeGen :: Exp -> Exp
+simplifyForCodeGen =
+  registerIntroductionI 0 .
+  rightHoistFetch .
+  splitFetch
+
+lowerGrin :: HPTResult -> Exp -> Exp
+lowerGrin hptResult = simplifyForCodeGen . simplifyForOptimization hptResult
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -42,8 +56,12 @@ main = do
       putStrLn "* tag info *"
       putStrLn . show . collectTagInfo $ Program grin
 
+      let (result, hptResult) = abstractRun (assignStoreIDs $ Program grin) "grinMain"
+      putStrLn "* HPT *"
+      print . pretty $ hptResult
+
       putStrLn "* vectorisation / split fetch operation / case simplifiaction*"
-      let optProgram = caseSimplification . splitFetch . vectorisation $ Program grin
+      let optProgram = caseSimplification . splitFetch . vectorisation hptResult $ Program grin
       putStrLn . show . ondullblack . pretty $ optProgram
       --putStrLn "* evaluation result *"
       --print . pretty $ evalProgram PureReducer optProgram
@@ -61,18 +79,18 @@ main = do
       printGrin $ Program grin
 
       -- grin code evaluation
-      putStrLn "* evaluation result *"
+      putStrLn "* Pure evaluation result *"
       eval' PureReducer fname >>= print . pretty
-
-      let (result, computer) = abstractRun (assignStoreIDs $ Program grin) "grinMain"
-      putStrLn "* HPT *"
-      print . pretty $ computer
 
       --putStrLn "* x86 64bit codegen *"
       --print . CGX64.codeGen $ Program grin
 
+      let lowGrin = lowerGrin hptResult $ Program grin
+      putStrLn "* Low level GRIN *"
+      putStrLn . show . ondullcyan . pretty $ lowGrin
+
       --putStrLn "* LLVM codegen *"
-      let mod = CGLLVM.codeGen $ Program grin
+      let mod = CGLLVM.codeGen lowGrin
           llName = printf "%s.ll" fname
           sName = printf "%s.s" fname
       CGLLVM.toLLVM llName mod

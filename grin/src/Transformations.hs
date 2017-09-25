@@ -1,6 +1,7 @@
-{-# LANGUAGE LambdaCase, TupleSections, TypeApplications #-}
+{-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards #-}
 module Transformations where
 
+import Text.Printf
 import Data.Maybe
 import Data.List (intercalate, foldl')
 import Data.Set (Set, singleton, toList)
@@ -21,22 +22,29 @@ import Control.Monad.State
 
 import Grin
 import VarGen
+import AbstractRunGrin
 
 type GenM = Gen Integer
 
 type VectorisationAccumulator = (Map.Map Name Val, Exp)
 
-vectorisation :: Exp -> Exp
-vectorisation expression = apo folder (Map.empty, expression)
-  where
-    maximumArity = maximum (0 : map tagArity (Set.toList (collectTagInfo expression)))
+getVarNodeArity :: HPTResult -> Name -> Maybe Int
+getVarNodeArity Computer{..} name = case Map.lookup name envMap of
+  Nothing -> error $ printf "getVarNodeArity - unknown variable '%s'" name
+  Just varSet -> case [length args | N (RTNode tag args) <- Set.toList varSet] of
+    [] -> Nothing
+    maxArityWithoutTag -> Just $ 1 + maximum maxArityWithoutTag
 
+vectorisation :: HPTResult -> Exp -> Exp
+vectorisation hptResult expression = apo folder (Map.empty, expression)
+  where
     folder :: VectorisationAccumulator -> ExpF (Either Exp VectorisationAccumulator)
     folder (nameStore, expression) =
       case expression of
-        EBind simpleexp (Var name) exp ->
-          EBindF (Right (nameStore, simpleexp)) nodeContents (Right (newNameStore, exp))
-          where
+        EBind simpleexp var@(Var name) exp -> case getVarNodeArity hptResult name of
+          Nothing           -> EBindF (Right (nameStore, simpleexp)) var (Right (nameStore, exp))
+          Just maximumArity -> EBindF (Right (nameStore, simpleexp)) nodeContents (Right (newNameStore, exp))
+           where
             nodeContents = VarTagNode (name <> show 0) (map (\i -> Var (name <> show i)) [1 .. maximumArity])
             newNameStore = Map.insert name nodeContents nameStore
         ECase (Var name) alts | Just nodeContents <- Map.lookup name nameStore -> ECaseF nodeContents (map (\subExpression -> Right (nameStore, subExpression)) alts)

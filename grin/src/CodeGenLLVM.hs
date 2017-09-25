@@ -28,18 +28,28 @@ import LLVM.Module
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
+{-
+  Supported language:
+    Int64 + nodes from Int64
+    intPrint
+    intGT
+    intAdd
+-}
+
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
   BS.writeFile fname llvm
   pure llvm
 
+-- TODO: create Tag map
 tagMap :: Map Tag (Type, Constant)
 tagMap = Map.fromList
   [ (Tag Grin.C "False" 0, (i1, Int 1 0))
   , (Tag Grin.C "True" 0,  (i1, Int 1 1))
   ]
 
+-- TODO: create Type map
 typeMap :: Map Grin.Name Type
 typeMap = Map.fromList
   [ ("b2" , i64)
@@ -283,19 +293,13 @@ codeGen = toModule . flip execState emptyEnv . para folder where
 
     ProgramF defs -> do
       -- register prim fun lib
-      external i64 (mkName "intPrint") [(i64, mkName "x")]
+      registerPrimFunLib
       sequence_ (map snd defs) >> O <$> unit
 
     SStoreF{}   -> fail "SStoreF is not supported yet"
     SFetchIF{}  -> fail "SFetchIF is not supported yet"
     SUpdateF{}  -> fail "SUpdateF is not supported yet"
 
--- prim fun lib
-{-
-foreign export ccall intPrint :: Int -> IO Int
-intPrint :: Int -> IO Int
-intPrint x = print x >> return x
--}
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
 external retty label argtys = modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions}) where
   def = GlobalDefinition $ functionDefaults
@@ -305,3 +309,8 @@ external retty label argtys = modify' (\env@Env{..} -> env {envDefinitions = def
     , returnType  = retty
     , basicBlocks = []
     }
+
+-- available primitive functions
+registerPrimFunLib :: CG ()
+registerPrimFunLib = do
+  external i64 (mkName "intPrint") [(i64, mkName "x")]
