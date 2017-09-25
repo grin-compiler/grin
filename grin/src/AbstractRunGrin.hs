@@ -199,7 +199,7 @@ evalSimpleExp = \case
 
   _ :< (SAppF n args) -> case n of
                 -- Special case
-                "eval" -> evalEval args
+                -- "eval" -> evalEval args
                 -- Primitives
                 "add" -> pure basVarSet
                 "mul" -> pure basVarSet

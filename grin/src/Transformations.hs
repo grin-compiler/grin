@@ -33,7 +33,7 @@ getVarNodeArity Computer{..} name = case Map.lookup name envMap of
   Nothing -> error $ printf "getVarNodeArity - unknown variable '%s'" name
   Just varSet -> case [length args | N (RTNode tag args) <- Set.toList varSet] of
     [] -> Nothing
-    maxArityWithoutTag -> Just $ 1 + maximum maxArityWithoutTag
+    maxArityWithoutTag -> Just $ maximum maxArityWithoutTag
 
 vectorisation :: HPTResult -> Exp -> Exp
 vectorisation hptResult expression = apo folder (Map.empty, expression)

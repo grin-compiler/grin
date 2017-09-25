@@ -85,14 +85,16 @@ main = do
       --putStrLn "* x86 64bit codegen *"
       --print . CGX64.codeGen $ Program grin
 
-      let lowGrin = lowerGrin hptResult $ Program grin
+      let lowGrin = bindNormalisation . lowerGrin hptResult $ Program grin
       putStrLn "* Low level GRIN *"
       putStrLn . show . ondullcyan . pretty $ lowGrin
 
-      --putStrLn "* LLVM codegen *"
+      putStrLn "* LLVM codegen *"
       let mod = CGLLVM.codeGen lowGrin
           llName = printf "%s.ll" fname
           sName = printf "%s.s" fname
+      print mod
+      putStrLn "* to LLVM *"
       CGLLVM.toLLVM llName mod
 
       putStrLn "* LLVM X64 codegen *"

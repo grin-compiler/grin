@@ -2,6 +2,7 @@
 
 module CodeGenLLVM where
 
+--import Debug.Trace
 import Text.Show.Pretty
 import Text.Printf
 import Control.Monad as M
@@ -35,6 +36,7 @@ import qualified Data.ByteString.Char8 as BS
     intGT
     intAdd
 -}
+trace _ = id
 
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
@@ -70,12 +72,12 @@ typeMap = Map.fromList
 
 getType :: Grin.Name -> Type
 getType name = case Map.lookup name typeMap of
-  Nothing -> error $ "getType - unknown variable " ++ name
+  Nothing -> trace ("getType - unknown variable " ++ name) i64
   Just ty -> ty
 
 getTagId :: Tag -> Constant
 getTagId tag = case Map.lookup tag tagMap of
-  Nothing -> error $ "getTag - unknown tag " ++ show tag
+  Nothing -> trace ("getTag - unknown tag " ++ show tag) $ Int 64 0
   Just (ty, c) -> c
 
 {-
@@ -131,6 +133,25 @@ codeGenVal = \case
   Lit (LInt v)  -> pure $ ConstantOperand $ Int 64 (fromIntegral v)
   ValTag tag -> pure $ ConstantOperand $ getTagId tag
   -- TODO: support nodes
+  --ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
+  VarTagNode tagVar args -> do
+    opTag <- codeGenVal $ Var tagVar
+    opArgs <- mapM codeGenVal args -- complete node (variable tag)
+    {-
+      TODO:
+        - create the struct type
+            - type of tag
+            - type of args
+        - create struct with constants
+        - fot the rest emit insertvalue
+    -}
+    pure $ ConstantOperand $ Struct
+      { structName    = Nothing
+      , isPacked      = True -- or False?
+      , memberValues  = replicate (1 + length opArgs) (Undef i64)-- TODO :: [ Constant ]
+      }
+
+  val -> error $ "codeGenVal: " ++ show val
 
 getCPatConstant :: CPat -> Constant
 getCPatConstant = \case
@@ -296,9 +317,43 @@ codeGen = toModule . flip execState emptyEnv . para folder where
       registerPrimFunLib
       sequence_ (map snd defs) >> O <$> unit
 
-    SStoreF{}   -> fail "SStoreF is not supported yet"
-    SFetchIF{}  -> fail "SFetchIF is not supported yet"
-    SUpdateF{}  -> fail "SUpdateF is not supported yet"
+    SStoreF val -> do
+      -- TODO: allocate memory; calculate types properly
+      let opAddress = ConstantOperand $ Null $ PointerType i64 (AddrSpace 0)
+      opVal <- codeGenVal val
+      tempName <- uniqueTempName
+      emit [tempName := Store
+        { volatile        = False
+        , address         = opAddress
+        , value           = opVal
+        , maybeAtomicity  = Nothing
+        , alignment       = 0
+        , metadata        = []
+        }]
+      pure . O $ LocalReference i64 tempName
+
+    SFetchIF name mIdx -> do
+      -- TODO: alter address according mIdx; using getelementptr
+      opAddress <- codeGenVal $ Var name
+      pure . I $ Load
+        { volatile        = False
+        , address         = opAddress
+        , maybeAtomicity  = Nothing
+        , alignment       = 0
+        , metadata        = []
+        }
+
+    SUpdateF name val -> do
+      opAddress <- codeGenVal $ Var name
+      opVal <- codeGenVal val
+      pure . I $ Store
+        { volatile        = False
+        , address         = opAddress
+        , value           = opVal
+        , maybeAtomicity  = Nothing
+        , alignment       = 0
+        , metadata        = []
+        }
 
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
 external retty label argtys = modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions}) where
