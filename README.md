@@ -1,12 +1,17 @@
 # GRIN
 
 The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction.
+For an overview read
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/The GRIN Project.pdf">
+The GRIN Project
+</a> article. To grasp the details take your time and read Urban Boquist's PhD thesis on
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf">
+Code Optimisation Techniques for Lazy Functional Languages
+</a>.
+
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=41">
-Read more.
-</a>
-
 <img src="https://raw.githubusercontent.com/andorp/grin/master/images/grin-syntax.png" width="500" >
-
+</a>
 
 ## Simplification Transformations
 
