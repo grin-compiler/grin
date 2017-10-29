@@ -187,7 +187,7 @@ case exp of
   SApp        name simpleVals    -> sapp name simpleVals
   SReturn     val                -> sreturn val
   SStore      val                -> sstore  val
-  SFetch      name               -> sfetch  name
+  SFetchI     name x             -> sfetch  name
   SUpdate     name val           -> supdate name val
   SBlock      exp                -> sblock exp
   Alt cpat exp                   -> alt cpat exp
