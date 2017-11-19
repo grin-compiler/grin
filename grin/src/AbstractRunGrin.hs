@@ -1,5 +1,13 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractRunGrin {-(abstractRun, Computer(..))-} where
+module AbstractRunGrin
+  ( abstractRun
+  , Computer(..)
+  , HPTResult
+  , Step(..)
+  , RTLocVal(..)
+  , RTNode(..)
+  , RTVar(..)
+  ) where
 
 import Debug.Trace
 

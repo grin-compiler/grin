@@ -1,6 +1,9 @@
 {-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards, OverloadedStrings #-}
 
-module CodeGenLLVM where
+module CodeGenLLVM
+  ( codeGen
+  , toLLVM
+  ) where
 
 import Debug.Trace
 import Text.Show.Pretty
