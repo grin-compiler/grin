@@ -2,7 +2,7 @@
 
 module CodeGenLLVM where
 
---import Debug.Trace
+import Debug.Trace
 import Text.Show.Pretty
 import Text.Printf
 import Control.Monad as M
@@ -36,7 +36,7 @@ import qualified Data.ByteString.Char8 as BS
     intGT
     intAdd
 -}
-trace _ = id
+--trace _ = id
 
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
@@ -64,15 +64,16 @@ typeMap = Map.fromList
   , ("sum", fun i64 [i64, i64, i64])
   , ("intPrint", fun i64 [i64])
   , ("grinMain", fun i64 [])
+  , ("upto", fun (struct [i64]) [i64, i64])
+  , ("eval", fun (struct [i64]) [struct [i64]])
   ] where
-    fun ret args = PointerType
-                    { pointerReferent = FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
-                    , pointerAddrSpace = AddrSpace 0
-                    }
+    struct elems = StructureType { isPacked = False, elementTypes = elems }
+    ptr ty = PointerType { pointerReferent = ty, pointerAddrSpace = AddrSpace 0}
+    fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
 
 getType :: Grin.Name -> Type
 getType name = case Map.lookup name typeMap of
-  Nothing -> trace ("getType - unknown variable " ++ name) i64
+  Nothing -> trace ("getType - unknown variable " ++ name) $ PointerType i64 (AddrSpace 0)
   Just ty -> ty
 
 getTagId :: Tag -> Constant
@@ -321,6 +322,15 @@ codeGen = toModule . flip execState emptyEnv . para folder where
       -- TODO: allocate memory; calculate types properly
       let opAddress = ConstantOperand $ Null $ PointerType i64 (AddrSpace 0)
       opVal <- codeGenVal val
+      pure . I $ Store
+        { volatile        = False
+        , address         = opAddress
+        , value           = opVal
+        , maybeAtomicity  = Nothing
+        , alignment       = 0
+        , metadata        = []
+        }
+      {-
       tempName <- uniqueTempName
       emit [tempName := Store
         { volatile        = False
@@ -331,7 +341,7 @@ codeGen = toModule . flip execState emptyEnv . para folder where
         , metadata        = []
         }]
       pure . O $ LocalReference i64 tempName
-
+      -}
     SFetchIF name mIdx -> do
       -- TODO: alter address according mIdx; using getelementptr
       opAddress <- codeGenVal $ Var name

@@ -3,11 +3,15 @@ resolver: lts-9.3
 packages:
 - 'grin'
 - 'x64'
+- location:
+    git: https://github.com/llvm-hs/llvm-hs-pretty.git
+    commit: 7e426813eeb3a7e6337ce78674260bbae35d40ed
+  extra-dep: true
 
 extra-deps:
   - monad-gen-0.3.0.1
-  - llvm-hs-pure-5.0.0
-  - llvm-hs-5.0.0
+  - llvm-hs-pure-5.1.0
+  - llvm-hs-5.1.0
 
 flags:
   llvm-hs:

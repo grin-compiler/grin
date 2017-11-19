@@ -22,6 +22,9 @@ import System.Process
 
 import Data.IntMap as IntMap
 import Data.Map as Map
+import qualified Text.Show.Pretty as PS
+import LLVM.Pretty (ppllvm)
+import qualified Data.Text.Lazy.IO as Text
 
 pipeline :: Exp -> Exp
 pipeline =
@@ -97,7 +100,7 @@ main = do
       let mod = CGLLVM.codeGen lowGrin
           llName = printf "%s.ll" fname
           sName = printf "%s.s" fname
-      print mod
+      Text.putStrLn $ ppllvm mod
       putStrLn "* to LLVM *"
       CGLLVM.toLLVM llName mod
 

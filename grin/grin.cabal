@@ -60,6 +60,9 @@ executable grin
                      , ansi-wl-pprint
                      , containers
                      , process
+                     , pretty-show
+                     , llvm-hs-pretty
+                     , text
   default-language:    Haskell2010
 
 test-suite grin-test
