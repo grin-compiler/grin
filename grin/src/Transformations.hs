@@ -8,13 +8,14 @@ import Data.Set (Set, singleton, toList)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Monoid hiding (Alt)
-import Control.Arrow (second)
+import Control.Arrow ((***), second)
 import Control.Monad
 import Control.Monad.Gen
 import Control.Monad.Writer hiding (Alt)
 import Data.Functor.Foldable as Foldable
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.List as List
 
 import qualified Data.Foldable
 import Control.Comonad.Cofree
@@ -23,6 +24,8 @@ import Control.Monad.State
 import Grin
 import VarGen
 import AbstractRunGrin
+
+import qualified Debug.Trace as Debug
 
 type GenM = Gen Integer
 
@@ -390,15 +393,89 @@ caseSimplification e = ana builder (mempty, e) where
                              where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) (subst env val) m) env (zip vars vals)
       alt -> (env, alt)
 
--- Right hoist fetch operations
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e = ana builder (mempty, e) where
-  builder :: (SubstMap, Exp) -> ExpF (SubstMap, Exp)
-  builder (env, exp) =
-    case exp of
-      -- TODO: collect
-      --EBind (SFetchI{}) pat exp
-      e -> (env,) <$> project e
+rightHoistFetch e = rightHoistFetchRun (rightHoistFetchCollect e) e
+
+type CollectInfo = Set Name
+
+-- triplet f s t (fc, us, as) = (f fc, s us, t as)
+
+-- Collects the variables that are not present in every case alternative.
+rightHoistFetchCollect :: Exp -> CollectInfo
+rightHoistFetchCollect = cata collect where
+  collect :: ExpF CollectInfo -> CollectInfo
+  collect = \case
+    ProgramF     infos               -> mconcat infos -- _ Set.unions infos
+    DefF         name names info     -> info Set.\\ (Set.fromList names)
+    EBindF       info1 lpat info2    -> info1 <> info2 -- TODO: lpat introduces the var
+    ECaseF       val infos           -> removeCommon infos
+    SAppF        name simpleVals     -> mconcat $ map var simpleVals
+    SReturnF     val                 -> var val
+    SStoreF      val                 -> var val
+    SFetchIF     name pos            -> Set.singleton name
+    SUpdateF     name val            -> Set.singleton name <> var val
+    SBlockF      info                -> info
+    AltF cpat info                   -> info
+
+  removeCommon :: [Set Name] -> Set Name
+  removeCommon cs =
+    let commons = foldl1 Set.intersection (Debug.traceShowId cs)
+    in (Set.unions cs) Set.\\ commons
+
+  var :: SimpleVal -> Set Name
+  var (Var n) = Set.singleton n
+  var _       = Set.empty
+
+type SkippedFetches = Map Name (Name, Maybe Int)
+
+rightHoistFetchRun :: CollectInfo -> Exp -> Exp
+rightHoistFetchRun useds e = ana hoist (useds, Map.empty, e) where
+  hoist :: (CollectInfo, SkippedFetches, Exp) -> ExpF (CollectInfo, SkippedFetches, Exp)
+  hoist (names,locals,e) = case e of
+    e@(EBind (SFetchI n p) (Var v2) exp)
+      | Set.member v2 names ->
+        let (locals', e') = skipLocalFetches (Map.singleton v2 (n,p), exp)
+        in insertLocalFetches names (locals <> locals') e'
+    e@(EBind _ _ _) -> insertLocalFetches names locals e
+    e -> (,,) names locals <$> project e
+    where
+      insertLocalFetches names locals e@(EBind se1 _ _) =
+        case varsInExp (project se1) `Set.intersection` names of
+           vars | Set.null vars -> (,,) names locals <$> project e
+                | otherwise ->
+                    (,,) (names Set.\\ vars) locals
+                    <$> project (createNewFetchBinds vars locals e)
+      insertLocalFetches names locals e = (,,) names locals <$> project e
+
+      createNewFetchBinds :: Set Name -> SkippedFetches -> Exp -> Exp
+      createNewFetchBinds vars locals x =
+        -- TODO: Rename (Var n) to fresh names.
+        foldl (\e n -> EBind (uncurry SFetchI . maybe (error $ show (n, locals)) id $ Map.lookup n locals) (Var n) e)
+          x vars
+
+      skipLocalFetches :: (SkippedFetches, Exp) -> (SkippedFetches, Exp)
+      skipLocalFetches (m, EBind (SFetchI n pos) (Var x) e)
+        | Set.member x names = skipLocalFetches (Map.insert x (n, pos) m, e)
+      skipLocalFetches me = me
+
+withoutKeys :: (Ord k) => Map k a -> Set k -> Map k a
+withoutKeys m s = Map.filterWithKey (\k _ -> k `Set.notMember` s) m
+
+varsInVal :: Val -> Set Name
+varsInVal = cata $ \case
+  VarTagNodeF n ns -> Set.unions $ (Set.singleton n):ns
+  VarF n           -> Set.singleton n
+  _ -> Set.empty
+
+varsInExp :: ExpF a -> Set Name
+varsInExp = \case
+  ECaseF    val alts        -> varsInVal val
+  SAppF     name simpleVals -> Set.unions $ map varsInVal simpleVals
+  SReturnF  val             -> varsInVal val
+  SStoreF   val             -> varsInVal val
+  SFetchIF  name pos        -> Set.singleton name
+  SUpdateF  name val        -> Set.singleton name <> varsInVal val
+  _ -> Set.empty
 
 -- linter for low level grin
 lintLowLevelGrin :: Exp -> All -- TODO: collect errors

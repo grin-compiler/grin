@@ -81,6 +81,10 @@ main = do
       -- grin code evaluation
       putStrLn "* Pure evaluation result *"
       eval' PureReducer fname >>= print . pretty
+      putStrLn "* Right hoist fetch *"
+      print $ rightHoistFetchCollect $ Program grin
+      putStrLn . show . pretty $ Program grin
+      putStrLn . show . pretty . rightHoistFetch $ Program grin
 
       --putStrLn "* x86 64bit codegen *"
       --print . CGX64.codeGen $ Program grin

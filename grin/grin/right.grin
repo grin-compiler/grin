@@ -1,0 +1,32 @@
+right p =
+  t' <- fetch p [0]
+  a1 <- fetch p [1]
+  a2 <- fetch p [2]
+  case t' of
+   CNil -> pure (CInt 0)
+   CCons -> update a1 (CInt 1)
+            update a2 (CInt 2)
+            x <- fetch a2
+            y <- fetch a1
+            update a1 (CInt 3)
+            pure (CInt 1)
+
+right1 p =
+  t' <- fetch p [0]
+  a1 <- fetch p [1]
+  a2 <- fetch p [2]
+  case t' of
+   CNil -> pure (CInt 0)
+   CCons -> update a1 (CInt 1)
+            update a2 (CInt 2)
+            x <- fetch a2
+            y <- fetch a1
+            update a1 (CInt 3)
+            t1 <- fetch p [0]
+            a3 <- fetch p [1]
+            a4 <- fetch p [2]
+            case t1 of
+                  CNil -> pure (CInt 0)
+                  CCons -> x1 <- fetch a3
+                           y1 <- fetch a4
+                           pure (CInt 4)
