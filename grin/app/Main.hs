@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
 module Main where
 
 import Control.Monad
@@ -25,26 +25,17 @@ import Data.Map as Map
 import qualified Text.Show.Pretty as PS
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
+import System.FilePath
 
-pipeline :: Exp -> Exp
-pipeline =
-  registerIntroductionM 0 .
-  renameVaribales (Map.fromList [("i'", "i''"), ("a", "a'")]) .
-  generateEval
+import Control.Monad.Trans.State.Strict
+import Control.Monad.IO.Class
+import Lens.Micro
+import Lens.Micro.TH
+import Lens.Micro.Mtl
+import Data.Set
 
-simplifyForOptimization :: HPTResult -> Exp -> Exp
-simplifyForOptimization hptResult =
-  caseSimplification .
-  vectorisation hptResult
+import Pipeline
 
-simplifyForCodeGen :: Exp -> Exp
-simplifyForCodeGen =
-  registerIntroductionI 0 .
-  rightHoistFetch .
-  splitFetch
-
-lowerGrin :: HPTResult -> Exp -> Exp
-lowerGrin hptResult = simplifyForCodeGen . simplifyForOptimization hptResult
 
 main :: IO ()
 main = do
@@ -53,60 +44,57 @@ main = do
     [] -> putStrLn "usage: grin GRIN_SOURCE"
     x -> forM_ x $ \fname -> do
       grin <- either (fail . show) id <$> parseGrin fname
+      let program = Program grin
       let result = [printf "stores %s %d" name $ countStores exp | Def name _ exp <- grin]
       putStrLn "* store count *"
       putStrLn $ unlines result
       putStrLn "* tag info *"
-      putStrLn . show . collectTagInfo $ Program grin
+      putStrLn . show . collectTagInfo $ program
 
       let (result, hptResult) = abstractRun (assignStoreIDs $ Program grin) "grinMain"
       putStrLn "* HPT *"
       print . pretty $ hptResult
 
-      putStrLn "* vectorisation / split fetch operation / case simplifiaction*"
-      let optProgram = caseSimplification . splitFetch . vectorisation hptResult $ Program grin
-      putStrLn . show . ondullblack . pretty $ optProgram
-      --putStrLn "* evaluation result *"
-      --print . pretty $ evalProgram PureReducer optProgram
+      pipeline program
+        [ HPT
+        , T Vectorisation
+        , T SplitFetch
+        , T CaseSimplification
+        , PrintGrin ondullblack
+        ]
 
-      putStrLn "* generate eval / rename variables / register introduction *"
-      putStrLn . show . ondullmagenta . pretty . pipeline $ Program grin
+      pipeline program
+        [ HPT
+        , T RegisterIntroduction
+        , T $ RenameVariables (Map.fromList [("i'", "i''"), ("a", "a'")])
+        , T GenerateEval
+        , PrintGrin ondullmagenta
+        ]
 
-      putStrLn "* register introduction *"
-      putStrLn . show . ondullred . pretty . registerIntroductionI 0 $ Program grin
+      pipeline program
+        [ HPT, T RegisterIntroduction, PrintGrin ondullred ]
 
-      putStrLn "* bind normalisation / register introduction *"
-      putStrLn . show . ondullcyan . pretty . bindNormalisation . registerIntroductionI 0 $ Program grin
+      pipeline program
+        [ HPT, T RegisterIntroduction, T BindNormalisation, PrintGrin ondullcyan ]
 
-      putStrLn "* original program *"
-      printGrin $ Program grin
+      pipeline program
+        [ PrintGrin id ]
 
-      -- grin code evaluation
-      putStrLn "* Pure evaluation result *"
-      eval' PureReducer fname >>= print . pretty
-      putStrLn "* Right hoist fetch *"
-      print $ rightHoistFetchCollect $ Program grin
-      putStrLn . show . pretty $ Program grin
-      putStrLn . show . pretty . rightHoistFetch $ Program grin
+      pipeline program
+        [ PureEval ]
 
-      --putStrLn "* x86 64bit codegen *"
-      --print . CGX64.codeGen $ Program grin
+      pipeline program
+        [ HPT, T RightHoistFetch, PrintGrin id ]
 
-      let lowGrin = bindNormalisation . lowerGrin hptResult $ Program grin
-      putStrLn "* Low level GRIN *"
-      putStrLn . show . ondullcyan . pretty $ lowGrin
-
-      putStrLn "* LLVM codegen *"
-      let mod = CGLLVM.codeGen lowGrin
-          llName = printf "%s.ll" fname
-          sName = printf "%s.s" fname
-      Text.putStrLn $ ppllvm mod
-      putStrLn "* to LLVM *"
-      CGLLVM.toLLVM llName mod
-
-      putStrLn "* LLVM X64 codegen *"
-      callProcess "llc-5.0" [llName]
-      readFile sName >>= putStrLn
-
-      putStrLn "* LLVM JIT run *"
-      JITLLVM.eagerJit mod "grinMain"
+      pipeline program
+        [ HPT
+        , T CaseSimplification
+        , T Vectorisation
+        , T RegisterIntroduction
+        , T RightHoistFetch
+        , T SplitFetch
+        , T BindNormalisation
+        , PrintGrin ondullcyan
+        , JITLLVM
+        , SaveLLVM fname
+        ]

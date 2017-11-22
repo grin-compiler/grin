@@ -30,6 +30,7 @@ library
     CodeGenLLVM
     JITLLVM
     VarGen
+    Pipeline
 
   build-depends:
     base,
@@ -47,7 +48,15 @@ library
     x86-64bit,
     bytestring,
     llvm-hs,
-    llvm-hs-pure
+    llvm-hs-pure,
+    filepath,
+    transformers,
+    microlens,
+    microlens-mtl,
+    microlens-th,
+    process,
+    text,
+    llvm-hs-pretty
   default-language:    Haskell2010
 
 executable grin
@@ -63,6 +72,11 @@ executable grin
                      , pretty-show
                      , llvm-hs-pretty
                      , text
+                     , filepath
+                     , transformers
+                     , microlens
+                     , microlens-th
+                     , microlens-mtl
   default-language:    Haskell2010
 
 test-suite grin-test
