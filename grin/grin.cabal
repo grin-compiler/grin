@@ -56,7 +56,8 @@ library
     microlens-th,
     process,
     text,
-    llvm-hs-pretty
+    llvm-hs-pretty,
+    optparse-applicative
   default-language:    Haskell2010
 
 executable grin
@@ -77,6 +78,7 @@ executable grin
                      , microlens
                      , microlens-th
                      , microlens-mtl
+                     , optparse-applicative
   default-language:    Haskell2010
 
 test-suite grin-test

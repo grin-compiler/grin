@@ -7,7 +7,7 @@ import Text.Printf
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import Eval
-import ParseGrin
+import ParseGrin hiding (value)
 import Grin
 import Pretty
 import PrettyHPT
@@ -33,68 +33,88 @@ import Lens.Micro
 import Lens.Micro.TH
 import Lens.Micro.Mtl
 import Data.Set
+import Options.Applicative
 
 import Pipeline
 
+data Options = Options
+  { optFiles :: [FilePath]
+  , optTrans :: [Pipeline]
+  } deriving Show
+
+flg c l h = flag' c (mconcat [long l, help h])
+
+transformOpts :: Parser Transformation
+transformOpts =
+      flg CaseSimplification "cs" "Case Simplification"
+  <|> flg SplitFetch "sf" "Split Fetch"
+  <|> flg Vectorisation "v" "Vectorisation"
+  <|> flg RegisterIntroduction "ri" "Register Introduction"
+  <|> flg BindNormalisation "bi" "Bind Normalisation"
+  <|> flg RightHoistFetch "rhi" "Right Hoist Fetch"
+  <|> flg GenerateEval "ge" "Generate Eval"
+  <|> ((RenameVariables . Map.fromList)
+        <$> option auto (mconcat
+              [ long "rv"
+              , help "RenameVariables"
+              ]))
+
+pipelineOpts :: Parser Pipeline
+pipelineOpts =
+      flg HPT "hpt" "Heap to point analysis"
+  <|> flg TagInfo "tag-info" "Tag Information"
+  <|> flg (PrintGrin id) "print-grin" "Prints the actual grin code"
+  <|> flg PureEval "eval" "Evaluate the grin program"
+  <|> flg JITLLVM "llvm" "JIT with LLVM"
+  <|> (SaveLLVM <$> (strOption (mconcat
+        [ long "save-llvm"
+        , help "Save the generated llvm"
+        ])))
+  <|> (SaveLLVM <$> (strOption (mconcat
+        [ long "save-grin"
+        , help "Save the generated grin"
+        ])))
+  <|> (T <$> transformOpts)
+
+options :: IO Options
+options = execParser $ info
+  (pipelineArgs <**> helper)
+  (mconcat
+    [ fullDesc
+    , progDesc "grin compiler"
+    , header "grin compiler"
+    ])
+  where
+    pipelineArgs = Options
+      <$> some (argument str (metavar "FILES..."))
+      <*> many pipelineOpts
+
+defaultPipeline :: Options -> Options
+defaultPipeline = \case
+  Options files [] ->
+    Options files
+      [ HPT
+      , T CaseSimplification
+      , T Vectorisation
+      , T RegisterIntroduction
+      , T RightHoistFetch
+      , T SplitFetch
+      , T BindNormalisation
+      , PrintGrin ondullcyan
+      , SaveLLVM "code"
+      , JITLLVM
+      ]
+  opts -> opts
 
 main :: IO ()
 main = do
-  args <- getArgs
-  case args of
-    [] -> putStrLn "usage: grin GRIN_SOURCE"
-    x -> forM_ x $ \fname -> do
-      grin <- either (fail . show) id <$> parseGrin fname
-      let program = Program grin
-      let result = [printf "stores %s %d" name $ countStores exp | Def name _ exp <- grin]
-      putStrLn "* store count *"
-      putStrLn $ unlines result
-      putStrLn "* tag info *"
-      putStrLn . show . collectTagInfo $ program
-
-      let (result, hptResult) = abstractRun (assignStoreIDs $ Program grin) "grinMain"
-      putStrLn "* HPT *"
-      print . pretty $ hptResult
-
-      pipeline program
-        [ HPT
-        , T Vectorisation
-        , T SplitFetch
-        , T CaseSimplification
-        , PrintGrin ondullblack
-        ]
-
-      pipeline program
-        [ HPT
-        , T RegisterIntroduction
-        , T $ RenameVariables (Map.fromList [("i'", "i''"), ("a", "a'")])
-        , T GenerateEval
-        , PrintGrin ondullmagenta
-        ]
-
-      pipeline program
-        [ HPT, T RegisterIntroduction, PrintGrin ondullred ]
-
-      pipeline program
-        [ HPT, T RegisterIntroduction, T BindNormalisation, PrintGrin ondullcyan ]
-
-      pipeline program
-        [ PrintGrin id ]
-
-      pipeline program
-        [ PureEval ]
-
-      pipeline program
-        [ HPT, T RightHoistFetch, PrintGrin id ]
-
-      pipeline program
-        [ HPT
-        , T CaseSimplification
-        , T Vectorisation
-        , T RegisterIntroduction
-        , T RightHoistFetch
-        , T SplitFetch
-        , T BindNormalisation
-        , PrintGrin ondullcyan
-        , JITLLVM
-        , SaveLLVM fname
-        ]
+  Options files steps <- defaultPipeline <$> options
+  forM_ files $ \fname -> do
+    grin <- either (fail . show) id <$> parseGrin fname
+    let program = Program grin
+    let result = [printf "stores %s %d" name $ countStores exp | Def name _ exp <- grin]
+    putStrLn "* store count *"
+    putStrLn $ unlines result
+    putStrLn "* tag info *"
+    putStrLn . show . collectTagInfo $ program
+    pipeline program steps

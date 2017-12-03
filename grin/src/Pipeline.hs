@@ -25,27 +25,6 @@ import Lens.Micro.TH
 import Lens.Micro.Mtl
 import Data.Set
 
-{-
-pipeline :: Exp -> Exp
-pipeline =
-  registerIntroductionM 0 .
-  renameVaribales (Map.fromList [("i'", "i''"), ("a", "a'")]) .
-  generateEval
-
-simplifyForOptimization :: HPTResult -> Exp -> Exp
-simplifyForOptimization hptResult =
-  caseSimplification .
-  vectorisation hptResult
-
-simplifyForCodeGen :: Exp -> Exp
-simplifyForCodeGen =
-  registerIntroductionI 0 .
-  rightHoistFetch .
-  splitFetch
-
-lowerGrin :: HPTResult -> Exp -> Exp
-lowerGrin hptResult = simplifyForCodeGen . simplifyForOptimization hptResult
--}
 
 type RenameVariablesMap = Map String String
 
@@ -120,6 +99,7 @@ hpt :: PipelineM ()
 hpt = do
   grin <- use psExp
   let (_, result) = abstractRun (assignStoreIDs grin) "grinMain"
+  liftIO $ print result
   psHPTResult .= Just result
 
 transformationM :: Transformation -> PipelineM ()
