@@ -6,40 +6,44 @@ import System.Environment
 import Text.Printf
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
+import AbstractRunGrin
 import Eval
-import ParseGrin hiding (value)
 import Grin
+import ParseGrin hiding (value)
+import Pipeline
 import Pretty
 import PrettyHPT
-import Transformations
-import TrafoPlayground
-import AbstractRunGrin
-import qualified CodeGenX64 as CGX64
-import qualified CodeGenLLVM as CGLLVM
-import qualified JITLLVM
-import VarGen
 import System.Process
+import TrafoPlayground
+import Transformations
+import VarGen
+
+import qualified CodeGenLLVM as CGLLVM
+import qualified CodeGenX64 as CGX64
+import qualified JITLLVM
 
 import Data.IntMap as IntMap
 import Data.Map as Map
-import qualified Text.Show.Pretty as PS
 import LLVM.Pretty (ppllvm)
-import qualified Data.Text.Lazy.IO as Text
 import System.FilePath
 
-import Control.Monad.Trans.State.Strict
 import Control.Monad.IO.Class
-import Lens.Micro
-import Lens.Micro.TH
-import Lens.Micro.Mtl
+import Control.Monad.Trans.State.Strict
 import Data.Set
+import Lens.Micro
+import Lens.Micro.Mtl
+import Lens.Micro.TH
 import Options.Applicative
 
-import Pipeline
+import qualified Text.Show.Pretty as PS
+import qualified Data.Text.Lazy.IO as Text
+
+
 
 data Options = Options
-  { optFiles :: [FilePath]
-  , optTrans :: [Pipeline]
+  { optFiles     :: [FilePath]
+  , optTrans     :: [Pipeline]
+  , optOutputDir :: FilePath
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -88,11 +92,18 @@ options = execParser $ info
     pipelineArgs = Options
       <$> some (argument str (metavar "FILES..."))
       <*> many pipelineOpts
+      <*> strOption (mconcat
+            [ short 'o'
+            , long "output-dir"
+            , help "Output directory for generated files"
+            , value "./output"
+            ])
 
 defaultPipeline :: Options -> Options
 defaultPipeline = \case
-  Options files [] ->
-    Options files
+  Options files [] output ->
+    Options
+      files
       [ HPT
       , T CaseSimplification
       , T Vectorisation
@@ -104,11 +115,12 @@ defaultPipeline = \case
       , SaveLLVM "code"
       , JITLLVM
       ]
+      output
   opts -> opts
 
 main :: IO ()
 main = do
-  Options files steps <- defaultPipeline <$> options
+  Options files steps outputDir <- defaultPipeline <$> options
   forM_ files $ \fname -> do
     grin <- either (fail . show) id <$> parseGrin fname
     let program = Program grin
@@ -117,4 +129,5 @@ main = do
     putStrLn $ unlines result
     putStrLn "* tag info *"
     putStrLn . show . collectTagInfo $ program
-    pipeline program steps
+    let opts = PipelineOpts { _poOutputDir = outputDir }
+    pipeline opts program steps

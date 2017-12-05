@@ -3,7 +3,7 @@ module Pipeline where
 
 import Control.Monad
 import Text.Printf
-import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
 
 import Eval
 import Grin
@@ -13,17 +13,20 @@ import TrafoPlayground
 import AbstractRunGrin
 import qualified CodeGenLLVM as CGLLVM
 import qualified JITLLVM
+import System.Directory
 import System.Process
 
 import Data.Map as Map
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
 
+import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Strict
 import Control.Monad.IO.Class
 import Lens.Micro.TH
 import Lens.Micro.Mtl
 import Data.Set
+import System.FilePath
 
 
 type RenameVariablesMap = Map String String
@@ -73,8 +76,12 @@ pattern PrintGrin :: (Doc -> Doc) -> Pipeline
 pattern PrintGrin c <- PrintGrinH (H c)
   where PrintGrin c =  PrintGrinH (H c)
 
+data PipelineOpts = PipelineOpts
+  { _poOutputDir :: FilePath
+  }
+
 type TagInfo = Set Tag
-type PipelineM a = StateT PState IO a
+type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
     { _psExp :: Exp
     , _psTransStep :: Int
@@ -83,6 +90,7 @@ data PState = PState
     }
 
 makeLenses ''PState
+makeLenses ''PipelineOpts
 
 pipelineStep :: Pipeline -> PipelineM ()
 pipelineStep = \case
@@ -135,13 +143,19 @@ saveGrin :: FilePath -> PipelineM ()
 saveGrin fn = do
   n <- use psTransStep
   e <- use psExp
-  liftIO . writeFile (concat [fn,".", show n]) . show $ pretty e
+  outputDir <- view poOutputDir
+  let fname = (concat [fn,".", show n])
+  let content = show $ pretty e
+  liftIO $ do
+    createDirectoryIfMissing True outputDir
+    writeFile (outputDir </> fname) content
 
 saveLLVM :: FilePath -> PipelineM ()
 saveLLVM fname' = do
   e <- use psExp
   n <- use psTransStep
-  let fname = concat [fname',".",show n]
+  o <- view poOutputDir
+  let fname = o </> concat [fname',".",show n]
       code = CGLLVM.codeGen e
       llName = printf "%s.ll" fname
       sName = printf "%s.s" fname
@@ -153,9 +167,9 @@ saveLLVM fname' = do
     callProcess "llc-5.0" [llName]
     readFile sName >>= putStrLn
 
-pipeline :: Exp -> [Pipeline] -> IO ()
-pipeline e p = do
+pipeline :: PipelineOpts -> Exp -> [Pipeline] -> IO ()
+pipeline o e p = do
   print p
-  flip evalStateT start . sequence_ $ Prelude.map pipelineStep p
+  flip evalStateT start . flip runReaderT o . sequence_ $ Prelude.map pipelineStep p
   where
     start = PState e 0 Nothing Nothing
