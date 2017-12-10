@@ -3,6 +3,7 @@ module Pipeline where
 
 import Control.Monad
 import Text.Printf
+import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
 
 import Eval
@@ -68,6 +69,7 @@ data Pipeline
   | PrintGrinH (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
+  | PrintAST
   | SaveLLVM FilePath
   | SaveGrin FilePath
   deriving Show
@@ -102,12 +104,13 @@ pipelineStep = \case
   JITLLVM       -> jitLLVM
   SaveLLVM path -> saveLLVM path
   SaveGrin path -> saveGrin path
+  PrintAST      -> printAST
 
 hpt :: PipelineM ()
 hpt = do
   grin <- use psExp
   let (_, result) = abstractRun (assignStoreIDs grin) "grinMain"
-  liftIO $ print result
+--  liftIO $ print result
   psHPTResult .= Just result
 
 transformationM :: Transformation -> PipelineM ()
@@ -138,6 +141,11 @@ jitLLVM = do
   liftIO $ do
     val <- JITLLVM.eagerJit (CGLLVM.codeGen e) "grinMain"
     print $ pretty val
+
+printAST :: PipelineM ()
+printAST = do
+  e <- use psExp
+  pPrint e
 
 saveGrin :: FilePath -> PipelineM ()
 saveGrin fn = do

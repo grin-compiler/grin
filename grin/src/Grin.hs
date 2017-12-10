@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Grin where
 
 import Data.Functor.Foldable as Foldable
@@ -37,6 +38,16 @@ data Exp
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
 
+isSimpleExp :: Exp -> Bool
+isSimpleExp = \case
+  SApp    _ _ -> True
+  SReturn _   -> True
+  SStore  _   -> True
+  SFetchI _ _ -> True
+  SUpdate _ _ -> True
+  SBlock  _   -> True
+  _           -> False
+
 selectNodeItem :: Maybe Int -> Val -> Val
 selectNodeItem Nothing val = val
 selectNodeItem (Just 0) (ConstTagNode tag args) = ValTag tag
@@ -58,6 +69,22 @@ data Val
   | Undefined
   deriving (Generic, NFData, Eq, Ord, Show)
 
+class FoldNames n where
+  foldNames :: (Monoid m) => (Name -> m) -> n -> m
+
+instance FoldNames Val where
+  foldNames f = \case
+    ConstTagNode  _tag vals -> mconcat $ foldNames f <$> vals
+    VarTagNode    name vals -> mconcat $ (f name) : (foldNames f <$> vals)
+    ValTag        _tag      -> mempty
+    Unit                    -> mempty
+    -- simple val
+    Lit lit                 -> mempty
+    Var name                -> f name
+    -- extra
+    Loc int                 -> mempty
+    Undefined               -> mempty
+
 isLit :: Val -> Bool
 isLit = \case
   Lit l -> True
@@ -71,6 +98,12 @@ data CPat
   | TagPat  Tag
   | LitPat  Lit
   deriving (Generic, NFData, Eq, Show)
+
+instance FoldNames CPat where
+  foldNames f = \case
+    NodePat _ names -> mconcat (map f names)
+    TagPat _ -> mempty
+    LitPat _ -> mempty
 
 data TagType = C | F | P
   deriving (Generic, NFData, Eq, Ord, Show)
@@ -174,6 +207,33 @@ instance Corecursive Val where
 
     LocF int   -> Loc int
     UndefinedF -> Undefined
+
+data NamesInExpF e a = NamesInExpF
+  { namesExp   :: ExpF e
+  , namesNameF :: Name -> a
+  } deriving (Functor)
+
+instance Foldable (NamesInExpF Exp) where
+  foldr f b (NamesInExpF expf fn) = case expf of
+    ProgramF  _            -> b
+    DefF      name names _ -> foldr f b $ map fn (name:names)
+    -- Exp
+    EBindF    se lPat _  -> foldr f (foldr f b (NamesInExpF (project se) fn)) $ namesInVal lPat
+    ECaseF    val _      -> foldr f b $ namesInVal val
+    -- Simple Expr
+
+    -- Does not collect function names in application
+    SAppF     _name simpleVals -> foldr f b $ (map fn $ concatMap (foldNames list) simpleVals)
+    SReturnF  val -> foldr f b $ namesInVal val
+    SStoreF   val -> foldr f b $ namesInVal val
+    SFetchIF  name mpos -> f (fn name) b
+    SUpdateF  name val  -> foldr f b (fn name : namesInVal val)
+    SBlockF   _ -> b
+    -- Alt
+    AltF cPat _ -> foldr f b $ map fn $ foldNames list cPat
+    where
+      namesInVal = map fn . foldNames list
+      list x = [x]
 
 
 -- * Templates

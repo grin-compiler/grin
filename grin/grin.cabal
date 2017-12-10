@@ -58,7 +58,9 @@ library
     text,
     llvm-hs-pretty,
     optparse-applicative,
-    directory
+    directory,
+    pretty-simple,
+    functor-infix
   default-language:    Haskell2010
 
 executable grin

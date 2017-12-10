@@ -70,6 +70,7 @@ pipelineOpts =
   <|> flg (PrintGrin id) "print-grin" "Prints the actual grin code"
   <|> flg PureEval "eval" "Evaluate the grin program"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
+  <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
   <|> (SaveLLVM <$> (strOption (mconcat
         [ long "save-llvm"
         , help "Save the generated llvm"

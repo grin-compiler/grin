@@ -1,7 +1,9 @@
-{-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor #-}
 module Transformations where
 
 import Text.Printf
+import Text.Pretty.Simple (pShow)
+import Data.Functor.Infix
 import Data.Maybe
 import Data.List (intercalate, foldl')
 import Data.Set (Set, singleton, toList)
@@ -16,6 +18,7 @@ import Data.Functor.Foldable as Foldable
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
+import qualified Data.Text.Lazy as Text
 
 import qualified Data.Foldable
 import Control.Comonad.Cofree
@@ -23,7 +26,7 @@ import Control.Monad.State
 
 import Grin
 import VarGen
-import AbstractRunGrin
+import AbstractRunGrin hiding (Step)
 
 import qualified Debug.Trace as Debug
 
@@ -393,70 +396,193 @@ caseSimplification e = ana builder (mempty, e) where
                              where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) (subst env val) m) env (zip vars vals)
       alt -> (env, alt)
 
+data VarOccurance a
+  = Defined a
+  | Used    a
+  deriving (Eq, Functor, Show, Ord)
+
+coPoint :: VarOccurance a -> a
+coPoint = \case
+  Defined a -> a
+  Used    a -> a
+
+isDefined :: VarOccurance a -> Bool
+isDefined = \case
+  Defined _ -> True
+  Used    _ -> False
+
+isUsed :: VarOccurance a -> Bool
+isUsed = \case
+  Defined _ -> False
+  Used    _ -> True
+
+data Step
+  = SName Name
+  | Case Int
+  | CAlt Int
+  deriving (Eq, Ord, Show)
+
+type Path = [Step]
+type RHIData = Map Name [VarOccurance Path]
+
+-- | Returns the map of the location where the name is used
+-- ordered by the location.
+firstUsed :: RHIData -> RHIData
+firstUsed = Map.map (List.sort . filter isUsed)
+
+nubRHIData :: RHIData -> RHIData
+nubRHIData = Map.map List.nub
+
+-- | Returns the variables that are not used where they are defined.
+usedInDifferentBlock :: RHIData -> RHIData
+usedInDifferentBlock = Map.filter nonLocalyUsed where
+  nonLocalyUsed vs = case (List.filter isDefined vs) of
+    []    -> False -- True -- error "Undefined variable."
+    [Defined path] -> maybe True (const False) $ List.find (path==)
+                      $ map coPoint
+                      $ List.filter isUsed vs
+    (_:_) -> error "Mupliple defined variable."
+
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e = rightHoistFetchRun (rightHoistFetchCollect e) e
+rightHoistFetch e =
+  Debug.traceShow ("RIGHT HOIST FETCH", "VARS", vars0, "NONLOCAL", nonLocal)
+  $ apo builder (Map.empty, [], e)
+  where
+    vars0 = rightHoistFetchVars e
+    vars = firstUsed vars0
+    nonLocal = usedInDifferentBlock vars0
 
-type CollectInfo = Set Name
+    builder :: (Map Name SimpleExp, [Step], Exp) -> ExpF (Either Exp (Map Name SimpleExp, [Step], Exp))
+    builder (moves, path, e) = Debug.traceShow ("MOVES", moves) $ case e of
 
--- triplet f s t (fc, us, as) = (f fc, s us, t as)
+--      e@(Def _ _ _) -> Debug.trace (Text.unpack $ pShow e) $
+--        (Right . (,) path) <$> project e
 
--- Collects the variables that are not present in every case alternative.
-rightHoistFetchCollect :: Exp -> CollectInfo
-rightHoistFetchCollect = cata collect where
-  collect :: ExpF CollectInfo -> CollectInfo
+      EBind fetch@(SFetchI n p) pval@(Var name) rest ->
+        let names0 = foldr (++) [] (NamesInExpF (project fetch) list)
+            names1 = foldNames list pval
+            names = names0 ++ names1
+            shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names1) nonLocal
+--            moves' = if shouldMove then foldr Map.delete moves names else moves
+            moves' = if shouldMove then (Map.insert name fetch moves) else moves
+--            shouldInsert = intersection' names0 moves'
+--            moves'' = Map.difference moves' shouldInsert
+        in Debug.traceShow (
+            ( "EBind fetch var"
+            , "SHOULD MOVE", shouldMove
+--            , shouldInsert
+--            , Map.filterWithKey (\k _ -> k `elem` names) nonLocal
+--            , names
+            ))
+          $
+            EBindF (Left fetch) pval (Right (moves', path, rest))
+
+{-
+      EBind se pval rest | isSimpleExp rest ->
+        Debug.traceShow (
+          "EBind simple",
+          let names0 = foldr (++) [] (NamesInExpF (project se) list)
+              names1 = foldr (++) [] (NamesInExpF (project rest) list)
+              names2 = foldNames list pval
+              names = names0 ++ names1 ++ names2
+              shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names) nonLocal
+          in (shouldMove, Map.filterWithKey (\k _ -> k `elem` names) nonLocal, names))
+          $
+        EBindF (Left se) pval (Left rest)
+-}
+
+      EBind se pval rest ->
+        let names0 = foldr (++) [] (NamesInExpF (project se) list)
+            names1 = foldNames list pval
+            names = names0 ++ names1
+--            shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names) nonLocal
+--            insertS = if shouldMove then (\n -> (n, n `Map.lookup` moves)) <$> names else []
+--            moves' = if shouldMove then foldr Map.delete moves names else moves
+            shouldInsert = intersection' names0 moves
+            moves' = Map.difference moves shouldInsert
+        in Debug.traceShow
+            ( "EBind complex"
+--            , shouldMove
+            , "SHOULD INSERT",shouldInsert
+--            , Map.filterWithKey (\k _ -> k `elem` names) nonLocal
+--            , names
+            )
+          $
+            EBindF (Left se) pval
+              (if isSimpleExp rest
+                then (Left rest)
+                else (Right (moves', path, rest)))
+
+      ECase val alts ->
+        ECaseF val $ zipWith
+          (\i (Alt pat e) -> (Right (moves, [CAlt i, Case (length alts)] ++ path, Alt pat e)))
+          [1..] alts
+      Def def args body -> DefF def args (Right (moves, SName def:path, body))
+
+      e | isSimpleExp e ->
+          let names = foldr (++) [] (NamesInExpF (project e) list)
+              shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names) nonLocal
+
+          in Debug.traceShow (
+              "Simple expr",
+              (shouldMove, Map.filterWithKey (\k _ -> k `elem` names) nonLocal))
+          $ (Right . (,,) moves path) <$> project e
+
+      e -> (Right . (,,) moves path) <$> project e
+      where
+        list x = [x]
+        namesInExp = foldr (:) [] (NamesInExpF (project e) list)
+        containsKeys keys = not . Map.null . Map.filterWithKey (\k _ -> k `elem` keys)
+        intersection' keys m = Map.intersection m (Map.fromList $ zip keys [1..])
+
+--  Debug.trace (Text.unpack . pShow $ rightHoistFetchVars e) e
+
+-- For local blocks...
+rightHoistFetchVars :: Exp -> RHIData
+rightHoistFetchVars = cata collect where
+  collect :: ExpF RHIData -> RHIData
   collect = \case
-    ProgramF     infos               -> mconcat infos -- _ Set.unions infos
-    DefF         name names info     -> info Set.\\ (Set.fromList names)
-    EBindF       info1 lpat info2    -> info1 <> info2 -- TODO: lpat introduces the var
-    ECaseF       val infos           -> removeCommon infos
-    SAppF        name simpleVals     -> mconcat $ map var simpleVals
-    SReturnF     val                 -> var val
-    SStoreF      val                 -> var val
-    SFetchIF     name pos            -> Set.singleton name
-    SUpdateF     name val            -> Set.singleton name <> var val
-    SBlockF      info                -> info
-    AltF cpat info                   -> info
+    EBindF se pval rest ->
+      Map.unionsWith (++)
+        [ -- uncurry Map.singleton $ defName name
+          Map.fromList . map defName $ collectNames pval
+        , se
+        , rest
+        ]
+    ECaseF val alts ->
+      Map.unionsWith (++)
+        [ (Map.unionsWith (++)
+            $ zipWith (\i a -> (([Case (length alts), CAlt i]++) <$$$> a)) [1..] alts)
+        , useNameValMap val
+        ]
+    DefF def args rest ->
+      nubRHIData $ Map.unionsWith (++)
+        [ uncurry Map.singleton $ defName def
+        , (SName def:) <$$$$> Map.fromList $ defName <$> args
+        , (SName def:) <$$$> rest
+        ]
 
-  removeCommon :: [Set Name] -> Set Name
-  removeCommon cs =
-    let commons = foldl1 Set.intersection (Debug.traceShowId cs)
-    in (Set.unions cs) Set.\\ commons
+    -- Does not collect function names.
+    SAppF name args ->
+      Map.fromList $ map useName $ (concat $ collectNames <$> args)
 
-  var :: SimpleVal -> Set Name
-  var (Var n) = Set.singleton n
-  var _       = Set.empty
+    SReturnF val -> useNameValMap val
+    SStoreF val  -> useNameValMap val
+    SFetchIF name pos -> uncurry Map.singleton $ useName name
+    SUpdateF name val ->
+      Map.unionsWith (++)
+        [ uncurry Map.singleton $ useName name
+        , Map.fromList $ map useName $ collectNames val
+        ]
 
-type SkippedFetches = Map Name (Name, Maybe Int)
+    e -> Data.Foldable.fold e
 
-rightHoistFetchRun :: CollectInfo -> Exp -> Exp
-rightHoistFetchRun useds e = ana hoist (useds, Map.empty, e) where
-  hoist :: (CollectInfo, SkippedFetches, Exp) -> ExpF (CollectInfo, SkippedFetches, Exp)
-  hoist (names,locals,e) = case e of
-    e@(EBind (SFetchI n p) (Var v2) exp)
-      | Set.member v2 names ->
-        let (locals', e') = skipLocalFetches (Map.singleton v2 (n,p), exp)
-        in insertLocalFetches names (locals <> locals') e'
-    e@(EBind _ _ _) -> insertLocalFetches names locals e
-    e -> (,,) names locals <$> project e
-    where
-      insertLocalFetches names locals e@(EBind se1 _ _) =
-        case varsInExp (project se1) `Set.intersection` names of
-           vars | Set.null vars -> (,,) names locals <$> project e
-                | otherwise ->
-                    (,,) (names Set.\\ vars) locals
-                    <$> project (createNewFetchBinds vars locals e)
-      insertLocalFetches names locals e = (,,) names locals <$> project e
+  useNameValMap = Map.fromList . map useName . collectNames
+  collectNames = foldNames list
+  list x = [x]
+  useName n = (n, [Used []])
+  defName n = (n, [Defined []])
 
-      createNewFetchBinds :: Set Name -> SkippedFetches -> Exp -> Exp
-      createNewFetchBinds vars locals x =
-        -- TODO: Rename (Var n) to fresh names.
-        foldl (\e n -> EBind (uncurry SFetchI . maybe (error $ show (n, locals)) id $ Map.lookup n locals) (Var n) e)
-          x vars
-
-      skipLocalFetches :: (SkippedFetches, Exp) -> (SkippedFetches, Exp)
-      skipLocalFetches (m, EBind (SFetchI n pos) (Var x) e)
-        | Set.member x names = skipLocalFetches (Map.insert x (n, pos) m, e)
-      skipLocalFetches me = me
 
 withoutKeys :: (Ord k) => Map k a -> Set k -> Map k a
 withoutKeys m s = Map.filterWithKey (\k _ -> k `Set.notMember` s) m
