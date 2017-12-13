@@ -34,6 +34,16 @@ right1 rp =
                            rz <- intAdd rx1 ry1
                            pure (CInt rz)
 
+right2 r2p r2h1 r2h2 =
+  rx2 <- fetch r2p
+  case r2h1 of
+    CNil -> pure (CInt 0)
+    (CCons rx2h rx2t) -> rx3 <- fetch rx2
+                         case r2h2 of
+                           CNil -> pure (CInt 1)
+                           (CCons rx2h rx3t) -> rx4 <- fetch rx3
+                                                pure (CInt rx4)
+
 grinMain = t1 <- store (CInt 1)
            t2 <- store (CInt 10000)
            t3 <- store (Fupto t1 t2)

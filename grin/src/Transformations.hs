@@ -443,6 +443,15 @@ usedInDifferentBlock = Map.filter nonLocalyUsed where
                       $ List.filter isUsed vs
     (_:_) -> error "Mupliple defined variable."
 
+{-
+TODO:
+- Remove Bind with simple expressions, that should be moved.
+- Rename variables in subexpressions, to maintain uniqueness.
+- Use fixpoint to push down values iteratively.
+- Use in one go pushing down.
+
+- Create Debug algebras and coalgebras.
+-}
 rightHoistFetch :: Exp -> Exp
 rightHoistFetch e =
   Debug.traceShow ("RIGHT HOIST FETCH", "VARS", vars0, "NONLOCAL", nonLocal)
@@ -463,55 +472,35 @@ rightHoistFetch e =
             names1 = foldNames list pval
             names = names0 ++ names1
             shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names1) nonLocal
---            moves' = if shouldMove then foldr Map.delete moves names else moves
+            shouldInsert = intersection' names0 moves
             moves' = if shouldMove then (Map.insert name fetch moves) else moves
---            shouldInsert = intersection' names0 moves'
---            moves'' = Map.difference moves' shouldInsert
+            moves'' = Map.difference moves' shouldInsert
         in Debug.traceShow (
             ( "EBind fetch var"
             , "SHOULD MOVE", shouldMove
---            , shouldInsert
---            , Map.filterWithKey (\k _ -> k `elem` names) nonLocal
---            , names
+            , "SHOULD INSERT", shouldInsert
             ))
           $
-            EBindF (Left fetch) pval (Right (moves', path, rest))
-
-{-
-      EBind se pval rest | isSimpleExp rest ->
-        Debug.traceShow (
-          "EBind simple",
-          let names0 = foldr (++) [] (NamesInExpF (project se) list)
-              names1 = foldr (++) [] (NamesInExpF (project rest) list)
-              names2 = foldNames list pval
-              names = names0 ++ names1 ++ names2
-              shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names) nonLocal
-          in (shouldMove, Map.filterWithKey (\k _ -> k `elem` names) nonLocal, names))
-          $
-        EBindF (Left se) pval (Left rest)
--}
+        bindF moves'' path $ Map.foldrWithKey
+          (\n se b -> EBind se (Var n) b)
+          (EBind fetch pval rest)
+          shouldInsert
 
       EBind se pval rest ->
         let names0 = foldr (++) [] (NamesInExpF (project se) list)
             names1 = foldNames list pval
             names = names0 ++ names1
---            shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names) nonLocal
---            insertS = if shouldMove then (\n -> (n, n `Map.lookup` moves)) <$> names else []
---            moves' = if shouldMove then foldr Map.delete moves names else moves
             shouldInsert = intersection' names0 moves
             moves' = Map.difference moves shouldInsert
         in Debug.traceShow
             ( "EBind complex"
---            , shouldMove
             , "SHOULD INSERT",shouldInsert
---            , Map.filterWithKey (\k _ -> k `elem` names) nonLocal
---            , names
             )
           $
-            EBindF (Left se) pval
-              (if isSimpleExp rest
-                then (Left rest)
-                else (Right (moves', path, rest)))
+        bindF moves' path $ Map.foldrWithKey
+          (\n se b -> EBind se (Var n) b)
+          (EBind se pval rest)
+          shouldInsert
 
       ECase val alts ->
         ECaseF val $ zipWith
@@ -521,21 +510,30 @@ rightHoistFetch e =
 
       e | isSimpleExp e ->
           let names = foldr (++) [] (NamesInExpF (project e) list)
-              shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names) nonLocal
+              shouldInsert = intersection' names moves
+              moves' = Map.difference moves shouldInsert
 
           in Debug.traceShow (
               "Simple expr",
-              (shouldMove, Map.filterWithKey (\k _ -> k `elem` names) nonLocal))
-          $ (Right . (,,) moves path) <$> project e
+              "SHOULD INSERT", shouldInsert)
+
+          $
+            bindF moves' path $ Map.foldrWithKey
+              (\n se b -> EBind se (Var n) b)
+              e
+              shouldInsert
 
       e -> (Right . (,,) moves path) <$> project e
       where
+        bindF moves path (EBind se pval rest) =
+          EBindF (Left se) pval (Right (moves, path, rest))
+        bindF _ _ e = Right . (,,) moves path <$> project e
+
         list x = [x]
         namesInExp = foldr (:) [] (NamesInExpF (project e) list)
         containsKeys keys = not . Map.null . Map.filterWithKey (\k _ -> k `elem` keys)
         intersection' keys m = Map.intersection m (Map.fromList $ zip keys [1..])
 
---  Debug.trace (Text.unpack . pShow $ rightHoistFetchVars e) e
 
 -- For local blocks...
 rightHoistFetchVars :: Exp -> RHIData
