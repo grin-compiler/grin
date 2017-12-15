@@ -3,6 +3,7 @@ module Transformations where
 
 import Text.Printf
 import Text.Pretty.Simple (pShow)
+import Text.PrettyPrint.ANSI.Leijen (pretty)
 import Data.Functor.Infix
 import Data.Maybe
 import Data.List (intercalate, foldl')
@@ -26,6 +27,7 @@ import Control.Monad.State
 
 import Grin
 import VarGen
+import Pretty
 import AbstractRunGrin hiding (Step)
 
 import qualified Debug.Trace as Debug
@@ -430,8 +432,16 @@ type RHIData = Map Name [VarOccurance Path]
 firstUsed :: RHIData -> RHIData
 firstUsed = Map.map (List.sort . filter isUsed)
 
+-- | Remove duplicates
 nubRHIData :: RHIData -> RHIData
 nubRHIData = Map.map List.nub
+
+findUsedNameIdx :: Name -> Path -> RHIData -> Int
+findUsedNameIdx n p m = case Map.lookup n m of
+  Nothing -> error $ "Impossible: name must be in map:" ++ show (n,p,m)
+  Just us -> case List.findIndex ((p ==) . coPoint) us of
+    Nothing -> error $ "Impossible: path must be in the list:" ++ show (n, p, us, m)
+    Just ix -> ix
 
 -- | Returns the variables that are not used where they are defined.
 usedInDifferentBlock :: RHIData -> RHIData
@@ -441,28 +451,31 @@ usedInDifferentBlock = Map.filter nonLocalyUsed where
     [Defined path] -> maybe True (const False) $ List.find (path==)
                       $ map coPoint
                       $ List.filter isUsed vs
-    (_:_) -> error "Mupliple defined variable."
+    bad -> error $ "Mupliple defined variable:" ++ show bad
+
+solve t = fix (\rec v -> let tv = t v in Debug.traceShow (pretty tv) $ if tv == v then tv else rec tv)
 
 {-
 TODO:
-- Remove Bind with simple expressions, that should be moved.
 - Rename variables in subexpressions, to maintain uniqueness.
-- Use fixpoint to push down values iteratively.
 - Use in one go pushing down.
 
 - Create Debug algebras and coalgebras.
 -}
+
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e =
-  Debug.traceShow ("RIGHT HOIST FETCH", "VARS", vars0, "NONLOCAL", nonLocal)
-  $ apo builder (Map.empty, [], e)
+rightHoistFetch = solve rightHoistFetchOneStep
+
+rightHoistFetchOneStep :: Exp -> Exp
+rightHoistFetchOneStep e =
+  apo builder (Map.empty, [], e)
   where
     vars0 = rightHoistFetchVars e
     vars = firstUsed vars0
     nonLocal = usedInDifferentBlock vars0
 
     builder :: (Map Name SimpleExp, [Step], Exp) -> ExpF (Either Exp (Map Name SimpleExp, [Step], Exp))
-    builder (moves, path, e) = Debug.traceShow ("MOVES", moves) $ case e of
+    builder (moves, path, e) = case e of
 
 --      e@(Def _ _ _) -> Debug.trace (Text.unpack $ pShow e) $
 --        (Right . (,) path) <$> project e
@@ -475,16 +488,11 @@ rightHoistFetch e =
             shouldInsert = intersection' names0 moves
             moves' = if shouldMove then (Map.insert name fetch moves) else moves
             moves'' = Map.difference moves' shouldInsert
-        in Debug.traceShow (
-            ( "EBind fetch var"
-            , "SHOULD MOVE", shouldMove
-            , "SHOULD INSERT", shouldInsert
-            ))
-          $
-        bindF moves'' path $ Map.foldrWithKey
-          (\n se b -> EBind se (Var n) b)
-          (EBind fetch pval rest)
-          shouldInsert
+            lastBind = if shouldMove then rest else (EBind fetch pval rest)
+        in bindF moves'' path $ Map.foldrWithKey
+            (\n se b -> EBind se (Var n) b)
+            lastBind
+            shouldInsert
 
       EBind se pval rest ->
         let names0 = foldr (++) [] (NamesInExpF (project se) list)
@@ -492,15 +500,10 @@ rightHoistFetch e =
             names = names0 ++ names1
             shouldInsert = intersection' names0 moves
             moves' = Map.difference moves shouldInsert
-        in Debug.traceShow
-            ( "EBind complex"
-            , "SHOULD INSERT",shouldInsert
-            )
-          $
-        bindF moves' path $ Map.foldrWithKey
-          (\n se b -> EBind se (Var n) b)
-          (EBind se pval rest)
-          shouldInsert
+        in bindF moves' path $ Map.foldrWithKey
+            (\n se b -> EBind se (Var n) b)
+            (EBind se pval rest)
+            shouldInsert
 
       ECase val alts ->
         ECaseF val $ zipWith
@@ -513,21 +516,17 @@ rightHoistFetch e =
               shouldInsert = intersection' names moves
               moves' = Map.difference moves shouldInsert
 
-          in Debug.traceShow (
-              "Simple expr",
-              "SHOULD INSERT", shouldInsert)
-
-          $
-            bindF moves' path $ Map.foldrWithKey
+          in bindF moves' path $ Map.foldrWithKey
               (\n se b -> EBind se (Var n) b)
               e
               shouldInsert
 
       e -> (Right . (,,) moves path) <$> project e
       where
-        bindF moves path (EBind se pval rest) =
-          EBindF (Left se) pval (Right (moves, path, rest))
-        bindF _ _ e = Right . (,,) moves path <$> project e
+        -- Does not recurse on EBind simple expr
+        bindF m p (EBind se pval rest) =
+          EBindF (Left se) pval (Right (m, p, rest))
+        bindF m p e = Right . (,,) m p <$> project e
 
         list x = [x]
         namesInExp = foldr (:) [] (NamesInExpF (project e) list)
@@ -542,8 +541,7 @@ rightHoistFetchVars = cata collect where
   collect = \case
     EBindF se pval rest ->
       Map.unionsWith (++)
-        [ -- uncurry Map.singleton $ defName name
-          Map.fromList . map defName $ collectNames pval
+        [ Map.fromList . map defName $ collectNames pval
         , se
         , rest
         ]
@@ -607,3 +605,42 @@ lintLowLevelGrin = cata folder where
   folder = \case
     SReturnF  val   -> mempty
     e -> Data.Foldable.fold e
+
+renameNames :: Map.Map Name Name -> Exp -> Exp
+renameNames substituitons = ana builder where
+  builder :: Exp -> ExpF Exp
+  builder = \case
+    Program  defs               -> ProgramF defs
+    Def      name names exp     -> DefF (substName name) (substName <$> names) exp
+    -- Exp
+    EBind    simpleExp lpat exp -> EBindF simpleExp (subst lpat) exp
+    ECase    val alts           -> ECaseF (subst val) alts
+    -- Simple Exp
+    SApp     name simpleVals    -> SAppF    (substName name) (subst <$> simpleVals)
+    SReturn  val                -> SReturnF (subst val)
+    SStore   val                -> SStoreF  (subst val)
+    SFetchI  name index         -> SFetchIF  (substName name) index
+    SUpdate  name val           -> SUpdateF (substName name) (subst val)
+    SBlock   exp                -> SBlockF  exp
+    -- Alt
+    Alt pat exp                 -> AltF (substCPat pat) exp
+
+  subst :: Val -> Val
+  subst (Var name) = Var $ substName name
+  subst (ConstTagNode tag simpleVals) = ConstTagNode (substTag tag) (subst <$> simpleVals)
+  subst (ValTag tag)                  = ValTag (substTag tag)
+  subst other                         = other
+
+  substName :: Name -> Name
+  substName old = case Map.lookup old substituitons of
+    Nothing  -> old
+    Just new -> new
+
+  substTag :: Tag -> Tag
+  substTag (Tag ttype name arity) = Tag ttype (substName name) arity
+
+  substCPat :: CPat -> CPat
+  substCPat = \case
+    NodePat tag names -> NodePat (substTag tag) (substName <$> names)
+    TagPat  tag       -> TagPat  (substTag tag)
+    LitPat  lit       -> LitPat  lit
