@@ -37,7 +37,6 @@ instance Pretty Exp where
       SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
       AltF cpat exp     -> pretty cpat <+> text "->" <+> align (pretty exp)
-      HiddenF l exp     -> keywordR "hidden" <+> text l <$$> pretty exp
 
 instance Pretty Val where
   pretty = \case

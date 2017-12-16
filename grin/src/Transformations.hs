@@ -436,6 +436,7 @@ firstUsed = Map.map (List.sort . filter isUsed)
 nubRHIData :: RHIData -> RHIData
 nubRHIData = Map.map List.nub
 
+-- | Find the unique index of name in the usage path.
 findUsedNameIdx :: Name -> Path -> RHIData -> Int
 findUsedNameIdx n p m = case Map.lookup n m of
   Nothing -> error $ "Impossible: name must be in map:" ++ show (n,p,m)
@@ -453,15 +454,7 @@ usedInDifferentBlock = Map.filter nonLocalyUsed where
                       $ List.filter isUsed vs
     bad -> error $ "Mupliple defined variable:" ++ show bad
 
-solve t = fix (\rec v -> let tv = t v in Debug.traceShow (pretty tv) $ if tv == v then tv else rec tv)
-
-{-
-TODO:
-- Rename variables in subexpressions, to maintain uniqueness.
-- Use in one go pushing down.
-
-- Create Debug algebras and coalgebras.
--}
+solve t = fix (\rec v -> let tv = t v in if tv == v then tv else rec tv)
 
 rightHoistFetch :: Exp -> Exp
 rightHoistFetch = solve rightHoistFetchOneStep
@@ -477,9 +470,6 @@ rightHoistFetchOneStep e =
     builder :: (Map Name SimpleExp, [Step], Exp) -> ExpF (Either Exp (Map Name SimpleExp, [Step], Exp))
     builder (moves, path, e) = case e of
 
---      e@(Def _ _ _) -> Debug.trace (Text.unpack $ pShow e) $
---        (Right . (,) path) <$> project e
-
       EBind fetch@(SFetchI n p) pval@(Var name) rest ->
         let names0 = foldr (++) [] (NamesInExpF (project fetch) list)
             names1 = foldNames list pval
@@ -489,10 +479,14 @@ rightHoistFetchOneStep e =
             moves' = if shouldMove then (Map.insert name fetch moves) else moves
             moves'' = Map.difference moves' shouldInsert
             lastBind = if shouldMove then rest else (EBind fetch pval rest)
-        in bindF moves'' path $ Map.foldrWithKey
-            (\n se b -> EBind se (Var n) b)
-            lastBind
-            shouldInsert
+            renamings = Map.fromList $
+              map (\n -> (n, n ++ "." ++ show (findUsedNameIdx n (reverse path) vars)))
+                  (Map.keys shouldInsert)
+        in
+            bindF moves'' path . renameNames renamings $ Map.foldrWithKey
+              (\n se b -> EBind se (Var n) b)
+              lastBind
+              shouldInsert
 
       EBind se pval rest ->
         let names0 = foldr (++) [] (NamesInExpF (project se) list)
@@ -500,32 +494,47 @@ rightHoistFetchOneStep e =
             names = names0 ++ names1
             shouldInsert = intersection' names0 moves
             moves' = Map.difference moves shouldInsert
-        in bindF moves' path $ Map.foldrWithKey
-            (\n se b -> EBind se (Var n) b)
-            (EBind se pval rest)
-            shouldInsert
+            renamings = Map.fromList $
+              map (\n -> (n, n ++ "." ++ show (findUsedNameIdx n (reverse path) vars)))
+                  (Map.keys shouldInsert)
+        in
+            bindF moves' path . renameNames renamings $ Map.foldrWithKey
+              (\n se b -> EBind se (Var n) b)
+              (EBind se pval rest)
+              shouldInsert
 
       ECase val alts ->
         ECaseF val $ zipWith
-          (\i (Alt pat e) -> (Right (moves, [CAlt i, Case (length alts)] ++ path, Alt pat e)))
+          (\i e -> (Right (moves, [CAlt i, Case (length alts)] ++ path, e)))
           [1..] alts
+
       Def def args body -> DefF def args (Right (moves, SName def:path, body))
 
       e | isSimpleExp e ->
           let names = foldr (++) [] (NamesInExpF (project e) list)
               shouldInsert = intersection' names moves
               moves' = Map.difference moves shouldInsert
+              renamings = Map.fromList $
+                map (\n -> (n, n ++ "." ++ show (findUsedNameIdx n (reverse path) vars)))
+                    (Map.keys shouldInsert)
+          in
+              bindF moves' path . renameNames renamings $ Map.foldrWithKey
+                (\n se b -> EBind se (Var n) b)
+                e
+                shouldInsert
 
-          in bindF moves' path $ Map.foldrWithKey
-              (\n se b -> EBind se (Var n) b)
-              e
-              shouldInsert
 
       e -> (Right . (,,) moves path) <$> project e
       where
         -- Does not recurse on EBind simple expr
         bindF m p (EBind se pval rest) =
           EBindF (Left se) pval (Right (m, p, rest))
+
+        bindF m p (ECase val alts) = -- This is a hack...
+          ECaseF val $ zipWith
+            (\i e -> (Right (m, [CAlt i, Case (length alts)] ++ p, e)))
+            [1..] alts
+
         bindF m p e = Right . (,,) m p <$> project e
 
         list x = [x]
