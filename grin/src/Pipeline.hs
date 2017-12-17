@@ -10,6 +10,8 @@ import Eval
 import Grin
 import Pretty()
 import Transformations
+import Transformations.RightHoistFetch
+import Transformations.RegisterIntroduction
 import TrafoPlayground
 import AbstractRunGrin
 import qualified CodeGenLLVM as CGLLVM
