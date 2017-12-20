@@ -2,10 +2,12 @@
 module Pipeline where
 
 import Control.Monad
+import Data.List (intersperse)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
 
+import Check
 import Eval
 import Grin
 import Pretty()
@@ -177,9 +179,20 @@ saveLLVM fname' = do
     callProcess "llc-5.0" [llName]
     readFile sName >>= putStrLn
 
+check :: PipelineM ()
+check = do
+  e <- use psExp
+  let nonUnique = nonUniqueNames e
+  liftIO $ putStrLn $ unwords ["Non unique names:", show nonUnique]
+  let nonDefined = nonDefinedNames e
+  liftIO . putStrLn $ unwords ["Non defined names:", show nonDefined]
+
 pipeline :: PipelineOpts -> Exp -> [Pipeline] -> IO ()
 pipeline o e p = do
   print p
-  flip evalStateT start . flip runReaderT o . sequence_ $ Prelude.map pipelineStep p
+  flip evalStateT start .
+    flip runReaderT o   .
+    sequence_           .
+    intersperse check $ Prelude.map pipelineStep p
   where
     start = PState e 0 Nothing Nothing
