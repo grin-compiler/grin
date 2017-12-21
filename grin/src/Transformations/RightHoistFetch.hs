@@ -3,6 +3,7 @@ module Transformations.RightHoistFetch where
 
 import Data.Function
 import Data.Map (Map)
+import Debug.Trace (traceShowId)
 import Grin
 import Transformations.Rename
 import qualified Data.Map as Map
@@ -203,3 +204,38 @@ usedInDifferentBlock = Map.filter nonLocalyUsed where
     bad -> error $ "Mupliple defined variable:" ++ show bad
 
 solve t = fix (\rec v -> let tv = t v in if tv == v then tv else rec tv)
+
+-- Second implementation
+
+data CBlock
+  = CBDef Name
+  | CBCase Int
+  | CBBlock
+  | CBAlt CPat
+  deriving (Eq, Show)
+
+path :: ([CBlock], Exp) -> ExpF ([CBlock], Exp)
+path (p, e) = case e of
+  Program  defs -> ProgramF ((,) p <$> defs)
+  Def      name params body -> DefF name params (CBDef name:p, body)
+  -- Exp
+  EBind    se lpat rest -> EBindF (p,se) lpat (p, rest)
+  ECase    val alts -> ECaseF val ((,) (CBCase (length alts):p) <$> alts)
+  -- Simple Expr
+  SApp     name params -> SAppF name params
+  SReturn  val -> SReturnF val
+  SStore   val -> SStoreF val
+  SFetchI  name pos -> SFetchIF name pos
+  SUpdate  name val -> SUpdateF name val
+  SBlock   rest -> SBlockF (CBBlock:p, rest)
+  -- Alt
+  Alt cpat body -> AltF cpat ((CBAlt cpat):p, body)
+
+dCoAlg :: (Show a) => (a -> ExpF a) -> (a -> ExpF a)
+dCoAlg f = f . traceShowId
+
+dAlg :: (Show a) => (ExpF a -> a) -> (ExpF a -> a)
+dAlg f = traceShowId . f
+
+debugPath :: Exp -> Exp
+debugPath = ana (dCoAlg path) . ((,) [])

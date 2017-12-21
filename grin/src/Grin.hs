@@ -234,21 +234,3 @@ instance Foldable (NamesInExpF Exp) where
     where
       namesInVal = map fn . foldNames list
       list x = [x]
-
-
--- * Templates
-
-{-
-case exp of
-  Program     defs               -> program defs
-  Def         name names exp     -> def name names exp
-  EBind       simpleExp lpat exp -> ebind simpleExp lpat exp
-  ECase       val alts           -> ecase val alts
-  SApp        name simpleVals    -> sapp name simpleVals
-  SReturn     val                -> sreturn val
-  SStore      val                -> sstore  val
-  SFetchI     name x             -> sfetch  name
-  SUpdate     name val           -> supdate name val
-  SBlock      exp                -> sblock exp
-  Alt cpat exp                   -> alt cpat exp
--}

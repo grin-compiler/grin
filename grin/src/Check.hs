@@ -9,9 +9,6 @@ import Data.Map.Strict as Map
 import Data.Set        as Set
 
 
-list :: a -> [a]
-list = pure
-
 -- | Names introduced by fetch def and patterns.
 definedNames :: Monoid m => (Name -> m) -> ExpF m -> m
 definedNames f = \case
