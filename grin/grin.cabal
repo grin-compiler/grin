@@ -64,7 +64,8 @@ library
     optparse-applicative,
     directory,
     pretty-simple,
-    functor-infix
+    functor-infix,
+    generic-random
   default-language:    Haskell2010
 
 executable grin

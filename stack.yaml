@@ -13,6 +13,7 @@ extra-deps:
   - llvm-hs-pure-5.1.0
   - llvm-hs-5.1.0
   - functor-infix-0.0.5
+  - QuickCheck-GenT-0.2.0
 
 flags:
   llvm-hs:
