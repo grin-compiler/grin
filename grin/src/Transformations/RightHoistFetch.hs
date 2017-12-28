@@ -231,11 +231,5 @@ path (p, e) = case e of
   -- Alt
   Alt cpat body -> AltF cpat ((CBAlt cpat):p, body)
 
-dCoAlg :: (Show a) => (a -> ExpF a) -> (a -> ExpF a)
-dCoAlg f = f . traceShowId
-
-dAlg :: (Show a) => (ExpF a -> a) -> (ExpF a -> a)
-dAlg f = traceShowId . f
-
 debugPath :: Exp -> Exp
-debugPath = ana (dCoAlg path) . ((,) [])
+debugPath = ana (dCoAlg (show . fst) path) . ((,) [])

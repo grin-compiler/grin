@@ -8,6 +8,7 @@ import Data.Functor.Foldable as Foldable
 import Control.DeepSeq
 import Data.Map (Map)
 import GHC.Generics (Generic)
+import Debug.Trace (trace)
 
 type Name = String
 
@@ -234,3 +235,9 @@ instance Foldable (NamesInExpF Exp) where
     where
       namesInVal = map fn . foldNames list
       list x = [x]
+
+dCoAlg :: (a -> String) -> (a -> ExpF a) -> (a -> ExpF a)
+dCoAlg dbg f = f . (\x -> trace (dbg x) x)
+
+dAlg :: (a -> String) -> (ExpF a -> a) -> (ExpF a -> a)
+dAlg dbg f = (\x -> trace (dbg x) x) . f
