@@ -76,11 +76,16 @@ data Pipeline
   | PrintAST
   | SaveLLVM FilePath
   | SaveGrin FilePath
+  | DebugTransformationH (Hidden (Exp -> Exp))
   deriving Show
 
 pattern PrintGrin :: (Doc -> Doc) -> Pipeline
 pattern PrintGrin c <- PrintGrinH (H c)
   where PrintGrin c =  PrintGrinH (H c)
+
+pattern DebugTransformation :: (Exp -> Exp) -> Pipeline
+pattern DebugTransformation t <- DebugTransformationH (H t)
+  where DebugTransformation t =  DebugTransformationH (H t)
 
 data PipelineOpts = PipelineOpts
   { _poOutputDir :: FilePath
@@ -109,6 +114,7 @@ pipelineStep = \case
   SaveLLVM path -> saveLLVM path
   SaveGrin path -> saveGrin path
   PrintAST      -> printAST
+  DebugTransformation t -> debugTransformation t
 
 hpt :: PipelineM ()
 hpt = do
@@ -178,6 +184,11 @@ saveLLVM fname' = do
     putStrLn "* LLVM X64 codegen *"
     callProcess "llc-5.0" [llName]
     readFile sName >>= putStrLn
+
+debugTransformation :: (Exp -> Exp) -> PipelineM ()
+debugTransformation t = do
+  e <- use psExp
+  liftIO . putStrLn . show $ pretty (t e)
 
 check :: PipelineM ()
 check = do
