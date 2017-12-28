@@ -11,6 +11,7 @@ import qualified Data.List as List
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Data.Functor.Infix
+import Control.Monad.Free
 
 
 rightHoistFetch :: Exp -> Exp
@@ -233,3 +234,23 @@ path (p, e) = case e of
 
 debugPath :: Exp -> Exp
 debugPath = ana (dCoAlg (show . fst) path) . ((,) [])
+
+rhf :: Exp -> Exp
+rhf = futu rhfca where
+  rhfca :: Exp -> ExpF (Free ExpF Exp)
+  rhfca = \case
+    Program  defs -> ProgramF undefined
+    Def      name params body -> DefF name params undefined
+    -- Exp
+    EBind    se lpat rest -> EBindF undefined lpat undefined
+    ECase    val alts -> ECaseF val undefined
+    -- Simple Expr
+    SApp     name params -> SAppF name params
+    SReturn  val -> SReturnF val
+    SStore   val -> SStoreF val
+    SFetchI  name pos -> SFetchIF name pos
+    SUpdate  name val -> SUpdateF name val
+    SBlock   rest -> SBlockF undefined
+    -- Alt
+    Alt cpat body -> AltF cpat undefined
+
