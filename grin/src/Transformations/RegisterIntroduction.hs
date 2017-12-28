@@ -126,6 +126,33 @@ nth s n = go 1 . drop s where
   go 1 (x:xs) = x:go n   xs
   go n (_:xs) = go (n-1) xs
 
+type Ids = [Int]
+
+newIds :: Exp -> Exp
+newIds e = ana (dCoAlg (show . take 5 . fst) (newIdsCA project)) ([1..], e)
+
+newIdsCA :: (a -> ExpF a) -> ((Ids,a) -> ExpF (Ids,a))
+newIdsCA coAlg (ids,x) = case coAlg x of
+  ProgramF  as           ->
+    let n = length as
+    in ProgramF $ zipWith (\x y -> (nth x n ids, y)) [0..] as
+  DefF      name names a -> DefF name names (ids, a)
+  -- Exp
+  EBindF    a0 lpat a1 -> EBindF ((nth 0 2 ids), a0) lpat ((nth 1 2 ids), a1)
+  ECaseF    val as ->
+    let n = length as
+    in ECaseF val $ zipWith (\x y -> (nth x n ids, y)) [0..] as
+  -- Simple Expr
+  SAppF     name simpleVals -> SAppF name simpleVals
+  SReturnF  val -> SReturnF val
+  SStoreF   val -> SStoreF val
+  SFetchIF  name pos -> SFetchIF name pos
+  SUpdateF  name val -> SUpdateF name val
+  SBlockF   a -> SBlockF (ids, a)
+  -- Alt
+  AltF cpat a -> AltF cpat (ids, a)
+
+
 registerIntroductionI :: Int -> Exp -> Exp
 registerIntroductionI _ e = apo builder ([1..], e) where
   builder :: ([Int], Exp) -> ExpF (Either Exp ([Int], Exp))
