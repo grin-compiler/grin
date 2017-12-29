@@ -236,8 +236,8 @@ instance Foldable (NamesInExpF Exp) where
       namesInVal = map fn . foldNames list
       list x = [x]
 
-dCoAlg :: (a -> String) -> (a -> ExpF a) -> (a -> ExpF a)
+dCoAlg :: (a -> String) -> (a -> ExpF b) -> (a -> ExpF b)
 dCoAlg dbg f = f . (\x -> trace (dbg x) x)
 
-dAlg :: (a -> String) -> (ExpF a -> a) -> (ExpF a -> a)
+dAlg :: (b -> String) -> (ExpF a -> b) -> (ExpF a -> b)
 dAlg dbg f = (\x -> trace (dbg x) x) . f
