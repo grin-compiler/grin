@@ -4,6 +4,7 @@ module Transformations.RightHoistFetch where
 import Data.Function
 import Data.Map (Map)
 import Debug.Trace (traceShowId)
+import Free
 import Grin
 import Transformations.Rename
 import qualified Data.Map as Map
@@ -210,7 +211,7 @@ solve t = fix (\rec v -> let tv = t v in if tv == v then tv else rec tv)
 
 data CBlock
   = CBDef Name
-  | CBCase Int
+  | CBCase Val Int
   | CBBlock
   | CBAlt CPat
   deriving (Eq, Show)
@@ -221,7 +222,7 @@ path (p, e) = case e of
   Def      name params body -> DefF name params (CBDef name:p, body)
   -- Exp
   EBind    se lpat rest -> EBindF (p,se) lpat (p, rest)
-  ECase    val alts -> ECaseF val ((,) (CBCase (length alts):p) <$> alts)
+  ECase    val alts -> ECaseF val ((,) (CBCase val (length alts):p) <$> alts)
   -- Simple Expr
   SApp     name params -> SAppF name params
   SReturn  val -> SReturnF val
@@ -236,21 +237,66 @@ debugPath :: Exp -> Exp
 debugPath = ana (dCoAlg (show . fst) path) . ((,) [])
 
 rhf :: Exp -> Exp
-rhf = futu rhfca where
-  rhfca :: Exp -> ExpF (Free ExpF Exp)
-  rhfca = \case
-    Program  defs -> ProgramF undefined
-    Def      name params body -> DefF name params undefined
+rhf e = futu (dCoAlg (show . fst) rhfca) ([], e) where
+  rhfca :: ([Name], Exp) -> ExpF (Free ExpF ([Name], Exp))
+  rhfca (ns, e) = case e of
+    Program  defs -> ProgramF (pureF . (,) ns <$> defs)
+    Def      name params body -> DefF name params (pureF (concat [[name], params, ns], body))
     -- Exp
-    EBind    se lpat rest -> EBindF undefined lpat undefined
-    ECase    val alts -> ECaseF val undefined
+    EBind    se lpat rest -> EBindF (pureF (ns, se)) lpat (pureF (ns, rest))
+    ECase    val alts -> ECaseF val (pureF . (,) ns <$> alts)
     -- Simple Expr
     SApp     name params -> SAppF name params
     SReturn  val -> SReturnF val
     SStore   val -> SStoreF val
     SFetchI  name pos -> SFetchIF name pos
     SUpdate  name val -> SUpdateF name val
-    SBlock   rest -> SBlockF undefined
+    SBlock   rest -> SBlockF (pureF (ns, rest))
     -- Alt
-    Alt cpat body -> AltF cpat undefined
+    Alt cpat body -> AltF cpat (pureF (ns, body))
+  pureF :: a -> Free ExpF a
+  pureF = return
 
+{-
+copyList :: [a] -> [a]
+copyList = futu coAlg where
+  coAlg :: [a] -> ListF a (Free (ListF a) [a])
+  coAlg = \case
+    [] -> Nil
+    (x:xs) -> Cons x $ return xs
+
+non3 :: [Int] -> [Int]
+non3 = futu coAlg where
+  coAlg :: [Int] -> ListF Int (Free (ListF Int) [Int])
+  coAlg = \case
+    [] -> Nil
+    (x:xs) -> Cons x $ return $
+      case xs of
+        [] -> []
+        (y:ys) | y == 3    -> ys
+               | otherwise -> y:ys
+nil :: Free (ListF a) b
+nil = liftF Nil
+
+cons :: a -> b -> Free (ListF a) b
+cons h t = liftF (Cons h t)
+
+-- BAD IMPEMENTATION!
+twiddle :: [a] -> [a]
+twiddle = ana coAlg where
+  coAlg :: [a] -> ListF a [a]
+  coAlg = \case
+    []     -> Nil
+    (x:l) -> case l of
+      []    -> Cons x []
+      (h:t) -> Cons h (x:t)
+
+twiddle2 :: [a] -> [a]
+twiddle2 = futu coalg where
+  coalg :: [a] -> ListF a (Free (ListF a) [a])
+  coalg r = case r of
+    []    -> Nil
+    (x:l) -> case l of
+      []    -> Cons x nil
+      (h:t) -> Cons h $ cons x t
+-}
