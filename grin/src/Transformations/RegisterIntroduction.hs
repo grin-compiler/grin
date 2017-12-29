@@ -15,6 +15,7 @@ import qualified Data.Foldable
 import Data.Functor.Infix
 import Control.Monad.State
 import VarGen
+import Test.Hspec
 
 
 
@@ -125,6 +126,14 @@ nth :: Int -> Int -> [a] -> [a]
 nth s n = go 1 . drop s where
   go 1 (x:xs) = x:go n   xs
   go n (_:xs) = go (n-1) xs
+
+nthSpec :: Spec
+nthSpec = describe "nth" $ do
+  it "works for 0 2" $ do
+    (take 5 $ nth 0 2 [1..]) `shouldBe` [1,3,5,7,9]
+  it "works for 1 2" $ do
+    (take 5 $ nth 1 2 [1..]) `shouldBe` [2,4,6,8,10]
+
 
 type Ids = [Int]
 
@@ -260,3 +269,7 @@ splitSVal :: Val -> (Val, Maybe Val)
 splitSVal val = case val of
   Var{} -> (val, Nothing)
   _ -> (Var "newName", Just val)
+
+tests :: Spec
+tests = do
+  nthSpec
