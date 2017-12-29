@@ -147,7 +147,7 @@ newIdsCA coAlg (ids,x) = case coAlg x of
     in ProgramF $ zipWith (\x y -> (nth x n ids, y)) [0..] as
   DefF      name names a -> DefF name names (ids, a)
   -- Exp
-  EBindF    a0 lpat a1 -> EBindF ((nth 0 2 ids), a0) lpat ((nth 1 2 ids), a1)
+  EBindF    a0 lpat a1 -> EBindF ((take 1 ids), a0) lpat ((tail ids), a1)
   ECaseF    val as ->
     let n = length as
     in ECaseF val $ zipWith (\x y -> (nth x n ids, y)) [0..] as
