@@ -1,9 +1,11 @@
 {-# LANGUAGE DeriveGeneric, TypeFamilies, LambdaCase, TypeApplications #-}
 module Test where
 
+import Control.Monad.Extra (loopM)
 import Data.Bifunctor
 import Data.Functor.Infix
 import Data.Functor.Foldable
+import Data.List ((\\))
 import Data.Semigroup
 import GHC.Generics
 import Grin
@@ -140,7 +142,22 @@ instance Arbitrary Tag where
     <*> (getPositive <$> arbitrary)
 
 instance Arbitrary TName where
-  arbitrary = TName <$> listOf1 (elements ['a' .. 'z'])
+  arbitrary = TName . concat <$> listOf1 hiragana
+
+-- | Increase the size parameter until the generator succeds.
+suchThatIncreases :: Gen a -> (a -> Bool) -> Gen a
+suchThatIncreases g p =
+  flip loopM 1 $ \s -> do
+    resize s
+      $ fmap (maybe (Left (s+1)) Right)
+      $ suchThatMaybe g p
+
+hiragana :: Gen String
+hiragana = elements $
+  ( [ c ++ v
+    | v <- ["a",  "e",  "i",  "o",  "u"]
+    , c <- ["", "k", "s", "t", "n", "h", "m", "y", "r", "w"]
+    ] \\ ["yi", "ye", "wu"]) ++ ["n"]
 
 data Env
   = Env
@@ -237,14 +254,10 @@ gSExp ctx e = case e of
   where
     addCtx x = (x, ctx)
 
--- TODO: Better names
-genNames :: Gen String
-genNames = listOf1 $ elements ['a' .. 'z']
-
 newName :: Context -> TVal -> Gen (String, Context)
 newName (env, str) x = do
   let Env vars funs = env
-  name <- genNames `suchThat` (`notElem` (Map.keys vars))
+  name <- (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
   return (name, ((insertVar name (Left x) env), str))
 
 -- TODO: Generate values for effects
