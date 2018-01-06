@@ -1,7 +1,11 @@
 {-# LANGUAGE DeriveGeneric, TypeFamilies, LambdaCase, TypeApplications #-}
 module Test where
 
+import Control.Monad
 import Control.Monad.Extra (loopM)
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.State
 import Data.Bifunctor
 import Data.Functor.Infix
 import Data.Functor.Foldable
@@ -11,6 +15,10 @@ import GHC.Generics
 import Grin
 import Test.QuickCheck
 import Generic.Random.Generic
+import Lens.Micro
+import Lens.Micro.Mtl
+
+-- import qualified QuickCheck.GenT as QCT
 
 import Data.Set (Set); import qualified Data.Set as Set
 import Data.Map (Map); import qualified Data.Map as Map
@@ -233,65 +241,75 @@ data Goal
   | GVal Type
   deriving (Eq, Ord, Show)
 
--- TODO: Generate values for types
-gValue :: Context -> Type -> Gen (Maybe (TVal, Context))
-gValue ctx = (fmap . fmap) addCtx . \case
-  TTUnit          -> pure $ pure TUnit
-  TInt            -> pure Nothing
-  TTLoc           -> pure Nothing
-  TTag tag types  -> pure Nothing
-  TUnion types    -> pure Nothing
-  where
-    addCtx x = (x, ctx)
+
+type GT a = StateT Context (MaybeT Gen) a
+
+gen :: Gen a -> GT a
+gen = lift . lift
+
+newName :: TVal -> GT String
+newName x = do
+  env@(Env vars funs) <- use _1
+  name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
+  _1 %= insertVar name (Left x)
+  return name
+
+moneof :: [GT a] -> GT a
+moneof [] = mzero
+moneof gs = do
+  n <- gen $ choose (0, length gs - 1)
+  gs !! n
+
+gValue :: Type -> GT TVal
+gValue = \case
+  TTUnit          -> pure TUnit
+  TInt            -> mzero
+  TTLoc           -> mzero
+  TTag tag types  -> mzero
+  TUnion types    -> mzero
 
 -- TODO: Generate Simple expression for values and updates.
-gSExp :: Context -> Eff -> Gen (Maybe (TSExp, Context))
-gSExp ctx e = case e of
-  NoEff           -> pure Nothing
-  NewLoc t        -> first TSStore <$$> solve ctx (GVal t)
-  ReadLoc loc t   -> pure Nothing -- find a name that contains the location and the given type.
-  UpdateLoc loc t -> pure Nothing -- fing a name that contains the location and generate  value of a given type
-  where
-    addCtx x = (x, ctx)
-
-newName :: Context -> TVal -> Gen (String, Context)
-newName (env, str) x = do
-  let Env vars funs = env
-  name <- (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
-  return (name, ((insertVar name (Left x) env), str))
+gSExp :: Eff -> GT TSExp
+gSExp = \case
+  NoEff           -> mzero
+  NewLoc t        -> TSStore <$> solve (GVal t)
+  ReadLoc loc t   -> mzero -- find a name that contains the location and the given type.
+  UpdateLoc loc t -> mzero -- fing a name that contains the location and generate  value of a given type
 
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
-gExp :: Context -> Type -> [Eff] -> Gen (Maybe (TExp, Context))
-gExp ctx t = \case
-  [] -> oneof
-    [ first (TSExp . TSReturn) <$$> solve ctx (GVal t)
-    , do Just (x, ctx0)    <- solve ctx (GVal t)
+gExp :: Type -> [Eff] -> GT TExp
+gExp t = \case
+  [] -> moneof
+    [ (TSExp . TSReturn) <$> solve (GVal t)
+    , do x <- solve (GVal t)
          let se = TSReturn x
-         (n, ctx1)         <- newName ctx0 x -- TODO: Gen LPat
-         Just (rest, ctx2) <- solve ctx1 (Exp [] t)
-         pure . Just $ (TEBind se (TLPatSVal (TVar (TName n))) rest, ctx2)
+         n <- newName x -- TODO: Gen LPat
+         rest <- solve (Exp [] t)
+         pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
     ]
-  es -> pure Nothing
+  es -> mzero
 
 class Solve t where
-  solve :: Context -> Goal -> Gen (Maybe (t, Context))
+  solve :: Goal -> GT t
 
 instance Solve TVal where
-  solve ctx = \case
-    GVal t -> gValue ctx t
-    bad    -> pure Nothing
+  solve = \case
+    GVal e -> gValue e
+    _      -> mzero
 
 instance Solve TSExp where
-  solve ctx = \case
-    SExp e -> gSExp ctx e
-    bad    -> return Nothing
+  solve = \case
+    SExp e -> gSExp e
+    _      -> mzero
 
 instance Solve TExp where
-  solve ctx = \case
-    Exp effs t -> gExp ctx t effs
-    bad        -> return Nothing
+  solve = \case
+    Exp es t -> gExp t es
+    _        -> mzero
+
 
 -- TODO: Generate real programs, not just expressions.
 genProg :: Gen (Maybe (Exp, Context))
-genProg = first (asExp @TExp) <$$> solve mempty (Exp [] TTUnit)
+genProg = first (asExp @TExp) <$$> (runMaybeT $ flip runStateT mempty $ solve (Exp [] TTUnit))
+
