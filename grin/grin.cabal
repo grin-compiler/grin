@@ -67,7 +67,8 @@ library
     functor-infix,
     generic-random,
     hspec,
-    extra
+    extra,
+    logict
   default-language:    Haskell2010
 
 executable grin

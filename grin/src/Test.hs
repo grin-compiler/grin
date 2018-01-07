@@ -1,15 +1,24 @@
-{-# LANGUAGE DeriveGeneric, TypeFamilies, LambdaCase, TypeApplications #-}
+{-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications #-}
 module Test where
 
+import Prelude hiding (GT)
+
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Extra (loopM)
+import Control.Monad.Logic
 import Control.Monad.Trans (lift)
+import Control.Monad.Identity
 import Control.Monad.Trans.Maybe
-import Control.Monad.Trans.State
+import Control.Monad.Trans.State -- .Plus
+import Control.Monad.Trans.Reader
+import qualified Control.Monad.State.Class as CMS
+import qualified Control.Monad.Reader.Class as CMR
 import Data.Bifunctor
 import Data.Functor.Infix
 import Data.Functor.Foldable
 import Data.List ((\\))
+import Data.Maybe (fromJust)
 import Data.Semigroup
 import GHC.Generics
 import Grin
@@ -18,10 +27,10 @@ import Generic.Random.Generic
 import Lens.Micro
 import Lens.Micro.Mtl
 
--- import qualified QuickCheck.GenT as QCT
-
 import Data.Set (Set); import qualified Data.Set as Set
 import Data.Map (Map); import qualified Data.Map as Map
+
+import Debug.Trace
 
 
 data TName = TName { unTName :: String }
@@ -242,25 +251,27 @@ data Goal
   deriving (Eq, Ord, Show)
 
 
-type GT a = StateT Context (MaybeT Gen) a
+type GoalM a = ReaderT Context (LogicT Gen) a
 
-gen :: Gen a -> GT a
+runGoalM :: GoalM a -> Gen [a]
+runGoalM = observeAllT . flip runReaderT mempty
+
+genProg :: Gen [Exp]
+genProg = asExp <$$> (runGoalM $ solve @TExp (Exp [] TTUnit))
+
+
+gen :: Gen a -> GoalM a
 gen = lift . lift
 
-newName :: TVal -> GT String
-newName x = do
-  env@(Env vars funs) <- use _1
+newName :: TVal -> (String -> GoalM a) -> GoalM a
+newName x k = do
+  (Env vars funs) <- view _1
   name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
-  _1 %= insertVar name (Left x)
-  return name
+  CMR.local (_1 %~ insertVar name (Left x)) $ do
+    env1 <- view _1
+    k name
 
-moneof :: [GT a] -> GT a
-moneof [] = mzero
-moneof gs = do
-  n <- gen $ choose (0, length gs - 1)
-  gs !! n
-
-gValue :: Type -> GT TVal
+gValue :: Type -> GoalM TVal
 gValue = \case
   TTUnit          -> pure TUnit
   TInt            -> mzero
@@ -268,48 +279,54 @@ gValue = \case
   TTag tag types  -> mzero
   TUnion types    -> mzero
 
--- TODO: Generate Simple expression for values and updates.
-gSExp :: Eff -> GT TSExp
+gSExp :: Eff -> GoalM TSExp
 gSExp = \case
   NoEff           -> mzero
   NewLoc t        -> TSStore <$> solve (GVal t)
   ReadLoc loc t   -> mzero -- find a name that contains the location and the given type.
   UpdateLoc loc t -> mzero -- fing a name that contains the location and generate  value of a given type
 
+moneof :: [GoalM a] -> GoalM a
+moneof [] = mzero
+moneof gs = do
+  n <- gen $ choose (0, length gs - 1)
+  gs !! n
+
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
-gExp :: Type -> [Eff] -> GT TExp
+gExp :: Type -> [Eff] -> GoalM TExp
 gExp t = \case
   [] -> moneof
     [ (TSExp . TSReturn) <$> solve (GVal t)
     , do x <- solve (GVal t)
          let se = TSReturn x
-         n <- newName x -- TODO: Gen LPat
-         rest <- solve (Exp [] t)
-         pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
+         newName x $ \n -> do-- TODO: Gen LPat
+           rest <- solve (Exp [] t)
+           pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
     ]
   es -> mzero
 
 class Solve t where
-  solve :: Goal -> GT t
+  solve' :: Goal -> GoalM t
+
+-- TODO: Remove debug...
+solve :: Solve t => Goal -> GoalM t
+solve g = do
+--  env <- view _1
+--  traceShowM env
+  solve' g
 
 instance Solve TVal where
-  solve = \case
+  solve' = \case
     GVal e -> gValue e
     _      -> mzero
 
 instance Solve TSExp where
-  solve = \case
+  solve' = \case
     SExp e -> gSExp e
     _      -> mzero
 
 instance Solve TExp where
-  solve = \case
+  solve' = \case
     Exp es t -> gExp t es
     _        -> mzero
-
-
--- TODO: Generate real programs, not just expressions.
-genProg :: Gen (Maybe (Exp, Context))
-genProg = first (asExp @TExp) <$$> (runMaybeT $ flip runStateT mempty $ solve (Exp [] TTUnit))
-
