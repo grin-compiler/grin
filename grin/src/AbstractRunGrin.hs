@@ -7,6 +7,7 @@ module AbstractRunGrin
   , RTLocVal(..)
   , RTNode(..)
   , RTVar(..)
+  , emptyComputer
   ) where
 
 import Debug.Trace
@@ -39,9 +40,18 @@ type ADefMap = Map Name ADef
     implement equasion solver for the specific example from the grin paper as a separate app
 -}
 
+data CGType
+  = T_I64
+  | T_Unit
+  | T_Loc
+  | T_Tag
+  | T_UNKNOWN
+  | T_Fun String
+  deriving (Eq, Ord, Show)
+
 data RTLocVal
   = RTLoc Int
-  | BAS
+  | BAS   CGType
   | RTVar Name -- HACK
   deriving (Eq, Ord, Show)
 
@@ -72,7 +82,11 @@ data Step
   | StepAssign  Name VarSet
   deriving Show
 
-emptyComputer = Computer mempty mempty mempty
+emptyComputer = Computer
+  { storeMap  = mempty
+  , envMap    = mempty
+  , steps     = mempty
+  }
 
 type GrinM = ReaderT ADefMap (State Computer)
 
@@ -125,7 +139,12 @@ lookupEnv n = Map.findWithDefault (error $ "missing variable: " ++ n) n <$> gets
 lookupStore :: Int -> GrinM NodeSet
 lookupStore i = IntMap.findWithDefault (error $ "missing location: " ++ show i) i <$> gets storeMap
 
-basVarSet = Set.singleton $ V BAS
+basVarSet cgType = Set.singleton . V . BAS $ cgType
+
+boolVarSet = Set.fromList
+  [ N $ RTNode (Tag C "True" 0) []
+  , N $ RTNode (Tag C "False" 0) []
+  ]
 
 toRTLocVal :: RTVar -> RTLocVal
 toRTLocVal (V a) = a
@@ -137,7 +156,7 @@ toRTNode a = error $ "toRTNode: illegal value " ++ show a
 -}
 evalVal :: Val -> GrinM VarSet
 evalVal = \case
-  v@Lit{}     -> pure basVarSet
+  v@Lit{}     -> pure $ basVarSet T_I64
   Var n       -> lookupEnv n
   ConstTagNode t a -> Set.singleton . N . RTNode t <$> mapM (\x -> Set.map toRTLocVal <$> evalVal x) a
 {-
@@ -148,15 +167,15 @@ evalVal = \case
                   -- TODO: support TagValue ; represent it as normal value instead of BAS
                   pure $ Set.fromList [N $ RTNode t args | t <- values]
 -}
-  v@ValTag{}  -> pure basVarSet
-  v@Unit      -> pure basVarSet
-  v@Loc{}     -> pure basVarSet
+  v@ValTag{}  -> pure $ basVarSet T_Tag
+  v@Unit      -> pure $ basVarSet T_Unit
+  v@Loc{}     -> pure $ basVarSet T_Loc
   x -> fail $ "ERROR: evalVal: " ++ show x
 
 
 selectRTNodeItem :: Maybe Int -> RTVar -> VarSet
 selectRTNodeItem Nothing val = Set.singleton val
-selectRTNodeItem (Just 0) (N (RTNode tag args)) = basVarSet
+selectRTNodeItem (Just 0) (N (RTNode tag args)) = basVarSet T_Tag
 selectRTNodeItem (Just i) (N (RTNode tag args)) = Set.map V $ (args !! (i - 1))
 
 evalSFetchF :: Maybe Int -> VarSet -> GrinM VarSet
@@ -165,7 +184,8 @@ evalSFetchF index vals = mconcat <$> mapM fetch (Set.toList vals) where
     V (RTLoc l) -> {-Set.map N <$> -}mconcat . map (selectRTNodeItem index) . Set.toList <$> lookupStore l
     x -> fail $ "ERROR: evalSimpleExp - Fetch expected location, got: " ++ show x
 
-evalSUpdateF vals v' = mapM_ update vals >> pure basVarSet where
+evalSUpdateF :: VarSet-> NodeSet -> GrinM VarSet
+evalSUpdateF vals v' = mapM_ update vals >> pure (basVarSet T_UNKNOWN) where
  update = \case
    V (RTLoc l) -> IntMap.member l <$> gets storeMap >>= \case
              False -> fail $ "ERROR: evalSimpleExp - Update unknown location: " ++ show l
@@ -205,18 +225,19 @@ evalSAppF n rtVals = do
 evalSimpleExp :: ASimpleExp -> GrinM VarSet
 evalSimpleExp = \case
 
-  _ :< (SAppF n args) -> case n of
+  _ :< (SAppF n args) -> do
+              rtVals <- mapM evalVal args -- Question: is this correct here?
+              case n of
                 -- Special case
                 -- "eval" -> evalEval args
                 -- Primitives
-                "add" -> pure basVarSet
-                "mul" -> pure basVarSet
-                "intPrint" -> pure basVarSet
-                "intGT" -> pure basVarSet
-                "intAdd" -> pure basVarSet
+                "add" -> pure $ basVarSet T_I64
+                "mul" -> pure $ basVarSet T_I64
+                "intPrint" -> pure $ basVarSet $ T_Fun "intPrint"
+                "intGT" -> pure $ basVarSet $ T_Fun "intGT" --boolVarSet
+                "intAdd" -> pure $ basVarSet T_I64
                 -- User defined functions
                 _ -> do
-                  rtVals <- mapM evalVal args -- Question: is this correct here?
                   evalSAppF n rtVals
 
   _ :< (SReturnF v) -> evalVal v
@@ -255,9 +276,10 @@ evalExp x = {-addStep x >> -}case x of
       , AltF (NodePat alttag names) exp <- map unwrap alts
       , tag == alttag
       ]
-    case Set.member (V BAS) vals of
-      False -> pure a
-      True  -> do
+    -- what is this???
+    case [() | V (BAS _) <- Set.toList vals] of
+      [] -> pure a
+      _  -> do
         let notNodePat = \case
               NodePat{} -> False
               _ -> True

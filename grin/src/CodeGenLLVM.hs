@@ -16,6 +16,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Grin
+import AbstractRunGrin
 
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type
@@ -47,14 +48,38 @@ toLLVM fname mod = withContext $ \ctx -> do
   BS.writeFile fname llvm
   pure llvm
 
--- TODO: create Tag map
+
+{-
+    b2     -> {BAS}
+    n13    -> {BAS,sum}
+    n18    -> {BAS}
+    n28    -> {BAS}
+    n29    -> {BAS}
+    n30    -> {BAS}
+    n31    -> {BAS}
+    sum    -> {BAS,sum}
+-}
+
+-- TODO: create Tag map ; get as parameter ; store in reader environment
+{-
+  question: how to calculate from grin or hpt result?
+-}
 tagMap :: Map Tag (Type, Constant)
 tagMap = Map.fromList
   [ (Tag Grin.C "False" 0, (i1, Int 1 0))
   , (Tag Grin.C "True" 0,  (i1, Int 1 1))
   ]
 
--- TODO: create Type map
+-- TODO: create Type map ; calculate once ; store in reader environment
+{-
+  question: how to calculate from grin or hpt result?
+    ANSWER: lookup from HPT result ; function name = result type ; argument names = input type
+
+  TODO:
+    in pre passes build ; store in env
+      function type map (llvm type)
+      variable map (llvm type)
+-}
 typeMap :: Map Grin.Name Type
 typeMap = Map.fromList
   [ ("b2" , i64)
@@ -103,6 +128,7 @@ data Env
   , constantMap       :: Map Grin.Name Operand
   , currentBlockName  :: AST.Name
   , envTempCounter    :: Int
+  , envHPTResult      :: HPTResult
   }
 
 emptyEnv = Env
@@ -112,6 +138,7 @@ emptyEnv = Env
   , constantMap       = mempty
   , currentBlockName  = mkName ""
   , envTempCounter    = 0
+  , envHPTResult      = emptyComputer
   }
 
 type CG = State Env
@@ -215,8 +242,8 @@ toModule Env{..} = defaultModule
   , moduleDefinitions = envDefinitions
   }
 
-codeGen :: Exp -> AST.Module
-codeGen = toModule . flip execState emptyEnv . para folder where
+codeGen :: HPTResult -> Exp -> AST.Module
+codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResult}) . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     SReturnF val -> O <$> codeGenVal val

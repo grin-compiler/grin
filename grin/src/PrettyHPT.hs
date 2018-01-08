@@ -28,7 +28,7 @@ instance Pretty a => Pretty (Set a) where
 instance Pretty RTLocVal where
   pretty = \case
     RTLoc l     -> int l
-    BAS         -> text "BAS"
+    bas@BAS{}   -> text $ show bas
     RTVar name  -> ondullblack $ red $ text name
 
 instance Pretty RTNode where

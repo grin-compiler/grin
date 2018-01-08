@@ -8,6 +8,8 @@ import qualified STReduceGrin
 import qualified ReduceGrin
 import qualified JITLLVM
 import qualified CodeGenLLVM
+import qualified AbstractRunGrin
+import Transformations (assignStoreIDs)
 
 data Reducer
   = PureReducer
@@ -24,7 +26,8 @@ eval' reducer fname = do
       case reducer of
         PureReducer -> pure $ ReduceGrin.reduceFun e "grinMain"
         STReducer   -> pure $ STReduceGrin.reduceFun e "grinMain"
-        LLVMReducer -> JITLLVM.eagerJit (CodeGenLLVM.codeGen (Program e)) "grinMain"
+        LLVMReducer -> JITLLVM.eagerJit (CodeGenLLVM.codeGen hptResult (Program e)) "grinMain" where
+          (result, hptResult) = AbstractRunGrin.abstractRun (assignStoreIDs $ Program e) "grinMain"
 
 evalProgram :: Reducer -> Program -> Val
 evalProgram reducer (Program defs) =
