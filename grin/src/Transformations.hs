@@ -176,3 +176,39 @@ caseSimplification e = ana builder (mempty, e) where
       Alt (NodePat tag vars) e -> (altEnv, Alt (TagPat tag) e)
                              where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) (subst env val) m) env (zip vars vals)
       alt -> (env, alt)
+
+data PatternF f a
+  = PVar String
+  | PNext String (f a)
+  | PVal (f a)
+  deriving (Eq, Show)
+
+type Pattern = Fix (PatternF ExpF)
+
+example1 :: Pattern
+example1 = Fix (PVal (EBindF (Fix (PVar "m0")) (Var "v") (Fix (PVar "m1"))))
+
+example2 :: Pattern
+example2 = Fix (PNext "m1" (ECaseF Unit
+  [ Fix (PVal (AltF (LitPat (LInt 3)) (Fix (PVar "m1"))))
+  , Fix (PVal (AltF (LitPat (LInt 3)) (Fix (PVar "m2"))))
+  ]))
+
+{-
+m0; \v ->
+m1;
+
+EBindF (Fix (PVar "m0")) (Var v) (Fix (PVar m1))
+
+m0;
+case (t a1 a2) of
+  CNil -> m1
+  CCons x xs -> m2
+
+(PBind "m1" (ECaseF val
+  [ Fix (PVal (Alt cpat) (Fix (PVar "m1")))
+  , Fix (PVal (Alt cpat) (Fix (PVar "m2")))
+  ])
+-}
+
+
