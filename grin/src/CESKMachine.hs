@@ -16,7 +16,7 @@ data HoleF v f g e
   | E (f e)
   | R v
   | V (g e)
-  | VH (f e) -- Represent a hole that supposed to be in a place of val
+  | VH (f e) -- Represent a hole that supposed to be in a place of variable name
   deriving (Eq, Show)
 
 type Hole  = Fix (HoleF Val ExpF ValF)
@@ -78,11 +78,12 @@ step = do
   case f of
     (Fix H)     -> error "impossible"
     (Fix (R v)) -> undefined
+    (Fix (V v)) -> stepOnVal v
     (Fix (E e)) -> stepOnExp e
 
 -- Assumption: The stack is not empty.
-stepOnValue :: Val -> Machine ()
-stepOnValue v = do
+stepOnRes :: Val -> Machine ()
+stepOnRes v = do
   (Fix (E e)) <- pop
   case e of
     EBindF (Fix H) lpat (Fix (E e)) -> do
@@ -100,6 +101,37 @@ stepOnValue v = do
 
     rest -> pure ()
 
+stepOnVal :: ValF Hole -> Machine ()
+stepOnVal = \case
+  ConstTagNodeF tag vs -> do
+    -- TODO: Gave machine semantics, instead of looking variables up.
+    xs  <- forM vs $ \case
+              Fix (V (LitF lit)) -> pure $ Lit lit
+              Fix (V (VarF x))   -> getEnv x
+    push (Fix (R (ConstTagNode tag xs)))
+
+  VarTagNodeF name vs -> do
+    -- TODO: Gave machine semantics, instead of looking variables up.
+    (ValTag tag) <- getEnv name
+    xs  <- forM vs $ \case
+              Fix (V (LitF lit)) -> pure $ Lit lit
+              Fix (V (VarF x))   -> getEnv x
+    push (Fix (R (ConstTagNode tag xs)))
+
+  ValTagF tag -> push (Fix (R (ValTag tag)))
+
+  UnitF -> push (Fix (R Unit))
+
+  -- simple val
+  LitF lit   -> push (Fix (R (Lit lit)))
+  VarF name  -> do
+    r <- getEnv name
+    push (Fix (R r))
+
+  -- extra
+  LocF loc   -> push (Fix (R (Loc loc)))
+  UndefinedF -> push (Fix (R Undefined))
+
 -- TODO: It should be part of the abstract interpretation.
 selectAlternatives :: Val -> [(CPat, a)] -> (a -> a) -> (a -> b) -> [((CPat, a), Maybe b)]
 selectAlternatives v f pats = undefined
@@ -113,10 +145,8 @@ stepOnExp = \case
     push (Fix (E se))
 
   ECaseF val alts -> do
-    -- TODO: There should be one frame for ValF and one for ExpF
     -- TODO: Case selection should be abstract, and collection of results
     -- should be unified in some way.
-
     let alts1 = (\(Fix (E (AltF cpat a))) -> (cpat, a)) <$> alts
         (alts2, actions) = unzip $ selectAlternatives val alts1 (const (Fix H)) push
         alts3 = (\(cpat, a) -> Fix (E (AltF cpat a))) <$> alts2
