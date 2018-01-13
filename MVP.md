@@ -15,4 +15,7 @@
 - support for builtin types and primpos
 - single module (no module system)
 
-
+# documentation
+- HPT
+- llvm codegen ; HPT as LLVM type inference
+- shape functor ; pro / cons
