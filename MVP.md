@@ -19,3 +19,6 @@
 - HPT
 - llvm codegen ; HPT as LLVM type inference
 - shape functor ; pro / cons
+
+# sample programs
+- observe compilation stages: GRIN -> LLVM -> x64
