@@ -17,7 +17,7 @@ WHY:
   - practice unbound
   - learn grin
   - practice writing transformations
-  - etimate the raw performance of grin
+  - estimate the raw performance of grin
 
 EXPERIMENTAL:
   - try to JIT GRIN
@@ -66,7 +66,7 @@ THOUGHTS:
 
 dynamic vs static typing:
   what if the difference between the two is the type checking binding time?
-  i.e. whether the types are decuced in compile time or run time
+  i.e. whether the types are recuced in compile time or run time
   maybe it is possible to create a system in a multi-stage programming environment where
     both a static and a dynamic typed language could be derived from a single multi-stage implementation
 

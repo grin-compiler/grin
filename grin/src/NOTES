@@ -7,3 +7,6 @@ reactive compiler = recompile only that part of the ast that are affected
 fixplate + unbound
   solution:
     move Fix definition to backpack
+
+
+write down the design so that anyone can catch up and continue on the development.
