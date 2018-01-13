@@ -12,7 +12,7 @@
 
 # features
 - node support for codegen
-- support for builtin types and primpos
+- support for builtin types and primops
 - single module (no module system)
 
 # documentation
