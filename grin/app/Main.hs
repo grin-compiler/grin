@@ -57,6 +57,7 @@ transformOpts =
   <|> flg BindNormalisation "bi" "Bind Normalisation"
   <|> flg RightHoistFetch "rhi" "Right Hoist Fetch"
   <|> flg GenerateEval "ge" "Generate Eval"
+  <|> flg CopyPropagationLeft "cpl" "Copy Propagation Left"
   <|> ((RenameVariables . Map.fromList)
         <$> option auto (mconcat
               [ long "rv"

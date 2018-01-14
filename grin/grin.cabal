@@ -21,6 +21,7 @@ library
     Free
     Grin
     Optimizations.CopyPropagation
+    Optimizations
     Pretty
     PrettyHPT
     ParseGrin

@@ -10,6 +10,7 @@ import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
 import Check
 import Eval
 import Grin
+import Optimizations
 import Pretty()
 import Transformations
 import Transformations.RightHoistFetch
@@ -45,6 +46,8 @@ data Transformation
   | RightHoistFetch
   | GenerateEval
   | RenameVariables RenameVariablesMap
+  -- Optimizations
+  | CopyPropagationLeft
   deriving (Eq, Ord, Show)
 
 transformation :: HPTResult -> Int -> Transformation -> Exp -> Exp
@@ -57,6 +60,7 @@ transformation hptResult n = \case
   RightHoistFetch         -> rightHoistFetch
   GenerateEval            -> generateEval
   RenameVariables renames -> renameVaribales renames
+  CopyPropagationLeft     -> copyPropagationLeft
 
 newtype Hidden a = H a
 
