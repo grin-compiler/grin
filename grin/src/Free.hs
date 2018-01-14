@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Free where
 
+import Data.String
 import Control.Monad.State
 import Control.Monad.Free
 import Grin
@@ -18,8 +19,14 @@ def name params body = Free (DefF name params body)
 block :: ExpM () -> ExpM ()
 block body = Free (SBlockF body)
 
-bind :: ExpM () -> LPat -> ExpM () -> ExpM ()
-bind simple pat rest = Free (EBindF simple pat rest)
+bind' :: ExpM () -> LPat -> ExpM () -> ExpM ()
+bind' simple pat rest = Free (EBindF simple pat rest)
+
+(<=:) :: LPat -> ExpM () -> ExpM () -> ExpM ()
+(<=:) = bind
+
+bind :: LPat -> ExpM () -> ExpM () -> ExpM ()
+bind pat simple rest = bind' simple pat rest
 
 switch :: Val -> [(CPat, ExpM ())] -> ExpM ()
 switch val branches = Free (ECaseF val ((\(cpat, body) -> (Free (AltF cpat body))) <$> branches))
@@ -27,8 +34,8 @@ switch val branches = Free (ECaseF val ((\(cpat, body) -> (Free (AltF cpat body)
 app :: Name -> [SimpleVal] -> ExpM ()
 app name params = liftF $ SAppF name params
 
-ret :: Val -> ExpM ()
-ret = liftF . SReturnF
+unit :: Val -> ExpM ()
+unit = liftF . SReturnF
 
 store :: Val -> ExpM ()
 store = liftF . SStoreF
@@ -38,6 +45,23 @@ fetch name pos = liftF $ SFetchIF name pos
 
 update :: Name -> Val -> ExpM ()
 update name val = liftF $ SUpdateF name val
+
+instance Num Val where
+  fromInteger = Lit . LInt . fromInteger
+  (Lit (LInt a)) + (Lit (LInt b)) = Lit (LInt (a + b))
+  (Lit (LInt a)) - (Lit (LInt b)) = Lit (LInt (a + b))
+  (Lit (LInt a)) * (Lit (LInt b)) = Lit (LInt (a * b))
+  abs (Lit (LInt a)) = Lit (LInt (abs a))
+  signum (Lit (LInt a)) = (Lit (LInt (signum a)))
+
+instance IsString Val where
+  fromString = Var
+
+buildExp :: ExpM () -> Exp
+buildExp = head . build
+
+buildExpM :: Monad m => ExpM () -> m Exp
+buildExpM = return . buildExp
 
 build :: ExpM () -> [Exp]
 build e = execState (iterM compute e) []
