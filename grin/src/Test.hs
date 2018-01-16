@@ -111,6 +111,17 @@ instance AsVal TLPat where
 class AsExp t where
   asExp :: t -> Exp
 
+nonWellFormedPrograms :: Gen Exp
+nonWellFormedPrograms = resize 2 (asExp <$> arbitrary @TProg)
+
+instance AsExp TProg where
+  asExp = \case
+    TProg defs -> Program (asExp <$> defs)
+
+instance AsExp TDef where
+  asExp = \case
+    TDef name params exp -> Def (toName name) (toName <$> params) (asExp exp)
+
 instance AsExp TSExp where
   asExp = \case
     TSApp     name simpleVals -> SApp (toName name) (asVal <$> simpleVals)
