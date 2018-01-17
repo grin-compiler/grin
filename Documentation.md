@@ -14,4 +14,4 @@ The text can be reused for
 - recursion schemes
 - on the fly node layout migration at runtime on live program data
 - compilation with transformation history (bidirectional source map)
-
+- separate heap (array) for each tag (node layout)
