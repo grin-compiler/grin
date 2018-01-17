@@ -29,14 +29,6 @@ constantFolding = ana builder where
     rest ->
       project rest
 
-isConstant :: Val -> Bool
-isConstant = cata $ \case
-  ConstTagNodeF  tag params -> and params
-  ValTagF        tag        -> True
-  UnitF                     -> True
-  LitF lit                  -> True
-  _                         -> False
-
 tests :: Spec
 tests = do
   describe "constant folding" $ do

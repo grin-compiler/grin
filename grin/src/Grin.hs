@@ -241,3 +241,12 @@ dCoAlg dbg f = f . (\x -> trace (dbg x) x)
 
 dAlg :: (b -> String) -> (ExpF a -> b) -> (ExpF a -> b)
 dAlg dbg f = (\x -> trace (dbg x) x) . f
+
+isConstant :: Val -> Bool
+isConstant = cata $ \case
+  ConstTagNodeF  tag params -> and params
+  ValTagF        tag        -> True
+  UnitF                     -> True
+  LitF lit                  -> True
+  _                         -> False
+

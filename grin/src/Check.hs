@@ -67,3 +67,16 @@ nonDefinedNames :: Exp -> [Name]
 nonDefinedNames e = Set.toList $ Set.difference
   (cata (usedNames Set.singleton) e)
   (cata (definedNames Set.singleton) e)
+
+storedValues :: Monoid m => (Val -> m) -> ExpF m -> m
+storedValues f = \case
+  ProgramF vals      -> mconcat vals
+  DefF _ _ val       -> val
+  EBindF val1 _ val2 -> val1 <> val2
+  SStoreF val        -> f val
+  SBlockF val        -> val
+  AltF _ val         -> val
+  _                  -> mempty
+
+storedConstants :: Exp -> [Val]
+storedConstants = cata (storedValues (\v -> [v | isConstant v]))
