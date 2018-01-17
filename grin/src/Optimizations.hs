@@ -1,5 +1,5 @@
 module Optimizations
-  ( copyPropagationLeft
+  ( constantFolding
   ) where
 
-import Optimizations.CopyPropagation (copyPropagationLeft)
+import Optimizations.ConstantFolding (constantFolding)

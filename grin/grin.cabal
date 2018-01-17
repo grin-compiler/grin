@@ -20,13 +20,14 @@ library
     Eval
     Free
     Grin
-    Optimizations.CopyPropagation
+    Optimizations.ConstantFolding
     Optimizations
     Pretty
     PrettyHPT
     ParseGrin
     ReduceGrin
     STReduceGrin
+    Test
     Transformations
     Transformations.RegisterIntroduction
     Transformations.Rename
@@ -72,7 +73,8 @@ library
     generic-random,
     hspec,
     extra,
-    logict
+    logict,
+    QuickCheck
   default-language:    Haskell2010
 
 executable grin
@@ -107,7 +109,7 @@ test-suite grin-test
                      , hspec-discover
   other-modules:       Transformations.RegisterIntroductionSpec
                      , Transformations.SubstitutionSpec
-                     , Optimizations.CopyPropagationSpec
+                     , Optimizations.ConstantFoldingSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark

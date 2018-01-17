@@ -47,7 +47,7 @@ data Transformation
   | GenerateEval
   | RenameVariables RenameVariablesMap
   -- Optimizations
-  | CopyPropagationLeft
+  | ConstantFolding
   deriving (Eq, Ord, Show)
 
 transformation :: HPTResult -> Int -> Transformation -> Exp -> Exp
@@ -60,7 +60,7 @@ transformation hptResult n = \case
   RightHoistFetch         -> rightHoistFetch
   GenerateEval            -> generateEval
   RenameVariables renames -> renameVaribales renames
-  CopyPropagationLeft     -> copyPropagationLeft
+  ConstantFolding         -> constantFolding
 
 newtype Hidden a = H a
 
