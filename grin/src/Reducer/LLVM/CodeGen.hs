@@ -161,7 +161,7 @@ codeGenVal = \case
   Var name      -> Map.lookup name <$> gets constantMap >>= \case
                       Nothing -> pure $ LocalReference (getType name) (mkName name) -- TODO: lookup in constant map
                       Just operand  -> pure operand
-  Lit (LInt v)  -> pure $ ConstantOperand $ Int 64 (fromIntegral v)
+  Lit (LInt64 v) -> pure $ ConstantOperand $ Int 64 (fromIntegral v)
   ValTag tag -> pure $ ConstantOperand $ getTagId tag
   -- TODO: support nodes
   --ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
@@ -186,15 +186,15 @@ codeGenVal = \case
 
 getCPatConstant :: CPat -> Constant
 getCPatConstant = \case
-  NodePat tag _     -> getTagId tag
-  TagPat  tag       -> getTagId tag
-  LitPat  (LInt v)  -> Int 64 (fromIntegral v)
+  NodePat tag _      -> getTagId tag
+  TagPat  tag        -> getTagId tag
+  LitPat  (LInt64 v) -> Int 64 (fromIntegral v)
 
 getCPatName :: CPat -> String
 getCPatName = \case
-  NodePat tag _     -> tagName tag
-  TagPat  tag       -> tagName tag
-  LitPat  (LInt v)  -> "int_" ++ show v
+  NodePat tag _      -> tagName tag
+  TagPat  tag        -> tagName tag
+  LitPat  (LInt64 v) -> "int_" ++ show v
  where
   tagName (Tag c name n) = printf "%s%s%d" (show c) name n
 

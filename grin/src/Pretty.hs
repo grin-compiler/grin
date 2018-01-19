@@ -52,7 +52,7 @@ instance Pretty Val where
     Undefined   -> keyword "undefined"
 
 instance Pretty Lit where
-  pretty (LInt a) = int a
+  pretty (LInt64 a) = integer $ fromIntegral a
 
 instance Pretty CPat where
   pretty = \case

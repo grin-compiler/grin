@@ -100,7 +100,7 @@ value = Unit <$ op "()" <|>
         simpleValue
 
 literal :: Parser Lit
-literal = LInt . fromIntegral <$> signedInteger
+literal = LInt64 . fromIntegral <$> signedInteger
 
 --parseFromFile :: Parser _ -> String -> IO _
 parseFromFile p file = runParser p file <$> readFile file

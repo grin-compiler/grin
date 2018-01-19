@@ -47,12 +47,12 @@ update :: Name -> Val -> ExpM ()
 update name val = liftF $ SUpdateF name val
 
 instance Num Val where
-  fromInteger = Lit . LInt . fromInteger
-  (Lit (LInt a)) + (Lit (LInt b)) = Lit (LInt (a + b))
-  (Lit (LInt a)) - (Lit (LInt b)) = Lit (LInt (a + b))
-  (Lit (LInt a)) * (Lit (LInt b)) = Lit (LInt (a * b))
-  abs (Lit (LInt a)) = Lit (LInt (abs a))
-  signum (Lit (LInt a)) = (Lit (LInt (signum a)))
+  fromInteger = Lit . LInt64 . fromInteger
+  (Lit (LInt64 a)) + (Lit (LInt64 b)) = Lit (LInt64 (a + b))
+  (Lit (LInt64 a)) - (Lit (LInt64 b)) = Lit (LInt64 (a + b))
+  (Lit (LInt64 a)) * (Lit (LInt64 b)) = Lit (LInt64 (a * b))
+  abs (Lit (LInt64 a)) = Lit (LInt64 (abs a))
+  signum (Lit (LInt64 a)) = (Lit (LInt64 (signum a)))
 
 instance IsString Val where
   fromString = Var

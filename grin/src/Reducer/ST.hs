@@ -159,16 +159,16 @@ evalSimpleExp env = \case
   x -> error $ "evalSimpleExp: " ++ show x
 
 -- primitive functions
-primIntGT [Lit (LInt a), Lit (LInt b)] = return $ ValTag $ Tag C (if a > b then "True" else "False") 0
+primIntGT [Lit (LInt64 a), Lit (LInt64 b)] = return $ ValTag $ Tag C (if a > b then "True" else "False") 0
 primIntGT x = error $ "primIntGT - invalid arguments: " ++ show x
 
-primIntPrint [Lit (LInt a)] = return $ Lit $ LInt $ a
+primIntPrint [Lit (LInt64 a)] = return $ Lit $ LInt64 $ a
 primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
-primAdd [Lit (LInt a), Lit (LInt b)] = return $ Lit $ LInt $ a + b
+primAdd [Lit (LInt64 a), Lit (LInt64 b)] = return $ Lit $ LInt64 $ a + b
 primAdd x = error $ "primAdd - invalid arguments: " ++ show x
 
-primMul [Lit (LInt a), Lit (LInt b)] = return $ Lit $ LInt $ a * b
+primMul [Lit (LInt64 a), Lit (LInt64 b)] = return $ Lit $ LInt64 $ a * b
 primMul x = error $ "primMul - invalid arguments: " ++ show x
 
 reduceFun :: [Def] -> Name -> Val

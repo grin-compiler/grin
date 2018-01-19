@@ -20,6 +20,7 @@ import Data.Functor.Foldable
 import Data.List ((\\))
 import Data.Maybe (fromJust)
 import Data.Semigroup
+import qualified Data.Text as Text
 import GHC.Generics
 import Grin
 import Test.QuickCheck
@@ -142,6 +143,7 @@ instance AsExp TAlt where
     TAlt cpat exp -> Alt cpat (asExp exp)
 
 
+instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
 instance Arbitrary TProg where arbitrary = genericArbitraryU
 instance Arbitrary TDef where arbitrary = genericArbitraryU
@@ -234,8 +236,8 @@ class TypeOf t where
 
 instance TypeOf TSimpleVal where
   typeOf = \case
-    TLit (LInt _) -> TInt
-    bad           -> error $ "typeOf @TSimpleVal got:" ++ show bad
+    TLit (LInt64 _) -> TInt
+    bad             -> error $ "typeOf @TSimpleVal got:" ++ show bad
 
 instance TypeOf TVal where
   typeOf = \case
