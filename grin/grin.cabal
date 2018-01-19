@@ -42,7 +42,6 @@ library
     Transformations.Playground
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.PrettyHPT
-    CodeGenX64
     VarGen
     Pipeline
 
