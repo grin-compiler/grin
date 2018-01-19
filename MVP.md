@@ -1,13 +1,15 @@
 # builtin types
 
+- word
 - int
 - float
 - string (c string)
 
 # primops
 
-- add / sub (float + int)
-- mul / div (float + int)
+- add / sub (float + int + word)
+- mul / div (float + int + word)
+- eq / ne / gt / ge / lt / le (float + int + word)
 - print / readLine (string)
 
 # features
