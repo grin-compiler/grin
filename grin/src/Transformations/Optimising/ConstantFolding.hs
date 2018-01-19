@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor, OverloadedStrings #-}
-module Optimizations.ConstantFolding where
+module Transformations.Optimising.ConstantFolding where
 
 import Check
 import Grin
@@ -117,4 +117,4 @@ programSize = cata $ \case
   AltF _ a        -> 1 + a
 
 cfRunTests :: IO ()
-cfRunTests = hspec Optimizations.ConstantFolding.tests
+cfRunTests = hspec Transformations.Optimising.ConstantFolding.tests

@@ -2,4 +2,4 @@ module Optimizations
   ( constantFolding
   ) where
 
-import Optimizations.ConstantFolding (constantFolding)
+import Transformations.Optimising.ConstantFolding (constantFolding)

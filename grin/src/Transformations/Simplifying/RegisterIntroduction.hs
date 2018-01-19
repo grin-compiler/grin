@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor #-}
-module Transformations.RegisterIntroduction where
+module Transformations.Simplifying.RegisterIntroduction where
 
 import Control.Arrow ((***), second)
 import Data.Function

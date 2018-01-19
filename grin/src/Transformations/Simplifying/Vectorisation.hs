@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module Transformations.Vectorisation where
+module Transformations.Simplifying.Vectorisation where
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set

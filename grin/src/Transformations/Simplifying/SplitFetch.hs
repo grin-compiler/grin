@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Transformations.SplitFetch where
+module Transformations.Simplifying.SplitFetch where
 
 import Data.Functor.Foldable as Foldable
 

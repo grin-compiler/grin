@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
-module Transformations.CaseSimplification where
+module Transformations.Simplifying.CaseSimplification where
 
 import Data.Map (Map)
 import qualified Data.Map as Map

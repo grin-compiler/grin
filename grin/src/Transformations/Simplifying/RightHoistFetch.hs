@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor #-}
-module Transformations.RightHoistFetch where
+module Transformations.Simplifying.RightHoistFetch where
 
 import Data.Function
 import Data.Map (Map)

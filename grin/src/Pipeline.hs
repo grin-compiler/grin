@@ -14,12 +14,12 @@ import Optimizations
 import Pretty()
 import Transformations.AssignStoreIDs
 import Transformations.GenerateEval
-import Transformations.Vectorisation
+import Transformations.Simplifying.Vectorisation
 import Transformations.BindNormalisation
-import Transformations.SplitFetch
-import Transformations.CaseSimplification
-import Transformations.RightHoistFetch
-import Transformations.RegisterIntroduction
+import Transformations.Simplifying.SplitFetch
+import Transformations.Simplifying.CaseSimplification
+import Transformations.Simplifying.RightHoistFetch
+import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
 import AbstractInterpretation.AbstractRunGrin
 import qualified Reducer.LLVM.CodeGen as CGLLVM

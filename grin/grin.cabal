@@ -20,7 +20,6 @@ library
     Eval
     Free
     Grin
-    Optimizations.ConstantFolding
     Optimizations
     Pretty
     ParseGrin
@@ -31,15 +30,16 @@ library
     Test
     Transformations.AssignStoreIDs
     Transformations.GenerateEval
-    Transformations.Vectorisation
     Transformations.BindNormalisation
-    Transformations.SplitFetch
-    Transformations.CaseSimplification
-    Transformations.RegisterIntroduction
     Transformations.Rename
-    Transformations.RightHoistFetch
     Transformations.Substitution
     Transformations.Playground
+    Transformations.Simplifying.Vectorisation
+    Transformations.Simplifying.SplitFetch
+    Transformations.Simplifying.CaseSimplification
+    Transformations.Simplifying.RegisterIntroduction
+    Transformations.Simplifying.RightHoistFetch
+    Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.PrettyHPT
     VarGen
