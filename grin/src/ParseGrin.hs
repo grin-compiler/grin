@@ -10,7 +10,7 @@ import qualified Text.Megaparsec.Lexer as L
 import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
-import ReduceGrin
+--import ReduceGrin
 
 keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do"]
 

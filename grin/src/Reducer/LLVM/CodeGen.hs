@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards, OverloadedStrings #-}
 
-module CodeGenLLVM
+module Reducer.LLVM.CodeGen
   ( codeGen
   , toLLVM
   ) where
@@ -16,7 +16,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Grin
-import AbstractRunGrin
+import AbstractInterpretation.AbstractRunGrin (HPTResult(..), emptyComputer)
 
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type

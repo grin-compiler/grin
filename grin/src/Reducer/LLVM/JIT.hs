@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 
-module JITLLVM where
+module Reducer.LLVM.JIT where
 
 import Grin
 import Data.String

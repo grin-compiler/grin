@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module PrettyHPT where
+module AbstractInterpretation.PrettyHPT where
 
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
@@ -14,7 +14,7 @@ import Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 
 import Pretty
-import AbstractRunGrin
+import AbstractInterpretation.AbstractRunGrin
 
 
 instance Pretty Step where

@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Strict #-}
-module STReduceGrin (reduceFun) where
+module Reducer.ST (reduceFun) where
 
 import Debug.Trace
 

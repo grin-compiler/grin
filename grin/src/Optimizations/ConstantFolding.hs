@@ -7,7 +7,7 @@ import Free
 import Test
 import Test.Hspec
 import Test.QuickCheck
-import Transformations
+--import Transformations
 import Transformations.Substitution
 import Data.Functor.Foldable
 

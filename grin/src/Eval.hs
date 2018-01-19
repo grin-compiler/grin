@@ -4,12 +4,12 @@ import Text.Megaparsec
 
 import Grin
 import ParseGrin
-import qualified STReduceGrin
-import qualified ReduceGrin
-import qualified JITLLVM
-import qualified CodeGenLLVM
-import qualified AbstractRunGrin
-import Transformations (assignStoreIDs)
+import qualified Reducer.ST
+import qualified Reducer.Pure
+import qualified Reducer.LLVM.JIT as LLVM
+import qualified Reducer.LLVM.CodeGen as LLVM
+import qualified AbstractInterpretation.AbstractRunGrin as Abstract
+import Transformations.AssignStoreIDs (assignStoreIDs)
 
 data Reducer
   = PureReducer
@@ -24,13 +24,13 @@ eval' reducer fname = do
     Left err -> error $ show err
     Right e  ->
       case reducer of
-        PureReducer -> pure $ ReduceGrin.reduceFun e "grinMain"
-        STReducer   -> pure $ STReduceGrin.reduceFun e "grinMain"
-        LLVMReducer -> JITLLVM.eagerJit (CodeGenLLVM.codeGen hptResult (Program e)) "grinMain" where
-          (result, hptResult) = AbstractRunGrin.abstractRun (assignStoreIDs $ Program e) "grinMain"
+        PureReducer -> pure $ Reducer.Pure.reduceFun e "grinMain"
+        STReducer   -> pure $ Reducer.ST.reduceFun e "grinMain"
+        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen hptResult (Program e)) "grinMain" where
+          (result, hptResult) = Abstract.abstractRun (assignStoreIDs $ Program e) "grinMain"
 
 evalProgram :: Reducer -> Program -> Val
 evalProgram reducer (Program defs) =
   case reducer of
-    PureReducer -> ReduceGrin.reduceFun defs "grinMain"
-    STReducer   -> STReduceGrin.reduceFun defs "grinMain"
+    PureReducer -> Reducer.Pure.reduceFun defs "grinMain"
+    STReducer   -> Reducer.ST.reduceFun defs "grinMain"

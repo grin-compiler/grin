@@ -23,12 +23,13 @@ library
     Optimizations.ConstantFolding
     Optimizations
     Pretty
-    PrettyHPT
     ParseGrin
-    ReduceGrin
-    STReduceGrin
+    Reducer.Pure
+    Reducer.ST
+    Reducer.LLVM.CodeGen
+    Reducer.LLVM.JIT
     Test
-    Transformations
+    Transformations.AssignStoreIDs
     Transformations.GenerateEval
     Transformations.Vectorisation
     Transformations.BindNormalisation
@@ -38,11 +39,10 @@ library
     Transformations.Rename
     Transformations.RightHoistFetch
     Transformations.Substitution
-    TrafoPlayground
-    AbstractRunGrin
+    Transformations.Playground
+    AbstractInterpretation.AbstractRunGrin
+    AbstractInterpretation.PrettyHPT
     CodeGenX64
-    CodeGenLLVM
-    JITLLVM
     VarGen
     Pipeline
 

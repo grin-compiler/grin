@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
-module TrafoPlayground where
+module Transformations.Playground where
 
 import Data.Maybe
 import Data.List (intercalate)

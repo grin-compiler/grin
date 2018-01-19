@@ -10,7 +10,7 @@ import Data.Functor.Foldable as Foldable
 import Text.Printf
 
 import Grin
-import AbstractRunGrin hiding (Step)
+import AbstractInterpretation.AbstractRunGrin (HPTResult(..), Computer(..), RTVar(..), RTNode(..))
 
 type VectorisationAccumulator = (Map.Map Name Val, Exp)
 

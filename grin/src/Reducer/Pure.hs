@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module ReduceGrin (reduceFun) where
+module Reducer.Pure (reduceFun) where
 
 import Debug.Trace
 

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractRunGrin
+module AbstractInterpretation.AbstractRunGrin
   ( abstractRun
   , Computer(..)
   , HPTResult

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Transformations where
+module Transformations.AssignStoreIDs where
 
 import Data.Functor.Foldable as Foldable
 

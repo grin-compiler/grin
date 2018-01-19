@@ -12,7 +12,7 @@ import Eval
 import Grin
 import Optimizations
 import Pretty()
-import Transformations
+import Transformations.AssignStoreIDs
 import Transformations.GenerateEval
 import Transformations.Vectorisation
 import Transformations.BindNormalisation
@@ -20,10 +20,10 @@ import Transformations.SplitFetch
 import Transformations.CaseSimplification
 import Transformations.RightHoistFetch
 import Transformations.RegisterIntroduction
-import TrafoPlayground
-import AbstractRunGrin
-import qualified CodeGenLLVM as CGLLVM
-import qualified JITLLVM
+import Transformations.Playground
+import AbstractInterpretation.AbstractRunGrin
+import qualified Reducer.LLVM.CodeGen as CGLLVM
+import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
 import System.Process
 
