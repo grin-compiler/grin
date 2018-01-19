@@ -13,6 +13,11 @@ import Grin
 import Optimizations
 import Pretty()
 import Transformations
+import Transformations.GenerateEval
+import Transformations.Vectorisation
+import Transformations.BindNormalisation
+import Transformations.SplitFetch
+import Transformations.CaseSimplification
 import Transformations.RightHoistFetch
 import Transformations.RegisterIntroduction
 import TrafoPlayground

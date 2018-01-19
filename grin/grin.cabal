@@ -29,6 +29,11 @@ library
     STReduceGrin
     Test
     Transformations
+    Transformations.GenerateEval
+    Transformations.Vectorisation
+    Transformations.BindNormalisation
+    Transformations.SplitFetch
+    Transformations.CaseSimplification
     Transformations.RegisterIntroduction
     Transformations.Rename
     Transformations.RightHoistFetch
