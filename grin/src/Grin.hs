@@ -9,6 +9,9 @@ import Control.DeepSeq
 import Data.Map (Map)
 import GHC.Generics (Generic)
 import Debug.Trace (trace)
+import Data.Int
+import Data.Word
+import Data.Text (Text)
 
 type Name = String
 
@@ -91,7 +94,11 @@ isLit = \case
   Lit l -> True
   _     -> False
 
-data Lit = LInt Int
+data Lit
+  = LInt64  Int64
+  | LWord64 Word64
+  | LFloat  Int
+  | LString Text
   deriving (Generic, NFData, Eq, Ord, Show)
 
 data CPat
