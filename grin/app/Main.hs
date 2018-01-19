@@ -1,44 +1,15 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase #-}
 module Main where
 
 import Control.Monad
-import System.Environment
-import Text.Printf
+import Data.Map as Map
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
-import AbstractRunGrin
-import Eval
+import Options.Applicative
+
 import Grin
 import ParseGrin hiding (value)
 import Pipeline
-import Pretty
-import PrettyHPT
-import System.Process
-import TrafoPlayground
-import Transformations
-import VarGen
-
-import qualified CodeGenLLVM as CGLLVM
-import qualified CodeGenX64 as CGX64
-import qualified JITLLVM
-
-import Data.IntMap as IntMap
-import Data.Map as Map
-import LLVM.Pretty (ppllvm)
-import System.FilePath
-
-import Control.Monad.IO.Class
-import Control.Monad.Trans.State.Strict
-import Data.Set
-import Lens.Micro
-import Lens.Micro.Mtl
-import Lens.Micro.TH
-import Options.Applicative
-
-import qualified Text.Show.Pretty as PS
-import qualified Data.Text.Lazy.IO as Text
-
-
 
 data Options = Options
   { optFiles     :: [FilePath]
@@ -126,10 +97,5 @@ main = do
   forM_ files $ \fname -> do
     grin <- either (fail . show) id <$> parseGrin fname
     let program = Program grin
-    let result = [printf "stores %s %d" name $ countStores exp | Def name _ exp <- grin]
-    putStrLn "* store count *"
-    putStrLn $ unlines result
-    putStrLn "* tag info *"
-    putStrLn . show . collectTagInfo $ program
-    let opts = PipelineOpts { _poOutputDir = outputDir }
+        opts = PipelineOpts { _poOutputDir = outputDir }
     pipeline opts program steps
