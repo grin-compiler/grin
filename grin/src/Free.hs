@@ -28,6 +28,16 @@ bind' simple pat rest = Free (EBindF simple pat rest)
 bind :: LPat -> ExpM () -> ExpM () -> ExpM ()
 bind pat simple rest = bind' simple pat rest
 
+tag :: String -> Int -> CPat
+tag name a = TagPat $ Tag C name a
+
+(@:) :: String -> [String] -> CPat
+(@:) cname params = NodePat (Tag C cname (length params)) params
+
+(#:) :: String -> [String] -> Val
+(#:) tname params = VarTagNode tname (Var <$> params)
+
+
 switch :: Val -> [(CPat, ExpM ())] -> ExpM ()
 switch val branches = Free (ECaseF val ((\(cpat, body) -> (Free (AltF cpat body))) <$> branches))
 
@@ -37,8 +47,20 @@ app name params = liftF $ SAppF name params
 unit :: Val -> ExpM ()
 unit = liftF . SReturnF
 
+unit' :: AsVal val => val -> ExpM ()
+unit' = unit . asVal
+
 store :: Val -> ExpM ()
 store = liftF . SStoreF
+
+class AsVal v where
+  asVal :: v -> Val
+
+instance AsVal Int where
+  asVal = Lit . LInt64 . fromIntegral
+
+store' :: AsVal v => v -> ExpM ()
+store' = store . asVal
 
 fetch :: Name -> Maybe Int -> ExpM ()
 fetch name pos = liftF $ SFetchIF name pos

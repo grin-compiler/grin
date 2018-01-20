@@ -7,7 +7,7 @@ import Text.Printf
 import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
 
-import Check
+import Check hiding (check)
 import Eval
 import Grin
 import Optimizations

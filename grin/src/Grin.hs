@@ -73,6 +73,13 @@ data Val
   | Undefined
   deriving (Generic, NFData, Eq, Ord, Show)
 
+isBasicValue :: Val -> Bool
+isBasicValue = \case
+  ValTag _ -> True
+  Unit     -> True
+  Lit _    -> True
+  _        -> False
+
 class FoldNames n where
   foldNames :: (Monoid m) => (Name -> m) -> n -> m
 
@@ -106,6 +113,12 @@ data CPat
   | TagPat  Tag
   | LitPat  Lit
   deriving (Generic, NFData, Eq, Show)
+
+isBasicCPat :: CPat -> Bool
+isBasicCPat = \case
+  TagPat _ -> True
+  LitPat _ -> True
+  _        -> False
 
 instance FoldNames CPat where
   foldNames f = \case

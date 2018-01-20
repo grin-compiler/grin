@@ -112,6 +112,7 @@ test-suite grin-test
                      , hspec
                      , hspec-discover
   other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
+                     , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.SubstitutionSpec
   default-language:    Haskell2010

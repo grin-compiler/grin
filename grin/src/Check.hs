@@ -10,10 +10,20 @@ import Data.Set        as Set
 
 
 data Check
-  = EveryNameDefined
-  | NoStoredValues
+  = EveryNameIsDefined
+  | OnlyStoreVars
+  | OnlyBasicValuesInCases
+  | OnlyTagsInAlts
+  | OnlyUniqueNames
   deriving (Eq, Show)
 
+check :: Check -> Exp -> Bool
+check = \case
+  EveryNameIsDefined     -> Prelude.null . nonDefinedNames
+  OnlyStoreVars          -> Prelude.null . storedConstants
+  OnlyBasicValuesInCases -> getAll . valuesInCases (All . isBasicValue)
+  OnlyTagsInAlts         -> getAll . patsInAlts    (All . isBasicCPat)
+  OnlyUniqueNames        -> Prelude.null . nonUniqueNames
 
 -- | Names introduced by fetch def and patterns.
 definedNames :: Monoid m => (Name -> m) -> ExpF m -> m
@@ -86,3 +96,23 @@ storedValues f = \case
 
 storedConstants :: Exp -> [Val]
 storedConstants = cata (storedValues (\v -> [v | isConstant v]))
+
+valuesInCases :: (Monoid m) => (Val -> m) -> Exp -> m
+valuesInCases f = cata $ \case
+  ProgramF vals -> mconcat vals
+  DefF _ _ val  -> val
+  ECaseF val alts -> mconcat (f val:alts)
+  EBindF val1 _ val2 -> val1 <> val2
+  SBlockF val -> val
+  AltF _ val -> val
+  _ -> mempty
+
+patsInAlts :: (Monoid m) => (CPat -> m) -> Exp -> m
+patsInAlts f = cata $ \case
+  ProgramF vals -> mconcat vals
+  DefF _ _ val  -> val
+  ECaseF val alts -> mconcat alts
+  EBindF val1 _ val2 -> val1 <> val2
+  SBlockF val -> val
+  AltF pat val -> (f pat <> val)
+  _ -> mempty
