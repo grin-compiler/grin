@@ -34,49 +34,49 @@ tests = do
   describe "constant folding" $ do
     it "inside bind" $ do
       x <- buildExpM $
-        "x"  <=: store "a" $
-        "y"  <=: store "b" $
-        "u"  <=: unit 5    $
-        Unit <=: store "u" $
+        "x"  <=: store "a"    $
+        "y"  <=: store "b"    $
+        "u"  <=: unit (i64 5) $
+        Unit <=: store "u"    $
         unit "u"
 
       e <- buildExpM $
-        "x"  <=: store "a" $
-        "y"  <=: store "b" $
-        Unit <=: store 5   $
-        unit 5
+        "x"  <=: store "a"     $
+        "y"  <=: store "b"     $
+        Unit <=: store (i64 5) $
+        unit (i64 5)
       constantFolding x `shouldBe` e
 
     it "last bind" $ do
       x <- buildExpM $
-        "x" <=: store "a" $
-        "y" <=: store "b" $
-        "u" <=: unit 5    $
+        "x" <=: store "a"    $
+        "y" <=: store "b"    $
+        "u" <=: unit (i64 5) $
         unit "u"
       e <- buildExpM $
         "x" <=: store "a" $
         "y" <=: store "b" $
-        unit 5
+        unit (i64 5)
       constantFolding x `shouldBe` e
 
     it "unused variable" $ do
       x <- buildExpM $
-        "x" <=: store 3 $
-        "u" <=: unit 4  $
-        unit 5
+        "x" <=: store (i64 3) $
+        "u" <=: unit  (i64 4) $
+        unit (i64 5)
       e <- buildExpM $
-        "x" <=: store 3 $
-        unit 5
+        "x" <=: store (i64 3) $
+        unit (i64 5)
       constantFolding x `shouldBe` e
 
     it "only one statement" $ do
       x <- buildExpM $
         def "fun" ["a", "b"] $
-          "x" <=: unit 3     $
+          "x" <=: unit (i64 3) $
           unit "x"
       e <- buildExpM $
         def "fun" ["a", "b"] $
-          unit 3
+          unit (i64 3)
       constantFolding x `shouldBe` e
 
     it "the program size shrinks" $ property $ forAll nonWellFormedPrograms $ \original ->

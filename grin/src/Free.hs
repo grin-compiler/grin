@@ -46,13 +46,8 @@ fetch name pos = liftF $ SFetchIF name pos
 update :: Name -> Val -> ExpM ()
 update name val = liftF $ SUpdateF name val
 
-instance Num Val where
-  fromInteger = Lit . LInt64 . fromInteger
-  (Lit (LInt64 a)) + (Lit (LInt64 b)) = Lit (LInt64 (a + b))
-  (Lit (LInt64 a)) - (Lit (LInt64 b)) = Lit (LInt64 (a + b))
-  (Lit (LInt64 a)) * (Lit (LInt64 b)) = Lit (LInt64 (a * b))
-  abs (Lit (LInt64 a)) = Lit (LInt64 (abs a))
-  signum (Lit (LInt64 a)) = (Lit (LInt64 (signum a)))
+i64 :: Int -> Val
+i64 = Lit . LInt64 . fromIntegral
 
 instance IsString Val where
   fromString = Var
