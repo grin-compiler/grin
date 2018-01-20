@@ -9,6 +9,12 @@ import Data.Map.Strict as Map
 import Data.Set        as Set
 
 
+data Check
+  = EveryNameDefined
+  | NoStoredValues
+  deriving (Eq, Show)
+
+
 -- | Names introduced by fetch def and patterns.
 definedNames :: Monoid m => (Name -> m) -> ExpF m -> m
 definedNames f = \case

@@ -111,9 +111,9 @@ test-suite grin-test
                      , grin
                      , hspec
                      , hspec-discover
-  other-modules:       Transformations.RegisterIntroductionSpec
+  other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
+                     , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.SubstitutionSpec
-                     , Optimizations.ConstantFoldingSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
