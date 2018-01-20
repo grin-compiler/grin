@@ -95,7 +95,7 @@ main :: IO ()
 main = do
   Options files steps outputDir <- defaultPipeline <$> options
   forM_ files $ \fname -> do
-    grin <- either (fail . show) id <$> parseGrin fname
+    grin <- either (error . show) id <$> parseGrin fname
     let program = Program grin
         opts = PipelineOpts { _poOutputDir = outputDir }
     pipeline opts program steps
