@@ -97,7 +97,7 @@ isLit = \case
 data Lit
   = LInt64  Int64
   | LWord64 Word64
-  | LFloat  Int
+  | LFloat  Float
   | LString Text
   deriving (Generic, NFData, Eq, Ord, Show)
 

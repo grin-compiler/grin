@@ -7,6 +7,7 @@ import Control.Monad (void)
 import Text.Megaparsec
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
+import qualified Text.Megaparsec.Char as C
 import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
@@ -100,7 +101,9 @@ value = Unit <$ op "()" <|>
         simpleValue
 
 literal :: Parser Lit
-literal = LInt64 . fromIntegral <$> signedInteger
+literal = LInt64 . fromIntegral <$> signedInteger <|>
+          LWord64 . fromIntegral <$> lexeme (L.integer <* C.char 'u') <|>
+          LFloat . realToFrac <$> signedFloat
 
 --parseFromFile :: Parser _ -> String -> IO _
 parseFromFile p file = runParser p file <$> readFile file

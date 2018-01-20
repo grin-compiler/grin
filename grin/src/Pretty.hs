@@ -53,6 +53,8 @@ instance Pretty Val where
 
 instance Pretty Lit where
   pretty (LInt64 a) = integer $ fromIntegral a
+  pretty (LWord64 a) = integer (fromIntegral a) <> text "u"
+  pretty (LFloat a) = float a
 
 instance Pretty CPat where
   pretty = \case
