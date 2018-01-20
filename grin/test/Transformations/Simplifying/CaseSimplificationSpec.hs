@@ -27,26 +27,25 @@ spec = do
   it "Example from Figure 4.11" $ do
 
     before <- buildExpM $
-      Unit <=: store' @Int 3       $
+      Unit <=: store @Int 3       $
       switch ("t" #: ["a1", "a2"])
         [ ("Nil"  @: [],
-              unit' @Int 3)
+              unit @Int 3)
         , ("Cons" @: ["x", "xs"],
-              Unit <=: store "x"  $
-              Unit <=: store "xs" $
-              unit' @Int 5)
+              Unit <=: store @Var "x"  $
+              Unit <=: store @Var "xs" $
+              unit @Int 5)
         ]
 
     after <- buildExpM $
-      Unit <=: store' @Int 3 $
+      Unit <=: store @Int 3 $
       switch "t"
         [ (tag "Nil"  0,
-              unit' @Int 3)
+              unit @Int 3)
         , (tag "Cons" 2,
-              Unit <=: store "a1" $
-              Unit <=: store "a2" $
-              unit' @Int 5)
+              Unit <=: store @Var "a1" $
+              Unit <=: store @Var "a2" $
+              unit @Int 5)
         ]
 
     caseSimplification before `shouldBe` after
-

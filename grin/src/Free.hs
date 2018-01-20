@@ -44,14 +44,11 @@ switch val branches = Free (ECaseF val ((\(cpat, body) -> (Free (AltF cpat body)
 app :: Name -> [SimpleVal] -> ExpM ()
 app name params = liftF $ SAppF name params
 
-unit :: Val -> ExpM ()
-unit = liftF . SReturnF
+unit :: AsVal val => val -> ExpM ()
+unit = liftF . SReturnF . asVal
 
-unit' :: AsVal val => val -> ExpM ()
-unit' = unit . asVal
-
-store :: Val -> ExpM ()
-store = liftF . SStoreF
+store :: AsVal val => val -> ExpM ()
+store = liftF . SStoreF . asVal
 
 class AsVal v where
   asVal :: v -> Val
@@ -59,8 +56,13 @@ class AsVal v where
 instance AsVal Int where
   asVal = Lit . LInt64 . fromIntegral
 
-store' :: AsVal v => v -> ExpM ()
-store' = store . asVal
+newtype Var = V String
+
+instance IsString Var where
+  fromString = V
+
+instance AsVal Var where
+  asVal (V name) = Var name
 
 fetch :: Name -> Maybe Int -> ExpM ()
 fetch name pos = liftF $ SFetchIF name pos

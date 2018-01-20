@@ -46,17 +46,17 @@ tests :: Spec
 tests = do
   it "simple expressions" $ do
     x <- buildExpM $
-      "x"  <=: store "a"                                  $
+      "x"  <=: store @Var "a"                             $
       "y"  <=: app "intAdd" ["a", i64 3, "a", i64 2, "a"] $
       Unit <=: fetch "b" (Just 2)                         $
       Unit <=: fetch "b" Nothing                          $
-      unit "y"
+      unit @Var "y"
     e <- buildExpM $
-      "x"  <=: store (i64 10)                                      $
+      "x"  <=: store @Int 10                                       $
       "y"  <=: app "intAdd" [i64 10, i64 3, i64 10, i64 2, i64 10] $
       Unit <=: fetch "b" (Just 2)                                  $
       Unit <=: fetch "b" Nothing                                   $
-      unit "y"
+      unit @Var "y"
     -- 'a' should be replaced, 'b' should be left out
     (substitution (Map.fromList [("a", i64 10), ("b", i64 20)]) x)
       `shouldBe` e
