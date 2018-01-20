@@ -12,6 +12,7 @@ import Debug.Trace (trace)
 import Data.Int
 import Data.Word
 import Data.Text (Text)
+import Data.List (isPrefixOf)
 
 type Name = String
 
@@ -21,6 +22,9 @@ type SimpleExp = Exp
 type Alt = Exp
 type Def = Exp
 type Program = Exp
+
+isPrimName :: Name -> Bool
+isPrimName = isPrefixOf "_prim_"
 
 data Exp
   = Program     [Def]

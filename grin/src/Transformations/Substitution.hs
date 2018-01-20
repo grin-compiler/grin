@@ -47,13 +47,13 @@ tests = do
   it "simple expressions" $ do
     x <- buildExpM $
       "x"  <=: store @Var "a"                             $
-      "y"  <=: app "intAdd" ["a", i64 3, "a", i64 2, "a"] $
+      "y"  <=: app "_prim_intAdd" ["a", i64 3, "a", i64 2, "a"] $
       Unit <=: fetch "b" (Just 2)                         $
       Unit <=: fetch "b" Nothing                          $
       unit @Var "y"
     e <- buildExpM $
       "x"  <=: store @Int 10                                       $
-      "y"  <=: app "intAdd" [i64 10, i64 3, i64 10, i64 2, i64 10] $
+      "y"  <=: app "_prim_intAdd" [i64 10, i64 3, i64 10, i64 2, i64 10] $
       Unit <=: fetch "b" (Just 2)                                  $
       Unit <=: fetch "b" Nothing                                   $
       unit @Var "y"

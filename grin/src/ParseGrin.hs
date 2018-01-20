@@ -11,7 +11,6 @@ import qualified Text.Megaparsec.Char as C
 import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
---import ReduceGrin
 
 keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do"]
 
@@ -79,7 +78,9 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
               SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
               SUpdate <$ kw "update" <*> var <*> value <|>
               SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
-              SApp <$> var <*> some simpleValue
+              SApp <$> primNameOrDefName <*> some simpleValue
+
+primNameOrDefName = ('_':) <$ char '_' <*> var <|> var
 
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 

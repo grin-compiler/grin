@@ -68,13 +68,13 @@ evalSimpleExp env = \case
                   go a [] [] = a
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                   go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
-              case n of
-                "add" -> primAdd args
-                "mul" -> primMul args
-                "intPrint" -> primIntPrint args
-                "intGT" -> primIntGT args
-                "intAdd" -> primAdd args
-                _ -> do
+              if isPrimName n
+                then case n of
+                  "_prim_intPrint"  -> primIntPrint args
+                  "_prim_intGT"     -> primIntGT args
+                  "_prim_intAdd"    -> primAdd args
+                  _ -> error $ "unknown primitive operation: " ++ n
+                else do
                   Def _ vars body <- reader $ Map.findWithDefault (error $ "unknown function: " ++ n) n
                   evalExp (go env vars args) body
   SReturn v -> {-# SCC eSE_Return #-}return $ evalVal env v

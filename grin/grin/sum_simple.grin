@@ -3,15 +3,15 @@ grinMain = t1 <- store (CInt 1)
            t3 <- store (Fupto t1 t2)
            t4 <- store (Fsum t3)
            (CInt r') <- eval t4
-           intPrint r'
+           _prim_intPrint r'
 
 upto m n = (CInt m') <- eval m
            (CInt n') <- eval n
-           b' <- intGT m' n'
+           b' <- _prim_intGT m' n'
            if b' then
             pure (CNil)
            else
-            m1' <- intAdd m' 1
+            m1' <- _prim_intAdd m' 1
             m1 <- store (CInt m1')
             p <- store (Fupto m1 n)
             pure (CCons m p)
@@ -21,7 +21,7 @@ sum l = l2 <- eval l
           (CNil)       -> pure (CInt 0)
           (CCons x xs) -> (CInt x') <- eval x
                           (CInt s') <- sum xs
-                          ax' <- intAdd x' s'
+                          ax' <- _prim_intAdd x' s'
                           pure (CInt ax')
 
 eval q = v <- fetch q
