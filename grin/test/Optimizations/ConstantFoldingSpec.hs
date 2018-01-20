@@ -1,7 +1,7 @@
 module Optimizations.ConstantFoldingSpec where
 
 import Test.Hspec
-import Optimizations.ConstantFolding (tests)
+import Transformations.Optimising.ConstantFolding (tests)
 
 spec :: Spec
 spec = tests
