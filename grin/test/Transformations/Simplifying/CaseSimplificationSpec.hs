@@ -1,8 +1,11 @@
-{-# LANGUAGE TypeApplications, OverloadedStrings #-}
+{-# LANGUAGE TypeApplications, OverloadedStrings, LambdaCase #-}
 module Transformations.Simplifying.CaseSimplificationSpec where
 
+import Data.Monoid
 import Transformations.Simplifying.CaseSimplification
 import Test.Hspec
+import Test.QuickCheck
+import Test
 
 import Check
 import Free
@@ -25,7 +28,6 @@ be just basic values. The patterns will not contain (and bind) any variables.
 spec :: Spec
 spec = do
   it "Example from Figure 4.11" $ do
-
     before <- buildExpM $
       Unit <=: store @Int 3       $
       switch ("t" #: ["a1", "a2"])
@@ -49,3 +51,13 @@ spec = do
         ]
 
     caseSimplification before `shouldBe` after
+
+  it "Program size does not change" $ property $ forAll nonWellFormedPrograms $ \before ->
+    let after = caseSimplification before
+        sizeBefore = programSize before
+        sizeAfter  = programSize after
+        isVarTagNode = \case
+          VarTagNode _ _ -> Any True
+          _              -> Any False
+    in cover (getAny $ valuesInCases isVarTagNode before) 1 "Case with VarTagNode"
+       $ sizeBefore == sizeAfter

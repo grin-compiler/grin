@@ -116,3 +116,20 @@ patsInAlts f = cata $ \case
   SBlockF val -> val
   AltF pat val -> (f pat <> val)
   _ -> mempty
+
+programSize :: Exp -> Int
+programSize = cata $ \case
+  ProgramF  ds    -> sum ds
+  DefF      _ _ a -> 1 + a
+  -- Exp
+  EBindF    a _ b -> sum [1,a,b]
+  ECaseF    _ as  -> sum (1:as)
+  -- Simple Expr
+  SAppF     _ _   -> 1
+  SReturnF  _     -> 1
+  SStoreF   _     -> 1
+  SFetchIF  _ _   -> 1
+  SUpdateF  _ _   -> 1
+  SBlockF   a     -> 1 + a
+  -- Alt
+  AltF _ a        -> 1 + a
