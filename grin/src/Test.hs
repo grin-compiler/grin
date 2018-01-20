@@ -37,7 +37,7 @@ import Debug.Trace
 data TName = TName { unTName :: String }
   deriving (Eq, Generic, Show)
 
-data TProg = TProg [TDef]
+data TProg = TProg (NonEmptyList TDef)
   deriving (Generic, Show)
 
 data TDef = TDef TName [TName] TExp
@@ -45,7 +45,7 @@ data TDef = TDef TName [TName] TExp
 
 data TExp
   = TEBind TSExp TLPat TExp
-  | TECase TVal [TAlt]
+  | TECase TVal (NonEmptyList TAlt)
   | TSExp TSExp
   deriving (Generic, Show)
 
@@ -117,7 +117,7 @@ nonWellFormedPrograms = resize 2 (asExp <$> arbitrary @TProg)
 
 instance AsExp TProg where
   asExp = \case
-    TProg defs -> Program (asExp <$> defs)
+    TProg defs -> Program (asExp <$> getNonEmpty defs)
 
 instance AsExp TDef where
   asExp = \case
@@ -135,7 +135,7 @@ instance AsExp TSExp where
 instance AsExp TExp where
   asExp = \case
     TEBind sexp lpat exp -> EBind (asExp sexp) (asVal lpat) (asExp exp)
-    TECase val alts      -> ECase (asVal val) (asExp <$> alts)
+    TECase val alts      -> ECase (asVal val) (asExp <$> getNonEmpty alts)
     TSExp sexp           -> asExp sexp
 
 instance AsExp TAlt where
@@ -145,7 +145,7 @@ instance AsExp TAlt where
 
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
-instance Arbitrary TProg where arbitrary = genericArbitraryU
+instance Arbitrary TProg where arbitrary = TProg <$> arbitrary
 instance Arbitrary TDef where arbitrary = genericArbitraryU
 instance Arbitrary TExp where arbitrary = genericArbitraryU
 instance Arbitrary TSExp where arbitrary = genericArbitraryU

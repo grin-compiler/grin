@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications, OverloadedStrings, LambdaCase #-}
 module Transformations.Simplifying.CaseSimplificationSpec where
 
-import Data.Monoid
+import Data.Monoid hiding (Alt)
 import Transformations.Simplifying.CaseSimplification
 import Test.Hspec
 import Test.QuickCheck
@@ -52,12 +52,52 @@ spec = do
 
     caseSimplification before `shouldBe` after
 
-  it "Program size does not change" $ property $ forAll nonWellFormedPrograms $ \before ->
-    let after = caseSimplification before
-        sizeBefore = programSize before
-        sizeAfter  = programSize after
-        isVarTagNode = \case
-          VarTagNode _ _ -> Any True
-          _              -> Any False
-    in cover (getAny $ valuesInCases isVarTagNode before) 1 "Case with VarTagNode"
-       $ sizeBefore == sizeAfter
+  xit "Program size does not change" $ property $
+    forAll nonWellFormedPrograms programSizeDoesNotChange
+
+  xit "Cases with tags as values have tags in their alternatives" $ property $
+    forAll nonWellFormedPrograms effectedAlternativesHasOnlyTags
+
+varTagCover :: Exp -> Property -> Property
+varTagCover exp =
+  within 10000000 {-microsecond-} .
+  cover (getAny $ valuesInCases (Any . isVarTagNode) exp) 100 "Case with VarTagNode"
+
+programSizeDoesNotChange :: Exp -> Property
+programSizeDoesNotChange exp = varTagCover exp $ unchangedSize exp $ caseSimplification exp
+
+effectedAlternativesHasOnlyTags :: Exp -> Property
+effectedAlternativesHasOnlyTags exp = varTagCover exp $ checkVarTagCases $ caseSimplification exp
+
+
+isVarTagNode :: Val -> Bool
+isVarTagNode = \case
+  VarTagNode _ _ -> True
+  _              -> False
+
+unchangedSize :: Exp -> Exp -> Property
+unchangedSize before after = property $ programSize before == programSize after
+
+checkVarTagCases :: Exp -> Property
+checkVarTagCases = \case
+  ECase       val alts | isVarTagNode val -> mconcat (checkAlt <$> alts)
+
+  Program     defs -> mconcat (checkVarTagCases <$> defs)
+  Def         name params body -> checkVarTagCases body
+
+  EBind       se lpat exp -> checkVarTagCases se <> checkVarTagCases exp
+  ECase       val alts -> mconcat (checkVarTagCases <$> alts)
+
+  SBlock      exp -> checkVarTagCases exp
+  Alt cpat exp -> checkVarTagCases exp
+
+  rest -> property True
+  where
+    checkAlt :: Exp -> Property
+    checkAlt (Alt cpat exp) = checkVarTagCases exp <> property (isBasicCPat cpat)
+
+
+instance Monoid Property where
+  mempty      = property True
+  mappend p q = p .&&. q
+  mconcat ps  = conjoin ps

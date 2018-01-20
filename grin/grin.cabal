@@ -111,6 +111,7 @@ test-suite grin-test
                      , grin
                      , hspec
                      , hspec-discover
+                     , QuickCheck
   other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
