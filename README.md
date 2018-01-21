@@ -1,6 +1,6 @@
 # GRIN
 
-[![Build Status](https://travis-ci.org/andorp/grin.svg)](https://travis-ci.org/andorp/grin)
+[![Build Status](https://travis-ci.org/andorp/grin.svg?branch=master)](https://travis-ci.org/andorp/grin)
 
 The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction.
 For an overview read
