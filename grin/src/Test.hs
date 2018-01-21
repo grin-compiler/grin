@@ -37,7 +37,7 @@ import Debug.Trace
 data TName = TName { unTName :: String }
   deriving (Eq, Generic, Show)
 
-data TProg = TProg (NonEmptyList TDef)
+data TProg = TProg [TDef]
   deriving (Generic, Show)
 
 data TDef = TDef TName [TName] TExp
@@ -45,7 +45,7 @@ data TDef = TDef TName [TName] TExp
 
 data TExp
   = TEBind TSExp TLPat TExp
-  | TECase TVal (NonEmptyList TAlt)
+  | TECase TVal [TAlt]
   | TSExp TSExp
   deriving (Generic, Show)
 
@@ -113,11 +113,11 @@ class AsExp t where
   asExp :: t -> Exp
 
 nonWellFormedPrograms :: Gen Exp
-nonWellFormedPrograms = resize 2 (asExp <$> arbitrary @TProg)
+nonWellFormedPrograms = resize 1 (asExp <$> arbitrary @TProg)
 
 instance AsExp TProg where
   asExp = \case
-    TProg defs -> Program (asExp <$> getNonEmpty defs)
+    TProg defs -> Program (asExp <$> defs)
 
 instance AsExp TDef where
   asExp = \case
@@ -135,7 +135,7 @@ instance AsExp TSExp where
 instance AsExp TExp where
   asExp = \case
     TEBind sexp lpat exp -> EBind (asExp sexp) (asVal lpat) (asExp exp)
-    TECase val alts      -> ECase (asVal val) (asExp <$> getNonEmpty alts)
+    TECase val alts      -> ECase (asVal val) (asExp <$> alts)
     TSExp sexp           -> asExp sexp
 
 instance AsExp TAlt where
@@ -145,7 +145,7 @@ instance AsExp TAlt where
 
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
-instance Arbitrary TProg where arbitrary = TProg <$> arbitrary
+instance Arbitrary TProg where arbitrary = genericArbitraryU
 instance Arbitrary TDef where arbitrary = genericArbitraryU
 instance Arbitrary TExp where arbitrary = genericArbitraryU
 instance Arbitrary TSExp where arbitrary = genericArbitraryU
@@ -203,6 +203,10 @@ instance Monoid Env where
 insertVar :: Name -> Either TVal TExtraVal -> Env -> Env
 insertVar name val (Env vars funs) = Env (Map.singleton name (typeOf val) <> vars) funs
 
+insertVarT :: Name -> Type -> Env -> Env
+insertVarT name ttype (Env vars funs) = Env (Map.singleton name ttype <> vars) funs
+
+
 data Store = Store (Map Loc (TVal, Type))
   deriving (Eq, Show)
 
@@ -256,6 +260,8 @@ instance (TypeOf l, TypeOf r) => TypeOf (Either l r) where
 
 type Context = (Env, Store)
 
+ctxEnv   = _1
+-- ctxStore = _2
 
 data Goal
   = Exp [Eff] Type
@@ -269,9 +275,8 @@ type GoalM a = ReaderT Context (LogicT Gen) a
 runGoalM :: GoalM a -> Gen [a]
 runGoalM = observeAllT . flip runReaderT mempty
 
-genProg :: Gen [Exp]
-genProg = asExp <$$> (runGoalM $ solve @TExp (Exp [] TTUnit))
-
+genProg :: Gen Exp
+genProg = fmap head $ asExp <$$> (runGoalM $ solve @TExp (Exp [] TTUnit))
 
 gen :: Gen a -> GoalM a
 gen = lift . lift
@@ -280,9 +285,16 @@ newName :: TVal -> (String -> GoalM a) -> GoalM a
 newName x k = do
   (Env vars funs) <- view _1
   name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
-  CMR.local (_1 %~ insertVar name (Left x)) $ do
-    env1 <- view _1
+  CMR.local (ctxEnv %~ insertVar name (Left x)) $ do
     k name
+
+newNameT :: Type -> (String -> GoalM a) -> GoalM a
+newNameT t k = do
+  (Env vars funs) <- view _1
+  name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
+  CMR.local (ctxEnv %~ insertVarT name t) $ do
+    k name
+
 
 gValue :: Type -> GoalM TVal
 gValue = \case
@@ -307,6 +319,7 @@ moneof gs = do
 
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
+-- TODO: Use size parameter to limit the generation of programs.
 gExp :: Type -> [Eff] -> GoalM TExp
 gExp t = \case
   [] -> moneof
@@ -316,6 +329,14 @@ gExp t = \case
          newName x $ \n -> do-- TODO: Gen LPat
            rest <- solve (Exp [] t)
            pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
+    -- TODO: Generate real case expressions
+    , do nil <- solve (Exp [] t)
+         cons <- solve (Exp [] t)
+         newNameT t $ \t0 -> newNameT TTUnit $ \a -> newNameT TTUnit $ \b ->
+           pure $ TECase (TVarTagNode (TName t0) [TVar (TName a), TVar (TName b)])
+            [ (TAlt (NodePat (Tag C "Nil" 0) []) nil)
+            , (TAlt (NodePat (Tag C "Cons" 2) ["x", "xs"]) cons)
+            ]
     ]
   es -> mzero
 

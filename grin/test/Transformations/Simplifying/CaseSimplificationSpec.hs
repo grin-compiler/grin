@@ -4,12 +4,13 @@ module Transformations.Simplifying.CaseSimplificationSpec where
 import Data.Monoid hiding (Alt)
 import Transformations.Simplifying.CaseSimplification
 import Test.Hspec
-import Test.QuickCheck
+import Test.QuickCheck hiding (generate)
 import Test
 
 import Check
 import Free
 import Grin
+
 
 runTests :: IO ()
 runTests = hspec spec
@@ -52,16 +53,16 @@ spec = do
 
     caseSimplification before `shouldBe` after
 
-  xit "Program size does not change" $ property $
-    forAll nonWellFormedPrograms programSizeDoesNotChange
+  it "Program size does not change" $ property $
+    forAll genProg programSizeDoesNotChange
 
-  xit "Cases with tags as values have tags in their alternatives" $ property $
-    forAll nonWellFormedPrograms effectedAlternativesHasOnlyTags
+  it "Cases with tags as values have tags in their alternatives" $ property $
+    forAll genProg effectedAlternativesHasOnlyTags
 
 varTagCover :: Exp -> Property -> Property
 varTagCover exp =
   within 10000000 {-microsecond-} .
-  cover (getAny $ valuesInCases (Any . isVarTagNode) exp) 100 "Case with VarTagNode"
+  cover (getAny $ valuesInCases (Any . isVarTagNode) exp) 1 "Case with VarTagNode"
 
 programSizeDoesNotChange :: Exp -> Property
 programSizeDoesNotChange exp = varTagCover exp $ unchangedSize exp $ caseSimplification exp
