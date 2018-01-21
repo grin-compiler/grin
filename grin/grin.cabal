@@ -28,6 +28,7 @@ library
     Reducer.LLVM.CodeGen
     Reducer.LLVM.JIT
     Test
+    Gspec
     Transformations.AssignStoreIDs
     Transformations.GenerateEval
     Transformations.BindNormalisation
