@@ -17,3 +17,8 @@ extra-deps:
 flags:
   llvm-hs:
     shared-llvm: true
+
+build:
+  test-arguments:
+    additional-args:
+      - "--seed=123"
