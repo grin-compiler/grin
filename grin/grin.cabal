@@ -59,7 +59,6 @@ library
     ansi-wl-pprint,
     monad-gen,
     free,
-    x86-64bit,
     bytestring,
     llvm-hs,
     llvm-hs-pure,

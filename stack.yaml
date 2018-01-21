@@ -2,7 +2,6 @@ resolver: lts-9.3
 
 packages:
 - 'grin'
-- 'x64'
 - location:
     git: https://github.com/llvm-hs/llvm-hs-pretty.git
     commit: 7e426813eeb3a7e6337ce78674260bbae35d40ed
