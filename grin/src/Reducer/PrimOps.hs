@@ -41,9 +41,6 @@ evalPrimOp name args = case name of
   "_prim_float_ge"  -> float_bin_op bool (>=)
   "_prim_float_lt"  -> float_bin_op bool (<)
   "_prim_float_le"  -> float_bin_op bool (<=)
-  -- String
-  "_prim_string_eq" -> string_bin_op bool (==)
-  "_prim_string_ne" -> string_bin_op bool (/=)
 
   _ -> error $ "unknown primitive operation: " ++ name
  where
@@ -63,8 +60,3 @@ evalPrimOp name args = case name of
   float_bin_op retTy fn = case args of
     [Lit (LFloat a), Lit (LFloat b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
-
-  string_bin_op retTy fn = case args of
-    [Lit (LString a), Lit (LString b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
-
