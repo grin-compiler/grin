@@ -37,7 +37,8 @@ transformOpts =
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
-      flg HPT "hpt" "Heap to point analysis"
+      flg HPT "hpt" "Heap-points-to analysis"
+  <|> flg PrintHPT "print-hpt" "Prints the heap-points-to analysis result"
   <|> flg TagInfo "tag-info" "Tag Information"
   <|> flg (PrintGrin id) "print-grin" "Prints the actual grin code"
   <|> flg PureEval "eval" "Evaluate the grin program"
@@ -78,6 +79,7 @@ defaultPipeline = \case
     Options
       files
       [ HPT
+      , PrintHPT
       , T CaseSimplification
       , T Vectorisation
       , T RegisterIntroduction

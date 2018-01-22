@@ -3,6 +3,7 @@ module Pipeline where
 
 import Control.Monad
 import Data.List (intersperse)
+import Data.Maybe (maybe)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
@@ -22,6 +23,7 @@ import Transformations.Simplifying.RightHoistFetch
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
 import AbstractInterpretation.AbstractRunGrin
+import AbstractInterpretation.PrettyHPT
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -77,6 +79,7 @@ instance Eq (Hidden a) where
 
 data Pipeline
   = HPT
+  | PrintHPT
   | T Transformation
   | TagInfo
   | PrintGrinH (Hidden (Doc -> Doc))
@@ -115,6 +118,7 @@ makeLenses ''PipelineOpts
 pipelineStep :: Pipeline -> PipelineM ()
 pipelineStep = \case
   HPT           -> hpt
+  PrintHPT      -> printHPT
   T t           -> transformationM t
   TagInfo       -> tagInfo
   PrintGrin d   -> printGrinM d
@@ -129,8 +133,12 @@ hpt :: PipelineM ()
 hpt = do
   grin <- use psExp
   let (_, result) = abstractRun (assignStoreIDs grin) "grinMain"
---  liftIO $ print result
   psHPTResult .= Just result
+
+printHPT :: PipelineM ()
+printHPT = do
+  hptResult <- use psHPTResult
+  maybe (pure ()) (liftIO . putStrLn . show . pretty) hptResult
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
