@@ -123,11 +123,11 @@ data Val
   | Var Name
 -}
 
-codeGenLit :: Lit -> CG Operand
+codeGenLit :: Lit -> C.Constant
 codeGenLit = \case
-  LInt64 v  -> pure . ConstantOperand $ Int {integerBits=64, integerValue=fromIntegral v}
-  LWord64 v -> pure . ConstantOperand $ Int {integerBits=64, integerValue=fromIntegral v}
-  LFloat v  -> pure . ConstantOperand $ C.Float {floatValue=F.Single v}
+  LInt64 v  -> Int {integerBits=64, integerValue=fromIntegral v}
+  LWord64 v -> Int {integerBits=64, integerValue=fromIntegral v}
+  LFloat v  -> C.Float {floatValue=F.Single v}
 
 codeGenVal :: Val -> CG Operand
 codeGenVal = \case
@@ -135,7 +135,7 @@ codeGenVal = \case
   Var name      -> Map.lookup name <$> gets constantMap >>= \case
                       Nothing -> pure $ LocalReference (getType name) (mkName name) -- TODO: lookup in constant map
                       Just operand  -> pure operand
-  Lit lit -> codeGenLit lit
+  Lit lit -> pure . ConstantOperand . codeGenLit $ lit
   ValTag tag -> pure $ ConstantOperand $ getTagId tag
   -- TODO: support nodes
   --ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
@@ -160,15 +160,18 @@ codeGenVal = \case
 
 getCPatConstant :: CPat -> Constant
 getCPatConstant = \case
-  NodePat tag _      -> getTagId tag
-  TagPat  tag        -> getTagId tag
-  LitPat  (LInt64 v) -> Int 64 (fromIntegral v)
+  NodePat tag _ -> getTagId tag
+  TagPat  tag   -> getTagId tag
+  LitPat  lit   -> codeGenLit lit
 
 getCPatName :: CPat -> String
 getCPatName = \case
-  NodePat tag _      -> tagName tag
-  TagPat  tag        -> tagName tag
-  LitPat  (LInt64 v) -> "int_" ++ show v
+  NodePat tag _ -> tagName tag
+  TagPat  tag   -> tagName tag
+  LitPat  lit   -> case lit of
+    LInt64 v  -> "int_" ++ show v
+    LWord64 v -> "word_" ++ show v
+    LFloat v  -> error "pattern match on float is not supported"
  where
   tagName (Tag c name n) = printf "%s%s%d" (show c) name n
 
