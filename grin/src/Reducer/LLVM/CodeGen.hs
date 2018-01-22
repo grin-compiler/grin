@@ -18,11 +18,12 @@ import qualified Data.Map as Map
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type
 import LLVM.AST.AddrSpace
-import LLVM.AST.Constant hiding (Add, ICmp)
+import LLVM.AST.Constant as C hiding (Add, ICmp)
 import LLVM.AST.IntegerPredicate
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.Linkage as L
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.Float as F
 import LLVM.AST.Global
 import LLVM.Context
 import LLVM.Module
@@ -122,13 +123,19 @@ data Val
   | Var Name
 -}
 
+codeGenLit :: Lit -> CG Operand
+codeGenLit = \case
+  LInt64 v  -> pure . ConstantOperand $ Int {integerBits=64, integerValue=fromIntegral v}
+  LWord64 v -> pure . ConstantOperand $ Int {integerBits=64, integerValue=fromIntegral v}
+  LFloat v  -> pure . ConstantOperand $ C.Float {floatValue=F.Single v}
+
 codeGenVal :: Val -> CG Operand
 codeGenVal = \case
   Unit          -> unit
   Var name      -> Map.lookup name <$> gets constantMap >>= \case
                       Nothing -> pure $ LocalReference (getType name) (mkName name) -- TODO: lookup in constant map
                       Just operand  -> pure operand
-  Lit (LInt64 v) -> pure $ ConstantOperand $ Int 64 (fromIntegral v)
+  Lit lit -> codeGenLit lit
   ValTag tag -> pure $ ConstantOperand $ getTagId tag
   -- TODO: support nodes
   --ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
