@@ -231,9 +231,9 @@ evalSimpleExp = \case
                 -- Special case
                 -- "eval" -> evalEval args
                 -- Primitives
-                "_prim_intPrint" -> pure $ basVarSet $ T_Fun "_prim_intPrint"
-                "_prim_intGT" -> pure $ basVarSet $ T_Fun "_prim_intGT" --boolVarSet
-                "_prim_intAdd" -> pure $ basVarSet T_I64
+                "_prim_int_print"  -> pure $ basVarSet $ T_Fun "_prim_int_print"
+                "_prim_int_gt"    -> pure $ basVarSet $ T_Fun "_prim_int_gt" --boolVarSet
+                "_prim_int_add"   -> pure $ basVarSet T_I64
                 -- User defined functions
                 _ -> do
                   evalSAppF n rtVals

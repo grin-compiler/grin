@@ -9,7 +9,8 @@
 
 - add / sub (float + int + word)
 - mul / div (float + int + word)
-- eq / ne / gt / ge / lt / le (float + int + word)
+- gt / ge / lt / le (float + int + word)
+- eq / ne (float + int + word + string)
 - print / readLine (string)
 
 # features

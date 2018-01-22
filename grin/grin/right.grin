@@ -9,7 +9,7 @@ right p =
             rx <- fetch a2
             ry <- fetch a1
             update a1 (CInt 3)
-            rz <- _prim_intAdd rx ry
+            rz <- _prim_int_add rx ry
             pure (CInt rz)
 
 right1 rp =
@@ -22,7 +22,7 @@ right1 rp =
             update ra2 (CInt 2)
             rrx <- fetch ra2
             rry <- fetch ra1
-            rrz <- _prim_intAdd rrx rry
+            rrz <- _prim_int_add rrx rry
             update ra1 (CInt rrz)
             rt1 <- fetch rp [0]
             ra3 <- fetch rp [1]
@@ -31,7 +31,7 @@ right1 rp =
                   CNil -> pure (CInt 0)
                   CCons -> rx1 <- fetch ra3
                            ry1 <- fetch ra4
-                           rz <- _prim_intAdd rx1 ry1
+                           rz <- _prim_int_add rx1 ry1
                            pure (CInt rz)
 
 right2 r2p r2h1 r2h2 =
@@ -49,15 +49,15 @@ grinMain = t1 <- store (CInt 1)
            t3 <- store (Fupto t1 t2)
            t4 <- store (Fsum t3)
            (CInt r') <- eval t4
-           _prim_intPrint r'
+           _prim_int_print r'
 
 upto m n = (CInt m') <- eval m
            (CInt n') <- eval n
-           b' <- _prim_intGT m' n'
+           b' <- _prim_int_gt m' n'
            if b' then
             pure (CNil)
            else
-            m1' <- _prim_intAdd m' 1
+            m1' <- _prim_int_add m' 1
             m1 <- store (CInt m1')
             p <- store (Fupto m1 n)
             pure (CCons m p)
@@ -67,7 +67,7 @@ sum l = l2 <- eval l
           (CNil)       -> pure (CInt 0)
           (CCons x xs) -> (CInt x') <- eval x
                           (CInt s') <- sum xs
-                          ax' <- _prim_intAdd x' s'
+                          ax' <- _prim_int_add x' s'
                           pure (CInt ax')
 
 eval q = v <- fetch q

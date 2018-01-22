@@ -23,6 +23,7 @@ library
     Optimizations
     Pretty
     ParseGrin
+    Reducer.PrimOps
     Reducer.Pure
     Reducer.ST
     Reducer.LLVM.CodeGen

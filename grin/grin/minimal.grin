@@ -1,8 +1,8 @@
 grinMain =
   n30 <- pure 2
-  n18 <- _prim_intAdd n30 1
+  n18 <- _prim_int_add n30 1
   n31 <- sum n18
-  n28 <- _prim_intAdd n18 31
+  n28 <- _prim_int_add n18 31
   pure n28
 
 sum b2 = pure 111

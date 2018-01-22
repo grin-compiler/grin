@@ -16,6 +16,7 @@ import Data.STRef.Strict
 import Control.Monad.ST
 import Control.Monad.RWS.Strict hiding (Alt)
 
+import Reducer.PrimOps
 import Grin
 
 -- models computer memory
@@ -132,11 +133,7 @@ evalSimpleExp env = \case
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                   go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
               if isPrimName n
-                then case n of
-                  "_prim_intPrint"  -> primIntPrint args
-                  "_prim_intGT"     -> primIntGT args
-                  "_prim_intAdd"    -> primAdd args
-                  _ -> error $ "unknown primitive operation: " ++ n
+                then evalPrimOp n args
                 else do
                   Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ n) n) <$> getProg
                   evalExp (go env vars args) body
@@ -157,19 +154,6 @@ evalSimpleExp env = \case
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
   SBlock a -> evalExp env a
   x -> error $ "evalSimpleExp: " ++ show x
-
--- primitive functions
-primIntGT [Lit (LInt64 a), Lit (LInt64 b)] = return $ ValTag $ Tag C (if a > b then "True" else "False") 0
-primIntGT x = error $ "primIntGT - invalid arguments: " ++ show x
-
-primIntPrint [Lit (LInt64 a)] = return $ Lit $ LInt64 $ a
-primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
-
-primAdd [Lit (LInt64 a), Lit (LInt64 b)] = return $ Lit $ LInt64 $ a + b
-primAdd x = error $ "primAdd - invalid arguments: " ++ show x
-
-primMul [Lit (LInt64 a), Lit (LInt64 b)] = return $ Lit $ LInt64 $ a * b
-primMul x = error $ "primMul - invalid arguments: " ++ show x
 
 reduceFun :: [Def] -> Name -> Val
 reduceFun l n = runST $ do

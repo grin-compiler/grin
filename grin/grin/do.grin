@@ -1,15 +1,15 @@
 grinMain =
   n13 <- sum 0 1 10
-  _prim_intPrint n13
+  _prim_int_print n13
 
 sum n29 n30 n31 =
-  b2 <- _prim_intGT n30 n31
+  b2 <- _prim_int_gt n30 n31
   if b2 then
     x <- do
       case CFalse of
         CFalse -> pure ()
     pure n29
   else
-    n18 <- _prim_intAdd n30 1
-    n28 <- _prim_intAdd n29 n30
+    n18 <- _prim_int_add n30 1
+    n28 <- _prim_int_add n29 n30
     sum n28 n18 n31

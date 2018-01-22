@@ -90,7 +90,7 @@ typeMap = Map.fromList
   , ("n30", i64)
   , ("n31", i64)
   , ("sum", fun i64 [i64, i64, i64])
-  , ("_prim_intPrint", fun i64 [i64])
+  , ("_prim_int_print", fun i64 [i64])
   , ("grinMain", fun i64 [])
   , ("upto", fun (struct [i64]) [i64, i64])
   , ("eval", fun (struct [i64]) [struct [i64]])
@@ -260,7 +260,7 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
 
     -- primops calls
     --SAppF "intPrint" [a] -> pure . O $ undef i64 -- TODO
-    SAppF "_prim_intGT" [a, b] -> do
+    SAppF "_prim_int_gt" [a, b] -> do
       [opA, opB] <- mapM codeGenVal [a, b]
       pure . I $ ICmp
         { iPredicate  = SGT
@@ -268,7 +268,7 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
         , operand1    = opB
         , metadata    = []
         }
-    SAppF "_prim_intAdd" [a, b] -> do
+    SAppF "_prim_int_add" [a, b] -> do
       [opA, opB] <- mapM codeGenVal [a, b]
       pure . I $ Add
         { nsw       = False
@@ -408,4 +408,4 @@ external retty label argtys = modify' (\env@Env{..} -> env {envDefinitions = def
 -- available primitive functions
 registerPrimFunLib :: CG ()
 registerPrimFunLib = do
-  external i64 (mkName "_prim_intPrint") [(i64, mkName "x")]
+  external i64 (mkName "_prim_int_print") [(i64, mkName "x")]

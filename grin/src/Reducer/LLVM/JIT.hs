@@ -51,7 +51,7 @@ eagerJit amod mainName =
       withHostTargetMachine $ \tm ->
         withObjectLinkingLayer $ \objectLayer ->
           withIRCompileLayer objectLayer tm $ \compileLayer -> do
-            intPrint <- mangleSymbol compileLayer "_prim_intPrint"
+            intPrint <- mangleSymbol compileLayer "_prim_int_print"
             withModule
               compileLayer
               mod

@@ -1,0 +1,70 @@
+module Reducer.PrimOps (evalPrimOp) where
+
+import Grin
+
+-- primitive functions
+primIntPrint [Lit (LInt64 a)] = pure $ Lit $ LInt64 $ a
+primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
+
+evalPrimOp name args = case name of
+  "_prim_int_print"  -> primIntPrint args
+  -- Int
+  "_prim_int_add"   -> int_bin_op int (+)
+  "_prim_int_sub"   -> int_bin_op int (-)
+  "_prim_int_mul"   -> int_bin_op int (*)
+  "_prim_int_div"   -> int_bin_op int div
+  "_prim_int_eq"    -> int_bin_op bool (==)
+  "_prim_int_ne"    -> int_bin_op bool (/=)
+  "_prim_int_gt"    -> int_bin_op bool (>)
+  "_prim_int_ge"    -> int_bin_op bool (>=)
+  "_prim_int_lt"    -> int_bin_op bool (<)
+  "_prim_int_le"    -> int_bin_op bool (<=)
+  -- Word
+  "_prim_word_add"  -> word_bin_op word (+)
+  "_prim_word_sub"  -> word_bin_op word (-)
+  "_prim_word_mul"  -> word_bin_op word (*)
+  "_prim_word_div"  -> word_bin_op word div
+  "_prim_word_eq"   -> word_bin_op bool (==)
+  "_prim_word_ne"   -> word_bin_op bool (/=)
+  "_prim_word_gt"   -> word_bin_op bool (>)
+  "_prim_word_ge"   -> word_bin_op bool (>=)
+  "_prim_word_lt"   -> word_bin_op bool (<)
+  "_prim_word_le"   -> word_bin_op bool (<=)
+  -- Float
+  "_prim_float_add" -> float_bin_op float (+)
+  "_prim_float_sub" -> float_bin_op float (-)
+  "_prim_float_mul" -> float_bin_op float (*)
+  "_prim_float_div" -> float_bin_op float (/)
+  "_prim_float_eq"  -> float_bin_op bool (==)
+  "_prim_float_ne"  -> float_bin_op bool (/=)
+  "_prim_float_gt"  -> float_bin_op bool (>)
+  "_prim_float_ge"  -> float_bin_op bool (>=)
+  "_prim_float_lt"  -> float_bin_op bool (<)
+  "_prim_float_le"  -> float_bin_op bool (<=)
+  -- String
+  "_prim_string_eq" -> string_bin_op bool (==)
+  "_prim_string_ne" -> string_bin_op bool (/=)
+
+  _ -> error $ "unknown primitive operation: " ++ name
+ where
+  int   x = pure . Lit . LInt64 $ x
+  word  x = pure . Lit . LWord64 $ x
+  float x = pure . Lit . LFloat $ x
+  bool  x = pure . ValTag $ Tag C (if x then "True" else "False") 0
+
+  int_bin_op retTy fn = case args of
+    [Lit (LInt64 a), Lit (LInt64 b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+
+  word_bin_op retTy fn = case args of
+    [Lit (LWord64 a), Lit (LWord64 b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+
+  float_bin_op retTy fn = case args of
+    [Lit (LFloat a), Lit (LFloat b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+
+  string_bin_op retTy fn = case args of
+    [Lit (LString a), Lit (LString b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+
