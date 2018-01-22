@@ -3,15 +3,13 @@
 - word
 - int
 - float
-- string (c string)
 
 # primops
 
 - add / sub (float + int + word)
 - mul / div (float + int + word)
 - gt / ge / lt / le (float + int + word)
-- eq / ne (float + int + word + string)
-- print / readLine (string)
+- eq / ne (float + int + word)
 
 # features
 - node support for codegen

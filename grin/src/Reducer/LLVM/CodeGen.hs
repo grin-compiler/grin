@@ -15,9 +15,6 @@ import Data.Functor.Foldable as Foldable
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-import Grin
-import AbstractInterpretation.AbstractRunGrin (HPTResult(..), emptyComputer)
-
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type
 import LLVM.AST.AddrSpace
@@ -32,6 +29,11 @@ import LLVM.Module
 
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
+
+import Grin
+import AbstractInterpretation.AbstractRunGrin (HPTResult(..), emptyComputer)
+import Reducer.LLVM.Base
+import Reducer.LLVM.PrimOps
 
 {-
   Supported language:
@@ -120,41 +122,6 @@ data Val
   | Var Name
 -}
 
-data Env
-  = Env
-  { envDefinitions    :: [Definition]
-  , envBasicBlocks    :: [BasicBlock]
-  , envInstructions   :: [Named Instruction]
-  , constantMap       :: Map Grin.Name Operand
-  , currentBlockName  :: AST.Name
-  , envTempCounter    :: Int
-  , envHPTResult      :: HPTResult
-  }
-
-emptyEnv = Env
-  { envDefinitions    = mempty
-  , envBasicBlocks    = mempty
-  , envInstructions   = mempty
-  , constantMap       = mempty
-  , currentBlockName  = mkName ""
-  , envTempCounter    = 0
-  , envHPTResult      = emptyComputer
-  }
-
-type CG = State Env
-
-emit :: [Named Instruction] -> CG ()
-emit instructions = modify' (\env@Env{..} -> env {envInstructions = envInstructions ++ instructions})
-
-addConstant :: Grin.Name -> Operand -> CG ()
-addConstant name operand = modify' (\env@Env{..} -> env {constantMap = Map.insert name operand constantMap})
-
-unit :: CG Operand
-unit = pure $ ConstantOperand $ Undef VoidType
-
-undef :: Type -> Operand
-undef = ConstantOperand . Undef
-
 codeGenVal :: Val -> CG Operand
 codeGenVal = \case
   Unit          -> unit
@@ -198,43 +165,12 @@ getCPatName = \case
  where
   tagName (Tag c name n) = printf "%s%s%d" (show c) name n
 
-data Result
-  = I Instruction
-  | O Operand
-
 -- https://stackoverflow.com/questions/6374355/llvm-assembly-assign-integer-constant-to-register
 {-
   NOTE: if the cata result is a monad then it means the codegen is sequential
 
   IDEA: write an untyped codegen ; which does not rely on HPT calculated types
 -}
-
--- utils
-closeBlock :: Terminator -> CG ()
-closeBlock tr = modify' (\env@Env{..} -> env {envInstructions = mempty, envBasicBlocks = envBasicBlocks ++ [BasicBlock currentBlockName envInstructions (Do tr)]})
-
-startNewBlock :: AST.Name -> CG ()
-startNewBlock name = modify' (\env@Env{..} -> env {envInstructions = mempty, currentBlockName = name})
-
-addBlock :: AST.Name -> CG a -> CG a
-addBlock name block = do
-  instructions <- gets envInstructions
-  curBlockName <- gets currentBlockName
-  startNewBlock name
-  result <- block
-  modify' (\env@Env{..} -> env {envInstructions = instructions, currentBlockName = curBlockName})
-  pure result
-
-uniqueTempName :: CG AST.Name
-uniqueTempName = state (\env@Env{..} -> (mkName $ printf "tmp%d" envTempCounter, env {envTempCounter = succ envTempCounter}))
-
-getOperand :: Result -> CG Operand
-getOperand = \case
-  O a -> pure a
-  I i -> do
-          tmp <- uniqueTempName
-          emit [tmp := i]
-          pure $ LocalReference i64 tmp -- TODO: handle type
 
 toModule :: Env -> AST.Module
 toModule Env{..} = defaultModule
@@ -258,38 +194,21 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
           _ -> pure () -- TODO: perform binding
       exp
 
-    -- primops calls
-    --SAppF "intPrint" [a] -> pure . O $ undef i64 -- TODO
-    SAppF "_prim_int_gt" [a, b] -> do
-      [opA, opB] <- mapM codeGenVal [a, b]
-      pure . I $ ICmp
-        { iPredicate  = SGT
-        , operand0    = opA
-        , operand1    = opB
-        , metadata    = []
-        }
-    SAppF "_prim_int_add" [a, b] -> do
-      [opA, opB] <- mapM codeGenVal [a, b]
-      pure . I $ Add
-        { nsw       = False
-        , nuw       = False
-        , operand0  = opA
-        , operand1  = opB
-        , metadata  = []
-        }
-
-    -- call to top level functions
     SAppF name args -> do
       operands <- mapM codeGenVal args
-      pure . I $ Call
-        { tailCallKind        = Just Tail
-        , callingConvention   = CC.C
-        , returnAttributes    = []
-        , function            = Right $ ConstantOperand $ GlobalReference (getType name) (mkName name)
-        , arguments           = zip operands (repeat [])
-        , functionAttributes  = []
-        , metadata            = []
-        }
+      if isPrimName name
+        then codeGenPrimOp name args operands
+        else do
+          -- call to top level functions
+          pure . I $ Call
+            { tailCallKind        = Just Tail
+            , callingConvention   = CC.C
+            , returnAttributes    = []
+            , function            = Right $ ConstantOperand $ GlobalReference (getType name) (mkName name)
+            , arguments           = zip operands (repeat [])
+            , functionAttributes  = []
+            , metadata            = []
+            }
 
     AltF _ a -> snd a
     ECaseF val alts -> do
