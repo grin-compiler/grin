@@ -28,15 +28,22 @@ bind' simple pat rest = Free (EBindF simple pat rest)
 bind :: LPat -> ExpM () -> ExpM () -> ExpM ()
 bind pat simple rest = bind' simple pat rest
 
-tag :: String -> Int -> CPat
-tag name a = TagPat $ Tag C name a
+class FromTag t where
+  tag :: String -> Int -> t
+  tag' :: String -> t
+  tag' = flip tag 0
+
+instance FromTag CPat where
+  tag name a = TagPat $ Tag C name a
+
+instance FromTag Val where
+  tag name a = ValTag $ Tag C name a
 
 (@:) :: String -> [String] -> CPat
 (@:) cname params = NodePat (Tag C cname (length params)) params
 
 (#:) :: String -> [String] -> Val
 (#:) tname params = VarTagNode tname (Var <$> params)
-
 
 switch :: Val -> [(CPat, ExpM ())] -> ExpM ()
 switch val branches = Free (ECaseF val ((\(cpat, body) -> (Free (AltF cpat body))) <$> branches))
@@ -63,6 +70,9 @@ instance IsString Var where
 
 instance AsVal Var where
   asVal (V name) = Var name
+
+instance AsVal Val where
+  asVal = id
 
 fetch :: Name -> Maybe Int -> ExpM ()
 fetch name pos = liftF $ SFetchIF name pos
