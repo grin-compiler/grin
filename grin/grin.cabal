@@ -118,6 +118,7 @@ test-suite grin-test
   other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
+                     , Transformations.Simplifying.RightHoistFetchSpec
                      , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.SubstitutionSpec
   default-language:    Haskell2010
