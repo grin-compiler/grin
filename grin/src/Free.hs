@@ -32,15 +32,16 @@ class FromTag t where
   tag :: String -> Int -> t
   tag' :: String -> t
   tag' = flip tag 0
+  -- Constant tag node
+  (@:) :: String -> [String] -> t
 
 instance FromTag CPat where
   tag name a = TagPat $ Tag C name a
+  (@:) cname params = NodePat (Tag C cname (length params)) params
 
 instance FromTag Val where
   tag name a = ValTag $ Tag C name a
-
-(@:) :: String -> [String] -> CPat
-(@:) cname params = NodePat (Tag C cname (length params)) params
+  (@:) cname params = ConstTagNode (Tag C cname (length params)) (Var <$> params)
 
 (#:) :: String -> [String] -> Val
 (#:) tname params = VarTagNode tname (Var <$> params)
