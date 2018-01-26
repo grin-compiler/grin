@@ -7,6 +7,7 @@ module AbstractInterpretation.AbstractRunGrin
   , RTLocVal(..)
   , RTNode(..)
   , RTVar(..)
+  , CGType(..)
   , emptyComputer
   ) where
 
@@ -269,7 +270,7 @@ evalExp x = {-addStep x >> -}case x of
   -}
   _ :< (ECaseF v alts) -> evalVal v >>= \vals -> do
     a <- mconcat <$> sequence
-      [ zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp 
+      [ zipWithM_ addToEnv names (map (Set.map V) args) >> evalExp exp
       | N (RTNode tag args) <- Set.toList vals
       , AltF (NodePat alttag names) exp <- map unwrap alts
       , tag == alttag
@@ -282,7 +283,7 @@ evalExp x = {-addStep x >> -}case x of
               NodePat{} -> False
               _ -> True
         b <- mconcat <$> sequence
-          [ evalExp exp 
+          [ evalExp exp
           | AltF pat exp <- map unwrap alts
           , notNodePat pat
           ]

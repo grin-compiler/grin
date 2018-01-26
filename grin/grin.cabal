@@ -119,6 +119,7 @@ test-suite grin-test
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
                      , Transformations.Simplifying.RightHoistFetchSpec
+                     , Transformations.Simplifying.VectorisationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.SubstitutionSpec
   default-language:    Haskell2010

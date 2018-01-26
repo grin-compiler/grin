@@ -43,6 +43,10 @@ instance FromTag Val where
   tag name a = ValTag $ Tag C name a
   (@:) cname params = ConstTagNode (Tag C cname (length params)) (Var <$> params)
 
+instance FromTag Tag where
+  tag name a = Tag C name a
+  (@:) cname params = Tag C cname (length params)
+
 (#:) :: String -> [String] -> Val
 (#:) tname params = VarTagNode tname (Var <$> params)
 
