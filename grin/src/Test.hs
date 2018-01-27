@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications #-}
+{-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving #-}
 module Test where
 
 import Prelude hiding (GT)
@@ -37,7 +37,9 @@ import Debug.Trace
 data TName = TName { unTName :: String }
   deriving (Eq, Generic, Show)
 
-data TProg = TProg [TDef]
+deriving instance Generic (NonEmptyList a)
+
+data TProg = TProg (NonEmptyList TDef)
   deriving (Generic, Show)
 
 data TDef = TDef TName [TName] TExp
@@ -45,7 +47,7 @@ data TDef = TDef TName [TName] TExp
 
 data TExp
   = TEBind TSExp TLPat TExp
-  | TECase TVal [TAlt]
+  | TECase TVal (NonEmptyList TAlt)
   | TSExp TSExp
   deriving (Generic, Show)
 
@@ -117,7 +119,7 @@ nonWellFormedPrograms = resize 1 (asExp <$> arbitrary @TProg)
 
 instance AsExp TProg where
   asExp = \case
-    TProg defs -> Program (asExp <$> defs)
+    TProg defs -> Program (asExp <$> getNonEmpty defs)
 
 instance AsExp TDef where
   asExp = \case
@@ -135,24 +137,26 @@ instance AsExp TSExp where
 instance AsExp TExp where
   asExp = \case
     TEBind sexp lpat exp -> EBind (asExp sexp) (asVal lpat) (asExp exp)
-    TECase val alts      -> ECase (asVal val) (asExp <$> alts)
+    TECase val alts      -> ECase (asVal val) (asExp <$> getNonEmpty alts)
     TSExp sexp           -> asExp sexp
 
 instance AsExp TAlt where
   asExp = \case
     TAlt cpat exp -> Alt cpat (asExp exp)
 
+downScale :: Gen a -> Gen a
+downScale = scale (`div` 2)
 
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
 instance Arbitrary TProg where arbitrary = genericArbitraryU
 instance Arbitrary TDef where arbitrary = genericArbitraryU
-instance Arbitrary TExp where arbitrary = genericArbitraryU
+instance Arbitrary TExp where arbitrary = downScale genericArbitraryU
 instance Arbitrary TSExp where arbitrary = genericArbitraryU
 instance Arbitrary TAlt where arbitrary = genericArbitraryU
 instance Arbitrary Val where arbitrary = genericArbitraryU
 instance Arbitrary Lit where arbitrary = genericArbitraryU
-instance Arbitrary TagType where arbitrary = genericArbitraryU
+instance Arbitrary TagType where arbitrary =genericArbitraryU
 instance Arbitrary TVal where arbitrary = genericArbitraryU
 instance Arbitrary TSimpleVal where arbitrary = genericArbitraryU
 instance Arbitrary TExtraVal where arbitrary = genericArbitraryU
@@ -334,9 +338,10 @@ gExp t = \case
          cons <- solve (Exp [] t)
          newNameT t $ \t0 -> newNameT TTUnit $ \a -> newNameT TTUnit $ \b ->
            pure $ TECase (TVarTagNode (TName t0) [TVar (TName a), TVar (TName b)])
-            [ (TAlt (NodePat (Tag C "Nil" 0) []) nil)
-            , (TAlt (NodePat (Tag C "Cons" 2) ["x", "xs"]) cons)
-            ]
+            $ NonEmpty
+              [ (TAlt (NodePat (Tag C "Nil" 0) []) nil)
+              , (TAlt (NodePat (Tag C "Cons" 2) ["x", "xs"]) cons)
+              ]
     ]
   es -> mzero
 

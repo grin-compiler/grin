@@ -54,10 +54,10 @@ spec = do
     caseSimplification before `shouldBe` after
 
   it "Program size does not change" $ property $
-    forAll genProg programSizeDoesNotChange
+    forAll nonWellFormedPrograms programSizeDoesNotChange
 
   it "Cases with tags as values have tags in their alternatives" $ property $
-    forAll genProg effectedAlternativesHasOnlyTags
+    forAll nonWellFormedPrograms effectedAlternativesHasOnlyTags
 
 varTagCover :: Exp -> Property -> Property
 varTagCover exp =
