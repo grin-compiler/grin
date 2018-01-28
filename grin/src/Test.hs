@@ -23,6 +23,7 @@ import Data.Semigroup
 import qualified Data.Text as Text
 import GHC.Generics
 import Grin
+import qualified PrimOps
 import Test.QuickCheck
 import Generic.Random.Generic
 import Lens.Micro
@@ -228,6 +229,9 @@ data Eff
 data Type
   = TTUnit
   | TInt
+  | TFloat
+  | TWord
+  | TBool -- TODO: Handle TBool as a TUnion [Tag "True", Tag False]
   | TTLoc
   | TTag Tag [Type]
   | TUnion (Set Type)
@@ -244,8 +248,10 @@ class TypeOf t where
 
 instance TypeOf TSimpleVal where
   typeOf = \case
-    TLit (LInt64 _) -> TInt
-    bad             -> error $ "typeOf @TSimpleVal got:" ++ show bad
+    TLit (LInt64 _)  -> TInt
+    TLit (LWord64 _) -> TWord
+    TLit (LFloat _)  -> TFloat
+    bad              -> error $ "typeOf @TSimpleVal got:" ++ show bad
 
 instance TypeOf TVal where
   typeOf = \case
@@ -273,14 +279,28 @@ data Goal
   | GVal Type
   deriving (Eq, Ord, Show)
 
+genProg :: Gen Exp
+genProg = fmap head $ asExp <$$> (runGoalM $ solve @TExp (Exp [] TTUnit))
+
+sampleGoalM :: Show a => GoalM a -> IO ()
+sampleGoalM g = sample $ runGoalM g
+
 
 type GoalM a = ReaderT Context (LogicT Gen) a
 
-runGoalM :: GoalM a -> Gen [a]
-runGoalM = observeAllT . flip runReaderT mempty
+initContext :: Context
+initContext = (Env mempty primitives, mempty)
+  where
+    primitives = Map.map (\(params, ret) -> (convPrimTypes <$> params, convPrimTypes ret, [])) PrimOps.primOps
+    convPrimTypes = \case
+      PrimOps.TInt   -> TInt
+      PrimOps.TWord  -> TWord
+      PrimOps.TFloat -> TFloat
+      PrimOps.TBool  -> TBool
+      PrimOps.TUnit  -> TTUnit
 
-genProg :: Gen Exp
-genProg = fmap head $ asExp <$$> (runGoalM $ solve @TExp (Exp [] TTUnit))
+runGoalM :: GoalM a -> Gen [a]
+runGoalM = observeAllT . flip runReaderT initContext
 
 gen :: Gen a -> GoalM a
 gen = lift . lift
@@ -299,14 +319,24 @@ newNameT t k = do
   CMR.local (ctxEnv %~ insertVarT name t) $ do
     k name
 
+-- | Select a variable from a context which has a given type.
+gEnv :: Type -> GoalM Name
+gEnv t = do
+  (Env vars funs) <- view _1
+  melements . Map.keys $ Map.filter (==t) vars
 
 gValue :: Type -> GoalM TVal
 gValue = \case
   TTUnit          -> pure TUnit
-  TInt            -> mzero
-  TTLoc           -> mzero
-  TTag tag types  -> mzero
-  TUnion types    -> mzero
+  TInt            -> varFromEnv TInt   `mplus` (TSimpleVal . TLit . LInt64 <$> gen arbitrary)
+  TFloat          -> varFromEnv TFloat `mplus` (TSimpleVal . TLit . LFloat <$> gen arbitrary)
+  TWord           -> varFromEnv TWord  `mplus` (TSimpleVal . TLit . LWord64 <$> gen arbitrary)
+  TBool           -> mzero -- TODO: Handle tags
+  TTLoc           -> varFromEnv TTLoc
+  TTag tag types  -> mzero -- find something in the context that has a tagged type or generate a new tag
+  TUnion types    -> gValue =<< melements (Set.toList types)
+  where
+    varFromEnv t = (TSimpleVal . TVar . TName <$> gEnv t)
 
 gSExp :: Eff -> GoalM TSExp
 gSExp = \case
@@ -320,6 +350,10 @@ moneof [] = mzero
 moneof gs = do
   n <- gen $ choose (0, length gs - 1)
   gs !! n
+
+melements :: [a] -> GoalM a
+melements [] = mzero
+melements es = gen $ elements es
 
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
@@ -369,3 +403,4 @@ instance Solve TExp where
   solve' = \case
     Exp es t -> gExp t es
     _        -> mzero
+
