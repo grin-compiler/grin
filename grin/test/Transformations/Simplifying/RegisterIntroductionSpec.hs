@@ -14,16 +14,16 @@ spec = do
 
   it "Example from Figure 4.17" $ do
     before <- buildExpM $
-      Unit <=: store @Int 0                       $
+      "l1" <=: store @Int 0                       $
       "p"  <=: store @Val ("Cons" @: ["a", "b"])  $
       "u'" <=: app "foo" (asVal @Int <$> [1, 3])  $
       "q"  <=: store @Val ("Int" @: ["u'"])       $
       "x"  <=: unit @Val ("Cons" @: ["q", "p"])   $
-      Unit <=: store @Int 1                       $
+      "l2" <=: store @Int 1                       $
       unit @Int 2
 
     after <- buildExpM $
-      Unit <=: store @Int 0                  $
+      "l1" <=: store @Int 0                  $
       "t1" <=: unit @Val (tag "Cons" 2)      $
       "p"  <=: store @Val ("t1" @: ["a", "b"])    $
       "x'" <=: store @Int 1 $
@@ -33,7 +33,7 @@ spec = do
       "q"  <=: store @Val ("t2" @: ["u'"]) $
       "t3" <=: unit @Val (tag "Cons" 2) $
       "x"  <=: unit @Val ("t3" @: ["q", "p"]) $
-      Unit <=: store @Int 1                  $
+      "l2" <=: store @Int 1                  $
       unit @Int 2
 
     registerIntroduction 0 before `shouldBe` after

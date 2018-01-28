@@ -30,7 +30,7 @@ spec :: Spec
 spec = do
   it "Example from Figure 4.11" $ do
     before <- buildExpM $
-      Unit <=: store @Int 3       $
+      "l1" <=: store @Int 3       $
       switch ("t" #: ["a1", "a2"])
         [ ("Nil"  @: [],
               unit @Int 3)
@@ -41,7 +41,7 @@ spec = do
         ]
 
     after <- buildExpM $
-      Unit <=: store @Int 3 $
+      "l1" <=: store @Int 3 $
       switch "t"
         [ (tag "Nil"  0,
               unit @Int 3)

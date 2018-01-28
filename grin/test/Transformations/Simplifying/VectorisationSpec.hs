@@ -27,15 +27,15 @@ spec = do
                 mempty
 
     before <- buildExpM $
-      Unit <=: store @Int 0                     $
+      "l0" <=: store @Int 0                     $
       "v"  <=: unit @Val ("q" @: ["p1", "p2"])  $
-      Unit <=: store @Var "v"                   $
+      "l1" <=: store @Var "v"                   $
       unit @Int 1
 
     after <- buildExpM $
-      Unit <=: store @Int 0                                       $
+      "l0" <=: store @Int 0                                       $
       ("v0" #: ["v1", "v2"]) <=: unit @Val ("q" @: ["p1", "p2"])  $
-      Unit <=: store @Val ("v0" #: ["v1", "v2"])                  $
+      "l1" <=: store @Val ("v0" #: ["v1", "v2"])                  $
       unit @Int 1
 
     vectorisation hpt before `shouldBe` after
