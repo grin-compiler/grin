@@ -5,6 +5,7 @@ import Control.Arrow
 import Data.Functor.Foldable
 import Data.Monoid
 import Grin
+import PrimOps
 
 import Data.Map.Strict as Map
 import Data.Set        as Set hiding (fold)
@@ -89,9 +90,11 @@ nonUniqueNames = Map.keys . Map.filter ((> 1) . getSum) . cata (definedNames ins
   insert n = Map.singleton n (Sum 1)
 
 nonDefinedNames :: Exp -> [Name]
-nonDefinedNames e = Set.toList $ Set.difference
+nonDefinedNames e = Set.toList $ Prelude.foldl Set.difference
   (cata (usedNames Set.singleton) e)
-  (cata (definedNames Set.singleton) e)
+  [ (cata (definedNames Set.singleton) e)
+  , Set.fromList $ Map.keys primOps
+  ]
 
 storedValues :: Monoid m => (Val -> m) -> ExpF m -> m
 storedValues f = \case
