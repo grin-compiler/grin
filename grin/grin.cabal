@@ -22,6 +22,7 @@ library
     Grin
     Optimizations
     Pretty
+    PrimOps
     ParseGrin
     Reducer.PrimOps
     Reducer.Pure
