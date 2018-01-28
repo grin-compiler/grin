@@ -6,6 +6,7 @@ import Data.Map (Map)
 import Debug.Trace (traceShowId)
 import Free
 import Grin
+import PrimOps
 import Transformations.Rename
 import qualified Data.Map as Map
 import qualified Data.List as List
@@ -197,9 +198,9 @@ findUsedNameIdx n p m = case Map.lookup n m of
 
 -- | Returns the variables that are not used where they are defined.
 usedInDifferentBlock :: RHIData -> RHIData
-usedInDifferentBlock = Map.filter nonLocalyUsed where
-  nonLocalyUsed vs = case (List.filter isDefined vs) of
-    []    -> False -- True -- error "Undefined variable."
+usedInDifferentBlock = Map.filterWithKey nonLocalyUsed where
+  nonLocalyUsed n vs = Map.member n primOps || case (List.filter isDefined vs) of
+    []    -> error $ "Undefined variable." ++ n
     [Defined path] -> maybe True (const False) $ List.find (path==)
                       $ map coPoint
                       $ List.filter isUsed vs
