@@ -14,6 +14,7 @@ spec = do
   it "Example from Figure 4.16" $ do
     before <- buildExpM $
       "l0" <=: store @Int 0        $
+      "p"  <=: store (constTagNode "Cons" (asVal @Int <$> [1, 2])) $
       "t"  <=: fetch "p" (Just 0)  $
       "a1" <=: fetch "p" (Just 1)  $
       "a2" <=: fetch "p" (Just 2)  $
@@ -28,6 +29,7 @@ spec = do
         ]
     after <- buildExpM $
       "l0" <=: store @Int 0        $
+      "p"  <=: store (constTagNode "Cons" (asVal @Int <$> [1, 2])) $
       "t"  <=: fetch "p" (Just 0)  $
       "l1" <=: store @Int 1        $
       switch "t"

@@ -50,6 +50,9 @@ instance FromTag Tag where
 (#:) :: String -> [String] -> Val
 (#:) tname params = VarTagNode tname (Var <$> params)
 
+constTagNode :: String -> [Val] -> Val
+constTagNode name params = ConstTagNode (Tag C name (length params)) params
+
 switch :: Val -> [(CPat, ExpM ())] -> ExpM ()
 switch val branches = Free (ECaseF val ((\(cpat, body) -> (Free (AltF cpat body))) <$> branches))
 
