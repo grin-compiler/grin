@@ -7,7 +7,7 @@ import Transformations.Simplifying.Vectorisation (vectorisation)
 import Data.Monoid
 import Data.Map
 import Test.Hspec
-import Free
+import Free hiding (V)
 import Grin
 
 import qualified Data.Map as Map
@@ -19,11 +19,17 @@ spec = do
   it "Example from Figure 4.9" $ do
     let hpt = Computer
                 mempty
-                (Map.singleton "v" (Set.singleton
-                  (N (RTNode (tag "Cons" 2)
-                      [ Set.singleton (BAS T_I64)
-                      , Set.singleton (RTLoc 3)
-                      ]))))
+                (Map.fromList
+                  [ ("v", (Set.singleton
+                            (N (RTNode (tag "Cons" 2)
+                                [ Set.singleton (BAS T_I64)
+                                , Set.singleton (RTLoc 3)
+                                ]))))
+                  , ("l0", (Set.singleton
+                             (V (BAS T_I64))))
+                  , ("l1", (Set.singleton
+                             (V (BAS T_I64))))
+                  ])
                 mempty
 
     before <- buildExpM $
