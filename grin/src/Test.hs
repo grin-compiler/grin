@@ -325,12 +325,19 @@ gEnv t = do
   (Env vars funs) <- view _1
   melements . Map.keys $ Map.filter (==t) vars
 
+gLiteral :: Type -> GoalM TVal
+gLiteral = fmap (TSimpleVal . TLit) . \case
+  TInt   -> LInt64  <$> gen arbitrary
+  TFloat -> LFloat  <$> gen arbitrary
+  TWord  -> LWord64 <$> gen arbitrary
+  _      -> mzero
+
 gValue :: Type -> GoalM TVal
 gValue = \case
   TTUnit          -> pure TUnit
-  TInt            -> varFromEnv TInt   `mplus` (TSimpleVal . TLit . LInt64 <$> gen arbitrary)
-  TFloat          -> varFromEnv TFloat `mplus` (TSimpleVal . TLit . LFloat <$> gen arbitrary)
-  TWord           -> varFromEnv TWord  `mplus` (TSimpleVal . TLit . LWord64 <$> gen arbitrary)
+  TInt            -> varFromEnv TInt   `mplus` gLiteral TInt
+  TFloat          -> varFromEnv TFloat `mplus` gLiteral TFloat
+  TWord           -> varFromEnv TWord  `mplus` gLiteral TWord
   TBool           -> mzero -- TODO: Handle tags
   TTLoc           -> varFromEnv TTLoc
   TTag tag types  -> mzero -- find something in the context that has a tagged type or generate a new tag
