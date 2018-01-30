@@ -351,7 +351,7 @@ gValue = \case
   TWord           -> TSimpleVal <$> gSimpleVal TWord
   TBool           -> mzero -- TODO: Handle tags
   TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
-  TTag tag types  -> mzero -- find something in the context that has a tagged type or generate a new tag
+  TTag tag types  -> TConstTagNode (Tag C tag (length types)) <$> mapM gSimpleVal types
   TUnion types    -> gValue =<< melements (Set.toList types)
 
 gSExp :: Eff -> GoalM TSExp
