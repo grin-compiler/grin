@@ -226,6 +226,7 @@ data Eff
   | UpdateLoc Loc Type
   deriving (Eq, Ord, Show)
 
+-- TODO: Introduce simple types for simple values
 data Type
   = TTUnit
   | TInt
@@ -233,7 +234,7 @@ data Type
   | TWord
   | TBool -- TODO: Handle TBool as a TUnion [Tag "True", Tag False]
   | TTLoc
-  | TTag Tag [Type]
+  | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
   deriving (Eq, Ord, Show)
 
@@ -255,8 +256,8 @@ instance TypeOf TSimpleVal where
 
 instance TypeOf TVal where
   typeOf = \case
-    TConstTagNode  tag vals -> TTag tag (typeOf <$> vals)
-    TValTag        tag      -> TTag tag []
+    TConstTagNode  tag vals -> TTag (tagName tag) (typeOf <$> vals)
+    TValTag        tag      -> TTag (tagName tag) []
     TUnit                   -> TTUnit
     TSimpleVal val          -> typeOf val
     bad -> error $ "typeOf got:" ++ show bad
@@ -325,25 +326,33 @@ gEnv t = do
   (Env vars funs) <- view _1
   melements . Map.keys $ Map.filter (==t) vars
 
-gLiteral :: Type -> GoalM TVal
-gLiteral = fmap (TSimpleVal . TLit) . \case
+gLiteral :: Type -> GoalM TSimpleVal
+gLiteral = fmap TLit . \case
   TInt   -> LInt64  <$> gen arbitrary
   TFloat -> LFloat  <$> gen arbitrary
   TWord  -> LWord64 <$> gen arbitrary
   _      -> mzero
 
+gSimpleVal :: Type -> GoalM TSimpleVal
+gSimpleVal = \case
+  TInt   -> varFromEnv TInt   `mplus` gLiteral TInt
+  TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
+  TWord  -> varFromEnv TWord  `mplus` gLiteral TWord
+  TTLoc  -> varFromEnv TTLoc
+  _      -> mzero
+  where
+    varFromEnv t = (TVar . TName <$> gEnv t)
+
 gValue :: Type -> GoalM TVal
 gValue = \case
   TTUnit          -> pure TUnit
-  TInt            -> varFromEnv TInt   `mplus` gLiteral TInt
-  TFloat          -> varFromEnv TFloat `mplus` gLiteral TFloat
-  TWord           -> varFromEnv TWord  `mplus` gLiteral TWord
+  TInt            -> TSimpleVal <$> gSimpleVal TInt
+  TFloat          -> TSimpleVal <$> gSimpleVal TFloat
+  TWord           -> TSimpleVal <$> gSimpleVal TWord
   TBool           -> mzero -- TODO: Handle tags
-  TTLoc           -> varFromEnv TTLoc
+  TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
   TTag tag types  -> mzero -- find something in the context that has a tagged type or generate a new tag
   TUnion types    -> gValue =<< melements (Set.toList types)
-  where
-    varFromEnv t = (TSimpleVal . TVar . TName <$> gEnv t)
 
 gSExp :: Eff -> GoalM TSExp
 gSExp = \case
