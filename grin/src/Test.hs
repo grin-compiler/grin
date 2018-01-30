@@ -320,6 +320,14 @@ newNameT t k = do
   CMR.local (ctxEnv %~ insertVarT name t) $ do
     k name
 
+type GBool = Type
+
+boolT :: GBool
+boolT = TUnion $ Set.fromList [TTag "True" [], TTag "False" []]
+
+gBool :: GoalM TVal
+gBool = gValue boolT
+
 -- | Select a variable from a context which has a given type.
 gEnv :: Type -> GoalM Name
 gEnv t = do
@@ -349,7 +357,7 @@ gValue = \case
   TInt            -> TSimpleVal <$> gSimpleVal TInt
   TFloat          -> TSimpleVal <$> gSimpleVal TFloat
   TWord           -> TSimpleVal <$> gSimpleVal TWord
-  TBool           -> mzero -- TODO: Handle tags
+  TBool           -> gBool
   TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
   TTag tag types  -> TConstTagNode (Tag C tag (length types)) <$> mapM gSimpleVal types
   TUnion types    -> gValue =<< melements (Set.toList types)
