@@ -47,12 +47,16 @@ library
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.PrettyHPT
+    AbstractInterpretation.IR
+    AbstractInterpretation.CodeGen
+    AbstractInterpretation.Reduce
     VarGen
     Pipeline
 
   build-depends:
     base,
     containers,
+    bimap,
     mtl,
     megaparsec,
     pretty-show,
