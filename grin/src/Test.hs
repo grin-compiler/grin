@@ -220,13 +220,18 @@ instance Monoid Store where
   mappend (Store s0) (Store s1) = Store (s0 <> s1)
 
 data Eff
-  = NoEff
-  | NewLoc Type
-  | ReadLoc Loc Type
-  | UpdateLoc Loc Type
-  deriving (Eq, Ord, Show)
+  = NoEff Type -- Generate a value returning expression of the given type
+  | NewLoc Type -- Store a value of a given type
+  | ReadLoc Loc Type -- Read a location with a given type
+  | UpdateLoc Loc Type -- Update a location with a given type
+  deriving (Eq, Generic, Ord, Show)
+
+instance Arbitrary Eff where arbitrary = genericArbitraryU
 
 -- TODO: Introduce simple types for simple values
+data SimpleType
+
+
 data Type
   = TTUnit
   | TInt
@@ -236,7 +241,20 @@ data Type
   | TTLoc
   | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Generic, Ord, Show)
+
+instance Arbitrary Type where arbitrary = genericArbitraryU
+
+simpleType :: GoalM Type
+simpleType = melements
+  [ TTUnit
+  , TInt
+  , TFloat
+  , TWord
+  , TBool
+  , TTLoc
+  ]
+
 
 instance Semigroup Type where
   (TUnion as) <> (TUnion bs) = TUnion (as `Set.union` bs)
@@ -301,20 +319,13 @@ initContext = (Env mempty primitives, mempty)
       PrimOps.TUnit  -> TTUnit
 
 runGoalM :: GoalM a -> Gen [a]
-runGoalM = observeAllT . flip runReaderT initContext
+runGoalM = observeManyT 1 . flip runReaderT initContext
 
 gen :: Gen a -> GoalM a
 gen = lift . lift
 
-newName :: TVal -> (String -> GoalM a) -> GoalM a
-newName x k = do
-  (Env vars funs) <- view _1
-  name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
-  CMR.local (ctxEnv %~ insertVar name (Left x)) $ do
-    k name
-
-newNameT :: Type -> (String -> GoalM a) -> GoalM a
-newNameT t k = do
+newName :: Type -> (String -> GoalM a) -> GoalM a
+newName t k = do
   (Env vars funs) <- view _1
   name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
   CMR.local (ctxEnv %~ insertVarT name t) $ do
@@ -362,44 +373,63 @@ gValue = \case
   TTag tag types  -> TConstTagNode (Tag C tag (length types)) <$> mapM gSimpleVal types
   TUnion types    -> gValue =<< melements (Set.toList types)
 
+gPureFunction :: Type -> GoalM (Name, [Type])
+gPureFunction t = do
+  (Env vars funs) <- view _1
+  (name, (params, ret, [])) <- melements . Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
+  pure (name, params)
+
 gSExp :: Eff -> GoalM TSExp
 gSExp = \case
-  NoEff           -> mzero
-  NewLoc t        -> TSStore <$> solve (GVal t)
-  ReadLoc loc t   -> mzero -- find a name that contains the location and the given type.
-  UpdateLoc loc t -> mzero -- fing a name that contains the location and generate  value of a given type
+  NoEff t       -> moneof'
+    [ TSReturn <$> solve (GVal t)
+    , do (funName, paramTypes) <- gPureFunction t
+         TSApp (TName funName) <$> forM paramTypes gSimpleVal
+    ]
 
+  NewLoc t      -> TSStore <$> solve (GVal t) -- TODO: Add a block
+  ReadLoc l t   -> mzero -- find a name that contains the location and the given type.
+  UpdateLoc l t -> mzero -- fing a name that contains the location and generate  value of a given type
+
+-- TODO: Make use of mplus
 moneof :: [GoalM a] -> GoalM a
 moneof [] = mzero
 moneof gs = do
   n <- gen $ choose (0, length gs - 1)
   gs !! n
 
+moneof' :: [GoalM a] -> GoalM a
+moneof' gs = do
+  (g, gs') <- select gs
+  g `mplus` moneof gs'
+
+
 melements :: [a] -> GoalM a
 melements [] = mzero
 melements es = gen $ elements es
+
+select :: [a] -> GoalM (a, [a])
+select [] = mzero
+select xs = do
+  n <- gen $ choose (0, length xs - 1)
+  case (splitAt n xs) of
+    ([]    , [])     -> mzero
+    ((a:as), [])     -> pure (a, as)
+    ([]    , (b:bs)) -> pure (b, bs)
+    (as    , (b:bs)) -> pure (b, as ++ bs)
 
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
 -- TODO: Use size parameter to limit the generation of programs.
 gExp :: Type -> [Eff] -> GoalM TExp
 gExp t = \case
-  [] -> moneof
-    [ (TSExp . TSReturn) <$> solve (GVal t)
-    , do x <- solve (GVal t)
-         let se = TSReturn x
-         newName x $ \n -> do-- TODO: Gen LPat
+  [] -> moneof'
+    [ TSExp <$> gSExp (NoEff t)
+    , do t' <- simpleType
+         se <- gSExp $ NoEff t'
+         newName t' $ \n -> do -- TODO: Gen LPat
            rest <- solve (Exp [] t)
            pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
-    -- TODO: Generate real case expressions
-    , do nil <- solve (Exp [] t)
-         cons <- solve (Exp [] t)
-         newNameT t $ \t0 -> newNameT TTUnit $ \a -> newNameT TTUnit $ \b ->
-           pure $ TECase (TVarTagNode (TName t0) [TVar (TName a), TVar (TName b)])
-            $ NonEmpty
-              [ (TAlt (NodePat (Tag C "Nil" 0) []) nil)
-              , (TAlt (NodePat (Tag C "Cons" 2) ["x", "xs"]) cons)
-              ]
     ]
   es -> mzero
 
@@ -409,8 +439,8 @@ class Solve t where
 -- TODO: Remove debug...
 solve :: Solve t => Goal -> GoalM t
 solve g = do
---  env <- view _1
---  traceShowM env
+--  (Env vars funs) <- view _1
+--  traceShowM vars
   solve' g
 
 instance Solve TVal where
