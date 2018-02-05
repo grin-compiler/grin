@@ -69,6 +69,13 @@ transformation hptResult n = \case
   RenameVariables renames -> renameVaribales renames
   ConstantFolding         -> constantFolding
 
+precondition :: Transformation -> [Check]
+precondition tr = []
+
+postcondition :: Transformation -> [Check]
+postcondition tr = []
+
+
 newtype Hidden a = H a
 
 instance Show (Hidden a) where
@@ -140,11 +147,27 @@ printHPT = do
   hptResult <- use psHPTResult
   maybe (pure ()) (liftIO . putStrLn . show . pretty) hptResult
 
+preconditionCheck :: Transformation -> PipelineM ()
+preconditionCheck t = do
+  exp <- use psExp
+  cs <- precondition t
+  forM (checks cs exp) $ \case
+    (c, v) -> putStrLn $ unwords ["The", show c" precondition of", show t, ": ", if v then "passed" else "failed."]
+
+postconditionCheck :: Transformation -> PipelineM ()
+postconditionCheck t = do
+  exp <- use psExp
+  cs  <- postcondition t
+  forM (checks cs exp) $ \case
+    (c, v) -> putStrLn $ unwords ["The", show c" postcondition of", show t, ": ", if v then "passed" else "failed."]
+
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   Just result <- use psHPTResult
   n           <- use psTransStep
+  preconditionCheck t
   psExp       %= transformation result n t
+  postconditionCheck t
   psTransStep %= (+1)
 
 tagInfo :: PipelineM ()
