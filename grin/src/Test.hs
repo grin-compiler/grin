@@ -304,6 +304,9 @@ genProg = fmap head $ asExp <$$> (runGoalM $ solve @TExp (Exp [] TTUnit))
 sampleGoalM :: Show a => GoalM a -> IO ()
 sampleGoalM g = sample $ runGoalM g
 
+testExp :: IO ()
+testExp = sampleGoalM (gExp boolT [])
+
 
 type GoalM a = ReaderT Context (LogicT Gen) a
 
@@ -381,25 +384,18 @@ gPureFunction t = do
 
 gSExp :: Eff -> GoalM TSExp
 gSExp = \case
-  NoEff t       -> moneof'
-    [ TSReturn <$> solve (GVal t)
-    , do (funName, paramTypes) <- gPureFunction t
+  NoEff t       -> moneof
+    [ do (funName, paramTypes) <- gPureFunction t
          TSApp (TName funName) <$> forM paramTypes gSimpleVal
+    , TSReturn <$> solve (GVal t)
     ]
 
   NewLoc t      -> TSStore <$> solve (GVal t) -- TODO: Add a block
   ReadLoc l t   -> mzero -- find a name that contains the location and the given type.
   UpdateLoc l t -> mzero -- fing a name that contains the location and generate  value of a given type
 
--- TODO: Make use of mplus
 moneof :: [GoalM a] -> GoalM a
-moneof [] = mzero
 moneof gs = do
-  n <- gen $ choose (0, length gs - 1)
-  gs !! n
-
-moneof' :: [GoalM a] -> GoalM a
-moneof' gs = do
   (g, gs') <- select gs
   g `mplus` moneof gs'
 
@@ -423,7 +419,7 @@ select xs = do
 -- TODO: Use size parameter to limit the generation of programs.
 gExp :: Type -> [Eff] -> GoalM TExp
 gExp t = \case
-  [] -> moneof'
+  [] -> moneof
     [ TSExp <$> gSExp (NoEff t)
     , do t' <- simpleType
          se <- gSExp $ NoEff t'
