@@ -17,6 +17,7 @@ data Env
   , envRegisterMap      :: Bimap.Bimap Name IR.Reg
   , envInstructions     :: [IR.Instruction]
   , envFunctionArgMap   :: Map.Map Name [IR.Reg]
+  , envTagMap           :: Bimap.Bimap Tag IR.Tag
   }
 
 emptyEnv = Env
@@ -25,6 +26,7 @@ emptyEnv = Env
   , envRegisterMap      = Bimap.empty
   , envInstructions     = []
   , envFunctionArgMap   = Map.empty
+  , envTagMap           = Bimap.empty
   }
 
 type CG = State Env
@@ -71,23 +73,44 @@ getReg name = do
     Nothing   -> error $ "unknown variable " ++ name
     Just reg  -> pure reg
 
+getTag :: Tag -> CG IR.Tag
+getTag tag = do
+  tagMap <- gets envTagMap
+  case Bimap.lookup tag tagMap of
+    Just t  -> pure t
+    Nothing -> do
+      let t = IR.Tag . fromIntegral $ Bimap.size tagMap
+      modify' $ \s -> s {envTagMap = Bimap.insert tag t tagMap}
+      pure t
+
+litToSimpleType :: Lit -> IR.SimpleType
+litToSimpleType = \case
+  LInt64  {}  -> -2
+  LWord64 {}  -> -3
+  LFloat  {}  -> -4
+
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
-  {-
-  ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
-  -}
+  ConstTagNode tag vals -> do
+    r <- newReg
+    irTag <- getTag tag
+    emit $ IR.Init {dstReg = r, constant = IR.CNodeType irTag (length vals)}
+    forM_ (zip [0..] vals) $ \(idx, val) -> case val of
+      Var name -> do
+        valReg <- getReg name
+        emit $ IR.Move {valueSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = r}
+      Lit lit -> emit $ IR.Init {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
+      _ -> error $ "illegal node item value " ++ show val
+    pure r
   Unit -> do
     r <- newReg
-    emit $ IR.Init {dstReg = r, constant  = IR.CSimpleType (-1)}
+    emit $ IR.Init {dstReg = r, constant = IR.CSimpleType (-1)}
     pure r
   Lit lit -> do
     r <- newReg
     emit $ IR.Init
       { dstReg    = r
-      , constant  = IR.CSimpleType $ case lit of
-          LInt64  {}  -> -2
-          LWord64 {}  -> -3
-          LFloat  {}  -> -4
+      , constant  = IR.CSimpleType (litToSimpleType lit)
       }
     pure r
   Var name -> getReg name

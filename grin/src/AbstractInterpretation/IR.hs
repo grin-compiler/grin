@@ -19,7 +19,7 @@ data Selector
   bind - all / node with specific tag
 -}
 
-type Tag = Word32
+newtype Tag = Tag Word32 deriving (Eq, Ord)
 type SimpleType = Int32
 
 data Condition
@@ -59,5 +59,5 @@ data Instruction
 data Constant
   = CSimpleType   SimpleType
   | CHeapLocation Mem
-  | CNodeType     Tag Word32 {-arity-}
+  | CNodeType     Tag Int {-arity-}
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type or location-}
