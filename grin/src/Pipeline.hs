@@ -171,14 +171,14 @@ preconditionCheck t = do
   hpt <- use psHPTResult
   exp <- use psExp
   forM_ (checks hpt (precondition t) exp) $ \case
-    (c, v) -> liftIO . putStrLn $ unwords ["The", show c, "precondition of", show t, ": ", if v then "passed" else "failed."]
+    (c, r) -> liftIO . putStrLn $ unwords ["The", show c, "precondition of", show t, ": ", show r]
 
 postconditionCheck :: Transformation -> PipelineM ()
 postconditionCheck t = do
   hpt <- use psHPTResult
   exp <- use psExp
   forM_ (checks hpt (postcondition t) exp) $ \case
-    (c, v) -> liftIO . putStrLn $ unwords ["The", show c, "postcondition of", show t, ": ", if v then "passed" else "failed."]
+    (c, r) -> liftIO . putStrLn $ unwords ["The", show c, "postcondition of", show t, ": ", show r]
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do

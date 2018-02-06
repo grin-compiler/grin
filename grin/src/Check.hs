@@ -25,32 +25,52 @@ data Check
   | OnlyExplicitNodes
   deriving (Enum, Eq, Show)
 
-allChecks :: Maybe HPTResult -> Exp -> [(Check, Bool)]
+data Result
+  = Ok
+  | Failed String
+  deriving (Eq, Show)
+
+isOk :: Result -> Bool
+isOk = \case
+  Ok       -> True
+  Failed _ -> False
+
+allChecks :: Maybe HPTResult -> Exp -> [(Check, Result)]
 allChecks hpt = checks hpt . enumFrom $ toEnum 0
 
-checks :: Maybe HPTResult -> [Check] -> Exp -> [(Check, Bool)]
+checks :: Maybe HPTResult -> [Check] -> Exp -> [(Check, Result)]
 checks hpt cs e = zipWith (\c e -> (c, check hpt c e)) cs (repeat e)
 
-check :: Maybe HPTResult -> Check -> Exp -> Bool
+check :: Maybe HPTResult -> Check -> Exp -> Result
 check hpt = \case
-  EveryNameIsDefined     -> Prelude.null . nonDefinedNames
-  OnlyStoreVars          -> Prelude.null . storedConstants
-  OnlyBasicValuesInCases -> getAll . valuesInCases (All . isBasicValue)
-  OnlyTagsInAlts         -> getAll . patsInAlts    (All . isBasicCPat)
-  OnlyUniqueNames        -> Prelude.null . nonUniqueNames
-  AllowedBindStoreValues -> allowedBindStoreValues
-  OnlyExplicitNodes      -> \e -> maybe False (\h -> onlyExplicitNodes h e) hpt
+  EveryNameIsDefined     -> result . nonDefinedNames
+  OnlyStoreVars          -> result . storedConstants
+  OnlyBasicValuesInCases -> boolResult . getAll . valuesInCases (All . isBasicValue)
+  OnlyTagsInAlts         -> boolResult . getAll . patsInAlts    (All . isBasicCPat)
+  OnlyUniqueNames        -> result . nonUniqueNames
+  AllowedBindStoreValues -> boolResult . allowedBindStoreValues
+  OnlyExplicitNodes      -> \e -> maybe (Failed "No HPTResult") (\h -> onlyExplicitNodes h e) hpt
+
+result :: Show a => [a] -> Result
+result = \case
+  [] -> Ok
+  as -> Failed $ show as
+
+boolResult :: Bool -> Result
+boolResult = \case
+  True  -> Ok
+  False -> Failed ""
 
 allowedBindStoreValues :: Exp -> Bool
 allowedBindStoreValues = getAll . bindStoreValues (\case
   Loc _ -> All True
   _     -> All False)
 
-onlyExplicitNodes :: HPTResult -> Exp -> Bool
-onlyExplicitNodes hpt e = List.null (cata (usedNames pure) e `List.intersect` varsOfTagNodes hpt)
+onlyExplicitNodes :: HPTResult -> Exp -> Result
+onlyExplicitNodes hpt e = result . Set.toList $ cata (usedNames Set.singleton) e `Set.intersection` varsOfTagNodes hpt
 
-varsOfTagNodes :: HPTResult -> [Name]
-varsOfTagNodes = Map.keys . Map.filter (not . Set.null . Set.filter isNode) . envMap
+varsOfTagNodes :: HPTResult -> Set Name
+varsOfTagNodes = Set.fromList . Map.keys . Map.filter (not . Set.null . Set.filter isNode) . envMap
   where
     isNode (N _) = True
     isNode (V _) = False
