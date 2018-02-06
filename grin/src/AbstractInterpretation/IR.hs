@@ -8,11 +8,7 @@ newtype Reg = Reg Word32 deriving (Eq, Ord)
 newtype Mem = Mem Word32 deriving (Eq, Ord)
 
 data Selector
-  = All
-  | SimpleTypes
-  | Locations
-  | Nodes
-  | NodeItem Tag Int -- node item index
+  = NodeItem Tag Int -- node item index
   -- TODO: con
 {-
   case patterns - node with specific tag / specific simple type
@@ -34,9 +30,18 @@ data Instruction
     , srcReg        :: Reg
     , instructions  :: [Instruction]
     }
-  | Move
-    { valueSelector :: Selector
+  | Project
+    { srcSelector   :: Selector
     , srcReg        :: Reg
+    , dstReg        :: Reg
+    }
+  | Extend
+    { srcReg        :: Reg
+    , dstSelector   :: Selector
+    , dstReg        :: Reg
+    }
+  | Move
+    { srcReg        :: Reg
     , dstReg        :: Reg
     }
   | Fetch -- ^ copy mem (node) content addressed by SRC reg location part to DST register node part

@@ -98,7 +98,7 @@ codeGenVal = \case
     forM_ (zip [0..] vals) $ \(idx, val) -> case val of
       Var name -> do
         valReg <- getReg name
-        emit $ IR.Move {valueSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = r}
+        emit $ IR.Extend {srcReg = valReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
       Lit lit -> emit $ IR.Init {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
       _ -> error $ "illegal node item value " ++ show val
     pure r
@@ -127,7 +127,7 @@ codeGen = flip execState emptyEnv . cata folder where
       zipWithM addReg args funArgRegs
       body >>= \case
         Z   -> pure ()
-        R r -> emit $ IR.Move {valueSelector = IR.All, srcReg = r, dstReg = funResultReg}
+        R r -> emit $ IR.Move {srcReg = r, dstReg = funResultReg}
       pure Z
 
     EBindF leftExp lpat rightExp -> do
@@ -139,7 +139,15 @@ codeGen = flip execState emptyEnv . cata folder where
           Unit  -> pure () -- TODO: is this ok? or error?
           Lit{} -> pure () -- TODO: is this ok? or error?
           Var name -> addReg name r
-          -- ConstTagNode tag args -> -- TODO
+          ConstTagNode tag args -> do
+            irTag <- getTag tag
+            forM_ (zip [0..] args) $ \(idx, arg) -> case arg of
+              Var name -> do
+                argReg <- newReg
+                addReg name argReg
+                emit $ IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}
+              Lit {} -> pure ()
+              _ -> error $ "illegal node pattern component " ++ show arg
           _ -> error $ "unsupported lpat " ++ show lpat
       rightExp
 
@@ -149,7 +157,7 @@ codeGen = flip execState emptyEnv . cata folder where
     SAppF name args -> do -- copy args to definition's variables ; read function result register
       (funResultReg, funArgRegs) <- getOrAddFun name $ length args
       valRegs <- mapM codeGenVal args
-      zipWithM (\src dst -> emit $ IR.Move {valueSelector = IR.All, srcReg = src, dstReg = dst}) valRegs funArgRegs
+      zipWithM (\src dst -> emit $ IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
       pure $ R funResultReg
 
     SReturnF val -> R <$> codeGenVal val
