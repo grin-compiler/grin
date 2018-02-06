@@ -36,7 +36,7 @@ data Exp
   | SApp        Name [SimpleVal]
   | SReturn     Val
   | SStore      Val
-  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item
+  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
   | SUpdate     Name Val
   | SBlock      Exp
   -- Alt
@@ -65,13 +65,13 @@ type LPat = Val -- ConstTagNode, VarTagNode, ValTag, Unit, Lit, Var
 type SimpleVal = Val
 -- TODO: use data types a la carte style to build different versions of Val?
 data Val
-  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
+  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
   | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
   | ValTag        Tag
-  | Unit
+  | Unit                           -- HIGH level GRIN
   -- simple val
-  | Lit Lit
-  | Var Name
+  | Lit Lit                        -- HIGH level GRIN
+  | Var Name                       -- HIGH level GRIN
   -- extra
   | Loc Int
   | Undefined
@@ -112,9 +112,9 @@ data Lit
   deriving (Generic, NFData, Eq, Ord, Show)
 
 data CPat
-  = NodePat Tag [Name]
+  = NodePat Tag [Name]  -- HIGH level GRIN
   | TagPat  Tag
-  | LitPat  Lit
+  | LitPat  Lit         -- HIGH level GRIN
   deriving (Generic, NFData, Eq, Show)
 
 isBasicCPat :: CPat -> Bool

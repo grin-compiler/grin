@@ -23,7 +23,7 @@ tag:            count of distinct tags
 ## Notes
   - HPT is liberal as much as possible; allow variadic case type (i.e. ANY -> ANY)
 
-HPT is a program that fills a table. It calcualtes value sets for registers and heap locations.
+HPT is a program that fills a table. It calculates value sets for registers and heap locations.
 The possible tags, simple types and heap locations are statically known for the input program.
 
 HPT is a data flow analysis that can be implemented as an abstract machine.
@@ -47,3 +47,10 @@ HPT abstract value domain:
 - heap: `node`
 - register: `node | simple type | tag | heap location`
 
+The HPT can be performed only on high level GRIN.
+
+High level GRIN:
+  - fetch full nodes only
+  - val: T a b | () | a | Lit
+  - lpat: T a b | () | a | Lit
+  - cpat: T a b | Lit

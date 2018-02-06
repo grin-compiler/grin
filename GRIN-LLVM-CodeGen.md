@@ -30,6 +30,8 @@ HINT:
   - llvm monomorphisation ; split polymorphic (in LLVM type system) GRIN node components
   - node layout calculation
 
+  It is possible to put monomorphisation into the vectorisation transformation as it is already relies on the HPT result.
+
 ## Notes
   - CodeGen supports monomorphic GRIN ; monomorphic GRIN validation pass
   - new transformation: grin-monomorphisation
@@ -47,6 +49,8 @@ HINT:
       tag N
   - new transformation: llvm-monomorphisation
       makes GRIN monomorphic in LLVM type system (using HPT result)
+
+  - GRIN transformations must not lose information. If the information is only stored in the TAG info table then the TAG info table must be part of the GRIN language. e.g. as types
 
 LLVM bitcast experiments
   - convert i16 to <i8,i8>
