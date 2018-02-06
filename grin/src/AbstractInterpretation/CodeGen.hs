@@ -1,47 +1,159 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
 module AbstractInterpretation.CodeGen where
 
-import Data.Bimap as Bimap
+import Data.Word
+import qualified Data.Bimap as Bimap
+import qualified Data.Map as Map
 import Control.Monad.State
 import Data.Functor.Foldable as Foldable
 
 import Grin
+import qualified AbstractInterpretation.IR as IR
 
 data Env
   = Env
-  { envMemoryCounter    :: Int
-  , envRegisterCounter  :: Int
-  , envRegisterMap      :: Bimap Name Int
+  { envMemoryCounter    :: Word32
+  , envRegisterCounter  :: Word32
+  , envRegisterMap      :: Bimap.Bimap Name IR.Reg
+  , envInstructions     :: [IR.Instruction]
+  , envFunctionArgMap   :: Map.Map Name [IR.Reg]
   }
 
 emptyEnv = Env
   { envMemoryCounter    = 0
   , envRegisterCounter  = 0
   , envRegisterMap      = Bimap.empty
+  , envInstructions     = []
+  , envFunctionArgMap   = Map.empty
   }
 
 type CG = State Env
 
-type Result = ()
+data Result
+  = R IR.Reg
+  | Z
+
+
+emit :: IR.Instruction -> CG ()
+emit = undefined
+
+{-
+  Unit      -1
+  Int       -2
+  Word      -3
+  Float     -4
+  Undefined -5
+-}
+
+{-
+ CONSTANT value building operations (from compile time constants)
+  add simple type
+  add heap location
+  add node type (tag + arity)
+  add node item (index + location or simple type)
+-}
+
+getOrAddFun = undefined
+
+newReg :: CG IR.Reg
+newReg = state $ \s@Env{..} -> (IR.Reg envRegisterCounter, s {envRegisterCounter = succ envRegisterCounter})
+
+newMem :: CG IR.Mem
+newMem = state $ \s@Env{..} -> (IR.Mem envMemoryCounter, s {envMemoryCounter = succ envMemoryCounter})
+
+addReg :: Name -> IR.Reg -> CG ()
+addReg name reg = modify' $ \s@Env{..} -> s {envRegisterMap = Bimap.insert name reg envRegisterMap}
+
+getReg :: Name -> CG IR.Reg
+getReg name = do
+  regMap <- gets envRegisterMap
+  case Bimap.lookup name regMap of
+    Nothing   -> error $ "unknown variable " ++ name
+    Just reg  -> pure reg
+
+codeGenVal :: Val -> CG IR.Reg
+codeGenVal = \case
+  {-
+  ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
+  -}
+  Unit -> do
+    r <- newReg
+    emit $ IR.Init {dstReg = r, constant  = IR.CSimpleType (-1)}
+    pure r
+  Lit lit -> do
+    r <- newReg
+    emit $ IR.Init
+      { dstReg    = r
+      , constant  = IR.CSimpleType $ case lit of
+          LInt64  {}  -> -2
+          LWord64 {}  -> -3
+          LFloat  {}  -> -4
+      }
+    pure r
+  Var name -> getReg name
+  val -> error $ "unsupported value " ++ show val
 
 codeGen :: Exp -> Env
 codeGen = flip execState emptyEnv . cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
-    ProgramF defs -> sequence_ defs
-    DefF name args body -> pure ()
-    -- Exp
-    EBindF leftExp lpat rightExp -> pure ()
-    ECaseF val alts -> pure ()
-    -- Simple Expr
-    SAppF name args -> pure ()
-    SReturnF val -> pure ()
-    SStoreF val -> pure ()
-    SFetchIF name maybeIndex -> pure ()
-    SUpdateF name val -> pure ()
+    ProgramF defs -> sequence_ defs >> pure Z
+
+    DefF name args body -> do
+      (funResultReg, funArgRegs) <- getOrAddFun name $ length args
+      zipWithM addReg args funArgRegs
+      body >>= \case
+        Z   -> pure ()
+        R r -> emit $ IR.Move {valueSelector = IR.All, srcReg = r, dstReg = funResultReg}
+      pure Z
+
+    EBindF leftExp lpat rightExp -> do
+      leftExp >>= \case
+        Z -> case lpat of
+          Unit -> pure ()
+          _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
+        R r -> case lpat of
+          Unit  -> pure () -- TODO: is this ok? or error?
+          Lit{} -> pure () -- TODO: is this ok? or error?
+          Var name -> addReg name r
+          -- ConstTagNode tag args -> -- TODO
+          _ -> error $ "unsupported lpat " ++ show lpat
+      rightExp
+
+    ECaseF val alts -> pure Z -- TODO
+    AltF cpat exp -> pure Z -- TODO
+
+    SAppF name args -> do -- copy args to definition's variables ; read function result register
+      (funResultReg, funArgRegs) <- getOrAddFun name $ length args
+      valRegs <- mapM codeGenVal args
+      zipWithM (\src dst -> emit $ IR.Move {valueSelector = IR.All, srcReg = src, dstReg = dst}) valRegs funArgRegs
+      pure $ R funResultReg
+
+    SReturnF val -> R <$> codeGenVal val
+
+    SStoreF val -> do
+      loc <- newMem
+      r <- newReg
+      valReg <- codeGenVal val
+      emit $ IR.Store {srcReg = valReg, address = loc}
+      emit $ IR.Init {dstReg = r, constant = IR.CHeapLocation loc}
+      pure $ R r
+
+    SFetchIF name maybeIndex -> case maybeIndex of
+      Just {} -> error "HPT codegen does not support indexed fetch"
+      Nothing -> do
+        addressReg <- getReg name
+        r <- newReg
+        emit $ IR.Fetch {addressReg = addressReg, dstReg = r}
+        pure $ R r
+
+    SUpdateF name val -> do
+      addressReg <- getReg name
+      valReg <- codeGenVal val
+      emit $ IR.Update {srcReg = valReg, addressReg = addressReg}
+      pure Z
+
     SBlockF exp -> exp
-    -- Alt
-    AltF cpat exp -> pure ()
 
 {-
   TODO
@@ -52,8 +164,6 @@ codeGen = flip execState emptyEnv . cata folder where
 {-
   >>= LPAT
     (Tag b c d)               - node only check, arity check, tag check, copy node items to registers for a specific tag
-    (a   b c d)               - node only check, arity check, copy node items to registers for all tags
-    Tag                       - specific tag only check
     Unit                      - specific simple type only check
     Literal with simple type  - specific simple type only check
     variable                  - copy to reg
@@ -64,55 +174,36 @@ codeGen = flip execState emptyEnv . cata folder where
   fetch >>= LPAT
   update >>= LPAT
 
-  example: return (a b c) >>= \(d e f) ->
+  LPAT / VAL
+  T a - select items of specific tag
+  Unit- NOP ; optional check
+  Lit - NOP ; optional check
+  a   - copy all
 
- COMPILE TIME CHECK:
+
+ bind COMPILE TIME CHECK:
   VAL / LPAT
   T a - T a   OK      (node)
-      - t a   OK
-      - T     FAIL
-      - Unit  FAIL
-      - Lit   FAIL
-      - a     OK
-
-  t a - T a   OK      (node)
-      - t a   OK
-      - T     FAIL
-      - Unit  FAIL
-      - Lit   FAIL
-      - a     OK
-
-  T   - T a   FAIL    (tag)
-      - t a   FAIL
-      - T     OK
       - Unit  FAIL
       - Lit   FAIL
       - a     OK
 
   Unit- T a   FAIL    (simple type)
-      - t a   FAIL
-      - T     FAIL
       - Unit  OK
       - Lit   FAIL
       - a     OK
 
   Lit - T a   FAIL    (simple type)
-      - t a   FAIL
-      - T     FAIL
       - Unit  FAIL
       - Lit   OK ; if matches
       - a     OK
 
   a   - T a   OK      (any)
-      - t a   OK
-      - T     OK
       - Unit  OK
       - Lit   OK
       - a     OK
 
   LOC - T a   FAIL    (heap location)
-      - t a   FAIL
-      - T     FAIL
       - Unit  FAIL
       - Lit   FAIL
       - a     OK
@@ -136,33 +227,20 @@ codeGen = flip execState emptyEnv . cata folder where
 -}
 
 {-
- COMPILE TIME CHECK:
+ case COMPILE TIME CHECK:
   VAL / CPAT
   T a - T a   OK      (node)
-      - T     FAIL
-      - Lit   FAIL
-
-  t a - T a   OK      (node)
-      - T     FAIL
-      - Lit   FAIL
-
-  T   - T a   FAIL    (tag)
-      - T     OK
       - Lit   FAIL
 
   Unit- T a   FAIL    (simple type)
-      - T     FAIL
       - Lit   FAIL
 
   Lit - T a   FAIL    (simple type)
-      - T     FAIL
       - Lit   OK ; if matches
 
   a   - T a   OK      (any)
-      - T     OK
       - Lit   OK
 
   LOC - T a   FAIL    (heap location)
-      - T     FAIL
       - Lit   FAIL
 -}
