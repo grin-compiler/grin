@@ -70,10 +70,29 @@ transformation hptResult n = \case
   ConstantFolding         -> constantFolding
 
 precondition :: Transformation -> [Check]
-precondition tr = []
+precondition = \case
+  CaseSimplification -> []
+  SplitFetch -> []
+  Vectorisation -> []
+  RegisterIntroduction -> []
+  BindNormalisation -> []
+  RightHoistFetch -> []
+  GenerateEval -> []
+  RenameVariables rvm -> []
+  ConstantFolding -> []
+
 
 postcondition :: Transformation -> [Check]
-postcondition tr = []
+postcondition = \case
+  CaseSimplification -> []
+  SplitFetch -> []
+  Vectorisation -> [OnlyExplicitNodes]
+  RegisterIntroduction -> []
+  BindNormalisation -> []
+  RightHoistFetch -> []
+  GenerateEval -> []
+  RenameVariables rvm -> []
+  ConstantFolding -> []
 
 
 newtype Hidden a = H a
@@ -149,26 +168,26 @@ printHPT = do
 
 preconditionCheck :: Transformation -> PipelineM ()
 preconditionCheck t = do
+  hpt <- use psHPTResult
   exp <- use psExp
-  cs <- precondition t
-  forM (checks cs exp) $ \case
-    (c, v) -> putStrLn $ unwords ["The", show c" precondition of", show t, ": ", if v then "passed" else "failed."]
+  forM_ (checks hpt (precondition t) exp) $ \case
+    (c, v) -> liftIO . putStrLn $ unwords ["The", show c, "precondition of", show t, ": ", if v then "passed" else "failed."]
 
 postconditionCheck :: Transformation -> PipelineM ()
 postconditionCheck t = do
+  hpt <- use psHPTResult
   exp <- use psExp
-  cs  <- postcondition t
-  forM (checks cs exp) $ \case
-    (c, v) -> putStrLn $ unwords ["The", show c" postcondition of", show t, ": ", if v then "passed" else "failed."]
+  forM_ (checks hpt (postcondition t) exp) $ \case
+    (c, v) -> liftIO . putStrLn $ unwords ["The", show c, "postcondition of", show t, ": ", if v then "passed" else "failed."]
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
+  preconditionCheck t
   Just result <- use psHPTResult
   n           <- use psTransStep
-  preconditionCheck t
   psExp       %= transformation result n t
-  postconditionCheck t
   psTransStep %= (+1)
+  postconditionCheck t
 
 tagInfo :: PipelineM ()
 tagInfo = do

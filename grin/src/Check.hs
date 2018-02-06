@@ -1,12 +1,15 @@
 {-# LANGUAGE LambdaCase, BangPatterns #-}
 module Check where
 
+import AbstractInterpretation.AbstractRunGrin
 import Control.Arrow
 import Data.Functor.Foldable
+import Data.Maybe
 import Data.Monoid
 import Grin
 import PrimOps
 
+import Data.List       as List
 import Data.Map.Strict as Map
 import Data.Set        as Set hiding (fold)
 import qualified Data.Foldable as Foldable
@@ -19,27 +22,38 @@ data Check
   | OnlyTagsInAlts
   | OnlyUniqueNames
   | AllowedBindStoreValues
+  | OnlyExplicitNodes
   deriving (Enum, Eq, Show)
 
-allChecks :: Exp -> [(Check, Bool)]
-allChecks = checks . enumFrom $ toEnum 0
+allChecks :: Maybe HPTResult -> Exp -> [(Check, Bool)]
+allChecks hpt = checks hpt . enumFrom $ toEnum 0
 
-checks :: [Check] -> Exp -> [(Check, Bool)]
-checks cs e = zipWith (\c e -> (c, check c e)) cs (repeat e)
+checks :: Maybe HPTResult -> [Check] -> Exp -> [(Check, Bool)]
+checks hpt cs e = zipWith (\c e -> (c, check hpt c e)) cs (repeat e)
 
-check :: Check -> Exp -> Bool
-check = \case
+check :: Maybe HPTResult -> Check -> Exp -> Bool
+check hpt = \case
   EveryNameIsDefined     -> Prelude.null . nonDefinedNames
   OnlyStoreVars          -> Prelude.null . storedConstants
   OnlyBasicValuesInCases -> getAll . valuesInCases (All . isBasicValue)
   OnlyTagsInAlts         -> getAll . patsInAlts    (All . isBasicCPat)
   OnlyUniqueNames        -> Prelude.null . nonUniqueNames
   AllowedBindStoreValues -> allowedBindStoreValues
+  OnlyExplicitNodes      -> \e -> maybe False (\h -> onlyExplicitNodes h e) hpt
 
 allowedBindStoreValues :: Exp -> Bool
 allowedBindStoreValues = getAll . bindStoreValues (\case
   Loc _ -> All True
   _     -> All False)
+
+onlyExplicitNodes :: HPTResult -> Exp -> Bool
+onlyExplicitNodes hpt e = List.null (cata (usedNames pure) e `List.intersect` varsOfTagNodes hpt)
+
+varsOfTagNodes :: HPTResult -> [Name]
+varsOfTagNodes = Map.keys . Map.filter (not . Set.null . Set.filter isNode) . envMap
+  where
+    isNode (N _) = True
+    isNode (V _) = False
 
 bindStoreValues :: Monoid m => (Val -> m) -> Exp -> m
 bindStoreValues f = para $ \case
@@ -78,6 +92,7 @@ usedNames f = \case
     [ simpleNames
     , restNames
     ]
+  ECaseF valName rest -> mconcat ((foldNames f valName):rest)
   -- Simple Expr
   SAppF     name valNames -> mconcat [f name, mconcat (foldNames f <$> valNames)]
   SReturnF  valName -> foldNames f valName
