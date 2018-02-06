@@ -228,10 +228,6 @@ data Eff
 
 instance Arbitrary Eff where arbitrary = genericArbitraryU
 
--- TODO: Introduce simple types for simple values
-data SimpleType
-
-
 data Type
   = TTUnit
   | TInt
