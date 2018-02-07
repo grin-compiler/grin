@@ -237,7 +237,6 @@ data Type
   | TInt
   | TFloat
   | TWord
-  | TBool -- TODO: Handle TBool as a TUnion [Tag "True", Tag False] -- Remove
   | TTLoc
   | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
@@ -252,7 +251,7 @@ simpleType = melements
   , TInt
   , TFloat
   , TWord
-  , TBool
+  , boolT
   , TTLoc
   ]
 
@@ -323,7 +322,7 @@ initContext = (Env mempty primitives mempty, mempty)
       PrimOps.TInt   -> TInt
       PrimOps.TWord  -> TWord
       PrimOps.TFloat -> TFloat
-      PrimOps.TBool  -> TBool
+      PrimOps.TBool  -> boolT
       PrimOps.TUnit  -> TTUnit
 
 runGoalM :: GoalM a -> Gen [a]
@@ -396,7 +395,6 @@ gValue = \case
   TInt            -> TSimpleVal <$> gSimpleVal TInt
   TFloat          -> TSimpleVal <$> gSimpleVal TFloat
   TWord           -> TSimpleVal <$> gSimpleVal TWord
-  TBool           -> gBool
   TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
   TTag tag types  -> TConstTagNode (Tag C tag (length types)) <$> mapM gSimpleVal types
   TUnion types    -> gValue =<< melements (Set.toList types)
