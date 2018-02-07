@@ -1,5 +1,9 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractInterpretation.CodeGen where
+module AbstractInterpretation.CodeGen
+  ( codeGen
+  , Env(..)
+  , HPTProgram
+  ) where
 
 import Data.Word
 import qualified Data.Bimap as Bimap
@@ -9,6 +13,8 @@ import Data.Functor.Foldable as Foldable
 
 import Grin
 import qualified AbstractInterpretation.IR as IR
+
+type HPTProgram = Env
 
 data Env
   = Env
@@ -135,11 +141,13 @@ codeGen = flip execState emptyEnv . cata folder where
     ProgramF defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
+      instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM addReg args funArgRegs
       body >>= \case
         Z   -> pure ()
         R r -> emit $ IR.Move {srcReg = r, dstReg = funResultReg}
+      modify' $ \s@Env{..} -> s {envInstructions = reverse envInstructions ++ instructions}
       pure Z
 
     EBindF leftExp lpat rightExp -> do

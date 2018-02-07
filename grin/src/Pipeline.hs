@@ -24,6 +24,8 @@ import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
 import AbstractInterpretation.AbstractRunGrin
 import AbstractInterpretation.PrettyHPT
+import qualified AbstractInterpretation.Pretty as HPT
+import qualified AbstractInterpretation.CodeGen as HPT
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -103,9 +105,15 @@ instance Show (Hidden a) where
 instance Eq (Hidden a) where
   _ == _ = True
 
-data Pipeline
-  = HPT
+data HPTStep
+  = CompileHPT
   | PrintHPT
+  | RunHPTPure
+  | PrintHPTResult
+  deriving Show
+
+data Pipeline
+  = HPT HPTStep
   | T Transformation
   | TagInfo
   | PrintGrinH (Hidden (Doc -> Doc))
@@ -132,10 +140,11 @@ data PipelineOpts = PipelineOpts
 type TagInfo = Set Tag
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
-    { _psExp :: Exp
-    , _psTransStep :: Int
-    , _psHPTResult :: Maybe HPTResult
-    , _psTagInfo   :: Maybe TagInfo
+    { _psExp        :: Exp
+    , _psTransStep  :: Int
+    , _psHPTProgram :: Maybe HPT.HPTProgram
+    , _psHPTResult  :: Maybe HPTResult
+    , _psTagInfo    :: Maybe TagInfo
     }
 
 makeLenses ''PState
@@ -143,26 +152,40 @@ makeLenses ''PipelineOpts
 
 pipelineStep :: Pipeline -> PipelineM ()
 pipelineStep = \case
-  HPT           -> hpt
-  PrintHPT      -> printHPT
-  T t           -> transformationM t
-  TagInfo       -> tagInfo
-  PrintGrin d   -> printGrinM d
-  PureEval      -> pureEval
-  JITLLVM       -> jitLLVM
-  SaveLLVM path -> saveLLVM path
-  SaveGrin path -> saveGrin path
-  PrintAST      -> printAST
+  HPT hptStep -> case hptStep of
+    CompileHPT      -> compileHPT
+    PrintHPT        -> printHPT
+    RunHPTPure      -> runHPTPure
+    PrintHPTResult  -> printHPTResult
+  T t             -> transformationM t
+  TagInfo         -> tagInfo
+  PrintGrin d     -> printGrinM d
+  PureEval        -> pureEval
+  JITLLVM         -> jitLLVM
+  SaveLLVM path   -> saveLLVM path
+  SaveGrin path   -> saveGrin path
+  PrintAST        -> printAST
   DebugTransformation t -> debugTransformation t
 
-hpt :: PipelineM ()
-hpt = do
+compileHPT :: PipelineM ()
+compileHPT = do
+  grin <- use psExp
+  let hptProgram = HPT.codeGen grin
+  psHPTProgram .= Just hptProgram
+
+printHPT :: PipelineM ()
+printHPT = do
+  hptProgram <- use psHPTProgram
+  maybe (pure ()) (liftIO . putStrLn . show . pretty . HPT.envInstructions) hptProgram
+
+runHPTPure :: PipelineM ()
+runHPTPure = do
   grin <- use psExp
   let (_, result) = abstractRun (assignStoreIDs grin) "grinMain"
   psHPTResult .= Just result
 
-printHPT :: PipelineM ()
-printHPT = do
+printHPTResult :: PipelineM ()
+printHPTResult = do
   hptResult <- use psHPTResult
   maybe (pure ()) (liftIO . putStrLn . show . pretty) hptResult
 
@@ -267,4 +290,10 @@ pipeline o e p = do
     sequence_           .
     intersperse check $ Prelude.map pipelineStep p
   where
-    start = PState e 0 Nothing Nothing
+    start = PState
+      { _psExp        = e
+      , _psTransStep  = 0
+      , _psHPTProgram = Nothing
+      , _psHPTResult  = Nothing
+      , _psTagInfo    = Nothing
+      }

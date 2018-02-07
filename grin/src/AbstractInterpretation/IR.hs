@@ -54,7 +54,7 @@ data Instruction
   | Init -- ^ copy compile time constant to DST register (one time setup)
     { dstReg      :: Reg
     , constant    :: Constant
-    } 
+    }
 
 data Constant
   = CSimpleType   SimpleType

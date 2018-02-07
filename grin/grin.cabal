@@ -47,6 +47,7 @@ library
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.PrettyHPT
+    AbstractInterpretation.Pretty
     AbstractInterpretation.IR
     AbstractInterpretation.CodeGen
     AbstractInterpretation.Reduce
