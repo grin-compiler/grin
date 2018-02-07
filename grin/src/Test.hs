@@ -324,8 +324,8 @@ runGoalM = observeManyT 1 . flip runReaderT initContext
 gen :: Gen a -> GoalM a
 gen = lift . lift
 
-newName :: Type -> (String -> GoalM a) -> GoalM a
-newName t k = do
+newVar :: Type -> (String -> GoalM a) -> GoalM a
+newVar t k = do
   (Env vars funs) <- view _1
   name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
   CMR.local (ctxEnv %~ insertVarT name t) $ do
@@ -428,7 +428,7 @@ gExp t = \case
     [ TSExp <$> gSExp (NoEff t)
     , do t' <- simpleType
          se <- gSExp $ NoEff t'
-         newName t' $ \n -> do -- TODO: Gen LPat
+         newVar t' $ \n -> do -- TODO: Gen LPat
            rest <- solve (Exp [] t)
            pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
     ]
