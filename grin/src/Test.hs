@@ -233,13 +233,14 @@ data Type
   | TInt
   | TFloat
   | TWord
-  | TBool -- TODO: Handle TBool as a TUnion [Tag "True", Tag False]
+  | TBool -- TODO: Handle TBool as a TUnion [Tag "True", Tag False] -- Remove
   | TTLoc
   | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
   deriving (Eq, Generic, Ord, Show)
 
 instance Arbitrary Type where arbitrary = genericArbitraryU
+
 
 simpleType :: GoalM Type
 simpleType = melements
@@ -337,6 +338,14 @@ boolT = TUnion $ Set.fromList [TTag "True" [], TTag "False" []]
 
 gBool :: GoalM TVal
 gBool = gValue boolT
+
+adt :: GoalM Type
+adt = do
+  constructors <- gen $ choose (1, 10)
+  fmap (TUnion . Set.fromList) $ replicateM constructors $ do
+    name <- gen hiragana
+    fields <- gen $ choose (1, 10)
+    TTag name <$> replicateM fields simpleType
 
 -- | Select a variable from a context which has a given type.
 gEnv :: Type -> GoalM Name
