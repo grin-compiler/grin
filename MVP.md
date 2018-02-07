@@ -13,8 +13,10 @@
 
 # features
 - node support for codegen
+- no garbage collector
 - support for builtin types and primops
 - single module (no module system)
+- compiled HPT
 
 # documentation
 - HPT
