@@ -41,11 +41,12 @@ instance Pretty Condition where
     SimpleTypeExists a  -> pretty (integer $ fromIntegral a)
 
 instance Pretty Constant where
-  pretty _ = text "" -- TODO
-
-{-
-  = CSimpleType   SimpleType
-  | CHeapLocation Mem
-  | CNodeType     Tag Int { -arity- }
-  | CNodeItem     Tag Int { -node item index- } Int32 { -simple type or location- }
--}
+  pretty = \case
+    CSimpleType a   -> integer $ fromIntegral a
+    CHeapLocation a -> pretty a
+    CNodeType tag arity -> pretty tag <> angles (pretty arity)
+    CNodeItem tag idx a -> pretty tag <> brackets (pretty idx) <> text "=" <> (
+      if a < 0
+        then integer $ fromIntegral a
+        else pretty . Mem $ fromIntegral a
+      )
