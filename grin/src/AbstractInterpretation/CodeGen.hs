@@ -16,7 +16,7 @@ data Env
   , envRegisterCounter  :: Word32
   , envRegisterMap      :: Bimap.Bimap Name IR.Reg
   , envInstructions     :: [IR.Instruction]
-  , envFunctionArgMap   :: Map.Map Name [IR.Reg]
+  , envFunctionArgMap   :: Map.Map Name (IR.Reg, [IR.Reg])
   , envTagMap           :: Bimap.Bimap Tag IR.Tag
   }
 
@@ -38,7 +38,7 @@ data Result
 
 
 emit :: IR.Instruction -> CG ()
-emit = undefined
+emit inst = modify' $ \s@Env{..} -> s {envInstructions = inst : envInstructions}
 
 {-
   Unit      -1
@@ -56,7 +56,18 @@ emit = undefined
   add node item (index + location or simple type)
 -}
 
-getOrAddFun = undefined
+-- creates regsiters for function arguments and result
+getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])
+getOrAddFunRegs name arity = do
+  funMap <- gets envFunctionArgMap
+  case Map.lookup name funMap of
+    Just x  -> pure x
+    Nothing -> do
+      resReg <- newReg
+      argRegs <- replicateM arity newReg
+      let funRegs = (resReg, argRegs)
+      modify' $ \s@Env{..} -> s {envFunctionArgMap = Map.insert name funRegs envFunctionArgMap}
+      pure funRegs
 
 newReg :: CG IR.Reg
 newReg = state $ \s@Env{..} -> (IR.Reg envRegisterCounter, s {envRegisterCounter = succ envRegisterCounter})
@@ -124,7 +135,7 @@ codeGen = flip execState emptyEnv . cata folder where
     ProgramF defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
-      (funResultReg, funArgRegs) <- getOrAddFun name $ length args
+      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM addReg args funArgRegs
       body >>= \case
         Z   -> pure ()
@@ -161,7 +172,7 @@ codeGen = flip execState emptyEnv . cata folder where
           -- save instructions, clear, join altM, read instructions, swap saved instructions back
           instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
           res <- altM
-          state $ \s@Env{..} -> ((res,envInstructions), s {envInstructions = instructions})
+          state $ \s@Env{..} -> ((res, reverse envInstructions), s {envInstructions = instructions})
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
@@ -177,7 +188,7 @@ codeGen = flip execState emptyEnv . cata folder where
     AltF cpat exp -> pure $ A cpat exp
 
     SAppF name args -> do -- copy args to definition's variables ; read function result register
-      (funResultReg, funArgRegs) <- getOrAddFun name $ length args
+      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       valRegs <- mapM codeGenVal args
       zipWithM (\src dst -> emit $ IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
       pure $ R funResultReg
@@ -207,12 +218,6 @@ codeGen = flip execState emptyEnv . cata folder where
       pure Z
 
     SBlockF exp -> exp
-
-{-
-  TODO
-    - build values ; fully constant value; partially constant value
-    - avoid temporal variables ; fuse construction with deconstruction
--}
 
 {-
   >>= LPAT

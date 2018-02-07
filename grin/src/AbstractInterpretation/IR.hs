@@ -9,11 +9,6 @@ newtype Mem = Mem Word32 deriving (Eq, Ord)
 
 data Selector
   = NodeItem Tag Int -- node item index
-  -- TODO: con
-{-
-  case patterns - node with specific tag / specific simple type
-  bind - all / node with specific tag
--}
 
 newtype Tag = Tag Word32 deriving (Eq, Ord)
 type SimpleType = Int32
