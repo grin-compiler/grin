@@ -109,6 +109,7 @@ data Lit
   = LInt64  Int64
   | LWord64 Word64
   | LFloat  Float
+  | LBool   Bool
   deriving (Generic, NFData, Eq, Ord, Show)
 
 data CPat

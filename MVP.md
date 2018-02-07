@@ -3,13 +3,14 @@
 - word
 - int
 - float
+- bool
 
 # primops
 
 - add / sub (float + int + word)
 - mul / div (float + int + word)
 - gt / ge / lt / le (float + int + word)
-- eq / ne (float + int + word)
+- eq / ne (float + int + word + bool)
 
 # features
 - node support for codegen

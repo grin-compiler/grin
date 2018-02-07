@@ -43,13 +43,16 @@ evalPrimOp name args = checkName name $ case name of
   "_prim_float_ge"  -> float_bin_op bool (>=)
   "_prim_float_lt"  -> float_bin_op bool (<)
   "_prim_float_le"  -> float_bin_op bool (<=)
+  -- Bool
+  "_prim_bool_eq"   -> bool_bin_op bool (==)
+  "_prim_bool_ne"   -> bool_bin_op bool (/=)
 
   _ -> error $ "unknown primitive operation: " ++ name
  where
   int   x = pure . Lit . LInt64 $ x
   word  x = pure . Lit . LWord64 $ x
   float x = pure . Lit . LFloat $ x
-  bool  x = pure . ValTag $ Tag C (if x then "True" else "False") 0
+  bool  x = pure . Lit . LBool $ x
 
   int_bin_op retTy fn = case args of
     [Lit (LInt64 a), Lit (LInt64 b)] -> retTy $ fn a b
@@ -61,4 +64,8 @@ evalPrimOp name args = checkName name $ case name of
 
   float_bin_op retTy fn = case args of
     [Lit (LFloat a), Lit (LFloat b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+
+  bool_bin_op retTy fn = case args of
+    [Lit (LBool a), Lit (LBool b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name

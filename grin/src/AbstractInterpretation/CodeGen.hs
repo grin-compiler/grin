@@ -51,7 +51,8 @@ emit inst = modify' $ \s@Env{..} -> s {envInstructions = inst : envInstructions}
   Int       -2
   Word      -3
   Float     -4
-  Undefined -5
+  Bool      -5
+  Undefined -9999
 -}
 
 {-
@@ -106,6 +107,7 @@ litToSimpleType = \case
   LInt64  {}  -> -2
   LWord64 {}  -> -3
   LFloat  {}  -> -4
+  LBool   {}  -> -5
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case

@@ -12,7 +12,7 @@ import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
 
-keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do"]
+keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "True", "False"]
 
 lineComment :: Parser ()
 lineComment = L.skipLineComment "--"
@@ -69,8 +69,8 @@ ifThenElse i = do
   L.indentGuard sc EQ i
   kw "else"
   e <- (L.indentGuard sc GT i >>= expr)
-  return $ ECase v [ Alt (TagPat (Tag C "True"  0)) t
-                   , Alt (TagPat (Tag C "False" 0)) e
+  return $ ECase v [ Alt (LitPat (LBool True))  t
+                   , Alt (LitPat (LBool False)) e
                    ]
 
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
@@ -104,7 +104,8 @@ value = Unit <$ op "()" <|>
 literal :: Parser Lit
 literal = LInt64 . fromIntegral <$> signedInteger <|>
           LWord64 . fromIntegral <$> lexeme (L.integer <* C.char 'u') <|>
-          LFloat . realToFrac <$> signedFloat
+          LFloat . realToFrac <$> signedFloat <|>
+          LBool <$> (True <$ kw "True" <|> False <$ kw "False")
 
 --parseFromFile :: Parser _ -> String -> IO _
 parseFromFile p file = runParser p file <$> readFile file

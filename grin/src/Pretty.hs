@@ -52,9 +52,11 @@ instance Pretty Val where
     Undefined   -> keyword "undefined"
 
 instance Pretty Lit where
-  pretty (LInt64 a) = integer $ fromIntegral a
-  pretty (LWord64 a) = integer (fromIntegral a) <> text "u"
-  pretty (LFloat a) = float a
+  pretty = \case
+    LInt64 a  -> integer $ fromIntegral a
+    LWord64 a -> integer (fromIntegral a) <> text "u"
+    LFloat a  -> float a
+    LBool a   -> text (show a)
 
 instance Pretty CPat where
   pretty = \case

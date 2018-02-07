@@ -68,10 +68,7 @@ toLLVM fname mod = withContext $ \ctx -> do
   question: how to calculate from grin or hpt result?
 -}
 tagMap :: Map Tag (Type, Constant)
-tagMap = Map.fromList
-  [ (Tag Grin.C "False" 0, (i1, Int 1 0))
-  , (Tag Grin.C "True" 0,  (i1, Int 1 1))
-  ]
+tagMap = Map.fromList []
 
 -- TODO: create Type map ; calculate once ; store in reader environment
 {-
@@ -128,6 +125,7 @@ codeGenLit = \case
   LInt64 v  -> Int {integerBits=64, integerValue=fromIntegral v}
   LWord64 v -> Int {integerBits=64, integerValue=fromIntegral v}
   LFloat v  -> C.Float {floatValue=F.Single v}
+  LBool v   -> Int {integerBits=1, integerValue=if v then 1 else 0}
 
 codeGenVal :: Val -> CG Operand
 codeGenVal = \case
@@ -171,6 +169,7 @@ getCPatName = \case
   LitPat  lit   -> case lit of
     LInt64 v  -> "int_" ++ show v
     LWord64 v -> "word_" ++ show v
+    LBool v   -> "bool_" ++ show v
     LFloat v  -> error "pattern match on float is not supported"
  where
   tagName (Tag c name n) = printf "%s%s%d" (show c) name n
