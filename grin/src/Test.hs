@@ -198,18 +198,22 @@ data Env
   = Env
     { vars :: Map Name Type
     , funs :: Map Name ([Type], Type, [Eff])
+    , adts :: Set Type -- The collection of user defined types.
     }
   deriving (Eq, Show)
 
+adtsL :: Lens' Env (Set Type)
+adtsL = lens adts (\e a -> e { adts = a})
+
 instance Monoid Env where
-  mempty = Env mempty mempty
-  mappend (Env v0 f0) (Env v1 f1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1)
+  mempty = Env mempty mempty mempty
+  mappend (Env v0 f0 a0) (Env v1 f1 a1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1) (a0 <> a1)
 
 insertVar :: Name -> Either TVal TExtraVal -> Env -> Env
-insertVar name val (Env vars funs) = Env (Map.singleton name (typeOf val) <> vars) funs
+insertVar name val (Env vars funs adts) = Env (Map.singleton name (typeOf val) <> vars) funs adts
 
 insertVarT :: Name -> Type -> Env -> Env
-insertVarT name ttype (Env vars funs) = Env (Map.singleton name ttype <> vars) funs
+insertVarT name ttype (Env vars funs adts) = Env (Map.singleton name ttype <> vars) funs adts
 
 
 data Store = Store (Map Loc (TVal, Type))
@@ -286,6 +290,7 @@ instance (TypeOf l, TypeOf r) => TypeOf (Either l r) where
 
 type Context = (Env, Store)
 
+ctxEnv :: Lens' Context Env
 ctxEnv   = _1
 -- ctxStore = _2
 
@@ -296,7 +301,10 @@ data Goal
   deriving (Eq, Ord, Show)
 
 genProg :: Gen Exp
-genProg = fmap head $ asExp <$$> (runGoalM $ solve @TExp (Exp [] TTUnit))
+genProg =
+  fmap head $
+  asExp <$$>
+  (runGoalM $ withADTs 10 $ solve @TExp (Exp [] TTUnit))
 
 sampleGoalM :: Show a => GoalM a -> IO ()
 sampleGoalM g = sample $ runGoalM g
@@ -308,7 +316,7 @@ testExp = sampleGoalM (gExp boolT [])
 type GoalM a = ReaderT Context (LogicT Gen) a
 
 initContext :: Context
-initContext = (Env mempty primitives, mempty)
+initContext = (Env mempty primitives mempty, mempty)
   where
     primitives = Map.map (\(params, ret) -> (convPrimTypes <$> params, convPrimTypes ret, [])) PrimOps.primOps
     convPrimTypes = \case
@@ -324,10 +332,23 @@ runGoalM = observeManyT 1 . flip runReaderT initContext
 gen :: Gen a -> GoalM a
 gen = lift . lift
 
+newName :: GoalM String
+newName = do
+  (Env vars funs adts) <- view _1
+  let names = Map.keys vars <> Map.keys funs
+  gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` names)
+
+newNames :: Int -> GoalM [String]
+newNames = go [] where
+  go names 0 = pure names
+  go names n = do
+    name <- newName `mSuchThat` (`notElem` names)
+    go (name:names) (n-1)
+
 newVar :: Type -> (String -> GoalM a) -> GoalM a
 newVar t k = do
-  (Env vars funs) <- view _1
-  name <- gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` (Map.keys vars))
+  (Env vars funs adts) <- view _1
+  name <- newName
   CMR.local (ctxEnv %~ insertVarT name t) $ do
     k name
 
@@ -341,16 +362,15 @@ gBool = gValue boolT
 
 adt :: GoalM Type
 adt = do
-  constructors <- gen $ choose (1, 10)
-  fmap (TUnion . Set.fromList) $ replicateM constructors $ do
-    name <- gen hiragana
+  constructors <- newNames =<< gen (choose (1, 10))
+  fmap (TUnion . Set.fromList) $ forM constructors $ \name -> do
     fields <- gen $ choose (1, 10)
     TTag name <$> replicateM fields simpleType
 
 -- | Select a variable from a context which has a given type.
 gEnv :: Type -> GoalM Name
 gEnv t = do
-  (Env vars funs) <- view _1
+  (Env vars funs adts) <- view _1
   melements . Map.keys $ Map.filter (==t) vars
 
 gLiteral :: Type -> GoalM TSimpleVal
@@ -383,7 +403,7 @@ gValue = \case
 
 gPureFunction :: Type -> GoalM (Name, [Type])
 gPureFunction t = do
-  (Env vars funs) <- view _1
+  (Env vars funs adts) <- view _1
   (name, (params, ret, [])) <- melements . Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
   pure (name, params)
 
@@ -404,6 +424,9 @@ moneof gs = do
   (g, gs') <- select gs
   g `mplus` moneof gs'
 
+-- TODO: Limit the number of retries
+mSuchThat :: GoalM a -> (a -> Bool) -> GoalM a
+mSuchThat g p = g >>= \x -> if (p x) then pure x else mSuchThat g p
 
 melements :: [a] -> GoalM a
 melements [] = mzero
@@ -434,13 +457,20 @@ gExp t = \case
     ]
   es -> mzero
 
+-- | Generate the given number of ADTs, and register them
+-- in the context, running the computation with the new context.
+withADTs :: Int -> GoalM a -> GoalM a
+withADTs n g = do
+  as <- replicateM n adt
+  CMR.local ((ctxEnv . adtsL) %~ (Set.union (Set.fromList as))) g
+
 class Solve t where
   solve' :: Goal -> GoalM t
 
 -- TODO: Remove debug...
 solve :: Solve t => Goal -> GoalM t
 solve g = do
---  (Env vars funs) <- view _1
+--  (Env vars funs adts) <- view _1
 --  traceShowM vars
   solve' g
 
@@ -458,4 +488,3 @@ instance Solve TExp where
   solve' = \case
     Exp es t -> gExp t es
     _        -> mzero
-
