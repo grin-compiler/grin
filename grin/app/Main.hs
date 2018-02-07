@@ -80,9 +80,9 @@ defaultPipeline = \case
   Options files [] output ->
     Options
       files
-      [ {-HPT CompileHPT
+      [ HPT CompileHPT
       , HPT PrintHPT
-      , -}HPT RunHPTPure
+      , HPT RunHPTPure
       , HPT PrintHPTResult
       , T CaseSimplification
       , T Vectorisation

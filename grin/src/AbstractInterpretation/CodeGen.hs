@@ -178,21 +178,36 @@ codeGen = flip execState emptyEnv . cata folder where
       caseResultReg <- newReg
       forM_ alts $ \alt -> do
         (A cpat altM) <- alt
-        (altRes, altInstructions) <- do
-          -- save instructions, clear, join altM, read instructions, swap saved instructions back
-          instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
-          res <- altM
-          state $ \s@Env{..} -> ((res, reverse envInstructions), s {envInstructions = instructions})
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
+            ----------- BEGIN ; FIXME
+            -- save instructions, clear, join altM, read instructions, swap saved instructions back
+            instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
+            -- bind pattern variables
+            forM_ (zip [0..] vars) $ \(idx, name) -> do
+                argReg <- newReg
+                addReg name argReg
+                emit $ IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
+            altRes <- altM
+            case altRes of
+              Z -> pure ()
+              R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
+            altInstructions <- state $ \s@Env{..} -> (reverse envInstructions, s {envInstructions = instructions})
+            ----------- END
             emit $ IR.If {condition = IR.NodeTypeExists irTag, srcReg = valReg, instructions = altInstructions}
           LitPat lit -> do
+            ----------- BEGIN ; FIXME
+            -- save instructions, clear, join altM, read instructions, swap saved instructions back
+            instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
+            altRes <- altM -- FIXME: move after pattern variable binding
+            case altRes of
+              Z -> pure ()
+              R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
+            altInstructions <- state $ \s@Env{..} -> (reverse envInstructions, s {envInstructions = instructions})
+            ----------- END
             emit $ IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
           _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
-        case altRes of
-          Z -> pure ()
-          R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp
