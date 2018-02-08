@@ -13,7 +13,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Grin
-import AbstractInterpretation.AbstractRunGrin (HPTResult(..), emptyComputer)
+import AbstractInterpretation.HPTResult (HPTResult(..), emptyComputer)
 
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type

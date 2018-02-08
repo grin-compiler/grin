@@ -14,7 +14,7 @@ import Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 
 import Pretty
-import AbstractInterpretation.AbstractRunGrin
+import AbstractInterpretation.HPTResult
 
 
 instance Pretty Step where

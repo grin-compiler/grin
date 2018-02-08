@@ -46,6 +46,7 @@ library
     Transformations.Simplifying.RightHoistFetch
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
+    AbstractInterpretation.HPTResult
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.Pretty
     AbstractInterpretation.IR

@@ -1,14 +1,6 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
 module AbstractInterpretation.AbstractRunGrin
   ( abstractRun
-  , Computer(..)
-  , HPTResult
-  , Step(..)
-  , RTLocVal(..)
-  , RTNode(..)
-  , RTVar(..)
-  , CGType(..)
-  , emptyComputer
   ) where
 
 import Debug.Trace
@@ -27,6 +19,7 @@ import qualified Data.Functor.Foldable as Foldable
 import Control.Comonad.Cofree
 
 import Grin
+import AbstractInterpretation.HPTResult
 
 type AExp = Cofree ExpF Int
 type ASimpleExp = AExp
@@ -40,54 +33,6 @@ type ADefMap = Map Name ADef
     decide the subset of grin (e.g. high level grin) that HPT should operate on ; what language constructs should be supported?
     implement equasion solver for the specific example from the grin paper as a separate app
 -}
-
-data CGType
-  = T_I64
-  | T_Unit
-  | T_Loc
-  | T_Tag
-  | T_UNKNOWN
-  | T_Fun String
-  deriving (Eq, Ord, Show)
-
-data RTLocVal
-  = RTLoc Int
-  | BAS   CGType
-  | RTVar Name -- HACK
-  deriving (Eq, Ord, Show)
-
-data RTNode = RTNode Tag [Set RTLocVal]
-  deriving (Eq, Ord, Show)
-
-data RTVar
-  = N RTNode
-  | V RTLocVal
-  deriving (Eq, Ord, Show)
-
---type NodeSet = Set RTNode
-type NodeSet = VarSet
-type VarSet = Set RTVar -- HINT: VarVal in the paper
-
-type HPTResult = Computer
-
-data Computer
-  = Computer
-  { storeMap  :: IntMap NodeSet   -- models the computer memory
-  , envMap    :: Map Name VarSet  -- models the CPU registers
-  , steps     :: [Step]
-  }
-  deriving Show
-
-data Step
-  = StepExp     Exp
-  | StepAssign  Name VarSet
-  deriving Show
-
-emptyComputer = Computer
-  { storeMap  = mempty
-  , envMap    = mempty
-  , steps     = mempty
-  }
 
 type GrinM = ReaderT ADefMap (State Computer)
 

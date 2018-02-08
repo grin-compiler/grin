@@ -32,7 +32,7 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
 import Grin
-import AbstractInterpretation.AbstractRunGrin (HPTResult(..), emptyComputer)
+import AbstractInterpretation.HPTResult (HPTResult(..), emptyComputer)
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
 

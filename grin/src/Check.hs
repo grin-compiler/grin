@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, BangPatterns #-}
 module Check where
 
-import AbstractInterpretation.AbstractRunGrin
+import AbstractInterpretation.HPTResult
 import Control.Arrow
 import Data.Functor.Foldable
 import Data.Maybe
