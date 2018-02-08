@@ -2,6 +2,7 @@
 module Transformations.Simplifying.VectorisationSpec where
 
 import AbstractInterpretation.AbstractRunGrin
+import AbstractInterpretation.HPTResult
 import Transformations.Simplifying.Vectorisation (vectorisation)
 
 import Data.Monoid
@@ -22,13 +23,13 @@ spec = do
                 (Map.fromList
                   [ ("v", (Set.singleton
                             (N (RTNode (tag "Cons" 2)
-                                [ Set.singleton (BAS T_I64)
+                                [ Set.singleton (BAS T_Int64)
                                 , Set.singleton (RTLoc 3)
                                 ]))))
                   , ("l0", (Set.singleton
-                             (V (BAS T_I64))))
+                             (V (BAS T_Int64))))
                   , ("l1", (Set.singleton
-                             (V (BAS T_I64))))
+                             (V (BAS T_Int64))))
                   ])
                 mempty
 
