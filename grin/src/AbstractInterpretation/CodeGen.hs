@@ -157,19 +157,24 @@ codeGen = flip execState emptyEnv . cata folder where
         Z -> case lpat of
           Unit -> pure ()
           _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
-        R r -> case lpat of
+        R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
           Lit{} -> pure () -- TODO: is this ok? or error?
           Var name -> addReg name r
           ConstTagNode tag args -> do
             irTag <- getTag tag
-            forM_ (zip [0..] args) $ \(idx, arg) -> case arg of
+            bindInstructions <- forM (zip [0..] args) $ \(idx, arg) -> case arg of
               Var name -> do
                 argReg <- newReg
                 addReg name argReg
-                emit $ IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}
-              Lit {} -> pure ()
+                pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
+              Lit {} -> pure []
               _ -> error $ "illegal node pattern component " ++ show arg
+            emit $ IR.If
+              { condition     = IR.NodeTypeExists irTag
+              , srcReg        = r
+              , instructions  = concat bindInstructions
+              }
           _ -> error $ "unsupported lpat " ++ show lpat
       rightExp
 

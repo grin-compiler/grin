@@ -1,8 +1,7 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
 module AbstractInterpretation.Reduce where
 
 import Data.Int
-import Data.Word
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map (Map)
@@ -11,90 +10,112 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 
 import Control.Monad.State
-import Control.Monad.Reader
+import Lens.Micro.Platform
 
 import AbstractInterpretation.IR
 import AbstractInterpretation.CodeGen
 
-type NodeSet = Map Tag (Vector (Set Int32))
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving Eq
 
 data Value
   = Value
-  { simpleTypeAndLocationSet  :: Set Int32
-  , nodeSet                   :: NodeSet
+  { _simpleTypeAndLocationSet :: Set Int32
+  , _nodeSet                  :: NodeSet
   }
   deriving Eq
 
 data Computer
   = Computer
-  { memory    :: Vector NodeSet
-  , register  :: Vector Value
+  { _memory    :: Vector NodeSet
+  , _register  :: Vector Value
   }
+  deriving Eq
 
-type HPT = ReaderT HPTProgram (State Computer)
+concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer]
+
+type HPT = State Computer
+
+instance Monoid NodeSet where
+  mempty  = NodeSet mempty
+  mappend = unionNodeSet
+
+instance Monoid Value where
+  mempty  = Value mempty mempty
+  mappend = unionValue
 
 unionNodeSet :: NodeSet -> NodeSet -> NodeSet
-unionNodeSet = Map.unionWith unionNodeData where
+unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y where
   unionNodeData a b
     | V.length a == V.length b = V.zipWith Set.union a b
     | otherwise = error $ "node arity mismatch " ++ show (V.length a) ++ " =/= " ++ show (V.length b)
 
 unionValue :: Value -> Value -> Value
 unionValue a b = Value
-  { simpleTypeAndLocationSet  = Set.union (simpleTypeAndLocationSet a) (simpleTypeAndLocationSet b)
-  , nodeSet                   = unionNodeSet (nodeSet a) (nodeSet b)
+  { _simpleTypeAndLocationSet = Set.union (_simpleTypeAndLocationSet a) (_simpleTypeAndLocationSet b)
+  , _nodeSet                  = unionNodeSet (_nodeSet a) (_nodeSet b)
   }
+
+regIndex :: Reg -> Int
+regIndex (Reg i) = fromIntegral i
+
+memIndex :: Mem -> Int
+memIndex (Mem i) = fromIntegral i
 
 evalInstruction :: Instruction -> HPT ()
 evalInstruction = \case
-  {-
-  If      {..} -> keyword "if" <+> pretty condition <+> keyword "in" <+> pretty srcReg <$$> indent 2 (pretty instructions)
-  Project {..} -> keyword "project" <+> pretty srcSelector <+> pretty srcReg <+> pretty dstReg
-  Extend  {..} -> keyword "extend" <+> pretty srcReg <+> pretty dstSelector <+> pretty dstReg
-  -}
-  --Move    {..} -> keyword "move" <+> pretty srcReg <+> pretty dstReg
-  {-
-  Fetch   {..} -> keyword "fetch" <+> pretty addressReg <+> pretty dstReg
-  Store   {..} -> keyword "store" <+> pretty srcReg <+> pretty address
-  Update  {..} -> keyword "update" <+> pretty srcReg <+> pretty addressReg
-  Init    {..} -> keyword "init" <+> pretty dstReg <+> pretty constant
-  -}
-  _ -> pure ()
-{-
-  If
-  { condition     :: Condition
-  , srcReg        :: Reg
-  , instructions  :: [Instruction]
-  }
-  Project
-  { srcSelector   :: Selector
-  , srcReg        :: Reg
-  , dstReg        :: Reg
-  }
-  Extend
-  { srcReg        :: Reg
-  , dstSelector   :: Selector
-  , dstReg        :: Reg
-  }
-  Move
-  { srcReg        :: Reg
-  , dstReg        :: Reg
-  }
-  Fetch -- ^ copy mem (node) content addressed by SRC reg location part to DST register node part
-  { addressReg  :: Reg
-  , dstReg      :: Reg
-  }
-  Store -- ^ copy the node part of the SRC reg to mem
-  { srcReg      :: Reg
-  , address     :: Mem
-  }
-  Update -- ^ copy the node part of the SRC reg to mem addressed by DST reg location part
-  { srcReg      :: Reg
-  , addressReg  :: Reg
-  }
-  Init -- ^ copy compile time constant to DST register (one time setup)
-  { dstReg      :: Reg
-  , constant    :: Constant
-  }
+  If {..} -> do
+    satisfy <- case condition of
+      NodeTypeExists tag -> do
+        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
+        pure $ Map.member tag tagMap
+      SimpleTypeExists ty -> do
+        typeSet <- use $ register.ix (regIndex srcReg).simpleTypeAndLocationSet
+        pure $ Set.member ty typeSet
+    when satisfy $ mapM_ evalInstruction instructions
 
--}
+  Project {..} -> do
+    let NodeItem tag itemIndex = srcSelector
+    value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non (error $ "missing tag " ++ show tag).ix itemIndex
+    register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend value)
+
+  Extend {..} -> do
+    value <- use $ register.ix (regIndex srcReg).simpleTypeAndLocationSet
+    let NodeItem tag itemIndex = dstSelector
+    register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non (error $ "missing tag " ++ show tag).ix itemIndex %= (mappend value)
+
+  Move {..} -> do
+    value <- use $ register.ix (regIndex srcReg)
+    register.ix (regIndex dstReg) %= (mappend value)
+
+  Fetch {..} -> do
+    addressSet <- use $ register.ix (regIndex addressReg).simpleTypeAndLocationSet
+    forM_ addressSet $ \address -> when (address >= 0) $ do
+      value <- use $ memory.ix (fromIntegral address)
+      register.ix (regIndex dstReg).nodeSet %= (mappend value)
+
+  Store {..} -> do
+    value <- use $ register.ix (regIndex srcReg).nodeSet
+    memory.ix (memIndex address) %= (mappend value)
+
+  Update {..} -> do
+    value <- use $ register.ix (regIndex srcReg).nodeSet
+    addressSet <- use $ register.ix (regIndex addressReg).simpleTypeAndLocationSet
+    forM_ addressSet $ \address -> when (address >= 0) $ do
+      memory.ix (fromIntegral address) %= (mappend value)
+
+  Init {..} -> case constant of
+    CSimpleType ty        -> register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend $ Set.singleton ty)
+    CHeapLocation (Mem l) -> register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend $ Set.singleton $ fromIntegral l)
+    CNodeType tag arity   -> register.ix (regIndex dstReg).nodeSet %=
+                                (mappend $ NodeSet . Map.singleton tag $ V.replicate arity mempty)
+    CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
+                                nodeTagMap.at tag.non (error $ "missing tag " ++ show tag).ix idx %= (mappend $ Set.singleton val)
+
+evalHPT :: HPTProgram -> Computer
+evalHPT Env{..} = run emptyComputer where
+  emptyComputer = Computer
+    { _memory   = V.replicate (fromIntegral envMemoryCounter) mempty
+    , _register = V.replicate (fromIntegral envRegisterCounter) mempty
+    }
+  run computer = if computer == nextComputer then computer else run nextComputer
+    where nextComputer = execState (mapM_ evalInstruction envInstructions) computer

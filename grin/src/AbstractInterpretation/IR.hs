@@ -10,7 +10,7 @@ newtype Mem = Mem Word32 deriving (Eq, Ord)
 data Selector
   = NodeItem Tag Int -- node item index
 
-newtype Tag = Tag Word32 deriving (Eq, Ord)
+newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
 type SimpleType = Int32
 
 data Condition
@@ -25,14 +25,14 @@ data Instruction
     , srcReg        :: Reg
     , instructions  :: [Instruction]
     }
-  | Project
-    { srcSelector   :: Selector
+  | Project -- ^ projects from the tag specific SRC's node part to DST reg simple type and location set
+    { srcSelector   :: Selector -- ^ the seleced tag must exist
     , srcReg        :: Reg
     , dstReg        :: Reg
     }
-  | Extend
+  | Extend -- ^ extends DST's node part for a tag by SRC reg simple type and location set
     { srcReg        :: Reg
-    , dstSelector   :: Selector
+    , dstSelector   :: Selector -- ^ the seleced tag must exist
     , dstReg        :: Reg
     }
   | Move
