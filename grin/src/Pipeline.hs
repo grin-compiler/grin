@@ -7,6 +7,7 @@ import Data.Maybe (maybe)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
+import qualified Text.Show.Pretty as PP
 
 import Check hiding (check)
 import Eval
@@ -26,6 +27,7 @@ import AbstractInterpretation.AbstractRunGrin
 import AbstractInterpretation.PrettyHPT
 import qualified AbstractInterpretation.Pretty as HPT
 import qualified AbstractInterpretation.CodeGen as HPT
+import qualified AbstractInterpretation.Reduce as HPT
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -182,6 +184,11 @@ printHPT = do
 
 runHPTPure :: PipelineM ()
 runHPTPure = do
+  hptProgram <- use psHPTProgram
+  let printHPT a = do
+        PP.pPrint $ HPT.evalHPT a
+  maybe (pure ()) (liftIO . printHPT) hptProgram
+
   grin <- use psExp
   let (_, result) = abstractRun (assignStoreIDs grin) "grinMain"
   psHPTResult .= Just result

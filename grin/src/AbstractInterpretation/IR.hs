@@ -4,11 +4,12 @@ module AbstractInterpretation.IR where
 import Data.Int
 import Data.Word
 
-newtype Reg = Reg Word32 deriving (Eq, Ord)
-newtype Mem = Mem Word32 deriving (Eq, Ord)
+newtype Reg = Reg Word32 deriving (Eq, Ord, Show)
+newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
 
 data Selector
   = NodeItem Tag Int -- node item index
+  deriving Show
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
 type SimpleType = Int32
@@ -16,6 +17,7 @@ type SimpleType = Int32
 data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
+  deriving Show
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error on compile time ; the analyis will not be restrictive ; there will not be runtime checks
 
@@ -55,9 +57,11 @@ data Instruction
     { dstReg      :: Reg
     , constant    :: Constant
     }
+  deriving Show
 
 data Constant
   = CSimpleType   SimpleType
   | CHeapLocation Mem
   | CNodeType     Tag Int {-arity-}
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type or location-}
+  deriving Show
