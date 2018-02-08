@@ -122,6 +122,7 @@ test-suite grin-test
   main-is:             Spec.hs
   build-depends:       base
                      , containers
+                     , functor-infix
                      , grin
                      , hspec
                      , hspec-discover
@@ -134,6 +135,7 @@ test-suite grin-test
                      , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.SubstitutionSpec
                      , TestSpec
+                     , PipelineSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark

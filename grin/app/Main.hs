@@ -29,11 +29,6 @@ transformOpts =
   <|> flg RightHoistFetch "rhi" "Right Hoist Fetch"
   <|> flg GenerateEval "ge" "Generate Eval"
   <|> flg ConstantFolding "cfl" "Constant Folding"
-  <|> ((RenameVariables . Map.fromList)
-        <$> option auto (mconcat
-              [ long "rv"
-              , help "RenameVariables"
-              ]))
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =

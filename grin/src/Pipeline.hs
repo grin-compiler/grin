@@ -58,10 +58,9 @@ data Transformation
   | BindNormalisation
   | RightHoistFetch
   | GenerateEval
-  | RenameVariables RenameVariablesMap
   -- Optimizations
   | ConstantFolding
-  deriving (Eq, Ord, Show)
+  deriving (Enum, Eq, Ord, Show)
 
 transformation :: HPTResult -> Int -> Transformation -> Exp -> Exp
 transformation hptResult n = \case
@@ -72,7 +71,6 @@ transformation hptResult n = \case
   BindNormalisation       -> bindNormalisation
   RightHoistFetch         -> rightHoistFetch
   GenerateEval            -> generateEval
-  RenameVariables renames -> renameVaribales renames
   ConstantFolding         -> constantFolding
 
 precondition :: Transformation -> [Check]
@@ -84,7 +82,6 @@ precondition = \case
   BindNormalisation -> []
   RightHoistFetch -> []
   GenerateEval -> []
-  RenameVariables rvm -> []
   ConstantFolding -> []
 
 
@@ -97,7 +94,6 @@ postcondition = \case
   BindNormalisation -> []
   RightHoistFetch -> []
   GenerateEval -> []
-  RenameVariables rvm -> []
   ConstantFolding -> []
 
 
@@ -139,6 +135,11 @@ pattern DebugTransformation t <- DebugTransformationH (H t)
 
 data PipelineOpts = PipelineOpts
   { _poOutputDir :: FilePath
+  }
+
+defaultOpts :: PipelineOpts
+defaultOpts = PipelineOpts
+  { _poOutputDir = "./"
   }
 
 type TagInfo = Set Tag
@@ -301,10 +302,13 @@ check = do
   let nonDefined = nonDefinedNames e
   liftIO . putStrLn $ unwords ["Non defined names:", show nonDefined]
 
-pipeline :: PipelineOpts -> Exp -> [Pipeline] -> IO ()
+-- | Runs the pipeline and returns the last version of the given
+-- expression.
+pipeline :: PipelineOpts -> Exp -> [Pipeline] -> IO Exp
 pipeline o e p = do
   print p
-  flip evalStateT start .
+  fmap _psExp .
+    flip execStateT start .
     flip runReaderT o   .
     sequence_           .
     intersperse check $ Prelude.map pipelineStep p
