@@ -133,6 +133,7 @@ test-suite grin-test
                      , Transformations.Simplifying.VectorisationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.SubstitutionSpec
+                     , TestSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark

@@ -251,7 +251,6 @@ simpleType = melements
   , TInt
   , TFloat
   , TWord
-  , boolT
   , TTLoc
   ]
 
@@ -303,7 +302,10 @@ genProg :: Gen Exp
 genProg =
   fmap head $
   asExp <$$>
-  (runGoalM $ withADTs 10 $ solve @TExp (Exp [] TTUnit))
+  (runGoalM $
+    CMR.local ((ctxEnv . adtsL) %~ Set.union primitiveADTs) $
+    withADTs 10 $
+    solve @TExp (Exp [] TTUnit))
 
 sampleGoalM :: Show a => GoalM a -> IO ()
 sampleGoalM g = sample $ runGoalM g
@@ -328,14 +330,24 @@ initContext = (Env mempty primitives mempty, mempty)
 runGoalM :: GoalM a -> Gen [a]
 runGoalM = observeManyT 1 . flip runReaderT initContext
 
+runGoalUnsafe :: GoalM a -> Gen a
+runGoalUnsafe = fmap checkSolution . runGoalM
+  where
+    checkSolution [] = error "No solution is found."
+    checkSolution xs = head xs
+
 gen :: Gen a -> GoalM a
 gen = lift . lift
 
 newName :: GoalM String
 newName = do
   (Env vars funs adts) <- view _1
-  let names = Map.keys vars <> Map.keys funs
+  let names = Map.keys vars <> Map.keys funs <> (concatMap tagNames $ Set.toList adts)
   gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` names)
+  where
+    tagNames (TTag name _)  = [name]
+    tagNames (TUnion types) = concatMap tagNames (Set.toList types)
+    tagNames _              = []
 
 newNames :: Int -> GoalM [String]
 newNames = go [] where
@@ -424,7 +436,11 @@ moneof gs = do
 
 -- TODO: Limit the number of retries
 mSuchThat :: GoalM a -> (a -> Bool) -> GoalM a
-mSuchThat g p = g >>= \x -> if (p x) then pure x else mSuchThat g p
+mSuchThat g p = go 100 where
+  go 0 = mzero
+  go n = do
+    x <- g
+    if (p x) then pure x else go (n - 1)
 
 melements :: [a] -> GoalM a
 melements [] = mzero
@@ -440,6 +456,11 @@ select xs = do
     ([]    , (b:bs)) -> pure (b, bs)
     (as    , (b:bs)) -> pure (b, as ++ bs)
 
+definedAdt :: GoalM Type
+definedAdt = do
+  (Env funs vars adts) <- view ctxEnv
+  melements $ Set.toList adts
+
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
 -- TODO: Use size parameter to limit the generation of programs.
@@ -447,13 +468,18 @@ gExp :: Type -> [Eff] -> GoalM TExp
 gExp t = \case
   [] -> moneof
     [ TSExp <$> gSExp (NoEff t)
-    , do t' <- simpleType
+    , do t' <- moneof [simpleType, definedAdt]
          se <- gSExp $ NoEff t'
          newVar t' $ \n -> do -- TODO: Gen LPat
            rest <- solve (Exp [] t)
            pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
     ]
   es -> mzero
+
+primitiveADTs :: Set Type
+primitiveADTs = Set.fromList
+  [ boolT
+  ]
 
 -- | Generate the given number of ADTs, and register them
 -- in the context, running the computation with the new context.
@@ -469,7 +495,7 @@ class Solve t where
 solve :: Solve t => Goal -> GoalM t
 solve g = do
 --  (Env vars funs adts) <- view _1
---  traceShowM vars
+--  traceShowM adts
   solve' g
 
 instance Solve TVal where
@@ -486,3 +512,4 @@ instance Solve TExp where
   solve' = \case
     Exp es t -> gExp t es
     _        -> mzero
+
