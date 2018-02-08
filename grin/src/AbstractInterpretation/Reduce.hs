@@ -1,5 +1,9 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
-module AbstractInterpretation.Reduce where
+module AbstractInterpretation.Reduce
+  ( evalHPT
+  ) where
+
+import Debug.Trace
 
 import Data.Int
 import Data.Set (Set)
@@ -9,27 +13,27 @@ import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Lens.Micro.Platform
 
 import AbstractInterpretation.IR
 import AbstractInterpretation.CodeGen
 
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving Eq
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
 
 data Value
   = Value
   { _simpleTypeAndLocationSet :: Set Int32
   , _nodeSet                  :: NodeSet
   }
-  deriving Eq
+  deriving (Eq, Show)
 
 data Computer
   = Computer
   { _memory    :: Vector NodeSet
   , _register  :: Vector Value
   }
-  deriving Eq
+  deriving (Eq, Show)
 
 concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer]
 
@@ -62,7 +66,7 @@ memIndex :: Mem -> Int
 memIndex (Mem i) = fromIntegral i
 
 evalInstruction :: Instruction -> HPT ()
-evalInstruction = \case
+evalInstruction cmd = trace ('+':' ':show cmd) $ case cmd of
   If {..} -> do
     satisfy <- case condition of
       NodeTypeExists tag -> do
@@ -75,13 +79,13 @@ evalInstruction = \case
 
   Project {..} -> do
     let NodeItem tag itemIndex = srcSelector
-    value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non (error $ "missing tag " ++ show tag).ix itemIndex
+    value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex
     register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend value)
 
   Extend {..} -> do
     value <- use $ register.ix (regIndex srcReg).simpleTypeAndLocationSet
     let NodeItem tag itemIndex = dstSelector
-    register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non (error $ "missing tag " ++ show tag).ix itemIndex %= (mappend value)
+    register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
 
   Move {..} -> do
     value <- use $ register.ix (regIndex srcReg)
@@ -109,7 +113,7 @@ evalInstruction = \case
     CNodeType tag arity   -> register.ix (regIndex dstReg).nodeSet %=
                                 (mappend $ NodeSet . Map.singleton tag $ V.replicate arity mempty)
     CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
-                                nodeTagMap.at tag.non (error $ "missing tag " ++ show tag).ix idx %= (mappend $ Set.singleton val)
+                                nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
 evalHPT :: HPTProgram -> Computer
 evalHPT Env{..} = run emptyComputer where
@@ -117,5 +121,5 @@ evalHPT Env{..} = run emptyComputer where
     { _memory   = V.replicate (fromIntegral envMemoryCounter) mempty
     , _register = V.replicate (fromIntegral envRegisterCounter) mempty
     }
-  run computer = if computer == nextComputer then computer else run nextComputer
+  run computer = if computer == nextComputer then computer else trace "\n\n-----\n\n" $ run nextComputer
     where nextComputer = execState (mapM_ evalInstruction envInstructions) computer
