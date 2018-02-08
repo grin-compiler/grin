@@ -34,6 +34,7 @@ import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
 import System.Process
 
+import qualified Data.Bimap as Bimap
 import Data.Map as Map
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
@@ -182,6 +183,9 @@ printHPT = do
   let printHPT a = do
         putStrLn . show . pretty . HPT.envInstructions $ a
         PP.pPrint $ HPT.envFunctionArgMap a
+        putStrLn $ printf "memory size    %d" $ HPT.envMemoryCounter a
+        putStrLn $ printf "register count %d" $ HPT.envRegisterCounter a
+        putStrLn $ printf "variable count %d" $ Bimap.size $ HPT.envRegisterMap a
   maybe (pure ()) (liftIO . printHPT) hptProgram
 
 runHPTPure :: PipelineM ()
