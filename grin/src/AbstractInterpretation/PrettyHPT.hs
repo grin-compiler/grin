@@ -16,7 +16,7 @@ import qualified Data.IntMap as IntMap
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
-import Grin (Tag)
+import Grin (Tag, Name)
 import Pretty
 import AbstractInterpretation.HPTResult
 import qualified AbstractInterpretation.HPTResultNew as R
@@ -68,9 +68,11 @@ instance Pretty R.LocOrValue where
     R.Loc l         -> int . succ $ fromIntegral l
     R.SimpleType ty -> text $ show ty
 
-
 prettyNode :: (Tag, Vector (Set R.LocOrValue)) -> Doc
 prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
+
+prettyFunction :: (Name, (R.Value, Vector R.Value)) -> Doc
+prettyFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 instance Pretty R.NodeSet where
   pretty (R.NodeSet m) = encloseSep lbrace rbrace comma (map prettyNode $ Map.toList m)
@@ -82,5 +84,6 @@ instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
     [ yellow (text "Heap") <$$> indent 4 (pretty _memory)
     , yellow (text "Env") <$$> indent 4 (pretty _register)
+    , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
 

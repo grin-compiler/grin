@@ -32,8 +32,9 @@ data Value
 
 data HPTResult
   = HPTResult
-  { _memory    :: Vector NodeSet
-  , _register  :: Map Name Value
+  { _memory   :: Vector NodeSet
+  , _register :: Map Name Value
+  , _function :: Map Name (Value, Vector Value)
   }
   deriving (Eq, Show)
 

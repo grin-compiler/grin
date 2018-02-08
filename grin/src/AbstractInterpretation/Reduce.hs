@@ -131,6 +131,8 @@ toHPTResult :: HPTProgram -> Computer -> R.HPTResult
 toHPTResult Env{..} Computer{..} = R.HPTResult
   { R._memory   = V.map convertNodeSet _memory
   , R._register = Map.fromList [(envRegisterMap Bimap.!> reg, convertValue v) | (i,v) <- zip [0..] (V.toList _register), let reg = Reg i, Bimap.memberR reg envRegisterMap]
+  , R._function = Map.map convertFunctionRegs envFunctionArgMap
+
   }
   where
     convertNodeSet :: NodeSet -> R.NodeSet
@@ -141,3 +143,6 @@ toHPTResult Env{..} Computer{..} = R.HPTResult
 
     convertValue :: Value -> R.Value
     convertValue (Value ty ns) = R.Value (convertLocVal ty) (convertNodeSet ns)
+
+    convertFunctionRegs :: (Reg, [Reg]) -> (R.Value, Vector R.Value)
+    convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])
