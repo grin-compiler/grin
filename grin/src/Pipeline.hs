@@ -187,7 +187,10 @@ runHPTPure :: PipelineM ()
 runHPTPure = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
-        PP.pPrint $ HPT.evalHPT a
+        let hptResult = HPT.evalHPT a
+            Just hptProg = hptProgram
+        --PP.pPrint hptResult
+        putStrLn . show . pretty $ HPT.toHPTResult hptProg hptResult
   maybe (pure ()) (liftIO . printHPT) hptProgram
 
   grin <- use psExp
@@ -197,7 +200,8 @@ runHPTPure = do
 printHPTResult :: PipelineM ()
 printHPTResult = do
   hptResult <- use psHPTResult
-  maybe (pure ()) (liftIO . putStrLn . show . pretty) hptResult
+  --maybe (pure ()) (liftIO . putStrLn . show . pretty) hptResult
+  pure ()
 
 preconditionCheck :: Transformation -> PipelineM ()
 preconditionCheck t = do

@@ -47,6 +47,7 @@ library
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult
+    AbstractInterpretation.HPTResultNew
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.Pretty
     AbstractInterpretation.IR

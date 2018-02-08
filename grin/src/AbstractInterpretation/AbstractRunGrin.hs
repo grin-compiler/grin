@@ -102,7 +102,7 @@ toRTNode a = error $ "toRTNode: illegal value " ++ show a
 -}
 evalVal :: Val -> GrinM VarSet
 evalVal = \case
-  v@Lit{}     -> pure $ basVarSet T_I64
+  v@Lit{}     -> pure $ basVarSet T_Int64
   Var n       -> lookupEnv n
   ConstTagNode t a -> Set.singleton . N . RTNode t <$> mapM (\x -> Set.map toRTLocVal <$> evalVal x) a
 {-
@@ -179,7 +179,7 @@ evalSimpleExp = \case
                 -- Primitives
                 "_prim_int_print"  -> pure $ basVarSet $ T_Fun "_prim_int_print"
                 "_prim_int_gt"    -> pure $ basVarSet $ T_Fun "_prim_int_gt" --boolVarSet
-                "_prim_int_add"   -> pure $ basVarSet T_I64
+                "_prim_int_add"   -> pure $ basVarSet T_Int64
                 -- User defined functions
                 _ -> do
                   evalSAppF n rtVals

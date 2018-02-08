@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
 module AbstractInterpretation.Reduce
   ( evalHPT
+  , toHPTResult
   ) where
 
 import Debug.Trace
@@ -12,12 +13,14 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import qualified Data.Bimap as Bimap
 
 import Control.Monad.State.Strict
 import Lens.Micro.Platform
 
 import AbstractInterpretation.IR
 import AbstractInterpretation.CodeGen
+import qualified AbstractInterpretation.HPTResultNew as R
 
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
 
@@ -123,3 +126,18 @@ evalHPT Env{..} = run emptyComputer where
     }
   run computer = if computer == nextComputer then computer else trace "\n\n-----\n\n" $ run nextComputer
     where nextComputer = execState (mapM_ evalInstruction envInstructions) computer
+
+toHPTResult :: HPTProgram -> Computer -> R.HPTResult
+toHPTResult Env{..} Computer{..} = R.HPTResult
+  { R._memory   = V.map convertNodeSet _memory
+  , R._register = Map.fromList [(envRegisterMap Bimap.!> reg, convertValue v) | (i,v) <- zip [0..] (V.toList _register), let reg = Reg i, Bimap.memberR reg envRegisterMap]
+  }
+  where
+    convertNodeSet :: NodeSet -> R.NodeSet
+    convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(envTagMap Bimap.!> k, V.map convertLocVal v) | (k,v) <- Map.toList a]
+
+    convertLocVal :: Set Int32 -> Set R.LocOrValue
+    convertLocVal s = Set.map R.toLocValue s
+
+    convertValue :: Value -> R.Value
+    convertValue (Value ty ns) = R.Value (convertLocVal ty) (convertNodeSet ns)

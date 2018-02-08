@@ -8,7 +8,10 @@ import Data.IntMap.Strict (IntMap)
 import Grin
 
 data CGType
-  = T_I64
+  = T_Int64
+  | T_Word64
+  | T_Float
+  | T_Bool
   | T_Unit
   | T_Loc
   | T_Tag
