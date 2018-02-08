@@ -181,6 +181,7 @@ printHPT = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
         putStrLn . show . pretty . HPT.envInstructions $ a
+        PP.pPrint $ HPT.envFunctionArgMap a
   maybe (pure ()) (liftIO . printHPT) hptProgram
 
 runHPTPure :: PipelineM ()

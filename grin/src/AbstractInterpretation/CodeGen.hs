@@ -136,11 +136,20 @@ codeGenVal = \case
   Var name -> getReg name
   val -> error $ "unsupported value " ++ show val
 
+registerPrimOps :: CG Result
+registerPrimOps = do
+  let regOp name arity ty = do
+        (funResultReg, _) <- getOrAddFunRegs name arity
+        emit $ IR.Init {dstReg = funResultReg, constant = IR.CSimpleType (litToSimpleType ty)}
+  regOp "_prim_int_add" 2 (LInt64 0)
+  regOp "_prim_int_gt" 2 (LBool False)
+  pure Z
+
 codeGen :: Exp -> Env
 codeGen = flip execState emptyEnv . cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
-    ProgramF defs -> sequence_ defs >> pure Z
+    ProgramF defs -> sequence_ defs >> registerPrimOps
 
     DefF name args body -> do
       instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
