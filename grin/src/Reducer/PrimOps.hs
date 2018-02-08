@@ -9,7 +9,7 @@ primIntPrint [Lit (LInt64 a)] = pure $ Lit $ LInt64 $ a
 primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
 evalPrimOp name args = checkName name $ case name of
-  "_prim_int_print"  -> primIntPrint args
+  "_prim_int_print" -> primIntPrint args
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
   "_prim_int_sub"   -> int_bin_op int (-)

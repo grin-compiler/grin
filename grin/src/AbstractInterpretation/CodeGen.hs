@@ -141,8 +141,49 @@ registerPrimOps = do
   let regOp name arity ty = do
         (funResultReg, _) <- getOrAddFunRegs name arity
         emit $ IR.Init {dstReg = funResultReg, constant = IR.CSimpleType (litToSimpleType ty)}
-  regOp "_prim_int_add" 2 (LInt64 0)
-  regOp "_prim_int_gt" 2 (LBool False)
+
+      int   = LInt64 0
+      word  = LWord64 0
+      float = LFloat 0
+      bool  = LBool False
+
+  -- Int
+  regOp "_prim_int_add"   2 int
+  regOp "_prim_int_sub"   2 int
+  regOp "_prim_int_mul"   2 int
+  regOp "_prim_int_div"   2 int
+  regOp "_prim_int_eq"    2 bool
+  regOp "_prim_int_ne"    2 bool
+  regOp "_prim_int_gt"    2 bool
+  regOp "_prim_int_ge"    2 bool
+  regOp "_prim_int_lt"    2 bool
+  regOp "_prim_int_le"    2 bool
+  -- Word
+  regOp "_prim_word_add"  2 word
+  regOp "_prim_word_sub"  2 word
+  regOp "_prim_word_mul"  2 word
+  regOp "_prim_word_div"  2 word
+  regOp "_prim_word_eq"   2 bool
+  regOp "_prim_word_ne"   2 bool
+  regOp "_prim_word_gt"   2 bool
+  regOp "_prim_word_ge"   2 bool
+  regOp "_prim_word_lt"   2 bool
+  regOp "_prim_word_le"   2 bool
+  -- Float
+  regOp "_prim_float_add" 2 float
+  regOp "_prim_float_sub" 2 float
+  regOp "_prim_float_mul" 2 float
+  regOp "_prim_float_div" 2 float
+  regOp "_prim_float_eq"  2 bool
+  regOp "_prim_float_ne"  2 bool
+  regOp "_prim_float_gt"  2 bool
+  regOp "_prim_float_ge"  2 bool
+  regOp "_prim_float_lt"  2 bool
+  regOp "_prim_float_le"  2 bool
+  -- Bool
+  regOp "_prim_bool_eq"   2 bool
+  regOp "_prim_bool_ne"   2 bool
+
   pure Z
 
 codeGen :: Exp -> Env
