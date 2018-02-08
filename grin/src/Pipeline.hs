@@ -176,7 +176,9 @@ compileHPT = do
 printHPT :: PipelineM ()
 printHPT = do
   hptProgram <- use psHPTProgram
-  maybe (pure ()) (liftIO . putStrLn . show . pretty . HPT.envInstructions) hptProgram
+  let printHPT a = do
+        putStrLn . show . pretty . HPT.envInstructions $ a
+  maybe (pure ()) (liftIO . printHPT) hptProgram
 
 runHPTPure :: PipelineM ()
 runHPTPure = do

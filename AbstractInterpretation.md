@@ -53,3 +53,5 @@ High level GRIN:
   - val: T a b | () | a | Lit
   - lpat: T a b | () | a | Lit
   - cpat: T a b | Lit
+
+Conteptually the HPT analysis is done like the generic eval function was inlined.
