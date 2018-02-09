@@ -35,15 +35,15 @@ HINT: it is possible to execute some parts of the machine in parallel. (based on
 
 HPT abstract value domain:
 
-| values        | node  | simple type | heap location |
+|               | node  | simple type | heap location |
 | ---           | ---   | ---         | ---           |
-| simple type   |       |  x          |               |
-| heap location |  x    |             |               |
-| node          |       |  x          |  x            |
-| register      |  x    |  x          |  x            |
+| simple type   |       | simple type |               |
+| heap location | node  |             |               |
+| node          |       | simple type | heap location |
+| register      | node  | simple type | heap location |
 
 - node: `tag + {simple type | heap location}*`
-- heap: `node`
+- heap location: `node`
 - register: `node | simple type | heap location`
 
 The HPT can be performed only on high level GRIN.
