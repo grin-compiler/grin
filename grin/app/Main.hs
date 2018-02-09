@@ -80,11 +80,15 @@ defaultPipeline = \case
       , PrintGrin ondullblack
       , HPT RunHPTPure
       , HPT PrintHPTResult
-      , T CaseSimplification
       , T Vectorisation
-      , T RegisterIntroduction
-      , T RightHoistFetch
+      , T BindNormalisation
+      , T CaseSimplification
+      , T BindNormalisation
       , T SplitFetch
+      , T BindNormalisation
+      , T RightHoistFetch
+      , T BindNormalisation
+      , T RegisterIntroduction
       , T BindNormalisation
       , PrintGrin ondullcyan
       , SaveLLVM "code"
