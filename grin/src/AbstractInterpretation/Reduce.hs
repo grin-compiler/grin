@@ -4,8 +4,6 @@ module AbstractInterpretation.Reduce
   , toHPTResult
   ) where
 
-import Debug.Trace
-
 import Data.Int
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -69,7 +67,7 @@ memIndex :: Mem -> Int
 memIndex (Mem i) = fromIntegral i
 
 evalInstruction :: Instruction -> HPT ()
-evalInstruction cmd = trace ('+':' ':show cmd) $ case cmd of
+evalInstruction = \case
   If {..} -> do
     satisfy <- case condition of
       NodeTypeExists tag -> do
@@ -124,7 +122,7 @@ evalHPT Env{..} = run emptyComputer where
     { _memory   = V.replicate (fromIntegral envMemoryCounter) mempty
     , _register = V.replicate (fromIntegral envRegisterCounter) mempty
     }
-  run computer = if computer == nextComputer then computer else trace "\n\n-----\n\n" $ run nextComputer
+  run computer = if computer == nextComputer then computer else run nextComputer
     where nextComputer = execState (mapM_ evalInstruction envInstructions) computer
 
 toHPTResult :: HPTProgram -> Computer -> R.HPTResult

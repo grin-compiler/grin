@@ -77,6 +77,7 @@ defaultPipeline = \case
       files
       [ HPT CompileHPT
       , HPT PrintHPT
+      , PrintGrin ondullblack
       , HPT RunHPTPure
       , HPT PrintHPTResult
       , T CaseSimplification

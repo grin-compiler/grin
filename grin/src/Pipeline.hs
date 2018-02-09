@@ -183,7 +183,6 @@ printHPT = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
         putStrLn . show . pretty . HPT.envInstructions $ a
-        PP.pPrint $ HPT.envFunctionArgMap a
         putStrLn $ printf "memory size    %d" $ HPT.envMemoryCounter a
         putStrLn $ printf "register count %d" $ HPT.envRegisterCounter a
         putStrLn $ printf "variable count %d" $ Bimap.size $ HPT.envRegisterMap a
