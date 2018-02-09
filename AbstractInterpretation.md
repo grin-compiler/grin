@@ -86,10 +86,10 @@ Conteptually the HPT analysis is done like the generic eval function was inlined
   - debug instruction pretty printer that shows the readable variable names, simple types and node tags (i.e. `@1{name}`)
 
 - Calculate GRIN statistics related to HPT performance
-  - No of data constructors
-  - No of `eval` calls
-  - No of `stores`
-  - No of GRIN variables
+  - count of data constructors
+  - count of `eval` calls
+  - count of `stores`
+  - count of GRIN variables
 
 ### Documentation
 
