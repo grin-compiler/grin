@@ -138,51 +138,54 @@ codeGenVal = \case
 
 registerPrimOps :: CG Result
 registerPrimOps = do
-  let regOp name arity ty = do
-        (funResultReg, _) <- getOrAddFunRegs name arity
-        emit $ IR.Init {dstReg = funResultReg, constant = IR.CSimpleType (litToSimpleType ty)}
+  let regOp name argTypes resultTy = do
+        (funResultReg, funArgRegs) <- getOrAddFunRegs name (length argTypes)
+        emit $ IR.Init {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
+        zipWithM_ (\argReg argTy -> emit $ IR.Init {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
 
-      int   = LInt64 0
-      word  = LWord64 0
-      float = LFloat 0
-      bool  = LBool False
+      unit  = -1
+      int   = litToSimpleType $ LInt64 0
+      word  = litToSimpleType $ LWord64 0
+      float = litToSimpleType $ LFloat 0
+      bool  = litToSimpleType $ LBool False
 
+  regOp "_prim_int_print" [int] unit
   -- Int
-  regOp "_prim_int_add"   2 int
-  regOp "_prim_int_sub"   2 int
-  regOp "_prim_int_mul"   2 int
-  regOp "_prim_int_div"   2 int
-  regOp "_prim_int_eq"    2 bool
-  regOp "_prim_int_ne"    2 bool
-  regOp "_prim_int_gt"    2 bool
-  regOp "_prim_int_ge"    2 bool
-  regOp "_prim_int_lt"    2 bool
-  regOp "_prim_int_le"    2 bool
+  regOp "_prim_int_add"   [int, int] int
+  regOp "_prim_int_sub"   [int, int] int
+  regOp "_prim_int_mul"   [int, int] int
+  regOp "_prim_int_div"   [int, int] int
+  regOp "_prim_int_eq"    [int, int] bool
+  regOp "_prim_int_ne"    [int, int] bool
+  regOp "_prim_int_gt"    [int, int] bool
+  regOp "_prim_int_ge"    [int, int] bool
+  regOp "_prim_int_lt"    [int, int] bool
+  regOp "_prim_int_le"    [int, int] bool
   -- Word
-  regOp "_prim_word_add"  2 word
-  regOp "_prim_word_sub"  2 word
-  regOp "_prim_word_mul"  2 word
-  regOp "_prim_word_div"  2 word
-  regOp "_prim_word_eq"   2 bool
-  regOp "_prim_word_ne"   2 bool
-  regOp "_prim_word_gt"   2 bool
-  regOp "_prim_word_ge"   2 bool
-  regOp "_prim_word_lt"   2 bool
-  regOp "_prim_word_le"   2 bool
+  regOp "_prim_word_add"  [word, word] word
+  regOp "_prim_word_sub"  [word, word] word
+  regOp "_prim_word_mul"  [word, word] word
+  regOp "_prim_word_div"  [word, word] word
+  regOp "_prim_word_eq"   [word, word] bool
+  regOp "_prim_word_ne"   [word, word] bool
+  regOp "_prim_word_gt"   [word, word] bool
+  regOp "_prim_word_ge"   [word, word] bool
+  regOp "_prim_word_lt"   [word, word] bool
+  regOp "_prim_word_le"   [word, word] bool
   -- Float
-  regOp "_prim_float_add" 2 float
-  regOp "_prim_float_sub" 2 float
-  regOp "_prim_float_mul" 2 float
-  regOp "_prim_float_div" 2 float
-  regOp "_prim_float_eq"  2 bool
-  regOp "_prim_float_ne"  2 bool
-  regOp "_prim_float_gt"  2 bool
-  regOp "_prim_float_ge"  2 bool
-  regOp "_prim_float_lt"  2 bool
-  regOp "_prim_float_le"  2 bool
+  regOp "_prim_float_add" [float, float] float
+  regOp "_prim_float_sub" [float, float] float
+  regOp "_prim_float_mul" [float, float] float
+  regOp "_prim_float_div" [float, float] float
+  regOp "_prim_float_eq"  [float, float] bool
+  regOp "_prim_float_ne"  [float, float] bool
+  regOp "_prim_float_gt"  [float, float] bool
+  regOp "_prim_float_ge"  [float, float] bool
+  regOp "_prim_float_lt"  [float, float] bool
+  regOp "_prim_float_le"  [float, float] bool
   -- Bool
-  regOp "_prim_bool_eq"   2 bool
-  regOp "_prim_bool_ne"   2 bool
+  regOp "_prim_bool_eq"   [bool, bool] bool
+  regOp "_prim_bool_ne"   [bool, bool] bool
 
   pure Z
 
