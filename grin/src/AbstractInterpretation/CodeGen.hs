@@ -102,6 +102,9 @@ getTag tag = do
       modify' $ \s -> s {envTagMap = Bimap.insert tag t tagMap}
       pure t
 
+unitType :: IR.SimpleType
+unitType = -1
+
 litToSimpleType :: Lit -> IR.SimpleType
 litToSimpleType = \case
   LInt64  {}  -> -2
@@ -114,21 +117,21 @@ codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
     irTag <- getTag tag
-    emit $ IR.Init {dstReg = r, constant = IR.CNodeType irTag (length vals)}
+    emit $ IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals)}
     forM_ (zip [0..] vals) $ \(idx, val) -> case val of
       Var name -> do
         valReg <- getReg name
         emit $ IR.Extend {srcReg = valReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
-      Lit lit -> emit $ IR.Init {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
+      Lit lit -> emit $ IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
       _ -> error $ "illegal node item value " ++ show val
     pure r
   Unit -> do
     r <- newReg
-    emit $ IR.Init {dstReg = r, constant = IR.CSimpleType (-1)}
+    emit $ IR.Set {dstReg = r, constant = IR.CSimpleType (-1)}
     pure r
   Lit lit -> do
     r <- newReg
-    emit $ IR.Init
+    emit $ IR.Set
       { dstReg    = r
       , constant  = IR.CSimpleType (litToSimpleType lit)
       }
@@ -140,8 +143,8 @@ registerPrimOps :: CG Result
 registerPrimOps = do
   let regOp name argTypes resultTy = do
         (funResultReg, funArgRegs) <- getOrAddFunRegs name (length argTypes)
-        emit $ IR.Init {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
-        zipWithM_ (\argReg argTy -> emit $ IR.Init {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
+        emit $ IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
+        zipWithM_ (\argReg argTy -> emit $ IR.Set {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
 
       unit  = -1
       int   = litToSimpleType $ LInt64 0
@@ -200,7 +203,7 @@ codeGen = flip execState emptyEnv . cata folder where
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM addReg args funArgRegs
       body >>= \case
-        Z   -> pure ()
+        Z   -> emit $ IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit $ IR.Move {srcReg = r, dstReg = funResultReg}
       modify' $ \s@Env{..} -> s {envInstructions = reverse envInstructions ++ instructions}
       pure Z
@@ -209,6 +212,10 @@ codeGen = flip execState emptyEnv . cata folder where
       leftExp >>= \case
         Z -> case lpat of
           Unit -> pure ()
+          Var name -> do
+            r <- newReg
+            emit $ IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
+            addReg name r
           _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
@@ -249,7 +256,7 @@ codeGen = flip execState emptyEnv . cata folder where
                 emit $ IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
             altRes <- altM
             case altRes of
-              Z -> pure ()
+              Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
               R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
             altInstructions <- state $ \s@Env{..} -> (reverse envInstructions, s {envInstructions = instructions})
             ----------- END
@@ -260,7 +267,7 @@ codeGen = flip execState emptyEnv . cata folder where
             instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
             altRes <- altM -- FIXME: move after pattern variable binding
             case altRes of
-              Z -> pure ()
+              Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
               R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
             altInstructions <- state $ \s@Env{..} -> (reverse envInstructions, s {envInstructions = instructions})
             ----------- END
@@ -283,7 +290,7 @@ codeGen = flip execState emptyEnv . cata folder where
       r <- newReg
       valReg <- codeGenVal val
       emit $ IR.Store {srcReg = valReg, address = loc}
-      emit $ IR.Init {dstReg = r, constant = IR.CHeapLocation loc}
+      emit $ IR.Set {dstReg = r, constant = IR.CHeapLocation loc}
       pure $ R r
 
     SFetchIF name maybeIndex -> case maybeIndex of
