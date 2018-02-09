@@ -110,7 +110,7 @@ evalInstruction cmd = trace ('+':' ':show cmd) $ case cmd of
     forM_ addressSet $ \address -> when (address >= 0) $ do
       memory.ix (fromIntegral address) %= (mappend value)
 
-  Init {..} -> case constant of
+  Set {..} -> case constant of
     CSimpleType ty        -> register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend $ Set.singleton ty)
     CHeapLocation (Mem l) -> register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend $ Set.singleton $ fromIntegral l)
     CNodeType tag arity   -> register.ix (regIndex dstReg).nodeSet %=

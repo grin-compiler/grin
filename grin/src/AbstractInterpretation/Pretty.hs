@@ -21,7 +21,7 @@ instance Pretty Instruction where
     Fetch   {..} -> keyword "fetch" <+> pretty addressReg <+> pretty dstReg
     Store   {..} -> keyword "store" <+> pretty srcReg <+> pretty address
     Update  {..} -> keyword "update" <+> pretty srcReg <+> pretty addressReg
-    Init    {..} -> keyword "init" <+> pretty dstReg <+> pretty constant
+    Set     {..} -> keyword "set" <+> pretty dstReg <+> pretty constant
 
 instance Pretty Reg where
   pretty (Reg a) = green $ text "@" <> (integer $ fromIntegral a)

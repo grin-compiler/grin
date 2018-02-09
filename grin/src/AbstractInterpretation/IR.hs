@@ -53,7 +53,7 @@ data Instruction
     { srcReg      :: Reg
     , addressReg  :: Reg
     }
-  | Init -- ^ copy compile time constant to DST register (one time setup)
+  | Set -- ^ copy compile time constant to DST register (one time setup)
     { dstReg      :: Reg
     , constant    :: Constant
     }
