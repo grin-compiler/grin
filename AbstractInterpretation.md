@@ -55,3 +55,45 @@ High level GRIN:
   - cpat: T a b | Lit
 
 Conteptually the HPT analysis is done like the generic eval function was inlined.
+
+## TODO
+
+  - HPT IR LLVM codegen (HPT IR -> LLVM IR)
+  - reduce temporary register usage
+  - cleanup HPT IR codegen
+
+### HPT IR improvements
+
+- basic block support with block ID, useful for
+  - one time variable intialization
+  - tracking function body
+  - if body
+  - tracking of live or dead code
+
+- batch `set` commands into one time running blocks
+
+- one time run condition for `if`
+
+- HPT IR inline support
+  - scoped variables (with hierarchy support, i.e. block in block)
+  - use explicit function block in IR
+  - pass call site local variable context (that contains the function's variables) when calling inlined function
+
+### Tooling improvements
+
+- Debug support for HPT IR pure
+  - log executed instructions (i.e. writer monad)
+  - debug instruction pretty printer that shows the readable variable names, simple types and node tags (i.e. `@1{name}`)
+
+- Calculate GRIN statistics related to HPT performance
+  - No of data constructors
+  - No of `eval` calls
+  - No of `stores`
+  - No of GRIN variables
+
+### Documentation
+
+- Benchmark HPT for speed and memory usage
+  - HPT IR LLVM
+  - HPT IR pure
+  - HPT abstract interpreter pure (with inline support)
