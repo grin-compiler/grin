@@ -191,20 +191,20 @@ nubRHIData = Map.map List.nub
 -- | Find the unique index of name in the usage path.
 findUsedNameIdx :: Name -> Path -> RHIData -> Int
 findUsedNameIdx n p m = case Map.lookup n m of
-  Nothing -> error $ "Impossible: name must be in map:" ++ show (n,p,m)
+  Nothing -> error $ "Impossible: name must be in map: " ++ show (n,p,m)
   Just us -> case List.findIndex ((p ==) . coPoint) us of
-    Nothing -> error $ "Impossible: path must be in the list:" ++ show (n, p, us, m)
+    Nothing -> error $ "Impossible: path must be in the list: " ++ show (n, p, us, m)
     Just ix -> ix
 
 -- | Returns the variables that are not used where they are defined.
 usedInDifferentBlock :: RHIData -> RHIData
-usedInDifferentBlock = Map.filterWithKey nonLocalyUsed where
-  nonLocalyUsed n vs = Map.member n primOps || case (List.filter isDefined vs) of
-    []    -> error $ "Undefined variable." ++ n
+usedInDifferentBlock = Map.filterWithKey nonLocallyUsed where
+  nonLocallyUsed n vs = Map.member n primOps || case (List.filter isDefined vs) of
+    []    -> error $ "Undefined variable: " ++ n ++ " " ++ show vs
     [Defined path] -> maybe True (const False) $ List.find (path==)
                       $ map coPoint
                       $ List.filter isUsed vs
-    bad -> error $ "Mupliple defined variable:" ++ show bad
+    bad -> error $ "Mupliple defined variable: " ++ show bad
 
 solve t = fix (\rec v -> let tv = t v in if tv == v then tv else rec tv)
 
