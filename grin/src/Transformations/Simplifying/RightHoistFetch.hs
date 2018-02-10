@@ -3,7 +3,7 @@ module Transformations.Simplifying.RightHoistFetch where
 
 import Data.Function
 import Data.Map (Map)
-import Debug.Trace (traceShowId)
+import Debug.Trace (traceShowId, trace)
 import Free
 import Grin
 import PrimOps
@@ -14,6 +14,8 @@ import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Data.Functor.Infix
 import Control.Monad.Free
+import Text.Show.Pretty (ppShow)
+import Text.Printf
 
 
 rightHoistFetch :: Exp -> Exp
@@ -23,18 +25,19 @@ rightHoistFetchOneStep :: Exp -> Exp
 rightHoistFetchOneStep e =
   apo builder (Map.empty, [], e)
   where
-    vars0 = rightHoistFetchVars e
+    vars0' = rightHoistFetchVars e
+    vars0 = trace (ppShow vars0') vars0'
     vars = firstUsed vars0
     nonLocal = usedInDifferentBlock vars0
 
     builder :: (Map Name SimpleExp, [Step], Exp) -> ExpF (Either Exp (Map Name SimpleExp, [Step], Exp))
-    builder (moves, path, e) = case e of
+    builder (moves, path, e) = traceShowId $ case e of
 
       EBind fetch@(SFetchI n p) pval@(Var name) rest ->
         let names0 = foldr (++) [] (NamesInExpF (project fetch) list)
             names1 = foldNames list pval
             names = names0 ++ names1
-            shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names1) nonLocal
+            shouldMove = not . Map.null $ Map.filterWithKey (\k _ -> k `elem` names1) $ monoidMap nonLocal
             shouldInsert = intersection' names0 moves
             moves' = if shouldMove then (Map.insert name fetch moves) else moves
             moves'' = Map.difference moves' shouldInsert
@@ -108,45 +111,31 @@ rightHoistFetchVars :: Exp -> RHIData
 rightHoistFetchVars = cata collect where
   collect :: ExpF RHIData -> RHIData
   collect = \case
-    EBindF se pval rest ->
-      Map.unionsWith (++)
-        [ Map.fromList . map defName $ collectNames pval
-        , se
-        , rest
-        ]
-    ECaseF val alts ->
-      Map.unionsWith (++)
-        [ (Map.unionsWith (++)
-            $ zipWith (\i a -> (([Case (length alts), CAlt i]++) <$$$> a)) [1..] alts)
-        , useNameValMap val
-        ]
-    DefF def args rest ->
-      nubRHIData $ Map.unionsWith (++)
-        [ uncurry Map.singleton $ defName def
-        , (SName def:) <$$$$> Map.fromList $ defName <$> args
-        , (SName def:) <$$$> rest
-        ]
+    EBindF se pval rest -> mconcat [se, rest, defNameVal pval]
+    ECaseF val alts -> mconcat $ useNameVal val :
+                               [ ([Case caseSize, CAlt i] ++) <$$$> alt
+                               | (i, alt) <- zip [1..] alts
+                               ]
+                               where caseSize = length alts
+
+    -- QUESTION: should the definition name be registered as defined also?
+    DefF name args body -> nubRHIData $ (SName name:) <$$$> mconcat (body : map defName args)
 
     -- Does not collect function names.
-    SAppF name args ->
-      Map.fromList $ map useName $ (concat $ collectNames <$> args)
+    SAppF _name args  -> mconcat $ map useNameVal args
 
-    SReturnF val -> useNameValMap val
-    SStoreF val  -> useNameValMap val
-    SFetchIF name pos -> uncurry Map.singleton $ useName name
-    SUpdateF name val ->
-      Map.unionsWith (++)
-        [ uncurry Map.singleton $ useName name
-        , Map.fromList $ map useName $ collectNames val
-        ]
+    SReturnF val      -> useNameVal val
+    SStoreF val       -> useNameVal val
+    SFetchIF name pos -> useName name
+    SUpdateF name val -> mconcat [useName name, useNameVal val]
 
     e -> Data.Foldable.fold e
 
-  useNameValMap = Map.fromList . map useName . collectNames
-  collectNames = foldNames list
-  list x = [x]
-  useName n = (n, [Used []])
-  defName n = (n, [Defined []])
+  collectNames = foldNames pure
+  useNameVal = mconcat . map useName . collectNames
+  defNameVal = mconcat . map defName . collectNames
+  useName n = MonoidMap $ Map.singleton n [Used []]
+  defName n = MonoidMap $ Map.singleton n [Defined []]
 
 
 
@@ -177,28 +166,34 @@ data Step
   deriving (Eq, Ord, Show)
 
 type Path = [Step]
-type RHIData = Map Name [VarOccurance Path]
+
+newtype MonoidMap k v = MonoidMap {monoidMap :: Map k v} deriving (Functor, Show)
+instance (Monoid v, Ord k) => Monoid (MonoidMap k v) where
+  mempty = MonoidMap mempty
+  mappend (MonoidMap a) (MonoidMap b) = MonoidMap $ Map.unionWith mappend a b
+
+type RHIData = MonoidMap Name [VarOccurance Path]
 
 -- | Returns the map of the location where the name is used
 -- ordered by the location.
 firstUsed :: RHIData -> RHIData
-firstUsed = Map.map (List.sort . filter isUsed)
+firstUsed (MonoidMap a) = MonoidMap $ Map.map (List.sort . filter isUsed) a
 
 -- | Remove duplicates
 nubRHIData :: RHIData -> RHIData
-nubRHIData = Map.map List.nub
+nubRHIData (MonoidMap a) = MonoidMap $ Map.map List.nub a
 
 -- | Find the unique index of name in the usage path.
 findUsedNameIdx :: Name -> Path -> RHIData -> Int
-findUsedNameIdx n p m = case Map.lookup n m of
-  Nothing -> error $ "Impossible: name must be in map: " ++ show (n,p,m)
+findUsedNameIdx n p (MonoidMap m) = case Map.lookup n m of
+  Nothing -> error $ printf "Impossible: name must be in map\nname = %s\npath = %s\nrhidata = %s" n (ppShow p) (ppShow m)
   Just us -> case List.findIndex ((p ==) . coPoint) us of
-    Nothing -> error $ "Impossible: path must be in the list: " ++ show (n, p, us, m)
+    Nothing -> error $ printf "Impossible: path must be in the list\nname = %s\npath = %s\nus = %s\nrhidata = %s" n (ppShow p) (ppShow us) (ppShow m)
     Just ix -> ix
 
 -- | Returns the variables that are not used where they are defined.
 usedInDifferentBlock :: RHIData -> RHIData
-usedInDifferentBlock = Map.filterWithKey nonLocallyUsed where
+usedInDifferentBlock (MonoidMap rhid) = MonoidMap $ Map.filterWithKey nonLocallyUsed rhid where
   nonLocallyUsed n vs = Map.member n primOps || case (List.filter isDefined vs) of
     []    -> error $ "Undefined variable: " ++ n ++ " " ++ show vs
     [Defined path] -> maybe True (const False) $ List.find (path==)
