@@ -3,7 +3,7 @@ module Pipeline where
 
 import Control.Monad
 import Data.List (intersperse)
-import Data.Maybe (maybe)
+import Data.Maybe (maybe, fromJust)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
@@ -62,11 +62,11 @@ data Transformation
   | ConstantFolding
   deriving (Enum, Eq, Ord, Show)
 
-transformation :: HPTResult -> Int -> Transformation -> Exp -> Exp
+transformation :: Maybe HPTResult -> Int -> Transformation -> Exp -> Exp
 transformation hptResult n = \case
   CaseSimplification      -> caseSimplification
   SplitFetch              -> splitFetch
-  Vectorisation           -> vectorisation hptResult
+  Vectorisation           -> vectorisation (fromJust hptResult)
   RegisterIntroduction    -> registerIntroductionI n
   BindNormalisation       -> bindNormalisation
   RightHoistFetch         -> rightHoistFetch
@@ -225,9 +225,9 @@ postconditionCheck t = do
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  Just result <- use psHPTResult
+  hptResult   <- use psHPTResult
   n           <- use psTransStep
-  psExp       %= transformation result n t
+  psExp       %= transformation hptResult n t
   psTransStep %= (+1)
   postconditionCheck t
 
@@ -265,7 +265,7 @@ saveGrin fn = do
   e <- use psExp
   outputDir <- view poOutputDir
   let fname = (concat [fn,".", show n])
-  let content = show $ pretty e
+  let content = show $ plain $ pretty e
   liftIO $ do
     createDirectoryIfMissing True outputDir
     writeFile (outputDir </> fname) content
