@@ -101,6 +101,7 @@ executable grin
                      , grin
                      , recursion-schemes
                      , ansi-wl-pprint
+                     , megaparsec
                      , containers
                      , process
                      , pretty-show

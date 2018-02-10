@@ -19,9 +19,9 @@ data Reducer
 
 eval' :: Reducer -> String -> IO Val
 eval' reducer fname = do
-  result <- parseGrin fname
-  case result of
-    Left err -> error $ show err
+  content <- readFile fname
+  case parseGrin fname content of
+    Left err -> error $ parseErrorPretty' content  err
     Right e  ->
       case reducer of
         PureReducer -> pure $ Reducer.Pure.reduceFun e "grinMain"

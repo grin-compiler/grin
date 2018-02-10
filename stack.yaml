@@ -2,15 +2,14 @@ resolver: lts-9.3
 
 packages:
 - 'grin'
-- location:
-    git: https://github.com/llvm-hs/llvm-hs-pretty.git
-    commit: 7e426813eeb3a7e6337ce78674260bbae35d40ed
-  extra-dep: true
 
 extra-deps:
+  - megaparsec-6.4.0
+  - parser-combinators-0.4.0
   - monad-gen-0.3.0.1
-  - llvm-hs-pure-5.1.0
-  - llvm-hs-5.1.0
+  - llvm-hs-pure-5.1.2
+  - llvm-hs-5.1.3
+  - llvm-hs-pretty-0.2.0.0
   - functor-infix-0.0.5
   - QuickCheck-GenT-0.2.0
 

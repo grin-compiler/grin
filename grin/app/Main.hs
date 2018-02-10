@@ -4,6 +4,7 @@ module Main where
 import Control.Monad
 import Data.Map as Map
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+import qualified Text.Megaparsec as M
 
 import Options.Applicative
 
@@ -25,8 +26,8 @@ transformOpts =
   <|> flg SplitFetch "sf" "Split Fetch"
   <|> flg Vectorisation "v" "Vectorisation"
   <|> flg RegisterIntroduction "ri" "Register Introduction"
-  <|> flg BindNormalisation "bi" "Bind Normalisation"
-  <|> flg RightHoistFetch "rhi" "Right Hoist Fetch"
+  <|> flg BindNormalisation "bn" "Bind Normalisation"
+  <|> flg RightHoistFetch "rhf" "Right Hoist Fetch"
   <|> flg GenerateEval "ge" "Generate Eval"
   <|> flg ConstantFolding "cfl" "Constant Folding"
 
@@ -45,7 +46,7 @@ pipelineOpts =
         [ long "save-llvm"
         , help "Save the generated llvm"
         ])))
-  <|> (SaveLLVM <$> (strOption (mconcat
+  <|> (SaveGrin <$> (strOption (mconcat
         [ long "save-grin"
         , help "Save the generated grin"
         ])))
@@ -81,16 +82,30 @@ defaultPipeline = \case
       , HPT RunHPTPure
       , HPT PrintHPTResult
       , T Vectorisation
+      , SaveGrin "Vectorisation"
       , T BindNormalisation
+      , SaveGrin "Vectorisation"
+      , PrintGrin ondullblack
       , T CaseSimplification
+      , SaveGrin "CaseSimplification"
       , T BindNormalisation
-      , T SplitFetch
-      , T BindNormalisation
-      , T RightHoistFetch
-      , T BindNormalisation
-      , T RegisterIntroduction
-      , T BindNormalisation
+      , SaveGrin "CaseSimplification"
       , PrintGrin ondullcyan
+      , T SplitFetch
+      , SaveGrin "SplitFetch"
+      , T BindNormalisation
+      , SaveGrin "SplitFetch"
+      , PrintGrin ondullblack
+      , T RightHoistFetch
+      , SaveGrin "RightHoistFetch"
+      , T BindNormalisation
+      , SaveGrin "RightHoistFetch"
+      , PrintGrin ondullcyan
+      , T RegisterIntroduction
+      , SaveGrin "RegisterIntroduction"
+      , T BindNormalisation
+      , SaveGrin "RegisterIntroduction"
+      , PrintGrin ondullblack
       , SaveLLVM "code"
       , JITLLVM
       ]
@@ -101,7 +116,8 @@ main :: IO ()
 main = do
   Options files steps outputDir <- defaultPipeline <$> options
   forM_ files $ \fname -> do
-    grin <- either (error . show) id <$> parseGrin fname
-    let program = Program grin
+    content <- readFile fname
+    let grin = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
+        program = Program grin
         opts = PipelineOpts { _poOutputDir = outputDir }
     pipeline opts program steps

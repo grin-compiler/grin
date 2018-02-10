@@ -1,18 +1,20 @@
 {-# LANGUAGE TupleSections #-}
 
-module ParseGrin where
+module ParseGrin (parseGrin) where
 
+import Data.Void
 import Control.Applicative (empty)
 import Control.Monad (void)
 import Text.Megaparsec
-import Text.Megaparsec.String
-import qualified Text.Megaparsec.Lexer as L
-import qualified Text.Megaparsec.Char as C
+import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char as C
 import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
 
 keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "True", "False"]
+
+type Parser = Parsec Void String
 
 lineComment :: Parser ()
 lineComment = L.skipLineComment "--"
@@ -44,7 +46,7 @@ var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_")) >>
 con :: Parser String
 con = lexeme $ (:) <$> upperChar <*> many (alphaNumChar)
 
-integer = lexeme L.integer
+integer = lexeme L.decimal
 signedInteger = L.signed sc' integer
 
 float = lexeme L.float
@@ -52,13 +54,12 @@ signedFloat = L.signed sc' float
 
 -- grin syntax
 
-def = Def <$> try (L.indentGuard sc EQ (unsafePos 1) *> var) <*> many var <* op "=" <*> (L.indentGuard sc GT (unsafePos 1) >>= expr)
+def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (L.indentGuard sc GT pos1 >>= expr)
 
 expr i = L.indentGuard sc EQ i >>
-  (\pat e b -> EBind e pat b) <$> try (value <* op "<-") <*> simpleExp i <*> expr i <|>
+  try ((\pat e b -> EBind e pat b) <$> (try (value <* op "<-") <|> pure Unit) <*> simpleExp i <*> expr i ) <|>
   ECase <$ kw "case" <*> value <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
   ifThenElse i <|>
-  try ((\n v e -> EBind (SUpdate n v) Unit e) <$ kw "update" <*> var <*> value <*> expr i) <|>
   simpleExp i
 
 ifThenElse i = do
@@ -96,19 +97,18 @@ simpleValue = Lit <$> literal <|>
               Var <$> var
 
 value = Unit <$ op "()" <|>
-        parens (ConstTagNode <$> tag <*> many simpleValue) <|>
-        parens (VarTagNode <$> var <*> many simpleValue) <|>
+        parens (ConstTagNode <$> tag <*> many simpleValue <|> VarTagNode <$> var <*> many simpleValue) <|>
         ValTag <$> tag <|>
         simpleValue
 
 literal :: Parser Lit
 literal = LInt64 . fromIntegral <$> signedInteger <|>
-          LWord64 . fromIntegral <$> lexeme (L.integer <* C.char 'u') <|>
+          LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u') <|>
           LFloat . realToFrac <$> signedFloat <|>
           LBool <$> (True <$ kw "True" <|> False <$ kw "False")
 
---parseFromFile :: Parser _ -> String -> IO _
-parseFromFile p file = runParser p file <$> readFile file
+grinModule :: Parser [Exp]
+grinModule = some def <* sc <* eof
 
---parseGrin :: String -> IO (Either _ [Def])
-parseGrin fname = parseFromFile (some def <* sc <* eof) fname
+parseGrin :: String -> String -> Either (ParseError Char Void) [Exp]
+parseGrin filename content = runParser grinModule filename content
