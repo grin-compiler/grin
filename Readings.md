@@ -4,9 +4,9 @@ http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html
 
 # GHC core getting started
 
-http://www.stephendiehl.com/posts/ghc_01.html
-http://www.stephendiehl.com/posts/ghc_02.html
-http://www.stephendiehl.com/posts/ghc_03.html
+- http://www.stephendiehl.com/posts/ghc_01.html
+- http://www.stephendiehl.com/posts/ghc_02.html
+- http://www.stephendiehl.com/posts/ghc_03.html
 
 # Recursion schemes
 
