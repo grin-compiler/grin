@@ -36,78 +36,137 @@ import AbstractInterpretation.HPTResult (HPTResult(..), emptyComputer)
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
 
-{-
-  Supported language:
-    Int64 + nodes from Int64
-    intPrint
-    intGT
-    intAdd
--}
---trace _ = id
-
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
   BS.writeFile fname llvm
   pure llvm
 
-
 {-
-    b2     -> {BAS}
-    n13    -> {BAS,sum}
-    n18    -> {BAS}
-    n28    -> {BAS}
-    n29    -> {BAS}
-    n30    -> {BAS}
-    n31    -> {BAS}
-    sum    -> {BAS,sum}
+Heap
+    1      -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]}
+    2      -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]}
+    3      -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]
+              ,Fupto[{1},{2}]}
+    4      -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]
+              ,Fsum[{3}]}
+    5      -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]}
+    6      -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]
+              ,Fupto[{5},{2}]}
+Env
+    a      -> {1,5}
+    ax'    -> {T_Int64}
+    b      -> {2}
+    b'     -> {T_Bool}
+    c      -> {3}
+    l      -> {3,6}
+    l2     -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]
+              ,Fsum[{3}]
+              ,Fupto[{1,5},{2}]}
+    m      -> {1,5}
+    m'     -> {T_Int64}
+    m1     -> {5}
+    n      -> {2}
+    n'     -> {T_Int64}
+    p      -> {6}
+    q      -> {1,2,3,4,5,6}
+    r'     -> {T_Int64}
+    s'     -> {T_Int64}
+    t1     -> {1}
+    t2     -> {2}
+    t3     -> {3}
+    t4     -> {4}
+    v      -> {CCons[{1,5},{6}]
+              ,CInt[{T_Int64}]
+              ,CNil[]
+              ,Fsum[{3}]
+              ,Fupto[{1,5},{2}]}
+    w      -> {CCons[{1,5},{6}]
+              ,CNil[]}
+    x      -> {1,5}
+    x'     -> {T_Int64}
+    x'1    -> {T_Int64}
+    xs     -> {6}
+    y      -> {1,5}
+    ys     -> {6}
+    z      -> {CInt[{T_Int64}]}
+
+Function
+    eval :: {1,2,3,4,5,6}
+         -> {CCons[{1,5},{6}]
+            ,CInt[{T_Int64}]
+            ,CNil[]
+            ,Fsum[{3}]
+            ,Fupto[{1,5},{2}]}
+    grinMain :: {T_Unit}
+    sum :: {3,6}
+        -> {CInt[{T_Int64}]}
+    upto :: {1,5}
+         -> {2}
+         -> {CCons[{1,5},{6}],CNil[]}
 -}
 
--- TODO: create Tag map ; get as parameter ; store in reader environment
-{-
-  question: how to calculate from grin or hpt result?
--}
-tagMap :: Map Tag (Type, Constant)
-tagMap = Map.fromList []
-
--- TODO: create Type map ; calculate once ; store in reader environment
-{-
-  question: how to calculate from grin or hpt result?
-    ANSWER: lookup from HPT result ; function name = result type ; argument names = input type
-
-  TODO:
-    in pre passes build ; store in env
-      function type map (llvm type)
-      variable map (llvm type)
--}
-typeMap :: Map Grin.Name Type
-typeMap = Map.fromList
-  [ ("b2" , i64)
-  , ("n13", i64)
-  , ("n18", i64)
-  , ("n28", i64)
-  , ("n29", i64)
-  , ("n30", i64)
-  , ("n31", i64)
-  , ("sum", fun i64 [i64, i64, i64])
-  , ("_prim_int_print", fun i64 [i64])
-  , ("grinMain", fun i64 [])
-  , ("upto", fun (struct [i64]) [i64, i64])
-  , ("eval", fun (struct [i64]) [struct [i64]])
-  ] where
-    struct elems = StructureType { isPacked = False, elementTypes = elems }
-    ptr ty = PointerType { pointerReferent = ty, pointerAddrSpace = AddrSpace 0}
-    fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
 
 getType :: Grin.Name -> Type
 getType name = case Map.lookup name typeMap of
   Nothing -> trace ("getType - unknown variable " ++ name) $ PointerType i64 (AddrSpace 0)
   Just ty -> ty
+ where
+  -- TODO: create Type map ; calculate once ; store in reader environment
+  {-
+    question: how to calculate from grin or hpt result?
+      ANSWER: lookup from HPT result ; function name = result type ; argument names = input type
+
+    TODO:
+      in pre passes build ; store in env
+        function type map (llvm type)
+        variable map (llvm type)
+  -}
+  typeMap :: Map Grin.Name Type
+  typeMap = Map.fromList
+    [ ("b2" , i64)
+    , ("n13", i64)
+    , ("n18", i64)
+    , ("n28", i64)
+    , ("n29", i64)
+    , ("n30", i64)
+    , ("n31", i64)
+    , ("sum", fun i64 [i64, i64, i64])
+    , ("_prim_int_print", fun i64 [i64])
+    , ("grinMain", fun i64 [])
+    , ("upto", fun (struct [i64]) [i64, i64])
+    , ("eval", fun (struct [i64]) [struct [i64]])
+    ] where
+      struct elems = StructureType { isPacked = False, elementTypes = elems }
+      ptr ty = PointerType { pointerReferent = ty, pointerAddrSpace = AddrSpace 0}
+      fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
+
 
 getTagId :: Tag -> Constant
 getTagId tag = case Map.lookup tag tagMap of
   Nothing -> trace ("getTag - unknown tag " ++ show tag) $ Int 64 0
   Just (ty, c) -> c
+ where
+  -- TODO: create Tag map ; get as parameter ; store in reader environment
+  {-
+    question: how to calculate from grin or hpt result?
+  -}
+  tagMap :: Map Tag (Type, Constant)
+  tagMap = Map.fromList []
 
 {-
 data Val
@@ -129,12 +188,6 @@ codeGenLit = \case
 
 codeGenVal :: Val -> CG Operand
 codeGenVal = \case
-  Unit          -> unit
-  Var name      -> Map.lookup name <$> gets constantMap >>= \case
-                      Nothing -> pure $ LocalReference (getType name) (mkName name) -- TODO: lookup in constant map
-                      Just operand  -> pure operand
-  Lit lit -> pure . ConstantOperand . codeGenLit $ lit
-  ValTag tag -> pure $ ConstantOperand $ getTagId tag
   -- TODO: support nodes
   --ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
   VarTagNode tagVar args -> do
@@ -153,24 +206,31 @@ codeGenVal = \case
       , isPacked      = True -- or False?
       , memberValues  = replicate (1 + length opArgs) (Undef i64)-- TODO :: [ Constant ]
       }
+  ValTag tag  -> pure $ ConstantOperand $ getTagId tag
+  Unit        -> unit
+  Lit lit     -> pure . ConstantOperand . codeGenLit $ lit
+  Var name    -> Map.lookup name <$> gets constantMap >>= \case
+                      -- QUESTION: what is this?
+                      Nothing -> pure $ LocalReference (getType name) (mkName name) -- TODO: lookup in constant map
+                      Just operand  -> pure operand
 
   val -> error $ "codeGenVal: " ++ show val
 
 getCPatConstant :: CPat -> Constant
 getCPatConstant = \case
-  NodePat tag _ -> getTagId tag
   TagPat  tag   -> getTagId tag
   LitPat  lit   -> codeGenLit lit
+  cpat -> error $ "unsupported case pattern " ++ show cpat
 
 getCPatName :: CPat -> String
 getCPatName = \case
-  NodePat tag _ -> tagName tag
   TagPat  tag   -> tagName tag
   LitPat  lit   -> case lit of
     LInt64 v  -> "int_" ++ show v
     LWord64 v -> "word_" ++ show v
     LBool v   -> "bool_" ++ show v
     LFloat v  -> error "pattern match on float is not supported"
+  cpat -> error $ "unsupported case pattern " ++ show cpat
  where
   tagName (Tag c name n) = printf "%s%s%d" (show c) name n
 
@@ -197,6 +257,7 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
       sexp >>= \case
         I instruction -> case pat of
           Var name -> emit [(mkName name) := instruction]
+          -- TODO: node binding
           _ -> emit [Do instruction]
         O operand -> case pat of
           Var name -> addConstant name operand
