@@ -21,6 +21,7 @@ import Transformations.BindNormalisation
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Simplifying.RightHoistFetch
+import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
 import AbstractInterpretation.AbstractRunGrin
@@ -69,7 +70,7 @@ transformation hptResult n = \case
   Vectorisation           -> vectorisation (fromJust hptResult)
   RegisterIntroduction    -> registerIntroductionI n
   BindNormalisation       -> bindNormalisation
-  RightHoistFetch         -> rightHoistFetch
+  RightHoistFetch         -> RHF.rightHoistFetch
   GenerateEval            -> generateEval
   ConstantFolding         -> constantFolding
 
