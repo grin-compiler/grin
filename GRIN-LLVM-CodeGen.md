@@ -55,3 +55,10 @@ HINT:
 LLVM bitcast experiments
   - convert i16 to <i8,i8>
   - convert i8 to <i2,i2,i2,i2>
+
+# LLVM codegen from high level GRIN
+
+It is possible to compile to LLVM from high level GRIN without analysis.
+However an universal value representation is required where every GRIN register is mapped to a vector of universal values.
+Basically an interpreter can be generated for the input source code.
+If the source language can provide type information then the value representation can be more efficient.
