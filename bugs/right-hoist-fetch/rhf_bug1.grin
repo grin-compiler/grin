@@ -1,0 +1,5 @@
+eval q =
+  v0 <- fetch q[0]
+  v1 <- fetch q[1]
+  case v0 of
+    CInt -> pure (v0 v1)
