@@ -26,3 +26,7 @@
 
 # sample programs
 - observe compilation stages: GRIN -> LLVM -> x64
+
+# after the MVP
+- LLVM codegen from high level GRIN without analysis
+- migrate runtime values from universal representation to the optimized one
