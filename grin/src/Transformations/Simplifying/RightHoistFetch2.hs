@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor, TemplateHaskell #-}
-module Transformations.Simplifying.RightHoistFetch2 where
+module Transformations.Simplifying.RightHoistFetch2 (rightHoistFetch) where
 
 import Debug.Trace (traceShowId, trace)
 import Text.Show.Pretty (ppShow)
@@ -16,11 +16,55 @@ import Lens.Micro.Platform
 
 import Grin
 
--- alernative monoid instance for Map
-newtype MonoidMap k v = MonoidMap {monoidMap :: Map k v} deriving (Functor, Show)
-instance (Monoid v, Ord k) => Monoid (MonoidMap k v) where
-  mempty = MonoidMap mempty
-  mappend (MonoidMap a) (MonoidMap b) = MonoidMap $ Map.unionWith mappend a b
+{-
+  HINT: Name usage in Exp
+    - variable binder
+        names in CPat
+        names in LPat
+        arg names in Def
+
+    - variable reference
+        names in Val
+        names in FetchI and Update
+
+    - function binder
+        function name in Def
+
+    - function reference
+        function name in SApp
+-}
+
+-- variable reference substitution (non recursive)
+
+mapNamesVal :: (Name -> Name) -> Val -> Val
+mapNamesVal f = \case
+  ConstTagNode tag vals -> ConstTagNode tag (map (mapNamesVal f) vals)
+  VarTagNode name vals  -> VarTagNode (f name) (map (mapNamesVal f) vals)
+  Var name              -> Var $ f name
+  val                   -> val
+
+mapValsExp :: (Val -> Val) -> Exp -> Exp
+mapValsExp f = \case
+  ECase val alts    -> ECase (f val) alts
+  SApp name vals    -> SApp name (map f vals)
+  SReturn val       -> SReturn $ f val
+  SStore val        -> SStore $ f val
+  SUpdate name val  -> SUpdate name $ f val
+  exp               -> exp
+
+mapVarRefExp :: (Name -> Name) -> Exp -> Exp
+mapVarRefExp f = \case
+  SFetchI name i    -> SFetchI (f name) i
+  SUpdate name val  -> SUpdate (f name) $ mapNamesVal f val
+  exp               -> mapValsExp (mapNamesVal f) exp
+
+substVarRefExp :: Map Name Name -> Exp -> Exp
+substVarRefExp env = mapVarRefExp (substName env) where
+
+substName :: Map Name Name -> Name -> Name
+substName env x = Map.findWithDefault x x env
+
+-- path tracking
 
 data Step
   = SBindL  Int -- ^ duplicate count
@@ -28,128 +72,22 @@ data Step
   | SAlt    Int -- ^ case alternative index
   deriving (Eq, Ord, Show)
 
-type VarMap = MonoidMap Name (Set [Step]) -- set of alt traces
 
-data RHF
-  = RHF
-  { defMap        :: Map Name [Step] -- name -> def scope
-  , occurrenceMap :: VarMap
-  , globalMap     :: Map Name VarMap
-  }
-  deriving Show
+addStep :: Step -> [Step] -> [Step]
+addStep step [] = [step]
+addStep step (x:xs) = case (step, x) of
+  (SBindL a, SBindL b) -> SBindL (a + b) : xs
+  (SBindR a, SBindR b) -> SBindR (a + b) : xs
+  _ -> step : x : xs
 
-instance Monoid RHF where
-  mempty = RHF mempty mempty mempty
-  mappend (RHF a1 b1 c1) (RHF a2 b2 c2) = RHF (a1 `mappend` a2) (b1 `mappend` b2) (c1 `mappend` c2)
+showPath :: [Step] -> Name
+showPath path = concat (map f path) where
+  f = \case
+    SBindL i -> 'l' : show i
+    SBindR i -> 'r' : show i
+    SAlt   i -> 'a' : show i
 
-{-
-  TODO
-    - fold referred var names
--}
-
-type FetchVarMap = Map Name [[Step]] -- list of use site scopes
-
-{-
-  all prefix == current scope ; live variable
-  some prefix <> current scope ; impossible, this fetch must be emitted earlier and deleted from the map
-  exp uses var and current scope in the scope list ; first use, emit fetch, substitute references
--}
--- collect all indexed fetch bouded variables and their use sites
-collectFetchVars :: Exp -> Map Name FetchVarMap
-collectFetchVars = fmap (fmap Set.toList . monoidMap) . globalMap . para collect where
-  collect :: ExpF (Exp, RHF) -> RHF
-  collect = \case
-    EBindF (leftExp, left) (Var name) (_, right) ->
-        mconcat $ [ prefixStep (SBindL 1) left
-                  , prefixStep (SBindR 1) right
-                  ] ++ case leftExp of
-                        SFetchI _ Just{} -> [addFetch name]
-                        _ -> []
-
-    expRHF -> case fmap snd expRHF of
-      DefF name _args x@RHF{..} -> trace ("unfiltered " ++ ppShow x) $ 
-              RHF
-                { defMap        = mempty
-                , occurrenceMap = mempty
-                , globalMap     = Map.singleton name fetchVarMap
-                } where
-                    -- keep only fetch variables
-                    fetchVarMap = MonoidMap . Map.filterWithKey (\n _ -> Map.member n defMap) $ monoidMap occurrenceMap
-
-      ECaseF val alts   -> mconcat $ useNameVal val : zipWith (prefixStep . SAlt) [0..] alts
-
-      -- the rest can be handled in generic way
-      SAppF _name args  -> mconcat $ map useNameVal args
-      SReturnF val      -> useNameVal val
-      SStoreF val       -> useNameVal val
-      SFetchIF name pos -> useName name
-      SUpdateF name val -> mconcat [useName name, useNameVal val]
-      e -> Data.Foldable.fold e
-
-  addFetch n = RHF (Map.singleton n []) mempty mempty
-  collectNames = foldNames pure
-  useNameVal = mconcat . map useName . collectNames
-  useName n = RHF mempty (MonoidMap $ Map.singleton n (Set.singleton [])) mempty
-
-prefixStep :: Step -> RHF -> RHF
-prefixStep step rhid@RHF{..} = rhid
-  { occurrenceMap = fmap (Set.map add) occurrenceMap
-  , defMap        = fmap add defMap
-  }
-  where add [] = [step]
-        add (x:xs) = case (step, x) of
-          (SBindL a, SBindL b) -> SBindL (a + b) : xs
-          (SBindR a, SBindR b) -> SBindR (a + b) : xs
-          _ -> step : x : xs
-
-
-{-
-  actions:
-    live = all (isPrefix scope) scopes
-      is it in live map and used now? YES: emit fetch + add to substitution map + remove from live map NO: go on
-      for case
-        is it referred in all alternatives?
-          can be define here ? YES: define here NO: go on
-        is it referred in some alternatives?
-          remove from alternative live maps where it is not referred
-          
-    dead = not $ any (isPrefix scope) scopes ; remove
--}
-_rightHoistFetch :: Exp -> Exp
-_rightHoistFetch e = trace (printf "old:\n%s\nnew:\n%s" (ppShow globalFetchMap) (ppShow globalFetchMap2)) $ ana builder ([], mempty, e)
-  where
-    globalFetchMap = collectFetchVars e
-    globalFetchMap2 = collectFetchVars2 e
-
-    builder :: ([Int], FetchVarMap, Exp) -> ExpF ([Int], FetchVarMap, Exp)
-    builder (path, liveVars, exp) = case exp of
-      Def name args body -> DefF name args ([], globalFetchMap Map.! name, body)
-
-      -- Remove original fetch
-      -- Must emit some code, apo does not have a skip command
-      EBind fetch@(SFetchI locVarName (Just{})) (Var name) rightExp -- TODO: locVarName could be substituted, store fetch command here
-          | Map.member name liveVars -> EBindF (path, liveVars, SReturn Unit) Unit (path, liveVars, rightExp)
-
-      -- filter out divergent paths
-      ECase val alts -> ECaseF val [(path ++ [i],liveVars,alt) | (i,alt) <- zip [0..] alts]
-
-      _ -> (path,liveVars,) <$> project exp
-{-
-  NOTE: move fetches to the first use
--}
-
--- ana :: (a -> Base t a) -> a -> t 
-
-{-
-  NOTE: for the phd grin the var lpat is the only relevant option for indexed fetch
-  IDEAS:
-    - build var dependency tree for fetch vars i.e. varChild <- fetch parentVar[i]
-    - full traversal is necessary due to substitution ; building a var dependency graph would be more expensive
-    - mapVarNames, foldVarNames for Val and Exp (non recursive)
-    - 
--}
-
-------------------
+-- right hoist fetch
 
 {-
   NAMING:
@@ -159,7 +97,8 @@ _rightHoistFetch e = trace (printf "old:\n%s\nnew:\n%s" (ppShow globalFetchMap) 
 
   New and simplified algorithm
     - collect caseVar and fetchVar
-    - move every non tagged indexed fetch under the corresponding case and tag them according the alternative
+    - move every non tagged indexed fetch under the corresponding case aletrnative and tag them accordingly
+      (This is a codegen requirement.)
     - use the tag info to determine the tag arity and move only the relevant fetch operation
 
   RESTRICTION:
@@ -169,91 +108,106 @@ _rightHoistFetch e = trace (printf "old:\n%s\nnew:\n%s" (ppShow globalFetchMap) 
   HINT:
     - do not care about name aliases, that is responsibility of other transformations
     - ignore the variable liveness, the dead variable eliminiation will get rid of it
+    - full traversal is necessary due to substitution ; building a var dependency graph would be more expensive
+    - do not care about var dependency ; validators will reveal the faults
+      (nothing should depend on values comes from non tagged fetch anyway)
 -}
-data RHF2
-  = RHF2
+
+data Info -- analysis info
+  = Info
   { fetchVars   :: Map Name Name -- caseVar -> fetchVar ; MANY - ONE
   , caseVars    :: Set Name
-  , globalMap2  :: Map Name (Set Name) -- def -> Set fetchVar
   }
   deriving Show
 
---concat <$> mapM makeLenses [''NodeSet, ''Value, ]
+instance Monoid Info where
+  mempty = Info mempty mempty
+  mappend (Info a1 b1) (Info a2 b2) = Info (a1 `mappend` a2) (b1 `mappend` b2)
 
-instance Monoid RHF2 where
-  mempty = RHF2 mempty mempty mempty
-  mappend (RHF2 a1 b1 c1) (RHF2 a2 b2 c2) = RHF2 (a1 `mappend` a2) (b1 `mappend` b2) (c1 `mappend` c2)
-
-{-
-  QUESTION:
-    What about fetch var dependency for non tag vars?
-  ANSWER:
-    Hoist every non tag fetch under the corresponding case because every fetch must be tagged.
-    This is a codegen requirement.
--}
 
 collectFetchVars2 :: Exp -> Set Name
 collectFetchVars2 = cull . para collect where
-  collect :: ExpF (Exp, RHF2) -> RHF2
+  collect :: ExpF (Exp, Info) -> Info
   collect = \case
     EBindF (SFetchI fetchVar (Just 0), left) (Var caseVar) (_, right) -> mconcat [right, addFetchVar caseVar fetchVar]
-    expRHF -> case fmap snd expRHF of
+    expInfo -> case fmap snd expInfo of
       ECaseF (Var caseVar) alts -> mconcat $ addCaseVar caseVar : alts
       e -> Data.Foldable.fold e
 
-  addCaseVar caseVar = RHF2 mempty (Set.singleton caseVar) mempty
-  addFetchVar caseVar fetchVar = RHF2 (Map.singleton caseVar fetchVar) mempty mempty
+  addCaseVar caseVar = Info mempty (Set.singleton caseVar)
+  addFetchVar caseVar fetchVar = Info (Map.singleton caseVar fetchVar) mempty
 
-  cull RHF2{..} = Set.fromList . Map.elems $ Map.filterWithKey (\n _ -> Set.member n caseVars) fetchVars
+  -- keep fetch vars which have corresponding case vars
+  cull Info{..} = Set.fromList . Map.elems $ Map.filterWithKey (\n _ -> Set.member n caseVars) fetchVars
 
 {-
   FIRST VERSION:
     - no fetch var path filtering
     - move all fetches under the case, delete them when moved
     - substitute names
+
+  TO IMPROVE:
+    - do not emit dummy `pure ()` for hoised fetches, try to use futu to skip them
+    - do not collect fetch variables with determined tag at analysis phase ; requres tag info / type env
+      HINT: the purpose of right hoist fetch is to make all fetch operations tagged (fetch from node with known tag)
+    - make it one pass:
+        if it's guaranteed that the case var fetch (`caseVar <- fetch fetchVar[0]`) comes always first
+        then the analysis phase can be merged with the builder phase
 -}
 
-data RHF3
-  = RHF3
-  { _path       :: [Int]
+data Build -- builder state
+  = Build
+  { _path       :: [Step]
   , _hoistMap   :: Map Name [(Name, Int)] -- fetchVar -> [(itemVar, fetchIndex)]
   , _caseMap    :: Map Name Name          -- caseVar  -> fetchVar
-  , _emitSet    :: Set Name               -- binder names to emit
+  , _emitSet    :: Set Name               -- binder names to emit ; delete prevention
+  , _substMap   :: Map Name Name          -- old name -> new name
   }
   deriving Show
 
-concat <$> mapM makeLenses [''RHF3]
+concat <$> mapM makeLenses [''Build]
 
-emptyRHF3 = RHF3 mempty mempty mempty mempty
+emptyBuild = Build mempty mempty mempty mempty mempty
 
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ ana builder (emptyRHF3, e)
+rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ ana builder (emptyBuild, e)
   where
     globalFetchMap = collectFetchVars2 e
 
-    builder :: (RHF3, Exp) -> ExpF (RHF3, Exp)
+    builder :: (Build, Exp) -> ExpF (Build, Exp)
     builder (rhf, exp) = case exp of
+      -- TODO: path tracking for bind
+      -- TODO: generate according the tag arity
 
-      -- Remove original fetch
-      -- Must emit some code, apo does not have a skip command
-      -- TODO: locVarName could be substituted, store fetch command here
-      EBind fetch@(SFetchI fetchVar (Just idx)) lpat@(Var name) rightExp
+      EBind fetch@(SFetchI fetchVar (Just idx)) (Var name) rightExp
           | Set.member fetchVar globalFetchMap && Set.notMember name (rhf ^. emitSet) -> case idx of
-              -- TODO: save caseVar for case recognition
-              0 -> let newRHF = rhf & caseMap . at name .~ Just fetchVar
-                   in EBindF (rhf, fetch) lpat (newRHF, rightExp)
+              -- keep caseVar fetch and save for case recognition
+              0 -> let newBuild = rhf & caseMap . at name .~ Just fetchVar
+                   in EBindF (rhf, fetch) (Var $ substName (rhf^.substMap) name) (newBuild, rightExp)
+              -- remove original itemVar fetch
+              -- FIXME: must emit some code, apo does not have a skip command
               _ -> EBindF (rhf, SReturn Unit) Unit (rhf & hoistMap . at fetchVar . non mempty %~ ((name,idx):), rightExp)
 
-      ECase (Var caseVar) alts | Just fetchVar <- rhf ^. caseMap . at caseVar
-                -- TODO: generate bind sequence for items ; clear hoist map
-            -> let itemVars = rhf ^. hoistMap . at fetchVar . non mempty
-                   newRHF = rhf & emitSet %~ (mappend (Set.fromList $ map fst itemVars))
-                                & hoistMap . at fetchVar .~ Nothing
-               in ECaseF (Var caseVar) [(newRHF & path %~ (++ [i]), genBind fetchVar itemVars alt) | (i,alt) <- zip [0..] alts]
-      ECase val alts
-            -> ECaseF val [(rhf & path %~ (++ [i]), alt) | (i,alt) <- zip [0..] alts]
+      -- always generate bind sequences, it will be empty if there is none anyway
+      ECase (Var caseVar) alts
+                -- generate bind sequence for items ; clear hoist map
+                -- TODO: clean up code, introduce domain specific named lenses
+            -> let fetchVar = rhf ^. caseMap . at caseVar . non mempty
+                   itemVars = rhf ^. hoistMap . at fetchVar . non mempty
+                   newBuild = rhf & hoistMap . at fetchVar .~ Nothing
+                   genAlt i alt = (altBuild, genBind fetchVar altFetch alt) where
+                      altPath  = addStep (SAlt i) (newBuild ^. path)
+                      pathName = showPath altPath
+                      altFetch = [(printf "%s.%s" n pathName, i) | (n,i) <- itemVars]
+                      altNames = map fst altFetch
+                      altNameS = Set.fromList altNames
+                      altSubst = Map.fromList $ zip (map fst itemVars) altNames
+                      altBuild = newBuild & path .~ altPath
+                                          & substMap %~ (Map.union altSubst)
+                                          & emitSet %~ (mappend altNameS)
+               in ECaseF (Var $ substName (rhf^.substMap) caseVar) $ zipWith genAlt [0..] alts
 
-      _ -> (rhf,) <$> project exp
+      _ -> (rhf,) <$> project (substVarRefExp (rhf^.substMap) exp)
 
     genBind :: Name -> [(Name, Int)] -> Exp -> Exp
     genBind fetchVar l (Alt cpat exp) = Alt cpat $ foldr (\(name,idx) e -> EBind (SFetchI fetchVar (Just idx)) (Var name) e) exp $ reverse l
