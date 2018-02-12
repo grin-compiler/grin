@@ -153,6 +153,7 @@ collectFetchVars2 = cull . para collect where
     - make it one pass:
         if it's guaranteed that the case var fetch (`caseVar <- fetch fetchVar[0]`) comes always first
         then the analysis phase can be merged with the builder phase
+        this requires to distinguish between tagged and non-tagged fetches ; the former should not be touched
 -}
 
 data Build -- builder state
