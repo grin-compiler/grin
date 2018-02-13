@@ -5,6 +5,7 @@ GRIN has to be typed to harness the full power of LLVM.
 The GRIN type system must be expressive enough to
   - embed the LLVM type system
   - type the GRIN programs during transformations (at any stage)
+  - describe the type of GRIN transformations (type preserving and well typed)
 
 The result of the Heap-Points-To (HPT) analysis can be seen as a type environment.
 In this setting the HPT analysis is the type inference algorithm.
