@@ -12,129 +12,62 @@ In this setting the HPT analysis is the type inference algorithm.
 e.g. HPT result for a GRIN program
 ``` haskell
 Heap
-    1      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]}
-    2      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]}
-    3      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fupto[{1},{2}]}
-    4      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fsum[{3}]}
-    5      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]}
-    6      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fupto[{5},{2}]}
+    1      -> {CInt[{T_Int64}]}
+    2      -> {CInt[{T_Int64}]}
+    3      -> {CInt[{T_Int64}]
+              ,Fadd[{1},{2}]}
 Env
-    a      -> {1,5}
-    ax'    -> {T_Int64}
+    a      -> {1}
     b      -> {2}
-    b'     -> {T_Bool}
-    c      -> {3}
-    l      -> {3,6}
-    l2     -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fsum[{3}]
-              ,Fupto[{1,5},{2}]}
-    m      -> {1,5}
+    b'     -> {T_Int64}
+    m      -> {1}
     m'     -> {T_Int64}
-    m1     -> {5}
     n      -> {2}
     n'     -> {T_Int64}
-    p      -> {6}
-    q      -> {1,2,3,4,5,6}
+    q      -> {1,2,3}
     r'     -> {T_Int64}
-    s'     -> {T_Int64}
     t1     -> {1}
     t2     -> {2}
     t3     -> {3}
-    t4     -> {4}
-    v      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fsum[{3}]
-              ,Fupto[{1,5},{2}]}
-    w      -> {CCons[{1,5},{6}]
-              ,CNil[]}
-    x      -> {1,5}
-    x'     -> {T_Int64}
+    v      -> {CInt[{T_Int64}]
+              ,Fadd[{1},{2}]}
+    w      -> {CInt[{T_Int64}]}
     x'1    -> {T_Int64}
-    xs     -> {6}
-    y      -> {1,5}
-    ys     -> {6}
-    z      -> {CInt[{T_Int64}]}
 Function
     _prim_int_add :: {T_Int64}
                   -> {T_Int64}
                   -> {T_Int64}
-    _prim_int_gt :: {T_Int64}
-                 -> {T_Int64}
-                 -> {T_Bool}
     _prim_int_print :: {T_Int64}
                     -> {T_Unit}
-    eval :: {1,2,3,4,5,6}
-         -> {CCons[{1,5},{6}]
-            ,CInt[{T_Int64}]
-            ,CNil[]
-            ,Fsum[{3}]
-            ,Fupto[{1,5},{2}]}
-    grinMain :: {T_Unit}
-    sum :: {3,6}
+    add :: {1}
+        -> {2}
         -> {CInt[{T_Int64}]}
-    upto :: {1,5}
-         -> {2}
-         -> {CCons[{1,5},{6}],CNil[]}
-```
+    eval :: {1,2,3}
+         -> {CInt[{T_Int64}]
+            ,Fadd[{1},{2}]}
+    grinMain :: {T_Unit}
+N```
 
 GRIN source program
 ``` haskell
 grinMain =
   t1 <- store (CInt 1)
   t2 <- store (CInt 10000)
-  t3 <- store (Fupto t1 t2)
-  t4 <- store (Fsum t3)
-  (CInt r') <- eval t4
+  t3 <- store (Fadd t1 t2)
+  (CInt r') <- eval t3
   _prim_int_print r'
 
-upto m n =
+add m n =
   (CInt m') <- eval m
   (CInt n') <- eval n
-  b' <- _prim_int_gt m' n'
-  case b' of
-    True -> pure (CNil)
-    False -> m1' <- _prim_int_add m' 1
-             m1 <- store (CInt m1')
-             p <- store (Fupto m1 n)
-             pure (CCons m p)
-
-sum l =
-  l2 <- eval l
-  case l2 of
-    (CNil) -> pure (CInt 0)
-    (CCons x xs) -> (CInt x') <- eval x
-                    (CInt s') <- sum xs
-                    ax' <- _prim_int_add x' s'
-                    pure (CInt ax')
+  b' <- _prim_int_add m' n'
+  pure (CInt b')
 
 eval q =
   v <- fetch q
   case v of
     (CInt x'1) -> pure v
-    (CNil) -> pure v
-    (CCons y ys) -> pure v
-    (Fupto a b) -> w <- upto a b
-                   update q w
-                   pure w
-    (Fsum c) -> z <- sum c
-                update q z
-                pure z
+    (Fadd a b) -> w <- add a b
+                  update q w
+                  pure w
 ```
