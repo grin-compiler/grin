@@ -7,6 +7,7 @@ import Test.QuickCheck.Monadic
 import Pipeline
 import Test
 import Eval
+import Pretty
 
 
 runTests :: IO ()
@@ -15,7 +16,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   it "Exploratory testing on random program and random pipeline" $ property $
-    forAll nonWellFormedPrograms $ \original ->
+    forAll (PP <$> nonWellFormedPrograms) $ \(PP original) ->
     forAllShrink genPipeline shrinkPipeline $ \ppln ->
     monadicIO $ do
       transformed      <- run $ pipeline defaultOpts original ppln
