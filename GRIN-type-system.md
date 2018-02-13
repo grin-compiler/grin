@@ -46,7 +46,7 @@ Function
          -> {CInt[{T_Int64}]
             ,Fadd[{1},{2}]}
     grinMain :: {T_Unit}
-N```
+```
 
 GRIN source program
 ``` haskell
