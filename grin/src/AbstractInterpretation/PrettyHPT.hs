@@ -65,8 +65,8 @@ instance Pretty Computer where
 
 instance Pretty R.LocOrValue where
   pretty = \case
-    R.Loc l         -> int . succ $ fromIntegral l
-    R.SimpleType ty -> text $ show ty
+    R.Loc l         -> cyan . int . succ $ fromIntegral l
+    R.SimpleType ty -> red $ text $ show ty
 
 prettyNode :: (Tag, Vector (Set R.LocOrValue)) -> Doc
 prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
