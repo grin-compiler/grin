@@ -9,6 +9,11 @@ import Grin
 printGrin :: Exp -> IO ()
 printGrin = putDoc . pretty
 
+-- Pretty Show instance wrapper ; i.e. useful for hspec tests
+newtype PP a = PP a deriving Eq
+instance Pretty a => Show (PP a ) where
+  show (PP a) = show . plain . pretty $ a
+
 keyword :: String -> Doc
 keyword = yellow . text
 

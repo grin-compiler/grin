@@ -6,8 +6,8 @@ import Test.Hspec
 
 import Free
 import Grin
-import Transformations.Simplifying.RightHoistFetch
-
+import Pretty
+import Transformations.Simplifying.RightHoistFetch2
 
 spec :: Spec
 spec = do
@@ -35,14 +35,14 @@ spec = do
       switch "t"
         [ (tag "Nil" 0,  "l3" <=: store @Int 2 $
                          unit @Int 2)
-        , (tag "Cons" 2, "a1.0" <=: fetch "p" (Just 1)  $
-                         "a2.0" <=: fetch "p" (Just 2)  $
-                         "l4" <=: store @Int 3          $
-                         "l5" <=: store @Var "a1.0"     $
-                         "l6" <=: store @Var "a2.0"     $
+        , (tag "Cons" 2, "a1.a1" <=: fetch "p" (Just 1)  $
+                         "a2.a1" <=: fetch "p" (Just 2)  $
+                         "l4" <=: store @Int 3           $
+                         "l5" <=: store @Var "a1.a1"     $
+                         "l6" <=: store @Var "a2.a1"     $
                          unit @Int 3)
         ]
-    rightHoistFetch before `shouldBe` after
+    (PP $ rightHoistFetch before) `shouldBe` (PP after)
 
 
 runTests :: IO ()
