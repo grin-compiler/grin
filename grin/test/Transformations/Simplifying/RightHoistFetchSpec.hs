@@ -6,7 +6,7 @@ import Test.Hspec
 
 import Free
 import Grin
-import Pretty
+import Assertions
 import Transformations.Simplifying.RightHoistFetch2
 
 spec :: Spec
@@ -42,7 +42,7 @@ spec = do
                          "l6" <=: store @Var "a2.a1"     $
                          unit @Int 3)
         ]
-    (PP $ rightHoistFetch before) `shouldBe` (PP after)
+    rightHoistFetch before `sameAs` after
 
 
 runTests :: IO ()

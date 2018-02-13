@@ -10,6 +10,7 @@ import Data.Map
 import Test.Hspec
 import Free hiding (V)
 import Grin
+import Assertions
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -45,7 +46,7 @@ spec = do
       "l1" <=: store @Val ("v0" #: ["v1", "v2"])                  $
       unit @Int 1
 
-    vectorisation hpt before `shouldBe` after
+    vectorisation hpt before `sameAs` after
 
 runTests :: IO ()
 runTests = hspec spec

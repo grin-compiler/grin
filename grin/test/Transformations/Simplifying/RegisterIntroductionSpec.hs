@@ -6,6 +6,7 @@ import Transformations.Simplifying.RegisterIntroduction
 
 import Free
 import Grin
+import Assertions
 
 
 spec :: Spec
@@ -36,7 +37,7 @@ spec = do
       "l2" <=: store @Int 1                  $
       unit @Int 2
 
-    registerIntroduction 0 before `shouldBe` after
+    registerIntroduction 0 before `sameAs` after
 
 runTests :: IO ()
 runTests = hspec spec

@@ -7,6 +7,7 @@ import Test.Hspec
 import Free
 import Grin
 import Test
+import Assertions
 import Transformations.Simplifying.SplitFetch
 
 
@@ -28,7 +29,7 @@ spec = do
       "l2" <=: store @Int 4        $
       unit @Int 5
 
-    splitFetch before `shouldBe` after
+    splitFetch before `sameAs` after
 
   it "Example from Figure 4.14" $ do
     before <- buildExpM $
@@ -43,7 +44,7 @@ spec = do
       "l2" <=: store @Int 4         $
       unit @Int 5
 
-    splitFetch before `shouldBe` after
+    splitFetch before `sameAs` after
 
   it "Example from Figure 4.15" $ do
     -- TODO Include hpt-result with t \elem { CPair }
@@ -61,7 +62,7 @@ spec = do
       "l2" <=: store @Int 4             $
       unit @Int 5
 
-    splitFetch before `shouldBe` after
+    splitFetch before `sameAs` after
 
 
 runTest :: IO ()

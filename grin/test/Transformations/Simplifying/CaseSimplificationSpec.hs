@@ -10,6 +10,7 @@ import Test
 import Check
 import Free
 import Grin
+import Assertions
 
 
 runTests :: IO ()
@@ -51,7 +52,7 @@ spec = do
               unit @Int 5)
         ]
 
-    caseSimplification before `shouldBe` after
+    caseSimplification before `sameAs` after
 
   it "Program size does not change" $ property $
     forAll nonWellFormedPrograms programSizeDoesNotChange
