@@ -9,10 +9,8 @@ The GRIN type system must be expressive enough to
 The result of the Heap-Points-To (HPT) analysis can be seen as a type environment.
 In this setting the HPT analysis is the type inference algorithm.
 
-i.e. HPT result for a GRIN program
-
-HPT result
-```
+e.g. HPT result for a GRIN program
+``` haskell
 Heap
     1      -> {CCons[{1,5},{6}]
               ,CInt[{T_Int64}]
@@ -98,7 +96,7 @@ Function
 ```
 
 GRIN source program
-```
+``` haskell
 grinMain =
   t1 <- store (CInt 1)
   t2 <- store (CInt 10000)
