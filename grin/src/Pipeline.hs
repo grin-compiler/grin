@@ -186,7 +186,7 @@ printHPT :: PipelineM ()
 printHPT = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
-        putStrLn . show . pretty . HPT.hptInstructions $ a
+        putStrLn . show . HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
         putStrLn $ printf "memory size    %d" $ HPT.hptMemoryCounter a
         putStrLn $ printf "register count %d" $ HPT.hptRegisterCounter a
         putStrLn $ printf "variable count %d" $ Bimap.size $ HPT.hptRegisterMap a
