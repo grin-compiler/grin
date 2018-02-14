@@ -1,0 +1,91 @@
+grinMain = t1 <- store (CInt 1)
+           t2 <- store (CInt 10000)
+           t3 <- store (Fupto t1 t2)
+           t4 <- store (Fsum t3)
+           (CInt r') <- eval_1 t4
+           _prim_int_print r'
+
+upto m n = (CInt m') <- eval_2 m
+           (CInt n') <- eval_3 n
+           b' <- _prim_int_gt m' n'
+           if b' then
+            pure (CNil)
+           else
+            m1' <- _prim_int_add m' 1
+            m1 <- store (CInt m1')
+            p <- store (Fupto m1 n)
+            pure (CCons m p)
+
+sum l = l2 <- eval_4 l
+        case l2 of
+          (CNil)       -> pure (CInt 0)
+          (CCons x xs) -> (CInt x') <- eval_5 x
+                          (CInt s') <- sum xs
+                          ax' <- _prim_int_add x' s'
+                          pure (CInt ax')
+
+eval_1 q_1 =
+  v_1 <- fetch q_1
+  case v_1 of
+   (CInt x'1_1)     -> pure v_1
+   (CNil)           -> pure v_1
+   (CCons y_1 ys_1) -> pure v_1
+   (Fupto a_1 b_1)  -> w_1 <- upto a_1 b_1
+                       update q_1 w_1
+                       pure w_1
+   (Fsum c_1)       -> z_1 <- sum c_1
+                       update q_1 z_1
+                       pure z_1
+
+eval_2 q_2 =
+  v_2 <- fetch q_2
+  case v_2 of
+   (CInt x'1_2)     -> pure v_2
+   (CNil)           -> pure v_2
+   (CCons y_2 ys_2) -> pure v_2
+   (Fupto a_2 b_2)  -> w_2 <- upto a_2 b_2
+                       update q_2 w_2
+                       pure w_2
+   (Fsum c_2)       -> z_2 <- sum c_2
+                       update q_2 z_2
+                       pure z_2
+
+eval_3 q_3 =
+  v_3 <- fetch q_3
+  case v_3 of
+   (CInt x'1_3)     -> pure v_3
+   (CNil)           -> pure v_3
+   (CCons y_3 ys_3) -> pure v_3
+   (Fupto a_3 b_3)  -> w_3 <- upto a_3 b_3
+                       update q_3 w_3
+                       pure w_3
+   (Fsum c_3)       -> z_3 <- sum c_3
+                       update q_3 z_3
+                       pure z_3
+
+eval_4 q_4 =
+  v_4 <- fetch q_4
+  case v_4 of
+   (CInt x'1_4)     -> pure v_4
+   (CNil)           -> pure v_4
+   (CCons y_4 ys_4) -> pure v_4
+   (Fupto a_4 b_4)  -> w_4 <- upto a_4 b_4
+                       update q_4 w_4
+                       pure w_4
+   (Fsum c_4)       -> z_4 <- sum c_4
+                       update q_4 z_4
+                       pure z_4
+
+eval_5 q_5 =
+  v_5 <- fetch q_5
+  case v_5 of
+   (CInt x'1_5)     -> pure v_5
+   (CNil)           -> pure v_5
+   (CCons y_5 ys_5) -> pure v_5
+   (Fupto a_5 b_5)  -> w_5 <- upto a_5 b_5
+                       update q_5 w_5
+                       pure w_5
+   (Fsum c_5)       -> z_5 <- sum c_5
+                       update q_5 z_5
+                       pure z_5
+
