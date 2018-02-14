@@ -125,8 +125,8 @@ instance Monoid Info where
   mappend (Info a1 b1) (Info a2 b2) = Info (a1 `mappend` a2) (b1 `mappend` b2)
 
 
-collectFetchVars2 :: Exp -> Set Name
-collectFetchVars2 = cull . para collect where
+collectFetchVars :: Exp -> Set Name
+collectFetchVars = cull . para collect where
   collect :: ExpF (Exp, Info) -> Info
   collect = \case
     EBindF (SFetchI fetchVar (Just 0), left) (Var caseVar) (_, right) -> mconcat [right, addFetchVar caseVar fetchVar]
@@ -173,7 +173,7 @@ emptyBuild = Build mempty mempty mempty mempty mempty
 rightHoistFetch :: Exp -> Exp
 rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ ana builder (emptyBuild, e)
   where
-    globalFetchMap = collectFetchVars2 e
+    globalFetchMap = collectFetchVars e
 
     builder :: (Build, Exp) -> ExpF (Build, Exp)
     builder (rhf, exp) = case exp of
