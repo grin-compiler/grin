@@ -61,6 +61,7 @@ Conteptually the HPT analysis is done like the generic eval function was inlined
   - HPT IR LLVM codegen (HPT IR -> LLVM IR)
   - reduce temporary register usage
   - cleanup HPT IR codegen
+  - add sharing analysis
 
 ### HPT IR improvements
 
