@@ -101,11 +101,14 @@ defaultPipeline = \case
       , T BindNormalisation
       , SaveGrin "RightHoistFetch"
       , PrintGrin ondullcyan
+      {-
+      -- NOTE: LLVM codegen does not require register introduction
       , T RegisterIntroduction
       , SaveGrin "RegisterIntroduction"
       , T BindNormalisation
       , SaveGrin "RegisterIntroduction"
       , PrintGrin ondullblack
+      -}
       , SaveLLVM "code"
       , JITLLVM
       ]

@@ -189,7 +189,14 @@ codeGenLit = \case
 codeGenVal :: Val -> CG Operand
 codeGenVal = \case
   -- TODO: support nodes
-  --ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
+  ConstTagNode tag args -> do -- complete node (constant tag)
+    let opTag = ConstantOperand $ getTagId tag
+    opArgs <- mapM codeGenVal args
+    pure $ ConstantOperand $ Struct
+      { structName    = Nothing
+      , isPacked      = True -- or False?
+      , memberValues  = replicate (1 + length opArgs) (Undef i64)-- TODO :: [ Constant ]
+      }
   VarTagNode tagVar args -> do
     opTag <- codeGenVal $ Var tagVar
     opArgs <- mapM codeGenVal args -- complete node (variable tag)
