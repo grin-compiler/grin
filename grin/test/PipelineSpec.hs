@@ -16,7 +16,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   it "Exploratory testing on random program and random pipeline" $ property $
-    forAll (PP <$> nonWellFormedPrograms) $ \(PP original) ->
+    forAll (PP <$> genProg) $ \(PP original) ->
     forAllShrink genPipeline shrinkPipeline $ \ppln ->
     monadicIO $ do
       transformed      <- run $ pipeline defaultOpts original ppln

@@ -289,13 +289,18 @@ instance (TypeOf l, TypeOf r) => TypeOf (Either l r) where
 type Context = (Env, Store)
 
 ctxEnv :: Lens' Context Env
-ctxEnv   = _1
+ctxEnv = _1
+
+getADTs :: GoalM (Set Type)
+getADTs = view (ctxEnv . adtsL)
+
 -- ctxStore = _2
 
 data Goal
   = Exp [Eff] Type
   | SExp Eff
   | GVal Type
+  | Prog
   deriving (Eq, Ord, Show)
 
 genProg :: Gen Exp
@@ -305,7 +310,7 @@ genProg =
   (runGoalM $
     CMR.local ((ctxEnv . adtsL) %~ Set.union primitiveADTs) $
     withADTs 10 $
-    solve @TExp (Exp [] TTUnit))
+    solve @TProg Prog)
 
 sampleGoalM :: Show a => GoalM a -> IO ()
 sampleGoalM g = sample $ runGoalM g
@@ -339,15 +344,16 @@ runGoalUnsafe = fmap checkSolution . runGoalM
 gen :: Gen a -> GoalM a
 gen = lift . lift
 
+tagNames :: Type -> [String]
+tagNames (TTag name _)  = [name]
+tagNames (TUnion types) = concatMap tagNames (Set.toList types)
+tagNames _              = []
+
 newName :: GoalM String
 newName = do
   (Env vars funs adts) <- view _1
   let names = Map.keys vars <> Map.keys funs <> (concatMap tagNames $ Set.toList adts)
   gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` names)
-  where
-    tagNames (TTag name _)  = [name]
-    tagNames (TUnion types) = concatMap tagNames (Set.toList types)
-    tagNames _              = []
 
 newNames :: Int -> GoalM [String]
 newNames = go [] where
@@ -476,6 +482,11 @@ gExp t = \case
     ]
   es -> mzero
 
+gProg :: GoalM TProg
+gProg =
+  (TProg . NonEmpty . pure . TDef (TName "grinMain") [])
+  <$> gExp TTUnit []
+
 primitiveADTs :: Set Type
 primitiveADTs = Set.fromList
   [ boolT
@@ -485,8 +496,13 @@ primitiveADTs = Set.fromList
 -- in the context, running the computation with the new context.
 withADTs :: Int -> GoalM a -> GoalM a
 withADTs n g = do
-  as <- replicateM n adt
-  CMR.local ((ctxEnv . adtsL) %~ (Set.union (Set.fromList as))) g
+  k <- foldM combine id [1 .. n]
+  k g
+  where
+    combine :: (GoalM a -> GoalM a) -> Int -> GoalM (GoalM a -> GoalM a)
+    combine k _ = do
+      x <- adt
+      return ((CMR.local ((ctxEnv . adtsL) %~ (Set.union (Set.singleton x)))) . k)
 
 class Solve t where
   solve' :: Goal -> GoalM t
@@ -513,3 +529,7 @@ instance Solve TExp where
     Exp es t -> gExp t es
     _        -> mzero
 
+instance Solve TProg where
+  solve' = \case
+    Prog -> gProg
+    _    -> mzero

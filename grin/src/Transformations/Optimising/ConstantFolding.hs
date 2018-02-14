@@ -27,4 +27,3 @@ constantFolding = ana builder where
 
     rest ->
       project rest
-
