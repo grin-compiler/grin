@@ -16,7 +16,7 @@ import Optimizations
 import Pretty()
 import Transformations.AssignStoreIDs
 import Transformations.GenerateEval
-import Transformations.Simplifying.Vectorisation
+import Transformations.Simplifying.Vectorisation2
 import Transformations.BindNormalisation
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
@@ -26,8 +26,10 @@ import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
 import AbstractInterpretation.AbstractRunGrin
 import AbstractInterpretation.HPTResult
+import qualified AbstractInterpretation.HPTResultNew as HPT
 import AbstractInterpretation.PrettyHPT
 import qualified AbstractInterpretation.Pretty as HPT
+import qualified AbstractInterpretation.IR as HPT
 import qualified AbstractInterpretation.CodeGen as HPT
 import qualified AbstractInterpretation.Reduce as HPT
 import qualified Reducer.LLVM.CodeGen as CGLLVM
@@ -63,7 +65,7 @@ data Transformation
   | ConstantFolding
   deriving (Enum, Eq, Ord, Show)
 
-transformation :: Maybe HPTResult -> Int -> Transformation -> Exp -> Exp
+transformation :: Maybe HPT.HPTResult -> Int -> Transformation -> Exp -> Exp
 transformation hptResult n = \case
   CaseSimplification      -> caseSimplification
   SplitFetch              -> splitFetch
@@ -150,6 +152,7 @@ data PState = PState
     , _psTransStep  :: Int
     , _psHPTProgram :: Maybe HPT.HPTProgram
     , _psHPTResult  :: Maybe HPTResult
+    , _psHPTResult2 :: Maybe HPT.HPTResult
     , _psTagInfo    :: Maybe TagInfo
     }
 
@@ -183,21 +186,19 @@ printHPT :: PipelineM ()
 printHPT = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
-        putStrLn . show . pretty . HPT.envInstructions $ a
-        putStrLn $ printf "memory size    %d" $ HPT.envMemoryCounter a
-        putStrLn $ printf "register count %d" $ HPT.envRegisterCounter a
-        putStrLn $ printf "variable count %d" $ Bimap.size $ HPT.envRegisterMap a
+        putStrLn . show . pretty . HPT.hptInstructions $ a
+        putStrLn $ printf "memory size    %d" $ HPT.hptMemoryCounter a
+        putStrLn $ printf "register count %d" $ HPT.hptRegisterCounter a
+        putStrLn $ printf "variable count %d" $ Bimap.size $ HPT.hptRegisterMap a
   maybe (pure ()) (liftIO . printHPT) hptProgram
 
 runHPTPure :: PipelineM ()
 runHPTPure = do
-  hptProgram <- use psHPTProgram
-  let printHPT a = do
-        let hptResult = HPT.evalHPT a
-            Just hptProg = hptProgram
-        --PP.pPrint hptResult
-        putStrLn . show . pretty $ HPT.toHPTResult hptProg hptResult
-  maybe (pure ()) (liftIO . printHPT) hptProgram
+  Just hptProgram <- use psHPTProgram
+  let hptResult = HPT.evalHPT hptProgram
+      result = HPT.toHPTResult hptProgram hptResult
+  psHPTResult2 .= Just result
+  liftIO $ putStrLn . show . pretty $ result
 
   grin <- use psExp
   let (_, result) = abstractRun (assignStoreIDs grin) "grinMain"
@@ -226,7 +227,7 @@ postconditionCheck t = do
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  hptResult   <- use psHPTResult
+  hptResult   <- use psHPTResult2
   n           <- use psTransStep
   psExp       %= transformation hptResult n t
   psTransStep %= (+1)
@@ -318,5 +319,6 @@ pipeline o e p = do
       , _psTransStep  = 0
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
+      , _psHPTResult2 = Nothing
       , _psTagInfo    = Nothing
       }

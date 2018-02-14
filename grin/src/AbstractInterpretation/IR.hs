@@ -4,6 +4,12 @@ module AbstractInterpretation.IR where
 import Data.Int
 import Data.Word
 
+import qualified Data.Bimap as Bimap
+import qualified Data.Map as Map
+
+import qualified Grin
+import Grin (Name)
+
 newtype Reg = Reg Word32 deriving (Eq, Ord, Show)
 newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
 
@@ -65,3 +71,23 @@ data Constant
   | CNodeType     Tag Int {-arity-}
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type or location-}
   deriving Show
+
+data HPTProgram
+  = HPTProgram
+  { hptMemoryCounter    :: Word32
+  , hptRegisterCounter  :: Word32
+  , hptRegisterMap      :: Bimap.Bimap Name Reg
+  , hptInstructions     :: [Instruction]
+  , hptFunctionArgMap   :: Map.Map Name (Reg, [Reg])
+  , hptTagMap           :: Bimap.Bimap Grin.Tag Tag
+  }
+  deriving Show
+
+emptyHPTProgram = HPTProgram
+  { hptMemoryCounter    = 0
+  , hptRegisterCounter  = 0
+  , hptRegisterMap      = Bimap.empty
+  , hptInstructions     = []
+  , hptFunctionArgMap   = Map.empty
+  , hptTagMap           = Bimap.empty
+  }

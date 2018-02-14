@@ -1,8 +1,6 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
 module AbstractInterpretation.CodeGen
   ( codeGen
-  , Env(..)
-  , HPTProgram
   ) where
 
 import Data.Word
@@ -13,29 +11,9 @@ import Data.Functor.Foldable as Foldable
 
 import Grin
 import qualified AbstractInterpretation.IR as IR
+import AbstractInterpretation.IR (HPTProgram(..))
 
-type HPTProgram = Env
-
-data Env
-  = Env
-  { envMemoryCounter    :: Word32
-  , envRegisterCounter  :: Word32
-  , envRegisterMap      :: Bimap.Bimap Name IR.Reg
-  , envInstructions     :: [IR.Instruction]
-  , envFunctionArgMap   :: Map.Map Name (IR.Reg, [IR.Reg])
-  , envTagMap           :: Bimap.Bimap Tag IR.Tag
-  }
-
-emptyEnv = Env
-  { envMemoryCounter    = 0
-  , envRegisterCounter  = 0
-  , envRegisterMap      = Bimap.empty
-  , envInstructions     = []
-  , envFunctionArgMap   = Map.empty
-  , envTagMap           = Bimap.empty
-  }
-
-type CG = State Env
+type CG = State HPTProgram
 
 data Result
   = R IR.Reg
@@ -44,7 +22,7 @@ data Result
 
 
 emit :: IR.Instruction -> CG ()
-emit inst = modify' $ \s@Env{..} -> s {envInstructions = inst : envInstructions}
+emit inst = modify' $ \s@HPTProgram{..} -> s {hptInstructions = inst : hptInstructions}
 
 {-
   Unit      -1
@@ -66,40 +44,40 @@ emit inst = modify' $ \s@Env{..} -> s {envInstructions = inst : envInstructions}
 -- creates regsiters for function arguments and result
 getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])
 getOrAddFunRegs name arity = do
-  funMap <- gets envFunctionArgMap
+  funMap <- gets hptFunctionArgMap
   case Map.lookup name funMap of
     Just x  -> pure x
     Nothing -> do
       resReg <- newReg
       argRegs <- replicateM arity newReg
       let funRegs = (resReg, argRegs)
-      modify' $ \s@Env{..} -> s {envFunctionArgMap = Map.insert name funRegs envFunctionArgMap}
+      modify' $ \s@HPTProgram{..} -> s {hptFunctionArgMap = Map.insert name funRegs hptFunctionArgMap}
       pure funRegs
 
 newReg :: CG IR.Reg
-newReg = state $ \s@Env{..} -> (IR.Reg envRegisterCounter, s {envRegisterCounter = succ envRegisterCounter})
+newReg = state $ \s@HPTProgram{..} -> (IR.Reg hptRegisterCounter, s {hptRegisterCounter = succ hptRegisterCounter})
 
 newMem :: CG IR.Mem
-newMem = state $ \s@Env{..} -> (IR.Mem envMemoryCounter, s {envMemoryCounter = succ envMemoryCounter})
+newMem = state $ \s@HPTProgram{..} -> (IR.Mem hptMemoryCounter, s {hptMemoryCounter = succ hptMemoryCounter})
 
 addReg :: Name -> IR.Reg -> CG ()
-addReg name reg = modify' $ \s@Env{..} -> s {envRegisterMap = Bimap.insert name reg envRegisterMap}
+addReg name reg = modify' $ \s@HPTProgram{..} -> s {hptRegisterMap = Bimap.insert name reg hptRegisterMap}
 
 getReg :: Name -> CG IR.Reg
 getReg name = do
-  regMap <- gets envRegisterMap
+  regMap <- gets hptRegisterMap
   case Bimap.lookup name regMap of
     Nothing   -> error $ "unknown variable " ++ name
     Just reg  -> pure reg
 
 getTag :: Tag -> CG IR.Tag
 getTag tag = do
-  tagMap <- gets envTagMap
+  tagMap <- gets hptTagMap
   case Bimap.lookup tag tagMap of
     Just t  -> pure t
     Nothing -> do
       let t = IR.Tag . fromIntegral $ Bimap.size tagMap
-      modify' $ \s -> s {envTagMap = Bimap.insert tag t tagMap}
+      modify' $ \s -> s {hptTagMap = Bimap.insert tag t tagMap}
       pure t
 
 unitType :: IR.SimpleType
@@ -192,20 +170,20 @@ registerPrimOps = do
 
   pure Z
 
-codeGen :: Exp -> Env
-codeGen = flip execState emptyEnv . cata folder where
+codeGen :: Exp -> HPTProgram
+codeGen = flip execState IR.emptyHPTProgram . cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
     ProgramF defs -> sequence_ defs >> registerPrimOps
 
     DefF name args body -> do
-      instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
+      instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM addReg args funArgRegs
       body >>= \case
         Z   -> emit $ IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit $ IR.Move {srcReg = r, dstReg = funResultReg}
-      modify' $ \s@Env{..} -> s {envInstructions = reverse envInstructions ++ instructions}
+      modify' $ \s@HPTProgram{..} -> s {hptInstructions = reverse hptInstructions ++ instructions}
       pure Z
 
     EBindF leftExp lpat rightExp -> do
@@ -248,7 +226,7 @@ codeGen = flip execState emptyEnv . cata folder where
             irTag <- getTag tag
             ----------- BEGIN ; FIXME
             -- save instructions, clear, join altM, read instructions, swap saved instructions back
-            instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
+            instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
             -- bind pattern variables
             forM_ (zip [0..] vars) $ \(idx, name) -> do
                 argReg <- newReg
@@ -258,18 +236,18 @@ codeGen = flip execState emptyEnv . cata folder where
             case altRes of
               Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
               R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
-            altInstructions <- state $ \s@Env{..} -> (reverse envInstructions, s {envInstructions = instructions})
+            altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
             ----------- END
             emit $ IR.If {condition = IR.NodeTypeExists irTag, srcReg = valReg, instructions = altInstructions}
           LitPat lit -> do
             ----------- BEGIN ; FIXME
             -- save instructions, clear, join altM, read instructions, swap saved instructions back
-            instructions <- state $ \s@Env{..} -> (envInstructions, s {envInstructions = []})
+            instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
             altRes <- altM -- FIXME: move after pattern variable binding
             case altRes of
               Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
               R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
-            altInstructions <- state $ \s@Env{..} -> (reverse envInstructions, s {envInstructions = instructions})
+            altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
             ----------- END
             emit $ IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
           _ -> error $ "HPT does not support the following case pattern: " ++ show cpat

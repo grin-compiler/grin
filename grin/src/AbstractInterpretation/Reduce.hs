@@ -117,24 +117,24 @@ evalInstruction = \case
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
 evalHPT :: HPTProgram -> Computer
-evalHPT Env{..} = run emptyComputer where
+evalHPT HPTProgram{..} = run emptyComputer where
   emptyComputer = Computer
-    { _memory   = V.replicate (fromIntegral envMemoryCounter) mempty
-    , _register = V.replicate (fromIntegral envRegisterCounter) mempty
+    { _memory   = V.replicate (fromIntegral hptMemoryCounter) mempty
+    , _register = V.replicate (fromIntegral hptRegisterCounter) mempty
     }
   run computer = if computer == nextComputer then computer else run nextComputer
-    where nextComputer = execState (mapM_ evalInstruction envInstructions) computer
+    where nextComputer = execState (mapM_ evalInstruction hptInstructions) computer
 
 toHPTResult :: HPTProgram -> Computer -> R.HPTResult
-toHPTResult Env{..} Computer{..} = R.HPTResult
+toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
   { R._memory   = V.map convertNodeSet _memory
-  , R._register = Map.fromList [(envRegisterMap Bimap.!> reg, convertValue v) | (i,v) <- zip [0..] (V.toList _register), let reg = Reg i, Bimap.memberR reg envRegisterMap]
-  , R._function = Map.map convertFunctionRegs envFunctionArgMap
+  , R._register = Map.fromList [(hptRegisterMap Bimap.!> reg, convertValue v) | (i,v) <- zip [0..] (V.toList _register), let reg = Reg i, Bimap.memberR reg hptRegisterMap]
+  , R._function = Map.map convertFunctionRegs hptFunctionArgMap
 
   }
   where
     convertNodeSet :: NodeSet -> R.NodeSet
-    convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(envTagMap Bimap.!> k, V.map convertLocVal v) | (k,v) <- Map.toList a]
+    convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertLocVal v) | (k,v) <- Map.toList a]
 
     convertLocVal :: Set Int32 -> Set R.LocOrValue
     convertLocVal s = Set.map R.toLocValue s

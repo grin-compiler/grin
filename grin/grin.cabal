@@ -40,6 +40,7 @@ library
     Transformations.Substitution
     Transformations.Playground
     Transformations.Simplifying.Vectorisation
+    Transformations.Simplifying.Vectorisation2
     Transformations.Simplifying.SplitFetch
     Transformations.Simplifying.CaseSimplification
     Transformations.Simplifying.RegisterIntroduction
