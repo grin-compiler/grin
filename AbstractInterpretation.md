@@ -83,8 +83,8 @@ Conteptually the HPT analysis is done like the generic eval function was inlined
 ### Tooling improvements
 
 - Debug support for HPT IR pure
-  - log executed instructions (i.e. writer monad)
-  - debug instruction pretty printer that shows the readable variable names, simple types and node tags (i.e. `@1{name}`)
+  - [ ] log executed instructions (i.e. writer monad)
+  - [x] debug instruction pretty printer that shows the readable variable names, simple types and node tags (i.e. `@1{name}`)
 
 - Calculate GRIN statistics related to HPT performance
   - count of data constructors

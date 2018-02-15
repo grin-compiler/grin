@@ -3,14 +3,23 @@ module AbstractInterpretation.Pretty where
 
 import Data.Int
 import qualified Data.Bimap as Bimap
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import Text.PrettyPrint.ANSI.Leijen
 
 import Pretty ()
 import Grin (Name)
+import qualified Grin
 import AbstractInterpretation.IR
 import AbstractInterpretation.HPTResultNew (toLocValue)
 import AbstractInterpretation.PrettyHPT ()
+
+data IRMap
+  = IRMap
+  { irmRegisterMap  :: Map.Map Reg (Set.Set Name)
+  , irmTagMap       :: Bimap.Bimap Grin.Tag Tag
+  }
 
 printHptIr :: [Instruction] -> IO ()
 printHptIr = putDoc . pretty
@@ -42,7 +51,7 @@ instance Pretty Reg where
   pretty = prettyReg Nothing
 
 instance Pretty Mem where
-  pretty (Mem a) = green $ text "$" <> (integer $ fromIntegral a)
+  pretty (Mem a) = cyan $ text "$" <> (integer $ fromIntegral a)
 
 instance Pretty Tag where
   pretty = prettyTag Nothing
@@ -62,24 +71,24 @@ prettyName = red . text
 prettySimpleType :: Int32 -> Doc
 prettySimpleType = pretty . toLocValue
 
-prettyReg :: Maybe HPTProgram -> Reg -> Doc
-prettyReg mhpt reg@(Reg a) = regName <> (green $ text "@" <> (integer $ fromIntegral a))  where
-  regName = maybe empty (\hpt -> maybe empty prettyName $ Bimap.lookupR reg $ hptRegisterMap hpt) mhpt
+prettyReg :: Maybe IRMap -> Reg -> Doc
+prettyReg mirm reg@(Reg a) = regName <> (green $ text "@" <> (integer $ fromIntegral a)) where
+  regName = maybe empty (\irm -> maybe empty (encloseSep lbrace rbrace comma . map prettyName . Set.toList) $ Map.lookup reg $ irmRegisterMap irm) mirm
 
-prettyTag :: Maybe HPTProgram -> Tag -> Doc
-prettyTag mhpt tag@(Tag a) = parens (integer $ fromIntegral a) <> tagName where
-  tagName = maybe empty (\hpt -> pretty $ hptTagMap hpt Bimap.!> tag) mhpt
+prettyTag :: Maybe IRMap -> Tag -> Doc
+prettyTag mirm tag@(Tag a) = parens (integer $ fromIntegral a) <> tagName where
+  tagName = maybe empty (\irm -> pretty $ irmTagMap irm Bimap.!> tag) mirm
 
-prettySelector :: Maybe HPTProgram -> Selector -> Doc
-prettySelector mhpt (NodeItem tag idx) = prettyTag mhpt tag <> brackets (pretty idx)
+prettySelector :: Maybe IRMap -> Selector -> Doc
+prettySelector mirm (NodeItem tag idx) = prettyTag mirm tag <> brackets (pretty idx)
 
-prettyCondition :: Maybe HPTProgram -> Condition -> Doc
-prettyCondition mhpt = \case
-    NodeTypeExists a    -> prettyTag mhpt a
-    SimpleTypeExists a  -> prettySimpleType a <> braces (integer $ fromIntegral a)
+prettyCondition :: Maybe IRMap -> Condition -> Doc
+prettyCondition mirm = \case
+    NodeTypeExists a    -> prettyTag mirm a
+    SimpleTypeExists a  -> prettySimpleType a <> text "#" <> (integer $ fromIntegral a)
 
-prettyConstant :: Maybe HPTProgram -> Constant -> Doc
-prettyConstant mhpt = \case
+prettyConstant :: Maybe IRMap -> Constant -> Doc
+prettyConstant mirm = \case
     CSimpleType a   -> ppS a
     CHeapLocation a -> pretty a
     CNodeType tag arity -> ppT tag <> angles (pretty arity)
@@ -89,22 +98,28 @@ prettyConstant mhpt = \case
         else pretty . Mem $ fromIntegral a
       )
   where
-    ppT = prettyTag mhpt
+    ppT = prettyTag mirm
     ppS a = prettySimpleType a <> text "#" <> (integer $ fromIntegral a)
 
-prettyInstruction :: Maybe HPTProgram -> Instruction -> Doc
-prettyInstruction mhpt = \case
-    If      {..} -> keyword "if" <+> prettyCondition mhpt condition <+> keyword "in" <+> ppR srcReg <$$> indent 2 (vsep . map (prettyInstruction mhpt) $ instructions)
-    Project {..} -> keyword "project" <+> ppS srcSelector <+> ppR srcReg <+> ppR dstReg
-    Extend  {..} -> keyword "extend" <+> ppR srcReg <+> ppS dstSelector <+> ppR dstReg
-    Move    {..} -> keyword "move" <+> ppR srcReg <+> ppR dstReg
-    Fetch   {..} -> keyword "fetch" <+> ppR addressReg <+> ppR dstReg
-    Store   {..} -> keyword "store" <+> ppR srcReg <+> pretty address
-    Update  {..} -> keyword "update" <+> ppR srcReg <+> ppR addressReg
-    Set     {..} -> keyword "set" <+> ppR dstReg <+> prettyConstant mhpt constant
+prettyInstruction :: Maybe IRMap -> Instruction -> Doc
+prettyInstruction mirm = \case
+    If      {..} -> keyword "if" <+> prettyCondition mirm condition <+> keyword "in" <+> ppR srcReg <$$> indent 2 (vsep . map (prettyInstruction mirm) $ instructions)
+    Project {..} -> keyword "project" <+> ppS srcSelector <+> ppR srcReg <+> arr <+> ppR dstReg
+    Extend  {..} -> keyword "extend" <+> ppR srcReg <+> ppS dstSelector <+> arr <+> ppR dstReg
+    Move    {..} -> keyword "move" <+> ppR srcReg <+> arr <+> ppR dstReg
+    Fetch   {..} -> keyword "fetch" <+> ppR addressReg <+> arr <+> ppR dstReg
+    Store   {..} -> keyword "store" <+> ppR srcReg <+> arr <+> pretty address
+    Update  {..} -> keyword "update" <+> ppR srcReg <+> arr <+> ppR addressReg
+    Set     {..} -> keyword "set" <+> prettyConstant mirm constant <+> arr <+> ppR dstReg
   where
-    ppR = prettyReg mhpt
-    ppS = prettySelector mhpt
+    ppR = prettyReg mirm
+    ppS = prettySelector mirm
+    arr = text "-->"
 
 prettyInstructions :: Maybe HPTProgram -> [Instruction] -> Doc
-prettyInstructions mhpt = vsep . map (prettyInstruction mhpt)
+prettyInstructions mhpt = vsep . map (prettyInstruction mirm) where
+  mirm = fmap toIRMap mhpt
+  toIRMap hpt = IRMap
+    { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ hptRegisterMap hpt]
+    , irmTagMap       = hptTagMap hpt
+    }
