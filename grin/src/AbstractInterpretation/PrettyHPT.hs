@@ -63,12 +63,12 @@ instance Pretty Computer where
 
 -- HPT Result NEW
 
-instance Pretty R.LocOrValue where
+instance Pretty R.LocationOrSimpleType where
   pretty = \case
-    R.Loc l         -> cyan . int . succ $ fromIntegral l
+    R.Location l    -> cyan . int . succ $ fromIntegral l
     R.SimpleType ty -> red $ text $ show ty
 
-prettyNode :: (Tag, Vector (Set R.LocOrValue)) -> Doc
+prettyNode :: (Tag, Vector (Set R.LocationOrSimpleType)) -> Doc
 prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
 
 prettyFunction :: (Name, (R.Value, Vector R.Value)) -> Doc

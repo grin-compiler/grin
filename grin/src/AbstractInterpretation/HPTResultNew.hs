@@ -1,10 +1,12 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving #-}
 module AbstractInterpretation.HPTResultNew where
 
 import Data.Int
 import Data.Set (Set)
 import Data.Map (Map)
 import Data.Vector (Vector)
+
+import Lens.Micro.Platform
 
 import Grin (Name, Tag)
 
@@ -16,19 +18,19 @@ data SimpleType
   | T_Unit
   deriving (Eq, Ord, Show)
 
-data LocOrValue
-  = Loc         Int32
+data LocationOrSimpleType
+  = Location    Int
   | SimpleType  SimpleType
   deriving (Eq, Ord, Show)
 
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set LocOrValue))} deriving (Eq, Show)
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set LocationOrSimpleType))} deriving (Eq, Ord, Monoid, Show)
 
 data Value
   = Value
-  { _simpleTypeAndLocationSet :: Set LocOrValue
+  { _simpleTypeAndLocationSet :: Set LocationOrSimpleType
   , _nodeSet                  :: NodeSet
   }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 data HPTResult
   = HPTResult
@@ -38,7 +40,9 @@ data HPTResult
   }
   deriving (Eq, Show)
 
-toLocValue :: Int32 -> LocOrValue
+concat <$> mapM makeLenses [''NodeSet, ''Value, ''HPTResult]
+
+toLocValue :: Int32 -> LocationOrSimpleType
 toLocValue ty | ty < 0 = SimpleType $ case ty of
   -1 -> T_Unit
   -2 -> T_Int64
@@ -46,5 +50,5 @@ toLocValue ty | ty < 0 = SimpleType $ case ty of
   -4 -> T_Float
   -5 -> T_Bool
   _ -> error $ "unknown type code " ++ show ty
-toLocValue l = Loc l
+toLocValue l = Location $ fromIntegral l
 

@@ -38,91 +38,13 @@ import Grin
 import AbstractInterpretation.HPTResultNew
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
+import Reducer.LLVM.TypeGen
 
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
   BS.writeFile fname llvm
   pure llvm
-
-
-getFunctionReturnType :: HPTResult -> Grin.Name -> Type
-getFunctionReturnType hptResult@HPTResult{..} name = case Map.lookup name _function of
-  Nothing -> error $ printf "unknown function %s" name
-  Just (retValue,_) -> hptValueToType hptResult retValue
-
-getFunctionType :: HPTResult -> Grin.Name -> Type
-getFunctionType hptResult@HPTResult{..} name = case Map.lookup name _function of
-  Nothing -> error $ printf "unknown function %s" name
-  Just (retValue, argValues) -> fun (hptValueToType hptResult retValue) (map (hptValueToType hptResult) $ V.toList argValues)
- where
-  fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
-
-hptValueToType :: HPTResult -> Value -> Type
-hptValueToType hptResult Value{..} | Set.size _simpleTypeAndLocationSet == 1 && Map.null (_nodeTagMap _nodeSet) =
-  fromLocOrValue sTy where
-    [sTy] = Set.toList _simpleTypeAndLocationSet
-hptValueToType _ value = error $ printf "unsupported type - %s" (show value)
-
-fromLocOrValue :: LocOrValue -> Type
-fromLocOrValue = \case
-  SimpleType sTy  -> fromSimpleType sTy
-  ty -> error $ printf "unsupported type - %s" (show ty)
-
-fromSimpleType :: SimpleType -> Type
-fromSimpleType = \case
-  T_Int64   -> i64
-  T_Word64  -> i64
-  T_Float   -> float
-  T_Bool    -> i1
-  T_Unit    -> LLVM.void
-
-getType :: HPTResult -> Grin.Name -> Type
-getType hptResult@HPTResult{..} name = case Map.lookup name _register of
-  Nothing -> error ("unknown variable " ++ name)
-  Just value -> hptValueToType hptResult value
-  -- TODO: create Type map ; calculate once ; store in reader environment
-  {-
-    question: how to calculate from grin or hpt result?
-      ANSWER: lookup from HPT result ; function name = result type ; argument names = input type
-
-    TODO:
-      in pre passes build ; store in env
-        function type map (llvm type)
-        variable map (llvm type)
-  -}
-  {-
-  typeMap :: Map Grin.Name Type
-  typeMap = Map.fromList
-    [ ("b2" , i64)
-    , ("n13", i64)
-    , ("n18", i64)
-    , ("n28", i64)
-    , ("n29", i64)
-    , ("n30", i64)
-    , ("n31", i64)
-    , ("sum", fun i64 [i64, i64, i64])
-    , ("_prim_int_print", fun i64 [i64])
-    , ("grinMain", fun i64 [])
-    , ("upto", fun (struct [i64]) [i64, i64])
-    , ("eval", fun (struct [i64]) [struct [i64]])
-    ] where
-      struct elems = StructureType { isPacked = False, elementTypes = elems }
-      ptr ty = PointerType { pointerReferent = ty, pointerAddrSpace = AddrSpace 0}
-      fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
-  -}
-
-getTagId :: Tag -> Constant
-getTagId tag = case Map.lookup tag tagMap of
-  Nothing -> trace ("getTag - unknown tag " ++ show tag) $ Int 64 0
-  Just (ty, c) -> c
- where
-  -- TODO: create Tag map ; get as parameter ; store in reader environment
-  {-
-    question: how to calculate from grin or hpt result?
-  -}
-  tagMap :: Map Tag (Type, Constant)
-  tagMap = Map.fromList []
 
 {-
 data Val
@@ -173,20 +95,21 @@ codeGenVal = \case
   Unit        -> unit
   Lit lit     -> pure . ConstantOperand . codeGenLit $ lit
   Var name    -> do
-                  hptResult <- gets envHPTResult
-                  Map.lookup name <$> gets constantMap >>= \case
+                  hptResult <- gets _envHPTResult
+                  Map.lookup name <$> gets _constantMap >>= \case
                       -- QUESTION: what is this?
-                      Nothing -> pure $ LocalReference (getType hptResult name) (mkName name) -- TODO: lookup in constant map
+                      Nothing -> do
+                                  ty <- getVarType name
+                                  pure $ LocalReference ty (mkName name) -- TODO: lookup in constant map
                       Just operand  -> pure operand
 
   val -> error $ "codeGenVal: " ++ show val
 
 getCPatConstant :: CPat -> Constant
 getCPatConstant = \case
-  TagPat  tag   -> getTagId tag
-  LitPat  lit   -> codeGenLit lit
-  -- TODO: handle CPat
-  cpat -> error $ "unsupported case pattern " ++ show cpat
+  TagPat  tag       -> getTagId tag
+  LitPat  lit       -> codeGenLit lit
+  NodePat tag args  -> getTagId tag -- TODO
 
 getCPatName :: CPat -> String
 getCPatName = \case
@@ -196,7 +119,7 @@ getCPatName = \case
     LWord64 v -> "word_" ++ show v
     LBool v   -> "bool_" ++ show v
     LFloat v  -> error "pattern match on float is not supported"
-  cpat -> error $ "unsupported case pattern " ++ show cpat
+  NodePat tag _ -> tagName tag
  where
   tagName (Tag c name n) = printf "%s%s%d" (show c) name n
 
@@ -210,11 +133,11 @@ getCPatName = \case
 toModule :: Env -> AST.Module
 toModule Env{..} = defaultModule
   { moduleName = "basic"
-  , moduleDefinitions = envDefinitions
+  , moduleDefinitions = _envDefinitions
   }
 
 codeGen :: HPTResult -> Exp -> AST.Module
-codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResult}) . para folder where
+codeGen hptResult = toModule . flip execState (emptyEnv {_envHPTResult = hptResult}) . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     SReturnF val -> O <$> codeGenVal val
@@ -236,11 +159,12 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
         then codeGenPrimOp name args operands
         else do
           -- call to top level functions
+          (retType, argTypes) <- getFunctionType name
           pure . I $ Call
             { tailCallKind        = Just Tail
             , callingConvention   = CC.C
             , returnAttributes    = []
-            , function            = Right $ ConstantOperand $ GlobalReference (getFunctionType hptResult name) (mkName name)
+            , function            = Right $ ConstantOperand $ GlobalReference (ptr FunctionType {resultType = retType, argumentTypes = argTypes, isVarArg = False}) (mkName name)
             , arguments           = zip operands (repeat [])
             , functionAttributes  = []
             , metadata            = []
@@ -251,7 +175,7 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
       opVal <- codeGenVal val
       let switchExit  = mkName "switch.exit" -- TODO: generate unique name ; this is the next block
       rec
-        curBlockName <- gets currentBlockName
+        curBlockName <- gets _currentBlockName
         closeBlock $ Switch
               { operand0'   = opVal
               , defaultDest = switchExit -- QUESTION: do we want to catch this error?
@@ -278,7 +202,7 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
 
     DefF name args (_,body) -> do
       -- clear def local state
-      let clearDefState = modify' (\env -> env {envBasicBlocks = mempty, envInstructions = mempty, constantMap = mempty})
+      let clearDefState = modify' (\env -> env {_envBasicBlocks = mempty, _envInstructions = mempty, _constantMap = mempty})
       clearDefState
       startNewBlock (mkName $ name ++ ".entry")
       result <- body >>= getOperand
@@ -286,16 +210,17 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
         { returnOperand = Just result
         , metadata'     = []
         }
-      blocks <- gets envBasicBlocks
+      blocks <- gets _envBasicBlocks
+      (retType, argTypes) <- getFunctionType name
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
-            , parameters  = ([Parameter (getType hptResult a) (mkName a) [] | a <- args], False) -- HINT: False - no var args
-            , returnType  = getFunctionReturnType hptResult name
+            , parameters  = ([Parameter argType (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
+            , returnType  = retType
             , basicBlocks = blocks
             , callingConvention = CC.C
             }
       clearDefState
-      modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions})
+      modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions})
       O <$> unit
 
     ProgramF defs -> do
@@ -351,7 +276,7 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
         }
 
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
-external retty label argtys = modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions}) where
+external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions}) where
   def = GlobalDefinition $ functionDefaults
     { name        = label
     , linkage     = L.External

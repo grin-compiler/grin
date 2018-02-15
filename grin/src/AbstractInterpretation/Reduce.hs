@@ -139,7 +139,7 @@ toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
     convertNodeSet :: NodeSet -> R.NodeSet
     convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertLocVal v) | (k,v) <- Map.toList a]
 
-    convertLocVal :: Set Int32 -> Set R.LocOrValue
+    convertLocVal :: Set Int32 -> Set R.LocationOrSimpleType
     convertLocVal s = Set.map R.toLocValue s
 
     convertValue :: Value -> R.Value

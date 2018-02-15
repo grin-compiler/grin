@@ -1,13 +1,14 @@
-{-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards, OverloadedStrings, TemplateHaskell #-}
 
 module Reducer.LLVM.Base where
 
 import Debug.Trace
-import Text.Show.Pretty
+--import Text.Show.Pretty
 import Text.Printf
 import Control.Monad as M
 import Control.Monad.State
 import Data.Functor.Foldable as Foldable
+import Lens.Micro.Platform
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -31,32 +32,36 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 data Env
   = Env
-  { envDefinitions    :: [Definition]
-  , envBasicBlocks    :: [BasicBlock]
-  , envInstructions   :: [Named Instruction]
-  , constantMap       :: Map Grin.Name Operand
-  , currentBlockName  :: AST.Name
-  , envTempCounter    :: Int
-  , envHPTResult      :: HPTResult
+  { _envDefinitions   :: [Definition]
+  , _envBasicBlocks   :: [BasicBlock]
+  , _envInstructions  :: [Named Instruction]
+  , _constantMap      :: Map Grin.Name Operand
+  , _currentBlockName :: AST.Name
+  , _envTempCounter   :: Int
+  , _envHPTResult     :: HPTResult
+  , _envTypeMap       :: Map Value Type
   }
 
 emptyEnv = Env
-  { envDefinitions    = mempty
-  , envBasicBlocks    = mempty
-  , envInstructions   = mempty
-  , constantMap       = mempty
-  , currentBlockName  = mkName ""
-  , envTempCounter    = 0
-  , envHPTResult      = HPTResult mempty mempty mempty
+  { _envDefinitions   = mempty
+  , _envBasicBlocks   = mempty
+  , _envInstructions  = mempty
+  , _constantMap      = mempty
+  , _currentBlockName = mkName ""
+  , _envTempCounter   = 0
+  , _envHPTResult     = HPTResult mempty mempty mempty
+  , _envTypeMap       = mempty
   }
+
+concat <$> mapM makeLenses [''Env]
 
 type CG = State Env
 
 emit :: [Named Instruction] -> CG ()
-emit instructions = modify' (\env@Env{..} -> env {envInstructions = envInstructions ++ instructions})
+emit instructions = modify' (\env@Env{..} -> env {_envInstructions = _envInstructions ++ instructions})
 
 addConstant :: Grin.Name -> Operand -> CG ()
-addConstant name operand = modify' (\env@Env{..} -> env {constantMap = Map.insert name operand constantMap})
+addConstant name operand = modify' (\env@Env{..} -> env {_constantMap = Map.insert name operand _constantMap})
 
 unit :: CG Operand
 unit = pure $ ConstantOperand $ Undef VoidType
@@ -70,22 +75,22 @@ data Result
 
 -- utils
 closeBlock :: Terminator -> CG ()
-closeBlock tr = modify' (\env@Env{..} -> env {envInstructions = mempty, envBasicBlocks = envBasicBlocks ++ [BasicBlock currentBlockName envInstructions (Do tr)]})
+closeBlock tr = modify' (\env@Env{..} -> env {_envInstructions = mempty, _envBasicBlocks = _envBasicBlocks ++ [BasicBlock _currentBlockName _envInstructions (Do tr)]})
 
 startNewBlock :: AST.Name -> CG ()
-startNewBlock name = modify' (\env@Env{..} -> env {envInstructions = mempty, currentBlockName = name})
+startNewBlock name = modify' (\env@Env{..} -> env {_envInstructions = mempty, _currentBlockName = name})
 
 addBlock :: AST.Name -> CG a -> CG a
 addBlock name block = do
-  instructions <- gets envInstructions
-  curBlockName <- gets currentBlockName
+  instructions <- gets _envInstructions
+  curBlockName <- gets _currentBlockName
   startNewBlock name
   result <- block
-  modify' (\env@Env{..} -> env {envInstructions = instructions, currentBlockName = curBlockName})
+  modify' (\env@Env{..} -> env {_envInstructions = instructions, _currentBlockName = curBlockName})
   pure result
 
 uniqueTempName :: CG AST.Name
-uniqueTempName = state (\env@Env{..} -> (mkName $ printf "tmp%d" envTempCounter, env {envTempCounter = succ envTempCounter}))
+uniqueTempName = state (\env@Env{..} -> (mkName $ printf "tmp%d" _envTempCounter, env {_envTempCounter = succ _envTempCounter}))
 
 getOperand :: Result -> CG Operand
 getOperand = \case
