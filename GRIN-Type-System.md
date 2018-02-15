@@ -72,3 +72,15 @@ eval q =
                   update q w
                   pure w
 ```
+
+# Notes
+
+A builtin dependent type function should be enough for full GRIN expressivity.
+```
+prj :: Tag -> Int -> a
+```
+OR
+```
+prjNode :: {Node A, ..., Node Z} -> Tag -> Node Tag
+prjItem :: Node Tag -> Int -> a
+```
