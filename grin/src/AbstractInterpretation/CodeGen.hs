@@ -130,7 +130,7 @@ registerPrimOps = do
       float = litToSimpleType $ LFloat 0
       bool  = litToSimpleType $ LBool False
 
-  regOp "_prim_int_print" [int] unit
+  regOp "_prim_int_print" [int] int
   -- Int
   regOp "_prim_int_add"   [int, int] int
   regOp "_prim_int_sub"   [int, int] int
