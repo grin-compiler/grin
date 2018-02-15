@@ -16,7 +16,8 @@ import Optimizations
 import Pretty()
 import Transformations.AssignStoreIDs
 import Transformations.GenerateEval
-import Transformations.Simplifying.Vectorisation2
+import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
+import Transformations.Simplifying.Vectorisation
 import Transformations.BindNormalisation
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
@@ -65,7 +66,7 @@ data Transformation
   | ConstantFolding
   deriving (Enum, Eq, Ord, Show)
 
-transformation :: Maybe HPT.HPTResult -> Int -> Transformation -> Exp -> Exp
+transformation :: Maybe HPTResult -> Int -> Transformation -> Exp -> Exp
 transformation hptResult n = \case
   CaseSimplification      -> caseSimplification
   SplitFetch              -> splitFetch
@@ -227,7 +228,7 @@ postconditionCheck t = do
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  hptResult   <- use psHPTResult2
+  hptResult   <- use psHPTResult
   n           <- use psTransStep
   psExp       %= transformation hptResult n t
   psTransStep %= (+1)

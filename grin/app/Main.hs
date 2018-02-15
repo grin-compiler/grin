@@ -81,6 +81,8 @@ defaultPipeline = \case
       , PrintGrin ondullblack
       , HPT RunHPTPure
       , HPT PrintHPTResult
+      , SaveLLVM "high-level-code"
+      , JITLLVM
       , T Vectorisation
       , SaveGrin "Vectorisation"
       , T BindNormalisation
@@ -101,15 +103,12 @@ defaultPipeline = \case
       , T BindNormalisation
       , SaveGrin "RightHoistFetch"
       , PrintGrin ondullcyan
-      {-
-      -- NOTE: LLVM codegen does not require register introduction
       , T RegisterIntroduction
       , SaveGrin "RegisterIntroduction"
       , T BindNormalisation
       , SaveGrin "RegisterIntroduction"
       , PrintGrin ondullblack
-      -}
-      , SaveLLVM "code"
+      , SaveLLVM "low-level-code"
       , JITLLVM
       ]
       output
