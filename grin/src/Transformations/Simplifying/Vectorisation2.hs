@@ -24,7 +24,7 @@ type VectorisationAccumulator = (Map.Map Name Val, Exp)
 
 getVarNodeArity :: HPTResult -> Name -> Maybe Int
 getVarNodeArity hptr@HPTResult{..} name = case Map.lookup name _register of
-  Nothing -> error $ printf "getVarNodeArity - unknown variable %s in \n%s" name (show $ pretty hptr)
+  Nothing -> error $ printf "getVarNodeArity - unknown variable %s" name
   Just Value{..} -> case [1 + V.length args | args <- Map.elems . _nodeTagMap $ _nodeSet] of
     [] -> Nothing
     maxArityWithoutTag -> Just $ maximum maxArityWithoutTag
