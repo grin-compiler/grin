@@ -61,12 +61,12 @@ newMem :: CG IR.Mem
 newMem = state $ \s@HPTProgram{..} -> (IR.Mem hptMemoryCounter, s {hptMemoryCounter = succ hptMemoryCounter})
 
 addReg :: Name -> IR.Reg -> CG ()
-addReg name reg = modify' $ \s@HPTProgram{..} -> s {hptRegisterMap = Bimap.insert name reg hptRegisterMap}
+addReg name reg = modify' $ \s@HPTProgram{..} -> s {hptRegisterMap = Map.insert name reg hptRegisterMap}
 
 getReg :: Name -> CG IR.Reg
 getReg name = do
   regMap <- gets hptRegisterMap
-  case Bimap.lookup name regMap of
+  case Map.lookup name regMap of
     Nothing   -> error $ "unknown variable " ++ name
     Just reg  -> pure reg
 

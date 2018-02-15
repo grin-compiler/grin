@@ -128,11 +128,14 @@ evalHPT HPTProgram{..} = run emptyComputer where
 toHPTResult :: HPTProgram -> Computer -> R.HPTResult
 toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
   { R._memory   = V.map convertNodeSet _memory
-  , R._register = Map.fromList [(hptRegisterMap Bimap.!> reg, convertValue v) | (i,v) <- zip [0..] (V.toList _register), let reg = Reg i, Bimap.memberR reg hptRegisterMap]
+  , R._register = Map.map convertReg hptRegisterMap
   , R._function = Map.map convertFunctionRegs hptFunctionArgMap
 
   }
   where
+    convertReg :: Reg -> R.Value
+    convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
+
     convertNodeSet :: NodeSet -> R.NodeSet
     convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertLocVal v) | (k,v) <- Map.toList a]
 

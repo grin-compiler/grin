@@ -189,7 +189,7 @@ printHPT = do
         putStrLn . show . HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
         putStrLn $ printf "memory size    %d" $ HPT.hptMemoryCounter a
         putStrLn $ printf "register count %d" $ HPT.hptRegisterCounter a
-        putStrLn $ printf "variable count %d" $ Bimap.size $ HPT.hptRegisterMap a
+        putStrLn $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
   maybe (pure ()) (liftIO . printHPT) hptProgram
 
 runHPTPure :: PipelineM ()

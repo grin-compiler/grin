@@ -76,7 +76,7 @@ data HPTProgram
   = HPTProgram
   { hptMemoryCounter    :: Word32
   , hptRegisterCounter  :: Word32
-  , hptRegisterMap      :: Bimap.Bimap Name Reg
+  , hptRegisterMap      :: Map.Map Name Reg
   , hptInstructions     :: [Instruction]
   , hptFunctionArgMap   :: Map.Map Name (Reg, [Reg])
   , hptTagMap           :: Bimap.Bimap Grin.Tag Tag
@@ -86,7 +86,7 @@ data HPTProgram
 emptyHPTProgram = HPTProgram
   { hptMemoryCounter    = 0
   , hptRegisterCounter  = 0
-  , hptRegisterMap      = Bimap.empty
+  , hptRegisterMap      = Map.empty
   , hptInstructions     = []
   , hptFunctionArgMap   = Map.empty
   , hptTagMap           = Bimap.empty
