@@ -26,10 +26,10 @@ spec = do
 
 genPipeline :: Gen [Pipeline]
 genPipeline = do
-  ((HPT RunHPTPure):) <$> (T <$$> transformations)
+  ([HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
 
 shrinkPipeline :: [Pipeline] -> [[Pipeline]]
-shrinkPipeline (hpt:rest) = (hpt:) <$> shrinkList (const []) rest
+shrinkPipeline (chpt:hpt:rest) = ([chpt, hpt]++) <$> shrinkList (const []) rest
 
 transformations :: Gen [Transformation]
 transformations = do
