@@ -12,7 +12,7 @@ import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
 
-keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "True", "False"]
+keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "#True", "#False"]
 
 type Parser = Parsec Void String
 
@@ -105,7 +105,7 @@ literal :: Parser Lit
 literal = LInt64 . fromIntegral <$> signedInteger <|>
           LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u') <|>
           LFloat . realToFrac <$> signedFloat <|>
-          LBool <$> (True <$ kw "True" <|> False <$ kw "False")
+          LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")
 
 grinModule :: Parser [Exp]
 grinModule = some def <* sc <* eof

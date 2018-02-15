@@ -61,7 +61,7 @@ instance Pretty Lit where
     LInt64 a  -> integer $ fromIntegral a
     LWord64 a -> integer (fromIntegral a) <> text "u"
     LFloat a  -> float a
-    LBool a   -> text (show a)
+    LBool a   -> text "#" <> text (show a)
 
 instance Pretty CPat where
   pretty = \case
