@@ -215,6 +215,8 @@ insertVar name val (Env vars funs adts) = Env (Map.singleton name (typeOf val) <
 insertVarT :: Name -> Type -> Env -> Env
 insertVarT name ttype (Env vars funs adts) = Env (Map.singleton name ttype <> vars) funs adts
 
+insertVars :: [(Name, Type)] -> Env -> Env
+insertVars vars' (Env vars funs adts) = Env ((Map.fromList vars') <> vars) funs adts
 
 data Store = Store (Map Loc (TVal, Type))
   deriving (Eq, Show)
@@ -369,6 +371,9 @@ newVar t k = do
   CMR.local (ctxEnv %~ insertVarT name t) $ do
     k name
 
+withVars :: [(String, Type)] -> GoalM a -> GoalM a
+withVars vars = CMR.local (ctxEnv %~ insertVars vars)
+
 type GBool = Type
 
 boolT :: GBool
@@ -467,6 +472,11 @@ definedAdt = do
   (Env funs vars adts) <- view ctxEnv
   melements $ Set.toList adts
 
+retry :: Int -> GoalM a -> GoalM a
+retry n _ | n < 0 = mzero
+retry 0 g = g
+retry n g = g `mplus` retry (n-1) g
+
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
 -- TODO: Use size parameter to limit the generation of programs.
@@ -479,8 +489,30 @@ gExp t = \case
          newVar t' $ \n -> do -- TODO: Gen LPat
            rest <- solve (Exp [] t)
            pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
+    , do t'   <- definedAdt
+         val  <- gValue t'
+         alts <- gAlts val t' t
+         pure $ TECase val $ NonEmpty alts
     ]
   es -> mzero
+
+-- TODO: Effects
+gAlts :: TVal -> Type -> Type -> GoalM [TAlt]
+gAlts val typeOfVal typeOfExp = case typeOfVal of
+  TTag name params -> do
+    names <- newNames (length params)
+    pure . TAlt (NodePat (Tag C name (length params)) names)
+      <$> withVars (names `zip` params) (gExp typeOfExp [])
+  TUnion types -> fmap concat . forM (Set.toList types) $ \typOfV ->
+    gAlts val typOfV typeOfExp
+  _ -> mzero -- Simple types has many alternatives
+
+{-
+TECase TVal (NonEmptyList TAlt)
+
+data TAlt = TAlt CPat TExp
+  deriving (Generic, Show)
+-}
 
 gProg :: GoalM TProg
 gProg =
@@ -502,7 +534,7 @@ withADTs n g = do
     combine :: (GoalM a -> GoalM a) -> Int -> GoalM (GoalM a -> GoalM a)
     combine k _ = do
       x <- adt
-      return ((CMR.local ((ctxEnv . adtsL) %~ (Set.union (Set.singleton x)))) . k)
+      return (k . (CMR.local ((ctxEnv . adtsL) %~ (Set.union (Set.singleton x)))))
 
 class Solve t where
   solve' :: Goal -> GoalM t
