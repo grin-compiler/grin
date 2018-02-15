@@ -182,9 +182,9 @@ instance Arbitrary TName where
 -- | Increase the size parameter until the generator succeds.
 suchThatIncreases :: Gen a -> (a -> Bool) -> Gen a
 suchThatIncreases g p =
-  flip loopM 1 $ \s -> do
-    resize s
-      $ fmap (maybe (Left (s+1)) Right)
+  resize 1 $ flip loopM () $ \() -> do
+    scale (+1)
+      $ fmap (maybe (Left ()) Right)
       $ suchThatMaybe g p
 
 hiragana :: Gen String
@@ -353,7 +353,7 @@ newName :: GoalM String
 newName = do
   (Env vars funs adts) <- view _1
   let names = Map.keys vars <> Map.keys funs <> (concatMap tagNames $ Set.toList adts)
-  gen $ (unTName <$> arbitrary) `suchThatIncreases` (`notElem` names)
+  gen $ ((unTName <$> arbitrary) `suchThatIncreases` (`notElem` names))
 
 newNames :: Int -> GoalM [String]
 newNames = go [] where
