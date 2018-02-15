@@ -6,7 +6,7 @@ module Reducer.LLVM.CodeGen
   ) where
 
 import Debug.Trace
-import Text.Show.Pretty
+import Text.Show.Pretty hiding (Value)
 import Text.Printf
 import Control.Monad as M
 import Control.Monad.State
@@ -14,9 +14,12 @@ import Data.Functor.Foldable as Foldable
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
+import qualified Data.Vector as V
 
 import LLVM.AST hiding (callingConvention)
-import LLVM.AST.Type
+import LLVM.AST.Type as LLVM
 import LLVM.AST.AddrSpace
 import LLVM.AST.Constant as C hiding (Add, ICmp)
 import LLVM.AST.IntegerPredicate
@@ -43,12 +46,41 @@ toLLVM fname mod = withContext $ \ctx -> do
   pure llvm
 
 
+getFunctionReturnType :: HPTResult -> Grin.Name -> Type
+getFunctionReturnType hptResult@HPTResult{..} name = case Map.lookup name _function of
+  Nothing -> error $ printf "unknown function %s" name
+  Just (retValue,_) -> hptValueToType hptResult retValue
 
-getType :: Grin.Name -> Type
-getType name = case Map.lookup name typeMap of
-  Nothing -> trace ("getType - unknown variable " ++ name) $ PointerType i64 (AddrSpace 0)
-  Just ty -> ty
+getFunctionType :: HPTResult -> Grin.Name -> Type
+getFunctionType hptResult@HPTResult{..} name = case Map.lookup name _function of
+  Nothing -> error $ printf "unknown function %s" name
+  Just (retValue, argValues) -> fun (hptValueToType hptResult retValue) (map (hptValueToType hptResult) $ V.toList argValues)
  where
+  fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
+
+hptValueToType :: HPTResult -> Value -> Type
+hptValueToType hptResult Value{..} | Set.size _simpleTypeAndLocationSet == 1 && Map.null (_nodeTagMap _nodeSet) =
+  fromLocOrValue sTy where
+    [sTy] = Set.toList _simpleTypeAndLocationSet
+hptValueToType _ value = error $ printf "unsupported type - %s" (show value)
+
+fromLocOrValue :: LocOrValue -> Type
+fromLocOrValue = \case
+  SimpleType sTy  -> fromSimpleType sTy
+  ty -> error $ printf "unsupported type - %s" (show ty)
+
+fromSimpleType :: SimpleType -> Type
+fromSimpleType = \case
+  T_Int64   -> i64
+  T_Word64  -> i64
+  T_Float   -> float
+  T_Bool    -> i1
+  T_Unit    -> LLVM.void
+
+getType :: HPTResult -> Grin.Name -> Type
+getType hptResult@HPTResult{..} name = case Map.lookup name _register of
+  Nothing -> error ("unknown variable " ++ name)
+  Just value -> hptValueToType hptResult value
   -- TODO: create Type map ; calculate once ; store in reader environment
   {-
     question: how to calculate from grin or hpt result?
@@ -59,6 +91,7 @@ getType name = case Map.lookup name typeMap of
         function type map (llvm type)
         variable map (llvm type)
   -}
+  {-
   typeMap :: Map Grin.Name Type
   typeMap = Map.fromList
     [ ("b2" , i64)
@@ -77,7 +110,7 @@ getType name = case Map.lookup name typeMap of
       struct elems = StructureType { isPacked = False, elementTypes = elems }
       ptr ty = PointerType { pointerReferent = ty, pointerAddrSpace = AddrSpace 0}
       fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
-
+  -}
 
 getTagId :: Tag -> Constant
 getTagId tag = case Map.lookup tag tagMap of
@@ -139,9 +172,11 @@ codeGenVal = \case
   ValTag tag  -> pure $ ConstantOperand $ getTagId tag
   Unit        -> unit
   Lit lit     -> pure . ConstantOperand . codeGenLit $ lit
-  Var name    -> Map.lookup name <$> gets constantMap >>= \case
+  Var name    -> do
+                  hptResult <- gets envHPTResult
+                  Map.lookup name <$> gets constantMap >>= \case
                       -- QUESTION: what is this?
-                      Nothing -> pure $ LocalReference (getType name) (mkName name) -- TODO: lookup in constant map
+                      Nothing -> pure $ LocalReference (getType hptResult name) (mkName name) -- TODO: lookup in constant map
                       Just operand  -> pure operand
 
   val -> error $ "codeGenVal: " ++ show val
@@ -205,7 +240,7 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
             { tailCallKind        = Just Tail
             , callingConvention   = CC.C
             , returnAttributes    = []
-            , function            = Right $ ConstantOperand $ GlobalReference (getType name) (mkName name)
+            , function            = Right $ ConstantOperand $ GlobalReference (getFunctionType hptResult name) (mkName name)
             , arguments           = zip operands (repeat [])
             , functionAttributes  = []
             , metadata            = []
@@ -254,8 +289,8 @@ codeGen hptResult = toModule . flip execState (emptyEnv {envHPTResult = hptResul
       blocks <- gets envBasicBlocks
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
-            , parameters  = ([Parameter (getType a) (mkName a) [] | a <- args], False) -- HINT: False - no var args
-            , returnType  = i64 -- getType name -- TODO: get ret type
+            , parameters  = ([Parameter (getType hptResult a) (mkName a) [] | a <- args], False) -- HINT: False - no var args
+            , returnType  = getFunctionReturnType hptResult name
             , basicBlocks = blocks
             , callingConvention = CC.C
             }
