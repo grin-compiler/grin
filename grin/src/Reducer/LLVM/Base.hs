@@ -13,7 +13,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Grin
-import AbstractInterpretation.HPTResult (HPTResult(..), emptyComputer)
+import AbstractInterpretation.HPTResultNew
 
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type
@@ -47,7 +47,7 @@ emptyEnv = Env
   , constantMap       = mempty
   , currentBlockName  = mkName ""
   , envTempCounter    = 0
-  , envHPTResult      = emptyComputer
+  , envHPTResult      = HPTResult mempty mempty mempty
   }
 
 type CG = State Env

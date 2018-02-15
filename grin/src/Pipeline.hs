@@ -251,7 +251,7 @@ printGrinM color = do
 jitLLVM :: PipelineM ()
 jitLLVM = do
   e <- use psExp
-  Just hptResult <- use psHPTResult
+  Just hptResult <- use psHPTResult2
   liftIO $ do
     val <- JITLLVM.eagerJit (CGLLVM.codeGen hptResult e) "grinMain"
     print $ pretty val
@@ -276,7 +276,7 @@ saveLLVM :: FilePath -> PipelineM ()
 saveLLVM fname' = do
   e <- use psExp
   n <- use psTransStep
-  Just hptResult <- use psHPTResult
+  Just hptResult <- use psHPTResult2
   o <- view poOutputDir
   let fname = o </> concat [fname',".",show n]
       code = CGLLVM.codeGen hptResult e

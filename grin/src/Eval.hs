@@ -8,8 +8,8 @@ import qualified Reducer.ST
 import qualified Reducer.Pure
 import qualified Reducer.LLVM.JIT as LLVM
 import qualified Reducer.LLVM.CodeGen as LLVM
-import qualified AbstractInterpretation.AbstractRunGrin as Abstract
-import Transformations.AssignStoreIDs (assignStoreIDs)
+import qualified AbstractInterpretation.CodeGen as HPT
+import qualified AbstractInterpretation.Reduce as HPT
 
 data Reducer
   = PureReducer
@@ -27,7 +27,8 @@ eval' reducer fname = do
         PureReducer -> pure $ Reducer.Pure.reduceFun e "grinMain"
         STReducer   -> pure $ Reducer.ST.reduceFun e "grinMain"
         LLVMReducer -> LLVM.eagerJit (LLVM.codeGen hptResult (Program e)) "grinMain" where
-          (result, hptResult) = Abstract.abstractRun (assignStoreIDs $ Program e) "grinMain"
+          hptResult = HPT.toHPTResult hptProgram $ HPT.evalHPT hptProgram
+          hptProgram = HPT.codeGen (Program e)
 
 evalProgram :: Reducer -> Program -> Val
 evalProgram reducer (Program defs) =

@@ -32,7 +32,7 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
 import Grin
-import AbstractInterpretation.HPTResult (HPTResult(..), emptyComputer)
+import AbstractInterpretation.HPTResultNew
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
 
@@ -42,83 +42,6 @@ toLLVM fname mod = withContext $ \ctx -> do
   BS.writeFile fname llvm
   pure llvm
 
-{-
-Heap
-    1      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]}
-    2      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]}
-    3      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fupto[{1},{2}]}
-    4      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fsum[{3}]}
-    5      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]}
-    6      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fupto[{5},{2}]}
-Env
-    a      -> {1,5}
-    ax'    -> {T_Int64}
-    b      -> {2}
-    b'     -> {T_Bool}
-    c      -> {3}
-    l      -> {3,6}
-    l2     -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fsum[{3}]
-              ,Fupto[{1,5},{2}]}
-    m      -> {1,5}
-    m'     -> {T_Int64}
-    m1     -> {5}
-    n      -> {2}
-    n'     -> {T_Int64}
-    p      -> {6}
-    q      -> {1,2,3,4,5,6}
-    r'     -> {T_Int64}
-    s'     -> {T_Int64}
-    t1     -> {1}
-    t2     -> {2}
-    t3     -> {3}
-    t4     -> {4}
-    v      -> {CCons[{1,5},{6}]
-              ,CInt[{T_Int64}]
-              ,CNil[]
-              ,Fsum[{3}]
-              ,Fupto[{1,5},{2}]}
-    w      -> {CCons[{1,5},{6}]
-              ,CNil[]}
-    x      -> {1,5}
-    x'     -> {T_Int64}
-    x'1    -> {T_Int64}
-    xs     -> {6}
-    y      -> {1,5}
-    ys     -> {6}
-    z      -> {CInt[{T_Int64}]}
-
-Function
-    eval :: {1,2,3,4,5,6}
-         -> {CCons[{1,5},{6}]
-            ,CInt[{T_Int64}]
-            ,CNil[]
-            ,Fsum[{3}]
-            ,Fupto[{1,5},{2}]}
-    grinMain :: {T_Unit}
-    sum :: {3,6}
-        -> {CInt[{T_Int64}]}
-    upto :: {1,5}
-         -> {2}
-         -> {CCons[{1,5},{6}],CNil[]}
--}
 
 
 getType :: Grin.Name -> Type
@@ -227,6 +150,7 @@ getCPatConstant :: CPat -> Constant
 getCPatConstant = \case
   TagPat  tag   -> getTagId tag
   LitPat  lit   -> codeGenLit lit
+  -- TODO: handle CPat
   cpat -> error $ "unsupported case pattern " ++ show cpat
 
 getCPatName :: CPat -> String
