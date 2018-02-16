@@ -133,7 +133,7 @@ toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
 
   }
   where
-    convertReg :: Reg -> R.Value
+    convertReg :: Reg -> R.TypeSet
     convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
 
     convertNodeSet :: NodeSet -> R.NodeSet
@@ -142,8 +142,8 @@ toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
     convertLocVal :: Set Int32 -> Set R.LocationOrSimpleType
     convertLocVal s = Set.map R.toLocValue s
 
-    convertValue :: Value -> R.Value
-    convertValue (Value ty ns) = R.Value (convertLocVal ty) (convertNodeSet ns)
+    convertValue :: Value -> R.TypeSet
+    convertValue (Value ty ns) = R.TypeSet (convertLocVal ty) (convertNodeSet ns)
 
-    convertFunctionRegs :: (Reg, [Reg]) -> (R.Value, Vector R.Value)
+    convertFunctionRegs :: (Reg, [Reg]) -> (R.TypeSet, Vector R.TypeSet)
     convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])

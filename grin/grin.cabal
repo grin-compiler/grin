@@ -28,6 +28,7 @@ library
     Reducer.Pure
     Reducer.ST
     Reducer.LLVM.Base
+    Reducer.LLVM.InferType
     Reducer.LLVM.TypeGen
     Reducer.LLVM.CodeGen
     Reducer.LLVM.PrimOps

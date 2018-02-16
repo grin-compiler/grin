@@ -3,8 +3,11 @@ module AbstractInterpretation.HPTResultNew where
 
 import Data.Int
 import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Vector (Vector)
+import qualified Data.Vector as V
 
 import Lens.Micro.Platform
 
@@ -23,24 +26,44 @@ data LocationOrSimpleType
   | SimpleType  SimpleType
   deriving (Eq, Ord, Show)
 
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set LocationOrSimpleType))} deriving (Eq, Ord, Monoid, Show)
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set LocationOrSimpleType))} deriving (Eq, Ord, Show)
 
-data Value
-  = Value
+data TypeSet
+  = TypeSet
   { _simpleTypeAndLocationSet :: Set LocationOrSimpleType
   , _nodeSet                  :: NodeSet
   }
   deriving (Eq, Ord, Show)
 
+instance Monoid NodeSet where
+  mempty  = NodeSet mempty
+  mappend = unionNodeSet
+
+instance Monoid TypeSet where
+  mempty  = TypeSet mempty mempty
+  mappend = unionTypeSet
+
+unionNodeSet :: NodeSet -> NodeSet -> NodeSet
+unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y where
+  unionNodeData a b
+    | V.length a == V.length b = V.zipWith Set.union a b
+    | otherwise = error $ "node arity mismatch " ++ show (V.length a) ++ " =/= " ++ show (V.length b)
+
+unionTypeSet :: TypeSet -> TypeSet -> TypeSet
+unionTypeSet a b = TypeSet
+  { _simpleTypeAndLocationSet = Set.union (_simpleTypeAndLocationSet a) (_simpleTypeAndLocationSet b)
+  , _nodeSet                  = unionNodeSet (_nodeSet a) (_nodeSet b)
+  }
+
 data HPTResult
   = HPTResult
   { _memory   :: Vector NodeSet
-  , _register :: Map Name Value
-  , _function :: Map Name (Value, Vector Value)
+  , _register :: Map Name TypeSet
+  , _function :: Map Name (TypeSet, Vector TypeSet)
   }
   deriving (Eq, Show)
 
-concat <$> mapM makeLenses [''NodeSet, ''Value, ''HPTResult]
+concat <$> mapM makeLenses [''NodeSet, ''TypeSet, ''HPTResult]
 
 toLocValue :: Int32 -> LocationOrSimpleType
 toLocValue ty | ty < 0 = SimpleType $ case ty of

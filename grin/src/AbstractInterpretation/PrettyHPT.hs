@@ -71,14 +71,14 @@ instance Pretty R.LocationOrSimpleType where
 prettyNode :: (Tag, Vector (Set R.LocationOrSimpleType)) -> Doc
 prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
 
-prettyFunction :: (Name, (R.Value, Vector R.Value)) -> Doc
+prettyFunction :: (Name, (R.TypeSet, Vector R.TypeSet)) -> Doc
 prettyFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 instance Pretty R.NodeSet where
   pretty (R.NodeSet m) = encloseSep lbrace rbrace comma (map prettyNode $ Map.toList m)
 
-instance Pretty R.Value where
-  pretty (R.Value ty (R.NodeSet ns)) = encloseSep lbrace rbrace comma (map prettyNode (Map.toList ns) ++ map pretty (Set.toList ty))
+instance Pretty R.TypeSet where
+  pretty (R.TypeSet ty (R.NodeSet ns)) = encloseSep lbrace rbrace comma (map prettyNode (Map.toList ns) ++ map pretty (Set.toList ty))
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep

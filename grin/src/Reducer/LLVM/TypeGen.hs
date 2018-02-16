@@ -34,6 +34,25 @@ typeGenSimpleType = \case
   T_Unit    -> LLVM.void
 
 {-
+  simple type, node, location, tagged union
+  possible conversions
+    OK - simple type + node
+          simple type --> node: val + build function
+          simple type <-- node: lpat + project function
+
+    NO - simple type + location
+    NO - simple type + tagged union
+
+    OK - node + location
+          location --> node: val + build function
+          location <-- node: lpat + project function
+    OK - node + tagged union
+          node --> tagged union: 
+
+    OK - location + tagged union
+-}
+
+{-
       modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions})
 
       TypeDefinition (UnName 0) (
@@ -45,8 +64,22 @@ typeGenSimpleType = \case
       TypeDefinition (UnName 1) Nothing,
 -}
 
+{-
+  slim = fat
+  node layout = {tag + data con1 + ... + data conN}
+  prj function:
+    for each NodeSet have an index function/map: tag -> Int
+    NodeSet -> (Type, Map Int (Value, Type))
+    OR
+    NodeSet -> (Type, Map Int Value) ; fat node type / conDataN type
+
+  TODO:
+    simple type monomorph check
+    node item monomorph check
+-}
+
 -- HINT: does hash consing
-typeGenValue :: Value -> CG Type
+typeGenValue :: TypeSet -> CG Type
 typeGenValue value = gets _envTypeMap >>= \tm -> case Map.lookup value tm of
   Just t  -> pure t
   -- single simple type e.g. T_Int64
@@ -56,15 +89,16 @@ typeGenValue value = gets _envTypeMap >>= \tm -> case Map.lookup value tm of
   _ | [Location loc] <- Set.elems (value^.simpleTypeAndLocationSet)
     , Map.null (value^.nodeSet^.nodeTagMap) -> do
         nodeSet <- use $ envHPTResult.memory.ix loc
-        t <- typeGenValue $ Value mempty nodeSet
+        t <- typeGenValue $ TypeSet mempty nodeSet
         pure $ ptr t
   -- single node with single items e.g. {CInt[{T_Int64}]}
   _ | Set.null (value^.simpleTypeAndLocationSet)
     , [(tag, items)] <- Map.toList (value^.nodeSet^.nodeTagMap)
     , all (\s -> 1 == Set.size s) items -> do
-        itemTypes <- sequence [typeGenValue (Value i mempty) | i <- V.toList items]
+        itemTypes <- sequence [typeGenValue (TypeSet i mempty) | i <- V.toList items]
         let tagType = i64 -- TODO
         pure $ StructureType { isPacked = False, elementTypes = tagType : itemTypes }
+{-
   -- multiple nodes with single items e.g. {CInt[{T_Int64}], Fadd[{1},{2}]}
   _ | Set.null (value^.simpleTypeAndLocationSet)
     , not $ Map.null (value^.nodeSet^.nodeTagMap) -> do
@@ -82,6 +116,7 @@ typeGenValue value = gets _envTypeMap >>= \tm -> case Map.lookup value tm of
         nodeSet <-  mconcat <$> sequence [use (envHPTResult.memory.ix loc) | Location loc <- Set.elems (value^.simpleTypeAndLocationSet)]
         t <- typeGenValue $ Value mempty nodeSet
         pure $ ptr t
+-}
   _ -> fail $ printf "unsupported type: %s" (show $ pretty value)
 
 getVarType :: Grin.Name -> CG Type

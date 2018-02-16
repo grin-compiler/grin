@@ -39,6 +39,7 @@ import AbstractInterpretation.HPTResultNew
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
 import Reducer.LLVM.TypeGen
+import Reducer.LLVM.InferType
 
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
@@ -136,19 +137,31 @@ toModule Env{..} = defaultModule
   , moduleDefinitions = _envDefinitions
   }
 
+{-
+  type of:
+    ok - SApp        Name [SimpleVal]
+    ok - SReturn     Val
+    ?? - SStore      Val
+    ?? - SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
+    ok - SUpdate     Name Val
+-}
 codeGen :: HPTResult -> Exp -> AST.Module
 codeGen hptResult = toModule . flip execState (emptyEnv {_envHPTResult = hptResult}) . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
-    SReturnF val -> O <$> codeGenVal val
+    SReturnF val -> O <$> codeGenVal val <*> typeOfVal val
     SBlockF a -> snd $ a
+    {-
+    EBindF (SStore{}, sexp) (Var name) (_, exp) -> do
+      error "TODO"
+    -}
     EBindF (_,sexp) pat (_,exp) -> do
       sexp >>= \case
         I instruction -> case pat of
           Var name -> emit [(mkName name) := instruction]
           -- TODO: node binding
           _ -> emit [Do instruction]
-        O operand -> case pat of
+        O operand _ -> case pat of
           Var name -> addConstant name operand
           _ -> pure () -- TODO: perform binding
       exp
@@ -186,6 +199,10 @@ codeGen hptResult = toModule . flip execState (emptyEnv {_envHPTResult = hptResu
           let altBlockName  = mkName ("switch." ++ getCPatName cpat) -- TODO: generate unique names
               altCPatVal    = getCPatConstant cpat
           addBlock altBlockName $ do
+            case cpat of
+              NodePat tags args -> forM_ args $ \argName -> do
+                emit [(mkName argName) := AST.ExtractValue {aggregate = opVal, indices' = [0], metadata = []}] -- TODO
+              _ -> pure ()
             result <- altBody
             resultOp <- getOperand result
             closeBlock $ Br
@@ -221,12 +238,12 @@ codeGen hptResult = toModule . flip execState (emptyEnv {_envHPTResult = hptResu
             }
       clearDefState
       modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions})
-      O <$> unit
+      O <$> unit <*> pure mempty
 
     ProgramF defs -> do
       -- register prim fun lib
       registerPrimFunLib
-      sequence_ (map snd defs) >> O <$> unit
+      sequence_ (map snd defs) >> O <$> unit <*> pure mempty
 
     SStoreF val -> do
       -- TODO: allocate memory; calculate types properly

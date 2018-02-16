@@ -39,7 +39,7 @@ data Env
   , _currentBlockName :: AST.Name
   , _envTempCounter   :: Int
   , _envHPTResult     :: HPTResult
-  , _envTypeMap       :: Map Value Type
+  , _envTypeMap       :: Map TypeSet Type
   }
 
 emptyEnv = Env
@@ -71,7 +71,7 @@ undef = ConstantOperand . Undef
 
 data Result
   = I Instruction
-  | O Operand
+  | O Operand TypeSet
 
 -- utils
 closeBlock :: Terminator -> CG ()
@@ -94,7 +94,7 @@ uniqueTempName = state (\env@Env{..} -> (mkName $ printf "tmp%d" _envTempCounter
 
 getOperand :: Result -> CG Operand
 getOperand = \case
-  O a -> pure a
+  O a _ -> pure a
   I i -> do
           tmp <- uniqueTempName
           emit [tmp := i]
