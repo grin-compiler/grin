@@ -161,21 +161,23 @@ makeLenses ''PState
 makeLenses ''PipelineOpts
 
 pipelineStep :: Pipeline -> PipelineM ()
-pipelineStep = \case
-  HPT hptStep -> case hptStep of
-    CompileHPT      -> compileHPT
-    PrintHPT        -> printHPT
-    RunHPTPure      -> runHPTPure
-    PrintHPTResult  -> printHPTResult
-  T t             -> transformationM t
-  TagInfo         -> tagInfo
-  PrintGrin d     -> printGrinM d
-  PureEval        -> pureEval
-  JITLLVM         -> jitLLVM
-  SaveLLVM path   -> saveLLVM path
-  SaveGrin path   -> saveGrin path
-  PrintAST        -> printAST
-  DebugTransformation t -> debugTransformation t
+pipelineStep p = do
+  liftIO $ putStrLn $ "Pipeline: " ++ show p
+  case p of
+    HPT hptStep -> case hptStep of
+      CompileHPT      -> compileHPT
+      PrintHPT        -> printHPT
+      RunHPTPure      -> runHPTPure
+      PrintHPTResult  -> printHPTResult
+    T t             -> transformationM t
+    TagInfo         -> tagInfo
+    PrintGrin d     -> printGrinM d
+    PureEval        -> pureEval
+    JITLLVM         -> jitLLVM
+    SaveLLVM path   -> saveLLVM path
+    SaveGrin path   -> saveGrin path
+    PrintAST        -> printAST
+    DebugTransformation t -> debugTransformation t
 
 compileHPT :: PipelineM ()
 compileHPT = do
@@ -303,6 +305,7 @@ check = do
   liftIO $ putStrLn $ unwords ["Non unique names:", show nonUnique]
   let nonDefined = nonDefinedNames e
   liftIO . putStrLn $ unwords ["Non defined names:", show nonDefined]
+
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
