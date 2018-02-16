@@ -434,6 +434,7 @@ gSExp = \case
     [ do (funName, paramTypes) <- gPureFunction t
          TSApp (TName funName) <$> forM paramTypes gSimpleVal
     , TSReturn <$> solve (GVal t)
+--    , TSBlock <$> gExp t [] -- TODO: Resize
     ]
 
   NewLoc t      -> TSStore <$> solve (GVal t) -- TODO: Add a block
@@ -489,7 +490,7 @@ gExp t = \case
          newVar t' $ \n -> do -- TODO: Gen LPat
            rest <- solve (Exp [] t)
            pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
-    , do t'   <- definedAdt
+    , do t'   <- moneof [simpleType, definedAdt]
          val  <- gValue t'
          alts <- gAlts val t' t
          pure $ TECase val $ NonEmpty alts
@@ -505,7 +506,10 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
       <$> withVars (names `zip` params) (gExp typeOfExp [])
   TUnion types -> fmap concat . forM (Set.toList types) $ \typOfV ->
     gAlts val typOfV typeOfExp
-  _ -> mzero -- Simple types has many alternatives
+  _ -> case val of
+        TSimpleVal (TLit lit) -> do
+          pure . TAlt (LitPat lit) <$> gExp typeOfExp []
+        _ -> mzero
 
 {-
 TECase TVal (NonEmptyList TAlt)
