@@ -20,4 +20,4 @@ flags:
 build:
   test-arguments:
     additional-args:
-      - "--seed=123"
+      - "--seed=11010"
