@@ -99,11 +99,11 @@ Due to the disjoint property of the GRIN values, they can be represented as tagg
 
 Beside node types, type sets must have tags to mark their current content.
 The type set tags can be constructed the following way:
-  - `{simple type}` - singleton set, not tag is needed
+  - `{simple type}` - singleton set, no tag needed
   - `{node+}` - node tags can be reused
-  - `{location+} ` - location values are raw pointers, the abstract location index can be used as the tag;
+  - `{location+} ` - location values are raw pointers, the abstract location index can be used as tag;
     location as tagged union value `{location, pointer}`
-  - `{location} ` - singleton set, not tag is needed
+  - `{location} ` - singleton set, no tag is needed
 
 ## Operations
 
