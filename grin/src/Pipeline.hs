@@ -50,6 +50,7 @@ import Lens.Micro.TH
 import Lens.Micro.Mtl
 import Data.Set
 import System.FilePath
+import Control.DeepSeq
 
 
 type RenameVariablesMap = Map String String
@@ -66,11 +67,11 @@ data Transformation
   | ConstantFolding
   deriving (Enum, Eq, Ord, Show)
 
-transformation :: Maybe HPTResult -> Int -> Transformation -> Exp -> Exp
+transformation :: Maybe HPT.HPTResult -> Int -> Transformation -> Exp -> Exp
 transformation hptResult n = \case
   CaseSimplification      -> caseSimplification
   SplitFetch              -> splitFetch
-  Vectorisation           -> vectorisation (fromJust hptResult)
+  Vectorisation           -> Vectorisation2.vectorisation (fromJust hptResult)
   RegisterIntroduction    -> registerIntroductionI n
   BindNormalisation       -> bindNormalisation
   RightHoistFetch         -> RHF.rightHoistFetch
@@ -93,7 +94,7 @@ postcondition :: Transformation -> [Check]
 postcondition = \case
   CaseSimplification -> []
   SplitFetch -> []
-  Vectorisation -> [OnlyExplicitNodes]
+  Vectorisation -> []
   RegisterIntroduction -> []
   BindNormalisation -> []
   RightHoistFetch -> []
@@ -179,6 +180,12 @@ pipelineStep p = do
     PrintAST        -> printAST
     DebugTransformation t -> debugTransformation t
 
+  -- Strictness
+  when False $ do
+    grin <- use psExp
+    () <- pure $ rnf grin
+    pure ()
+
 compileHPT :: PipelineM ()
 compileHPT = do
   grin <- use psExp
@@ -203,10 +210,6 @@ runHPTPure = do
   psHPTResult2 .= Just result
   liftIO $ putStrLn . show . pretty $ result
 
-  grin <- use psExp
-  let (_, result) = abstractRun (assignStoreIDs grin) "grinMain"
-  psHPTResult .= Just result
-
 printHPTResult :: PipelineM ()
 printHPTResult = do
   hptResult <- use psHPTResult
@@ -230,7 +233,7 @@ postconditionCheck t = do
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  hptResult   <- use psHPTResult
+  hptResult   <- use psHPTResult2
   n           <- use psTransStep
   psExp       %= transformation hptResult n t
   psTransStep %= (+1)
@@ -305,7 +308,6 @@ check = do
   liftIO $ putStrLn $ unwords ["Non unique names:", show nonUnique]
   let nonDefined = nonDefinedNames e
   liftIO . putStrLn $ unwords ["Non defined names:", show nonDefined]
-
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.

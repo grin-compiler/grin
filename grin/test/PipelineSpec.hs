@@ -1,6 +1,7 @@
 module PipelineSpec where
 
 import Data.Functor.Infix ((<$$>))
+import Data.List ((\\))
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
@@ -34,4 +35,4 @@ shrinkPipeline (chpt:hpt:rest) = ([chpt, hpt]++) <$> shrinkList (const []) rest
 transformations :: Gen [Transformation]
 transformations = do
   ts <- shuffle [toEnum 0 .. ]
-  listOf1 $ elements ts
+  listOf1 $ elements (ts \\ [GenerateEval])

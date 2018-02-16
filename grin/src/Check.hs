@@ -22,7 +22,6 @@ data Check
   | OnlyTagsInAlts
   | OnlyUniqueNames
   | AllowedBindStoreValues
-  | OnlyExplicitNodes
   deriving (Enum, Eq, Show)
 
 data Result
@@ -49,7 +48,6 @@ check hpt = \case
   OnlyTagsInAlts         -> boolResult . getAll . patsInAlts    (All . isBasicCPat)
   OnlyUniqueNames        -> result . nonUniqueNames
   AllowedBindStoreValues -> boolResult . allowedBindStoreValues
-  OnlyExplicitNodes      -> \e -> maybe (Failed "No HPTResult") (\h -> onlyExplicitNodes h e) hpt
 
 result :: Show a => [a] -> Result
 result = \case
