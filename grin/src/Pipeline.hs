@@ -153,8 +153,7 @@ data PState = PState
     { _psExp        :: Exp
     , _psTransStep  :: Int
     , _psHPTProgram :: Maybe HPT.HPTProgram
-    , _psHPTResult  :: Maybe HPTResult
-    , _psHPTResult2 :: Maybe HPT.HPTResult
+    , _psHPTResult  :: Maybe HPT.HPTResult
     , _psTagInfo    :: Maybe TagInfo
     }
 
@@ -169,7 +168,7 @@ pipelineStep p = do
       CompileHPT      -> compileHPT
       PrintHPT        -> printHPT
       RunHPTPure      -> runHPTPure
-      PrintHPTResult  -> printHPTResult
+      PrintHPTResult  -> pure () -- FIX
     T t             -> transformationM t
     TagInfo         -> tagInfo
     PrintGrin d     -> printGrinM d
@@ -207,33 +206,25 @@ runHPTPure = do
   Just hptProgram <- use psHPTProgram
   let hptResult = HPT.evalHPT hptProgram
       result = HPT.toHPTResult hptProgram hptResult
-  psHPTResult2 .= Just result
+  psHPTResult .= Just result
   liftIO $ putStrLn . show . pretty $ result
-
-printHPTResult :: PipelineM ()
-printHPTResult = do
-  hptResult <- use psHPTResult
-  --maybe (pure ()) (liftIO . putStrLn . show . pretty) hptResult
-  pure ()
 
 preconditionCheck :: Transformation -> PipelineM ()
 preconditionCheck t = do
-  hpt <- use psHPTResult
   exp <- use psExp
-  forM_ (checks hpt (precondition t) exp) $ \case
+  forM_ (checks Nothing (precondition t) exp) $ \case
     (c, r) -> liftIO . putStrLn $ unwords ["The", show c, "precondition of", show t, ": ", show r]
 
 postconditionCheck :: Transformation -> PipelineM ()
 postconditionCheck t = do
-  hpt <- use psHPTResult
   exp <- use psExp
-  forM_ (checks hpt (postcondition t) exp) $ \case
+  forM_ (checks Nothing (postcondition t) exp) $ \case
     (c, r) -> liftIO . putStrLn $ unwords ["The", show c, "postcondition of", show t, ": ", show r]
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  hptResult   <- use psHPTResult2
+  hptResult   <- use psHPTResult
   n           <- use psTransStep
   psExp       %= transformation hptResult n t
   psTransStep %= (+1)
@@ -257,7 +248,7 @@ printGrinM color = do
 jitLLVM :: PipelineM ()
 jitLLVM = do
   e <- use psExp
-  Just hptResult <- use psHPTResult2
+  Just hptResult <- use psHPTResult
   liftIO $ do
     val <- JITLLVM.eagerJit (CGLLVM.codeGen hptResult e) "grinMain"
     print $ pretty val
@@ -282,7 +273,7 @@ saveLLVM :: FilePath -> PipelineM ()
 saveLLVM fname' = do
   e <- use psExp
   n <- use psTransStep
-  Just hptResult <- use psHPTResult2
+  Just hptResult <- use psHPTResult
   o <- view poOutputDir
   let fname = o </> concat [fname',".",show n]
       code = CGLLVM.codeGen hptResult e
@@ -325,6 +316,5 @@ pipeline o e p = do
       , _psTransStep  = 0
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
-      , _psHPTResult2 = Nothing
       , _psTagInfo    = Nothing
       }
