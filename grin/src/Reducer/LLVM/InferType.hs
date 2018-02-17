@@ -21,7 +21,7 @@ import Pretty ()
 
 -- allows simple type singletons or locations
 validateNodeItem :: Type -> CG ()
-validateNodeItem ts@T_NodeSet{} = fail $ printf "illegal node item type %s" (show $ pretty ts)
+validateNodeItem ts@T_NodeSet{} = error $ printf "illegal node item type %s" (show $ pretty ts)
 validateNodeItem _ = pure ()
 
 nodeType :: Tag -> [Type] -> CG Type

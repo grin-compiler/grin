@@ -119,10 +119,6 @@ taggedUnion = undefined
     NodeSet -> (Type, Map Int (Value, Type))
     OR
     NodeSet -> (Type, Map Int Value) ; fat node type / conDataN type
-
-  TODO:
-    simple type monomorph check
-    node item monomorph check
 -}
 
 -- HINT: does hash consing
@@ -134,13 +130,13 @@ typeGenValue value@(T_NodeSet ns) = gets _envLLVMTypeMap >>= \tm -> case Map.loo
   _ | [(tag, items)] <- Map.toList ns -> do
         let itemTypes = [typeGenSimpleType i | i <- V.toList items]
         pure $ StructureType { isPacked = False, elementTypes = tagLLVMType : itemTypes }
-  _ -> fail $ printf "unsupported type: %s" (show $ pretty value)
+  _ -> error $ printf "unsupported type: %s" (show $ pretty value)
 
 getVarType :: Grin.Name -> CG LLVM.Type
 getVarType name = do
   TypeEnv{..} <- gets _envTypeEnv
   case Map.lookup name _variable of
-    Nothing -> fail ("unknown variable " ++ name)
+    Nothing -> error ("unknown variable " ++ name)
     Just value -> typeGenValue value
 
 getFunctionType :: Grin.Name -> CG (LLVM.Type, [LLVM.Type])
