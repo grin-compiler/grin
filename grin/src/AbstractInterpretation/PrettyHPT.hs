@@ -21,19 +21,6 @@ import Pretty
 import AbstractInterpretation.HPTResult
 import qualified AbstractInterpretation.HPTResultNew as R
 
-
-instance Pretty a => Pretty (Set a) where
-  pretty s = encloseSep lbrace rbrace comma (map pretty $ Set.toList s)
-
-instance (Pretty k, Pretty v) => Pretty (Map k v) where
-  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- Map.toList m]
-
-instance Pretty v => Pretty (IntMap v) where
-  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- IntMap.toList m]
-
-instance Pretty v => Pretty (Vector v) where
-  pretty m = vsep [fill 6 (int k) <+> text "->" <+> pretty v | (k,v) <- zip [1..] $ V.toList m]
-
 -- HPT Result
 instance Pretty Step where
   pretty = \case
@@ -63,27 +50,27 @@ instance Pretty Computer where
 
 -- HPT Result NEW
 
-instance Pretty R.LocationOrSimpleType where
+instance Pretty R.SimpleType where
   pretty = \case
-    R.Location l    -> cyan . int . succ $ fromIntegral l
-    R.SimpleType ty -> red $ text $ show ty
+    R.T_Location l  -> cyan . int . succ $ fromIntegral l
+    ty              -> red $ text $ show ty
 
-prettyNode :: (Tag, Vector (Set R.LocationOrSimpleType)) -> Doc
-prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
+prettyHPTNode :: (Tag, Vector (Set R.SimpleType)) -> Doc
+prettyHPTNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
 
-prettyFunction :: (Name, (R.TypeSet, Vector R.TypeSet)) -> Doc
-prettyFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
+prettyHPTFunction :: (Name, (R.TypeSet, Vector R.TypeSet)) -> Doc
+prettyHPTFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 instance Pretty R.NodeSet where
-  pretty (R.NodeSet m) = encloseSep lbrace rbrace comma (map prettyNode $ Map.toList m)
+  pretty (R.NodeSet m) = encloseSep lbrace rbrace comma (map prettyHPTNode $ Map.toList m)
 
 instance Pretty R.TypeSet where
-  pretty (R.TypeSet ty (R.NodeSet ns)) = encloseSep lbrace rbrace comma (map prettyNode (Map.toList ns) ++ map pretty (Set.toList ty))
+  pretty (R.TypeSet ty (R.NodeSet ns)) = encloseSep lbrace rbrace comma (map prettyHPTNode (Map.toList ns) ++ map pretty (Set.toList ty))
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
     [ yellow (text "Heap") <$$> indent 4 (pretty _memory)
     , yellow (text "Env") <$$> indent 4 (pretty _register)
-    , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
+    , yellow (text "Function") <$$> indent 4 (vsep $ map prettyHPTFunction $ Map.toList _function)
     ]
 

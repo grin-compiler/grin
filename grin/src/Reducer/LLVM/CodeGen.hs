@@ -35,7 +35,7 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
 import Grin
-import AbstractInterpretation.HPTResultNew
+import qualified TypeEnv
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
 import Reducer.LLVM.TypeGen
@@ -96,7 +96,6 @@ codeGenVal = \case
   Unit        -> unit
   Lit lit     -> pure . ConstantOperand . codeGenLit $ lit
   Var name    -> do
-                  hptResult <- gets _envHPTResult
                   Map.lookup name <$> gets _constantMap >>= \case
                       -- QUESTION: what is this?
                       Nothing -> do
@@ -145,8 +144,8 @@ toModule Env{..} = defaultModule
     ?? - SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
     ok - SUpdate     Name Val
 -}
-codeGen :: HPTResult -> Exp -> AST.Module
-codeGen hptResult = toModule . flip execState (emptyEnv {_envHPTResult = hptResult}) . para folder where
+codeGen :: TypeEnv.TypeEnv -> Exp -> AST.Module
+codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     SReturnF val -> O <$> codeGenVal val <*> typeOfVal val
@@ -238,12 +237,12 @@ codeGen hptResult = toModule . flip execState (emptyEnv {_envHPTResult = hptResu
             }
       clearDefState
       modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions})
-      O <$> unit <*> pure mempty
+      O <$> unit <*> pure undefined
 
     ProgramF defs -> do
       -- register prim fun lib
       registerPrimFunLib
-      sequence_ (map snd defs) >> O <$> unit <*> pure mempty
+      sequence_ (map snd defs) >> O <$> unit <*> pure undefined
 
     SStoreF val -> do
       -- TODO: allocate memory; calculate types properly
@@ -269,7 +268,16 @@ codeGen hptResult = toModule . flip execState (emptyEnv {_envHPTResult = hptResu
         }]
       pure . O $ LocalReference i64 tempName
       -}
-    SFetchIF name mIdx -> do
+    SFetchIF name Nothing -> do
+      {-
+        read tag
+        tag case
+          ->  1 - cast node type
+              2 - load node
+              3 - create undef tagged union
+              4 - fill tagged union
+        return tagged union operand
+      -}
       -- TODO: alter address according mIdx; using getelementptr
       opAddress <- codeGenVal $ Var name
       pure . I $ Load

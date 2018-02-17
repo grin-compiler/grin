@@ -12,6 +12,7 @@ import qualified Data.Vector as V
 import Lens.Micro.Platform
 
 import Grin (Name, Tag)
+import qualified TypeEnv
 
 data SimpleType
   = T_Int64
@@ -19,19 +20,15 @@ data SimpleType
   | T_Float
   | T_Bool
   | T_Unit
+  | T_Location Int
   deriving (Eq, Ord, Show)
 
-data LocationOrSimpleType
-  = Location    Int
-  | SimpleType  SimpleType
-  deriving (Eq, Ord, Show)
-
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set LocationOrSimpleType))} deriving (Eq, Ord, Show)
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set SimpleType))} deriving (Eq, Ord, Show)
 
 data TypeSet
   = TypeSet
-  { _simpleTypeAndLocationSet :: Set LocationOrSimpleType
-  , _nodeSet                  :: NodeSet
+  { _simpleType :: Set SimpleType
+  , _nodeSet    :: NodeSet
   }
   deriving (Eq, Ord, Show)
 
@@ -51,8 +48,8 @@ unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y
 
 unionTypeSet :: TypeSet -> TypeSet -> TypeSet
 unionTypeSet a b = TypeSet
-  { _simpleTypeAndLocationSet = Set.union (_simpleTypeAndLocationSet a) (_simpleTypeAndLocationSet b)
-  , _nodeSet                  = unionNodeSet (_nodeSet a) (_nodeSet b)
+  { _simpleType = Set.union (_simpleType a) (_simpleType b)
+  , _nodeSet    = unionNodeSet (_nodeSet a) (_nodeSet b)
   }
 
 data HPTResult
@@ -65,13 +62,12 @@ data HPTResult
 
 concat <$> mapM makeLenses [''NodeSet, ''TypeSet, ''HPTResult]
 
-toLocValue :: Int32 -> LocationOrSimpleType
-toLocValue ty | ty < 0 = SimpleType $ case ty of
+toSimpleType :: Int32 -> SimpleType
+toSimpleType ty | ty < 0 = case ty of
   -1 -> T_Unit
   -2 -> T_Int64
   -3 -> T_Word64
   -4 -> T_Float
   -5 -> T_Bool
   _ -> error $ "unknown type code " ++ show ty
-toLocValue l = Location $ fromIntegral l
-
+toSimpleType l = T_Location $ fromIntegral l

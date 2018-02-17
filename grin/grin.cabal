@@ -20,6 +20,8 @@ library
     Eval
     Free
     Grin
+    TypeEnv
+    TypeCheck
     Optimizations
     Pretty
     PrimOps

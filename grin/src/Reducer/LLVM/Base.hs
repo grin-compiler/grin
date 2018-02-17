@@ -14,10 +14,10 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Grin
-import AbstractInterpretation.HPTResultNew
+import qualified TypeEnv
 
 import LLVM.AST hiding (callingConvention)
-import LLVM.AST.Type
+import LLVM.AST.Type as LLVM
 import LLVM.AST.AddrSpace
 import LLVM.AST.Constant hiding (Add, ICmp)
 import LLVM.AST.IntegerPredicate
@@ -38,8 +38,8 @@ data Env
   , _constantMap      :: Map Grin.Name Operand
   , _currentBlockName :: AST.Name
   , _envTempCounter   :: Int
-  , _envHPTResult     :: HPTResult
-  , _envTypeMap       :: Map TypeSet Type
+  , _envTypeEnv       :: TypeEnv.TypeEnv
+  , _envLLVMTypeMap   :: Map TypeEnv.NodeSet LLVM.Type
   }
 
 emptyEnv = Env
@@ -49,8 +49,8 @@ emptyEnv = Env
   , _constantMap      = mempty
   , _currentBlockName = mkName ""
   , _envTempCounter   = 0
-  , _envHPTResult     = HPTResult mempty mempty mempty
-  , _envTypeMap       = mempty
+  , _envTypeEnv       = TypeEnv.TypeEnv mempty mempty mempty
+  , _envLLVMTypeMap   = mempty
   }
 
 concat <$> mapM makeLenses [''Env]
@@ -71,7 +71,7 @@ undef = ConstantOperand . Undef
 
 data Result
   = I Instruction
-  | O Operand TypeSet
+  | O Operand TypeEnv.Type
 
 -- utils
 closeBlock :: Terminator -> CG ()

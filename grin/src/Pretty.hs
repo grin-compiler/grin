@@ -1,10 +1,23 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
 module Pretty where
+
+import Data.Set (Set)
+import qualified Data.Set as Set
+
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IntMap
+
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
 import Grin
+import TypeEnv
 
 printGrin :: Exp -> IO ()
 printGrin = putDoc . pretty
@@ -77,3 +90,44 @@ instance Pretty TagType where
 
 instance Pretty Tag where
   pretty (Tag tagtype name _) = pretty tagtype <> text name
+
+-- generic ; used by HPTResult and TypeEnv
+
+instance Pretty a => Pretty (Set a) where
+  pretty s = encloseSep lbrace rbrace comma (map pretty $ Set.toList s)
+
+instance (Pretty k, Pretty v) => Pretty (Map k v) where
+  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- Map.toList m]
+
+instance Pretty v => Pretty (IntMap v) where
+  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- IntMap.toList m]
+
+instance Pretty v => Pretty (Vector v) where
+  pretty m = vsep [fill 6 (int k) <+> text "->" <+> pretty v | (k,v) <- zip [1..] $ V.toList m]
+
+
+-- type env
+
+instance Pretty SimpleType where
+  pretty = \case
+    T_Location l  -> encloseSep lbrace rbrace comma $ map (cyan . int . succ) l
+    ty            -> red $ text $ show ty
+
+prettyNode :: (Tag, Vector SimpleType) -> Doc
+prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
+
+prettyFunction :: (Name, (Type, Vector Type)) -> Doc
+prettyFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
+
+instance Pretty Type where
+  pretty = \case
+    T_SimpleType ty -> pretty ty
+    T_NodeSet ns    -> encloseSep lbrace rbrace comma (map prettyNode (Map.toList ns))
+
+instance Pretty TypeEnv where
+  pretty TypeEnv{..} = vsep
+    [ yellow (text "Location") <$$> indent 4 (pretty _location)
+    , yellow (text "Variable") <$$> indent 4 (pretty _variable)
+    , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
+    ]
+

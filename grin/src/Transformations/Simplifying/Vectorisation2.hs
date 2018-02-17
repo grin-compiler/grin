@@ -15,27 +15,25 @@ import Text.PrettyPrint.ANSI.Leijen (pretty)
 import Text.Printf
 
 import Grin
-import AbstractInterpretation.HPTResultNew
-import AbstractInterpretation.PrettyHPT
+import TypeEnv
 
 import Control.Monad.State
 
 type VectorisationAccumulator = (Map.Map Name Val, Exp)
 
-getVarNodeArity :: HPTResult -> Name -> Maybe Int
-getVarNodeArity hptr@HPTResult{..} name = case Map.lookup name _register of
+getVarNodeArity :: TypeEnv -> Name -> Maybe Int
+getVarNodeArity typeEnv@TypeEnv{..} name = case Map.lookup name _variable of
   Nothing -> error $ printf "getVarNodeArity - unknown variable %s" name
-  Just TypeSet{..} -> case [1 + V.length args | args <- Map.elems . _nodeTagMap $ _nodeSet] of
-    [] -> Nothing
-    maxArityWithoutTag -> Just $ maximum maxArityWithoutTag
+  Just (T_SimpleType _) -> Nothing
+  Just (T_NodeSet ns)   -> Just $ maximum [1 + V.length args | args <- Map.elems ns]
 
-vectorisation :: HPTResult -> Exp -> Exp
-vectorisation hptResult expression = ana folder (Map.empty, expression)
+vectorisation :: TypeEnv -> Exp -> Exp
+vectorisation typeEnv expression = ana folder (Map.empty, expression)
   where
     folder :: VectorisationAccumulator -> ExpF VectorisationAccumulator
     folder (nameStore, expression) =
       case expression of
-        EBind simpleexp var@(Var name) exp -> case getVarNodeArity hptResult name of
+        EBind simpleexp var@(Var name) exp -> case getVarNodeArity typeEnv name of
           Nothing           -> EBindF (nameStore, simpleexp) var (nameStore, exp)
           Just maximumArity -> EBindF (nameStore, simpleexp) nodeContents (newNameStore, exp)
            where

@@ -3,6 +3,7 @@ module Eval where
 import Text.Megaparsec
 
 import Grin
+import TypeCheck
 import ParseGrin
 import qualified Reducer.ST
 import qualified Reducer.Pure
@@ -26,9 +27,10 @@ eval' reducer fname = do
       case reducer of
         PureReducer -> pure $ Reducer.Pure.reduceFun e "grinMain"
         STReducer   -> pure $ Reducer.ST.reduceFun e "grinMain"
-        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen hptResult (Program e)) "grinMain" where
-          hptResult = HPT.toHPTResult hptProgram $ HPT.evalHPT hptProgram
-          hptProgram = HPT.codeGen (Program e)
+        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv (Program e)) "grinMain" where
+          typeEnv     = typeEnvFromHPTResult hptResult
+          hptResult   = HPT.toHPTResult hptProgram $ HPT.evalHPT hptProgram
+          hptProgram  = HPT.codeGen (Program e)
 
 evalProgram :: Reducer -> Program -> Val
 evalProgram reducer (Program defs) =

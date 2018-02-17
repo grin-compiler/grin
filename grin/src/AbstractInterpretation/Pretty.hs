@@ -12,7 +12,7 @@ import Pretty ()
 import Grin (Name)
 import qualified Grin
 import AbstractInterpretation.IR
-import AbstractInterpretation.HPTResultNew (toLocValue)
+import AbstractInterpretation.HPTResultNew (toSimpleType)
 import AbstractInterpretation.PrettyHPT ()
 
 data IRMap
@@ -69,7 +69,7 @@ prettyName :: Name -> Doc
 prettyName = red . text
 
 prettySimpleType :: Int32 -> Doc
-prettySimpleType = pretty . toLocValue
+prettySimpleType = pretty . toSimpleType
 
 prettyReg :: Maybe IRMap -> Reg -> Doc
 prettyReg mirm reg@(Reg a) = regName <> (green $ text "@" <> (integer $ fromIntegral a)) where

@@ -24,8 +24,8 @@ newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving
 
 data Value
   = Value
-  { _simpleTypeAndLocationSet :: Set Int32
-  , _nodeSet                  :: NodeSet
+  { _simpleType :: Set Int32
+  , _nodeSet    :: NodeSet
   }
   deriving (Eq, Show)
 
@@ -56,8 +56,8 @@ unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y
 
 unionValue :: Value -> Value -> Value
 unionValue a b = Value
-  { _simpleTypeAndLocationSet = Set.union (_simpleTypeAndLocationSet a) (_simpleTypeAndLocationSet b)
-  , _nodeSet                  = unionNodeSet (_nodeSet a) (_nodeSet b)
+  { _simpleType = Set.union (_simpleType a) (_simpleType b)
+  , _nodeSet    = unionNodeSet (_nodeSet a) (_nodeSet b)
   }
 
 regIndex :: Reg -> Int
@@ -74,17 +74,17 @@ evalInstruction = \case
         tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
         pure $ Map.member tag tagMap
       SimpleTypeExists ty -> do
-        typeSet <- use $ register.ix (regIndex srcReg).simpleTypeAndLocationSet
+        typeSet <- use $ register.ix (regIndex srcReg).simpleType
         pure $ Set.member ty typeSet
     when satisfy $ mapM_ evalInstruction instructions
 
   Project {..} -> do
     let NodeItem tag itemIndex = srcSelector
     value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex
-    register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend value)
+    register.ix (regIndex dstReg).simpleType %= (mappend value)
 
   Extend {..} -> do
-    value <- use $ register.ix (regIndex srcReg).simpleTypeAndLocationSet
+    value <- use $ register.ix (regIndex srcReg).simpleType
     let NodeItem tag itemIndex = dstSelector
     register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
 
@@ -93,7 +93,7 @@ evalInstruction = \case
     register.ix (regIndex dstReg) %= (mappend value)
 
   Fetch {..} -> do
-    addressSet <- use $ register.ix (regIndex addressReg).simpleTypeAndLocationSet
+    addressSet <- use $ register.ix (regIndex addressReg).simpleType
     forM_ addressSet $ \address -> when (address >= 0) $ do
       value <- use $ memory.ix (fromIntegral address)
       register.ix (regIndex dstReg).nodeSet %= (mappend value)
@@ -104,13 +104,13 @@ evalInstruction = \case
 
   Update {..} -> do
     value <- use $ register.ix (regIndex srcReg).nodeSet
-    addressSet <- use $ register.ix (regIndex addressReg).simpleTypeAndLocationSet
+    addressSet <- use $ register.ix (regIndex addressReg).simpleType
     forM_ addressSet $ \address -> when (address >= 0) $ do
       memory.ix (fromIntegral address) %= (mappend value)
 
   Set {..} -> case constant of
-    CSimpleType ty        -> register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend $ Set.singleton ty)
-    CHeapLocation (Mem l) -> register.ix (regIndex dstReg).simpleTypeAndLocationSet %= (mappend $ Set.singleton $ fromIntegral l)
+    CSimpleType ty        -> register.ix (regIndex dstReg).simpleType %= (mappend $ Set.singleton ty)
+    CHeapLocation (Mem l) -> register.ix (regIndex dstReg).simpleType %= (mappend $ Set.singleton $ fromIntegral l)
     CNodeType tag arity   -> register.ix (regIndex dstReg).nodeSet %=
                                 (mappend $ NodeSet . Map.singleton tag $ V.replicate arity mempty)
     CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
@@ -137,13 +137,13 @@ toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
     convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
 
     convertNodeSet :: NodeSet -> R.NodeSet
-    convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertLocVal v) | (k,v) <- Map.toList a]
+    convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
 
-    convertLocVal :: Set Int32 -> Set R.LocationOrSimpleType
-    convertLocVal s = Set.map R.toLocValue s
+    convertSimpleType :: Set Int32 -> Set R.SimpleType
+    convertSimpleType s = Set.map R.toSimpleType s
 
     convertValue :: Value -> R.TypeSet
-    convertValue (Value ty ns) = R.TypeSet (convertLocVal ty) (convertNodeSet ns)
+    convertValue (Value ty ns) = R.TypeSet (convertSimpleType ty) (convertNodeSet ns)
 
     convertFunctionRegs :: (Reg, [Reg]) -> (R.TypeSet, Vector R.TypeSet)
     convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])

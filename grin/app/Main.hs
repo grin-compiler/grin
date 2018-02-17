@@ -37,7 +37,6 @@ pipelineOpts =
   <|> flg (HPT PrintHPT) "print-hpt" "Prints the heap-points-to analysis machine"
   <|> flg (HPT RunHPTPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
   <|> flg (HPT PrintHPTResult) "print-hpt-result" "Prints the heap-points-to analysis result"
-  <|> flg TagInfo "tag-info" "Tag Information"
   <|> flg (PrintGrin id) "print-grin" "Prints the actual grin code"
   <|> flg PureEval "eval" "Evaluate the grin program"
   <|> flg JITLLVM "llvm" "JIT with LLVM"

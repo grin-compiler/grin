@@ -12,6 +12,8 @@ import qualified Text.Show.Pretty as PP
 import Check hiding (check)
 import Eval
 import Grin
+import TypeEnv
+import TypeCheck
 import Optimizations
 import Pretty()
 import Transformations.AssignStoreIDs
@@ -67,11 +69,11 @@ data Transformation
   | ConstantFolding
   deriving (Enum, Eq, Ord, Show)
 
-transformation :: Maybe HPT.HPTResult -> Int -> Transformation -> Exp -> Exp
-transformation hptResult n = \case
+transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
+transformation typeEnv n = \case
   CaseSimplification      -> caseSimplification
   SplitFetch              -> splitFetch
-  Vectorisation           -> Vectorisation2.vectorisation (fromJust hptResult)
+  Vectorisation           -> Vectorisation2.vectorisation (fromJust typeEnv)
   RegisterIntroduction    -> registerIntroductionI n
   BindNormalisation       -> bindNormalisation
   RightHoistFetch         -> RHF.rightHoistFetch
@@ -120,7 +122,6 @@ data HPTStep
 data Pipeline
   = HPT HPTStep
   | T Transformation
-  | TagInfo
   | PrintGrinH (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
@@ -147,14 +148,13 @@ defaultOpts = PipelineOpts
   { _poOutputDir = "./"
   }
 
-type TagInfo = Set Tag
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
     { _psExp        :: Exp
     , _psTransStep  :: Int
     , _psHPTProgram :: Maybe HPT.HPTProgram
     , _psHPTResult  :: Maybe HPT.HPTResult
-    , _psTagInfo    :: Maybe TagInfo
+    , _psTypeEnv    :: Maybe TypeEnv
     }
 
 makeLenses ''PState
@@ -170,7 +170,6 @@ pipelineStep p = do
       RunHPTPure      -> runHPTPure
       PrintHPTResult  -> pure () -- FIX
     T t             -> transformationM t
-    TagInfo         -> tagInfo
     PrintGrin d     -> printGrinM d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
@@ -208,6 +207,7 @@ runHPTPure = do
       result = HPT.toHPTResult hptProgram hptResult
   psHPTResult .= Just result
   liftIO $ putStrLn . show . pretty $ result
+  psTypeEnv .= Just (typeEnvFromHPTResult result)
 
 preconditionCheck :: Transformation -> PipelineM ()
 preconditionCheck t = do
@@ -224,16 +224,11 @@ postconditionCheck t = do
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  hptResult   <- use psHPTResult
+  typeEnv     <- use psTypeEnv
   n           <- use psTransStep
-  psExp       %= transformation hptResult n t
+  psExp       %= transformation typeEnv n t
   psTransStep %= (+1)
   postconditionCheck t
-
-tagInfo :: PipelineM ()
-tagInfo = do
-  e <- use psExp
-  psTagInfo .= Just (collectTagInfo e)
 
 pureEval :: PipelineM ()
 pureEval = do
@@ -248,9 +243,9 @@ printGrinM color = do
 jitLLVM :: PipelineM ()
 jitLLVM = do
   e <- use psExp
-  Just hptResult <- use psHPTResult
+  Just typeEnv <- use psTypeEnv
   liftIO $ do
-    val <- JITLLVM.eagerJit (CGLLVM.codeGen hptResult e) "grinMain"
+    val <- JITLLVM.eagerJit (CGLLVM.codeGen typeEnv e) "grinMain"
     print $ pretty val
 
 printAST :: PipelineM ()
@@ -273,10 +268,10 @@ saveLLVM :: FilePath -> PipelineM ()
 saveLLVM fname' = do
   e <- use psExp
   n <- use psTransStep
-  Just hptResult <- use psHPTResult
+  Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
   let fname = o </> concat [fname',".",show n]
-      code = CGLLVM.codeGen hptResult e
+      code = CGLLVM.codeGen typeEnv e
       llName = printf "%s.ll" fname
       sName = printf "%s.s" fname
   liftIO . void $ do
@@ -316,5 +311,5 @@ pipeline o e p = do
       , _psTransStep  = 0
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
-      , _psTagInfo    = Nothing
+      , _psTypeEnv    = Nothing
       }

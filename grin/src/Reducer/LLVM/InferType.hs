@@ -8,65 +8,45 @@ import Text.PrettyPrint.ANSI.Leijen (pretty)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
 import Control.Monad.State
 import Lens.Micro.Platform
 
-
 import Reducer.LLVM.Base
-import AbstractInterpretation.HPTResultNew
-import AbstractInterpretation.PrettyHPT ()
 import Grin
+import TypeEnv
 import Pretty ()
 
-
--- type construction for values
-
-simpleTypeTypeSet :: SimpleType -> TypeSet
-simpleTypeTypeSet sTy = TypeSet (Set.singleton . SimpleType $ sTy) mempty
-
 -- allows simple type singletons or locations
-validateNodeItem :: TypeSet -> CG ()
-validateNodeItem ts
-  | Map.null (ts^.nodeSet.nodeTagMap) &&
-    Set.size stlS > 0 &&
-    (  Set.foldl' (\a v -> a && isLocation v) True stlS
-    || Set.size stlS == 1 && not (isLocation $ Set.findMin stlS)
-    ) = pure ()
-  | otherwise = fail $ printf "illegal node item type %s" (show $ pretty ts)
-  where
-    stlS = ts^.simpleTypeAndLocationSet
-    isLocation = \case
-      Location{} -> True
-      _          -> False
+validateNodeItem :: Type -> CG ()
+validateNodeItem ts@T_NodeSet{} = fail $ printf "illegal node item type %s" (show $ pretty ts)
+validateNodeItem _ = pure ()
 
-nodeTypeSet :: Tag -> [TypeSet] -> CG TypeSet
-nodeTypeSet tag items = do
+nodeType :: Tag -> [Type] -> CG Type
+nodeType tag items = do
   mapM_ validateNodeItem items
-  pure $ TypeSet mempty $ NodeSet $ Map.singleton tag $ V.fromList $ map _simpleTypeAndLocationSet items
+  pure $ T_NodeSet $ Map.singleton tag $ V.fromList $ map _simpleType items
 
-typeOfLit :: Lit -> TypeSet
-typeOfLit lit = simpleTypeTypeSet $ case lit of
+typeOfLit :: Lit -> Type
+typeOfLit lit = T_SimpleType $ case lit of
   LInt64{}  -> T_Int64
   LWord64{} -> T_Word64
   LFloat{}  -> T_Float
   LBool{}   -> T_Bool
 
-typeOfVal :: Val -> CG TypeSet
+typeOfVal :: Val -> CG Type
 typeOfVal val = do
   case val of
-    ConstTagNode tag args -> mapM typeOfVal args >>= nodeTypeSet tag
+    ConstTagNode tag args -> mapM typeOfVal args >>= nodeType tag
     {-
     VarTagNode    Name [SimpleVal] -- complete node (variable tag)
     ValTag        Tag
     -}
-    Unit      -> pure $ simpleTypeTypeSet T_Unit
+    Unit      -> pure $ T_SimpleType T_Unit
     Lit lit   -> pure $ typeOfLit lit
-    Var name  -> use (envHPTResult.register.at name) >>= \case
+    Var name  -> use (envTypeEnv.variable.at name) >>= \case
                   Nothing -> error $ printf "unknown variable %s" name
                   Just ty -> pure ty
     _ -> error $ printf "unsupported val" (show $ pretty val)
