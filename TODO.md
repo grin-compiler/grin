@@ -20,3 +20,8 @@ simplifaction transformations required by the codegen
 - [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=123">right hoist fetch operation</a>
 - [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=126">register introduction</a>
 
+# CodeGen
+
+- LLVM codegen from high level GRIN (HPT + Type Set + Tagged Union)
+- GRIN type system (typed simplification)
+- simplify/refactor LLVM codegen
