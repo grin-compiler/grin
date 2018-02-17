@@ -1,7 +1,7 @@
 module PipelineSpec where
 
 import Data.Functor.Infix ((<$$>))
-import Data.List ((\\))
+import Data.List ((\\), nub)
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
@@ -18,7 +18,8 @@ spec :: Spec
 spec = do
   it "Exploratory testing on random program and random pipeline" $ property $
     forAll (PP <$> genProg) $ \(PP original) ->
-    forAllShrink genPipeline shrinkPipeline $ \ppln ->
+--    forAllShrink genPipeline shrinkPipeline $ \ppln ->
+    forAll genPipeline $ \ppln ->
     monadicIO $ do
       transformed      <- run $ pipeline defaultOpts original ppln
       originalValue    <- run $ pure $ evalProgram PureReducer original
@@ -27,12 +28,12 @@ spec = do
 
 genPipeline :: Gen [Pipeline]
 genPipeline = do
-  ([HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
+  ([PrintGrin id, HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
 
 shrinkPipeline :: [Pipeline] -> [[Pipeline]]
-shrinkPipeline (chpt:hpt:rest) = ([chpt, hpt]++) <$> shrinkList (const []) rest
+shrinkPipeline (printast:chpt:hpt:rest) = ([printast, chpt, hpt]++) <$> shrinkList (const []) rest
 
 transformations :: Gen [Transformation]
 transformations = do
   ts <- shuffle [toEnum 0 .. ]
-  listOf1 $ elements (ts \\ [GenerateEval])
+  fmap nub $ listOf1 $ elements (ts \\ [Vectorisation])
