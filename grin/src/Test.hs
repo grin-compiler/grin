@@ -417,9 +417,9 @@ gLiteral = fmap TLit . \case
 
 gSimpleVal :: Type -> GoalM TSimpleVal
 gSimpleVal = \case
-  TInt   -> varFromEnv TInt   `mplus` gLiteral TInt
-  TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
-  TWord  -> varFromEnv TWord  `mplus` gLiteral TWord
+  TInt   -> tryout [varFromEnv TInt, gLiteral TInt]
+  TFloat -> tryout [varFromEnv TFloat, gLiteral TFloat]
+  TWord  -> tryout [varFromEnv TWord, gLiteral TWord]
   TTLoc  -> mzero -- TODO: Locations are created via stores of function parameters ... varFromEnv TTLoc
   _      -> mzero
   where
