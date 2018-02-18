@@ -39,7 +39,7 @@ collectTagInfo2 = execWriter . cata folder where
 
   add :: Val -> Writer (Set Tag) ()
   add = \case
-    ConstTagNode (Tag tagtype name _) args -> tell $ singleton (Tag tagtype name (length args))
+    ConstTagNode (Tag tagtype name) args -> tell $ singleton (Tag tagtype name)
     ValTag tag            -> tell $ singleton tag
     _ -> pure ()
 
@@ -63,7 +63,7 @@ collectTagInfoPure = cata folder where
     AltF _ a        -> a
 
   add = \case
-    ConstTagNode (Tag tagtype name _) args -> singleton (Tag tagtype name (length args))
+    ConstTagNode (Tag tagtype name) args -> singleton (Tag tagtype name)
     ValTag tag          -> singleton tag
     _                   -> mempty
 
@@ -99,7 +99,7 @@ renameVaribales substituitons = ana builder where
     Just new -> new
 
   substTag :: Tag -> Tag
-  substTag (Tag ttype name arity) = Tag ttype (substName name) arity
+  substTag (Tag ttype name) = Tag ttype (substName name)
 
   substCPat :: CPat -> CPat
   substCPat = \case

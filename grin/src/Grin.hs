@@ -134,7 +134,6 @@ data TagType = C | F | P
 data Tag = Tag
   { tagType :: TagType
   , tagName :: Name
-  , tagArity :: Int
   }
   deriving (Generic, NFData, Eq, Ord, Show)
 

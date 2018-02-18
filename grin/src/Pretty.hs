@@ -89,7 +89,7 @@ instance Pretty TagType where
     P -> text "P"
 
 instance Pretty Tag where
-  pretty (Tag tagtype name _) = pretty tagtype <> text name
+  pretty (Tag tagtype name) = pretty tagtype <> text name
 
 -- generic ; used by HPTResult and TypeEnv
 

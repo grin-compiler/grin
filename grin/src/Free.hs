@@ -36,22 +36,22 @@ class FromTag t where
   (@:) :: String -> [String] -> t
 
 instance FromTag CPat where
-  tag name a = TagPat $ Tag C name a
-  (@:) cname params = NodePat (Tag C cname (length params)) params
+  tag name a = TagPat $ Tag C name
+  (@:) cname params = NodePat (Tag C cname) params
 
 instance FromTag Val where
-  tag name a = ValTag $ Tag C name a
-  (@:) cname params = ConstTagNode (Tag C cname (length params)) (Var <$> params)
+  tag name a = ValTag $ Tag C name
+  (@:) cname params = ConstTagNode (Tag C cname) (Var <$> params)
 
 instance FromTag Tag where
-  tag name a = Tag C name a
-  (@:) cname params = Tag C cname (length params)
+  tag name a = Tag C name
+  (@:) cname params = Tag C cname
 
 (#:) :: String -> [String] -> Val
 (#:) tname params = VarTagNode tname (Var <$> params)
 
 constTagNode :: String -> [Val] -> Val
-constTagNode name params = ConstTagNode (Tag C name (length params)) params
+constTagNode name params = ConstTagNode (Tag C name) params
 
 switch :: Val -> [(CPat, ExpM ())] -> ExpM ()
 switch val branches = Free (ECaseF val ((\(cpat, body) -> (Free (AltF cpat body))) <$> branches))

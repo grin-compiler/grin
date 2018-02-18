@@ -38,7 +38,7 @@ renameNames substituitons = ana builder where
     Just new -> new
 
   substTag :: Tag -> Tag
-  substTag (Tag ttype name arity) = Tag ttype (substName name) arity
+  substTag (Tag ttype name) = Tag ttype (substName name)
 
   substCPat :: CPat -> CPat
   substCPat = \case

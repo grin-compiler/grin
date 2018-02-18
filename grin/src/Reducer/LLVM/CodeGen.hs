@@ -121,7 +121,7 @@ getCPatName = \case
     LFloat v  -> error "pattern match on float is not supported"
   NodePat tag _ -> tagName tag
  where
-  tagName (Tag c name n) = printf "%s%s%d" (show c) name n
+  tagName (Tag c name) = printf "%s%s" (show c) name
 
 -- https://stackoverflow.com/questions/6374355/llvm-assembly-assign-integer-constant-to-register
 {-

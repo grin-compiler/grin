@@ -174,7 +174,6 @@ instance Arbitrary Tag where
   arbitrary = Tag
     <$> arbitrary
     <*> (unTName <$> arbitrary)
-    <*> (getPositive <$> arbitrary)
 
 instance Arbitrary TName where
   arbitrary = TName . concat <$> listOf1 hiragana
@@ -424,7 +423,7 @@ gValue = \case
   TFloat          -> TSimpleVal <$> gSimpleVal TFloat
   TWord           -> TSimpleVal <$> gSimpleVal TWord
   TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
-  TTag tag types  -> TConstTagNode (Tag C tag (length types)) <$> mapM gSimpleVal types
+  TTag tag types  -> TConstTagNode (Tag C tag) <$> mapM gSimpleVal types
   TUnion types    -> do
     t <- melements (Set.toList types)
     solve (GVal t)
@@ -576,7 +575,7 @@ gAlts :: TVal -> Type -> Type -> GoalM [TAlt]
 gAlts val typeOfVal typeOfExp = case typeOfVal of
   TTag name params -> do
     names <- newNames (length params)
-    pure . TAlt (NodePat (Tag C name (length params)) names)
+    pure . TAlt (NodePat (Tag C name) names)
       <$> withVars (names `zip` params) (solve (Exp [] typeOfExp))
   TUnion types -> fmap concat . forM (Set.toList types) $ \typOfV ->
     gAlts val typOfV typeOfExp

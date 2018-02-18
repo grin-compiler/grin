@@ -88,8 +88,8 @@ lookupStore i = IntMap.findWithDefault (error $ "missing location: " ++ show i) 
 basVarSet cgType = Set.singleton . V . BAS $ cgType
 
 boolVarSet = Set.fromList
-  [ N $ RTNode (Tag C "True" 0) []
-  , N $ RTNode (Tag C "False" 0) []
+  [ N $ RTNode (Tag C "True") []
+  , N $ RTNode (Tag C "False") []
   ]
 
 toRTLocVal :: RTVar -> RTLocVal
@@ -148,7 +148,7 @@ evalEval [val] = do
       otherwise - keep the value
   -}
   evalNodes <- forM (Set.toList nodes) $ \case
-    N (RTNode (Tag F name _) args) -> do
+    N (RTNode (Tag F name) args) -> do
       result <- evalSAppF name (map (Set.map V) args)
       evalSUpdateF loc result
       pure result
