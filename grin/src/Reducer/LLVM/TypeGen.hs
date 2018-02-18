@@ -41,12 +41,41 @@ tagLLVMType = i64
 
 data TaggedUnion
   = TaggedUnion
-  { tuType      :: LLVM.Type
-  , tuSingleton :: Bool -- singleton is not tagged
+  { tuLLVMType  :: LLVM.Type
+  , tuPayload   :: Map SimpleType Int
+  , tuMapping   :: Map Tag (Vector (SimpleType, Int))
   }
 
-taggedUnion :: Type -> TaggedUnion
-taggedUnion = undefined
+type TU = State (Map SimpleType Int, Map SimpleType Int) -- accumulator, max count map
+
+taggedUnion :: NodeSet -> TaggedUnion
+taggedUnion ns = TaggedUnion llvmType tuPayload tuMapping where
+  (tuMapping, (_,tuPayload)) = runState (mapM mapNode ns) mempty
+
+  mapNode :: Vector SimpleType -> TU (Vector (SimpleType, Int))
+  mapNode v = do
+    nodeMapping <- mapM mapItem v
+    modify $ \(mapping, maxMap) -> (mempty, Map.unionWith max mapping maxMap)
+    pure nodeMapping
+
+  mapItem :: SimpleType -> TU (SimpleType, Int)
+  mapItem = \case
+    T_Location {} -> allocIndex $ T_Location []
+    sTy -> allocIndex sTy
+
+  allocIndex :: SimpleType -> TU (SimpleType, Int)
+  allocIndex sTy = state $ \(mapping, maxMap) ->
+                    let v = Map.findWithDefault 0 sTy mapping
+                    in ((sTy, v), (Map.insert sTy (succ v) mapping, maxMap))
+
+  llvmType = StructureType
+              { isPacked = True
+              , elementTypes = tagLLVMType :
+                               [ ArrayType (fromIntegral count) (typeGenSimpleType ty)
+                               | (ty, count) <- Map.toList tuPayload
+                               , count > 0
+                               ]
+              }
 
 {-
   simple type, node, location, tagged union
@@ -91,9 +120,9 @@ taggedUnion = undefined
       - fill with content from another union
 
     TODO:
-      - union construction
-      - union mapping
-      - union conversion
+           - union construction
+      done - union mapping
+           - union conversion
 
     implement fetch
 
@@ -126,10 +155,9 @@ typeGenValue :: Type -> CG LLVM.Type
 typeGenValue (T_SimpleType sTy) = pure $ typeGenSimpleType sTy
 typeGenValue value@(T_NodeSet ns) = gets _envLLVMTypeMap >>= \tm -> case Map.lookup ns tm of
   Just t  -> pure t
-  -- single node with single items e.g. {CInt[{T_Int64}]}
-  _ | [(tag, items)] <- Map.toList ns -> do
-        let itemTypes = [typeGenSimpleType i | i <- V.toList items]
-        pure $ StructureType { isPacked = False, elementTypes = tagLLVMType : itemTypes }
+  _ -> do
+        let tu = taggedUnion ns
+        pure $ tuLLVMType tu
   _ -> error $ printf "unsupported type: %s" (show $ pretty value)
 
 getVarType :: Grin.Name -> CG LLVM.Type
