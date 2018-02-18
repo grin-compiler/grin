@@ -204,6 +204,9 @@ data Env
 adtsL :: Lens' Env (Set Type)
 adtsL = lens adts (\e a -> e { adts = a})
 
+funsL :: Lens' Env (Map Name ([Type], Type, [Eff]))
+funsL = lens funs (\e f -> e { funs = f })
+
 instance Monoid Env where
   mempty = Env mempty mempty mempty
   mappend (Env v0 f0 a0) (Env v1 f1 a1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1) (a0 <> a1)
@@ -216,6 +219,12 @@ insertVarT name ttype (Env vars funs adts) = Env (Map.singleton name ttype <> va
 
 insertVars :: [(Name, Type)] -> Env -> Env
 insertVars vars' (Env vars funs adts) = Env ((Map.fromList vars') <> vars) funs adts
+
+insertFun :: (Name, [Type], Type, [Eff]) -> Env -> Env
+insertFun (fname, params, rtype, effs) (Env vars funs adts) =
+    Env vars funs' adts
+  where
+    funs' = Map.insert fname (params, rtype, effs) funs
 
 data Store = Store (Map Loc (TVal, Type))
   deriving (Eq, Show)
@@ -542,6 +551,29 @@ mresize n = liftGenTr (resize n)
 mscale :: (Int -> Int) -> GoalM a -> GoalM a
 mscale f = liftGenTr (scale f)
 
+-- TODO: Effects
+-- TODO: Always succedd with a trivial function
+-- TODO: Self Recursive
+gDef :: GoalM (TDef, ([Type], Type, [Eff]))
+gDef = do
+  let effs = []
+  retType <- mfreq [ (90, simpleType), (10, definedAdt) ]
+  n <- gen $ choose (1, 5)
+  ptypes <- replicateM n $ moneof [simpleType, definedAdt]
+  (fname:pnames) <- newNames (n+1)
+  CMR.local
+--    TODO: Self recursive: Generate eval creates in infinite loop
+--    kahe ya = kahe ya
+--    (ctxEnv %~ (insertFun (fname, ptypes, retType, effs) .
+--                insertVars (pnames `zip` ptypes))
+    (ctxEnv %~ insertVars (pnames `zip` ptypes)
+    ) $ do
+        body <- solve (Exp effs retType)
+        pure $
+          ( TDef (TName fname) (map TName pnames) body
+          , (ptypes, retType, effs)
+          )
+
 gExp :: Type -> [Eff] -> GoalM TExp
 gExp t es = do
   s <- mGetSize
@@ -589,10 +621,25 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
           gen $ shuffle (matching:alts)
         _ -> mzero
 
+gMain :: GoalM TDef
+gMain = TDef (TName "grinMain") [] <$> solve (Exp [] TTUnit)
+
+-- | Generate n functions and extend the context with the definitions,
+-- run the final computation.
+gDefs :: Int -> ([TDef] -> GoalM a) -> GoalM a
+gDefs n f = go n f [] where
+  go 0 f defs = f defs
+  go n f defs = do
+    (def@(TDef (TName name) _ _), (ptypes, rtype, effs)) <- gDef
+    CMR.local (ctxEnv %~ insertFun (name, ptypes, rtype, effs)) $
+      go (n - 1) f (def:defs)
+
 gProg :: GoalM TProg
-gProg =
-  (TProg . NonEmpty . pure . TDef (TName "grinMain") [])
-  <$> (solve (Exp [] TTUnit))
+gProg = retry 10 $ do
+  n <- gen $ choose (0, 10)
+  gDefs n $ \defs -> do
+    m <- gMain
+    pure $ TProg $ NonEmpty (defs ++ [m])
 
 primitiveADTs :: Set Type
 primitiveADTs = Set.fromList
@@ -619,6 +666,7 @@ solve :: Solve t => Goal -> GoalM t
 solve g = do
 --  (Env vars funs adts) <- view _1
 --  traceShowM adts
+--  traceShowM (Map.keys funs)
 --  s <- gen $ sized pure
 --  traceShowM s
 --  traceShowM (Solve, g)
