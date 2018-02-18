@@ -452,11 +452,11 @@ gSExpSized s = \case
                  TSApp (TName funName) <$> forM paramTypes gSimpleVal
             , TSReturn <$> solve (GVal t)
             ]
-      n -> moneof
-            [ do (funName, paramTypes) <- gPureFunction t
-                 TSApp (TName funName) <$> forM paramTypes gSimpleVal
-            , TSReturn <$> solve (GVal t)
-            , fmap TSBlock $ solve (Exp [] t)
+      n -> mfreq
+            [ (45, do (funName, paramTypes) <- gPureFunction t
+                      TSApp (TName funName) <$> forM paramTypes gSimpleVal)
+            , (45, TSReturn <$> solve (GVal t))
+            , (10, fmap TSBlock $ solve (Exp [] t))
             ]
 
   NewLoc t      -> TSStore <$> solve (GVal t) -- TODO: Add a block
@@ -468,9 +468,35 @@ tryout gs = do
   (g, gs') <- select gs
   g `mplus` tryout gs'
 
+selectF :: [(Int, a)] -> GoalM ((Int, a), [(Int, a)])
+selectF []  = mzero
+selectF [a] = pure (a, [])
+selectF gs  = do
+  let s = sum $ map fst gs
+  n <- gen $ choose (0, s)
+  pure $ go n gs []
+  where
+    go n [] _   = error "selectF: impossible"
+    go n [a] rs = (a, [])
+    go n (a@(m, _):rest) skipped
+      | (n - m) <= 0 = (a, skipped ++ rest)-- in range
+      | otherwise    = go (n - m) rest (a:skipped)
+
+tryoutF :: [(Int, GoalM a)] -> GoalM a
+tryoutF []       = mzero
+tryoutF [(_, g)] = g
+tryoutF gs = do
+  gs0 <- gen $ shuffle gs
+  ((_, g), gs1) <- selectF gs0
+  g `mplus` tryoutF gs1
+
 moneof :: [GoalM a] -> GoalM a
 moneof [] = mzero
 moneof gs = join $ fmap fst $ select gs
+
+mfreq :: [(Int, GoalM a)] -> GoalM a
+mfreq gs = join $ fmap (snd . fst) $ selectF gs
+
 
 -- TODO: Limit the number of retries
 mSuchThat :: GoalM a -> (a -> Bool) -> GoalM a
@@ -529,17 +555,17 @@ gExpSized :: Int -> Type -> [Eff] -> GoalM TExp
 gExpSized n t = \case
   [] -> case n of
     0 -> TSExp <$> (solve (SExp (NoEff t)))
-    _ -> tryout
-            [ TSExp <$> (solve (SExp (NoEff t)))
-            , do t' <- tryout [simpleType, definedAdt]
-                 se <- (solve (SExp (NoEff t')))
-                 newVar t' $ \n -> do -- TODO: Gen LPat
-                   rest <- solve (Exp [] t)
-                   pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
-            , do t'   <- tryout [simpleType, definedAdt]
-                 val  <- gValue t'
-                 alts <- gAlts val t' t
-                 pure $ TECase val $ NonEmpty alts
+    _ -> tryoutF
+            [ (10, TSExp <$> (solve (SExp (NoEff t))))
+            , (80, do t' <- tryout [simpleType, definedAdt]
+                      se <- (solve (SExp (NoEff t')))
+                      newVar t' $ \n -> do -- TODO: Gen LPat
+                        rest <- solve (Exp [] t)
+                        pure (TEBind se (TLPatSVal (TVar (TName n))) rest))
+            , (10, do t'   <- tryout [simpleType, definedAdt]
+                      val  <- gValue t'
+                      alts <- gAlts val t' t
+                      pure $ TECase val $ NonEmpty alts)
             ]
   es -> mzero
 
