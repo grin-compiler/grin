@@ -96,15 +96,8 @@ instance Pretty Tag where
 instance Pretty a => Pretty (Set a) where
   pretty s = encloseSep lbrace rbrace comma (map pretty $ Set.toList s)
 
-instance (Pretty k, Pretty v) => Pretty (Map k v) where
-  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- Map.toList m]
-
-instance Pretty v => Pretty (IntMap v) where
-  pretty m = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- IntMap.toList m]
-
-instance Pretty v => Pretty (Vector v) where
-  pretty m = vsep [fill 6 (int k) <+> text "->" <+> pretty v | (k,v) <- zip [1..] $ V.toList m]
-
+prettyKeyValue :: (Pretty k, Pretty v) => [(k,v)] -> Doc
+prettyKeyValue kvList = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,v) <- kvList]
 
 -- type env
 
@@ -126,8 +119,8 @@ instance Pretty Type where
 
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
-    [ yellow (text "Location") <$$> indent 4 (pretty _location)
-    , yellow (text "Variable") <$$> indent 4 (pretty _variable)
+    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(1 :: Int)..] $ map T_NodeSet $ V.toList _location)
+    , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
 

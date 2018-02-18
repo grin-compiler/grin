@@ -43,8 +43,8 @@ instance Pretty RTVar where
 
 instance Pretty Computer where
   pretty Computer{..} = vsep
-    [ yellow (text "Heap") <$$> indent 4 (pretty storeMap)
-    , yellow (text "Env") <$$> indent 4 (pretty envMap)
+    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ IntMap.toList storeMap)
+    , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList envMap)
     , yellow (text "Steps") <$$> indent 4 (foldl (\a b -> a <$$> b <$$> text "--------") empty $ map (pretty) (reverse steps))
     ]
 
@@ -69,8 +69,8 @@ instance Pretty R.TypeSet where
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
-    [ yellow (text "Heap") <$$> indent 4 (pretty _memory)
-    , yellow (text "Env") <$$> indent 4 (pretty _register)
+    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ zip [(1 :: Int)..] $ V.toList _memory)
+    , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList  _register)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyHPTFunction $ Map.toList _function)
     ]
 
