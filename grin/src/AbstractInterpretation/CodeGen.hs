@@ -50,6 +50,8 @@ getOrAddFunRegs name arity = do
     Nothing -> do
       resReg <- newReg
       argRegs <- replicateM arity newReg
+      -- HINT: add prim op here because it does not have definition
+      when (isPrimName name) $ registerPrimOp name resReg argRegs
       let funRegs = (resReg, argRegs)
       modify' $ \s@HPTProgram{..} -> s {hptFunctionArgMap = Map.insert name funRegs hptFunctionArgMap}
       pure funRegs
@@ -117,10 +119,10 @@ codeGenVal = \case
   Var name -> getReg name
   val -> error $ "unsupported value " ++ show val
 
-registerPrimOps :: CG Result
-registerPrimOps = do
-  let regOp name argTypes resultTy = do
-        (funResultReg, funArgRegs) <- getOrAddFunRegs name (length argTypes)
+registerPrimOp :: Name -> IR.Reg -> [IR.Reg] -> CG ()
+registerPrimOp name funResultReg funArgRegs = do
+  let regOp argTypes resultTy = do
+        -- TODO: emit to global init block
         emit $ IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
         zipWithM_ (\argReg argTy -> emit $ IR.Set {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
 
@@ -130,51 +132,50 @@ registerPrimOps = do
       float = litToSimpleType $ LFloat 0
       bool  = litToSimpleType $ LBool False
 
-  regOp "_prim_int_print" [int] int
-  -- Int
-  regOp "_prim_int_add"   [int, int] int
-  regOp "_prim_int_sub"   [int, int] int
-  regOp "_prim_int_mul"   [int, int] int
-  regOp "_prim_int_div"   [int, int] int
-  regOp "_prim_int_eq"    [int, int] bool
-  regOp "_prim_int_ne"    [int, int] bool
-  regOp "_prim_int_gt"    [int, int] bool
-  regOp "_prim_int_ge"    [int, int] bool
-  regOp "_prim_int_lt"    [int, int] bool
-  regOp "_prim_int_le"    [int, int] bool
-  -- Word
-  regOp "_prim_word_add"  [word, word] word
-  regOp "_prim_word_sub"  [word, word] word
-  regOp "_prim_word_mul"  [word, word] word
-  regOp "_prim_word_div"  [word, word] word
-  regOp "_prim_word_eq"   [word, word] bool
-  regOp "_prim_word_ne"   [word, word] bool
-  regOp "_prim_word_gt"   [word, word] bool
-  regOp "_prim_word_ge"   [word, word] bool
-  regOp "_prim_word_lt"   [word, word] bool
-  regOp "_prim_word_le"   [word, word] bool
-  -- Float
-  regOp "_prim_float_add" [float, float] float
-  regOp "_prim_float_sub" [float, float] float
-  regOp "_prim_float_mul" [float, float] float
-  regOp "_prim_float_div" [float, float] float
-  regOp "_prim_float_eq"  [float, float] bool
-  regOp "_prim_float_ne"  [float, float] bool
-  regOp "_prim_float_gt"  [float, float] bool
-  regOp "_prim_float_ge"  [float, float] bool
-  regOp "_prim_float_lt"  [float, float] bool
-  regOp "_prim_float_le"  [float, float] bool
-  -- Bool
-  regOp "_prim_bool_eq"   [bool, bool] bool
-  regOp "_prim_bool_ne"   [bool, bool] bool
-
-  pure Z
+  case name of
+    "_prim_int_print" -> regOp [int] int
+    -- Int
+    "_prim_int_add"   -> regOp [int, int] int
+    "_prim_int_sub"   -> regOp [int, int] int
+    "_prim_int_mul"   -> regOp [int, int] int
+    "_prim_int_div"   -> regOp [int, int] int
+    "_prim_int_eq"    -> regOp [int, int] bool
+    "_prim_int_ne"    -> regOp [int, int] bool
+    "_prim_int_gt"    -> regOp [int, int] bool
+    "_prim_int_ge"    -> regOp [int, int] bool
+    "_prim_int_lt"    -> regOp [int, int] bool
+    "_prim_int_le"    -> regOp [int, int] bool
+    -- Word
+    "_prim_word_add"  -> regOp [word, word] word
+    "_prim_word_sub"  -> regOp [word, word] word
+    "_prim_word_mul"  -> regOp [word, word] word
+    "_prim_word_div"  -> regOp [word, word] word
+    "_prim_word_eq"   -> regOp [word, word] bool
+    "_prim_word_ne"   -> regOp [word, word] bool
+    "_prim_word_gt"   -> regOp [word, word] bool
+    "_prim_word_ge"   -> regOp [word, word] bool
+    "_prim_word_lt"   -> regOp [word, word] bool
+    "_prim_word_le"   -> regOp [word, word] bool
+    -- Float
+    "_prim_float_add" -> regOp [float, float] float
+    "_prim_float_sub" -> regOp [float, float] float
+    "_prim_float_mul" -> regOp [float, float] float
+    "_prim_float_div" -> regOp [float, float] float
+    "_prim_float_eq"  -> regOp [float, float] bool
+    "_prim_float_ne"  -> regOp [float, float] bool
+    "_prim_float_gt"  -> regOp [float, float] bool
+    "_prim_float_ge"  -> regOp [float, float] bool
+    "_prim_float_lt"  -> regOp [float, float] bool
+    "_prim_float_le"  -> regOp [float, float] bool
+    -- Bool
+    "_prim_bool_eq"   -> regOp [bool, bool] bool
+    "_prim_bool_ne"   -> regOp [bool, bool] bool
 
 codeGen :: Exp -> HPTProgram
 codeGen = flip execState IR.emptyHPTProgram . cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
-    ProgramF defs -> sequence_ defs >> registerPrimOps
+    ProgramF defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
       instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
