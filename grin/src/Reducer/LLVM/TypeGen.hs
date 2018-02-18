@@ -6,12 +6,14 @@ import Debug.Trace
 import Text.Printf
 import Text.PrettyPrint.ANSI.Leijen (pretty)
 
+import Data.Word
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import qualified Data.List as List
 
 import Control.Monad.State
 import Lens.Micro.Platform
@@ -38,42 +40,68 @@ tagLLVMType :: LLVM.Type
 tagLLVMType = i64
 
 -- Tagged union
+{-
+  HINT: tagged union LLVM representation
+
+    struct {
+      Int64[N1];
+      Word64[N2];
+      ...
+    }
+-}
+data TUIndex
+  = TUIndex
+  { tuStructIndex :: Word32
+  , tuArrayIndex  :: Word32
+  }
 
 data TaggedUnion
   = TaggedUnion
-  { tuLLVMType  :: LLVM.Type
-  , tuPayload   :: Map SimpleType Int
-  , tuMapping   :: Map Tag (Vector (SimpleType, Int))
+  { tuLLVMType  :: LLVM.Type -- struct of arrays of SimpleType with size
+  , tuMapping   :: Map Tag (Vector TUIndex)
   }
 
-type TU = State (Map SimpleType Int, Map SimpleType Int) -- accumulator, max count map
+
+data TUBuild
+  = TUBuild
+  { tubStructIndexMap :: Map LLVM.Type Word32
+  , tubArraySizeMap   :: Map LLVM.Type Word32
+  , tubArrayPosMap    :: Map LLVM.Type Word32
+  }
+
+emptyTUBuild = TUBuild mempty mempty mempty
+
+type TU = State TUBuild
 
 taggedUnion :: NodeSet -> TaggedUnion
-taggedUnion ns = TaggedUnion llvmType tuPayload tuMapping where
-  (tuMapping, (_,tuPayload)) = runState (mapM mapNode ns) mempty
+taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
 
-  mapNode :: Vector SimpleType -> TU (Vector (SimpleType, Int))
+  mapNode :: Vector SimpleType -> TU (Vector TUIndex)
   mapNode v = do
-    nodeMapping <- mapM mapItem v
-    modify $ \(mapping, maxMap) -> (mempty, Map.unionWith max mapping maxMap)
+    nodeMapping <- mapM allocIndex v
+    modify $ \tub@TUBuild{..} -> tub {tubArraySizeMap = Map.unionWith max tubArrayPosMap tubArraySizeMap, tubArrayPosMap = mempty}
     pure nodeMapping
 
-  mapItem :: SimpleType -> TU (SimpleType, Int)
-  mapItem = \case
-    T_Location {} -> allocIndex $ T_Location []
-    sTy -> allocIndex sTy
+  getStructIndex :: LLVM.Type -> TU Word32
+  getStructIndex ty = state $ \tub@TUBuild{..} ->
+    let i = Map.findWithDefault (fromIntegral $ Map.size tubStructIndexMap) ty tubStructIndexMap
+    in (i, tub {tubStructIndexMap = Map.insert ty i tubStructIndexMap})
 
-  allocIndex :: SimpleType -> TU (SimpleType, Int)
-  allocIndex sTy = state $ \(mapping, maxMap) ->
-                    let v = Map.findWithDefault 0 sTy mapping
-                    in ((sTy, v), (Map.insert sTy (succ v) mapping, maxMap))
+  getArrayIndex :: LLVM.Type -> TU Word32
+  getArrayIndex ty = state $ \tub@TUBuild{..} ->
+    let i = Map.findWithDefault 0 ty tubArrayPosMap
+    in (i, tub {tubArrayPosMap = Map.insert ty i tubArrayPosMap})
 
-  llvmType = StructureType
+  allocIndex :: SimpleType -> TU TUIndex
+  allocIndex sTy = TUIndex <$> getStructIndex t <*> getArrayIndex t where t = typeGenSimpleType sTy
+
+  (tuMapping, tub) = runState (mapM mapNode ns) emptyTUBuild
+
+  tuLLVMType TUBuild{..} = StructureType
               { isPacked = True
               , elementTypes = tagLLVMType :
-                               [ ArrayType (fromIntegral count) (typeGenSimpleType ty)
-                               | (ty, count) <- Map.toList tuPayload
-                               , count > 0
+                               [ ArrayType (fromIntegral $ tubArraySizeMap Map.! ty) ty
+                               | (ty, _idx) <- List.sortBy (\(_,a) (_,b) -> compare a b) $ Map.toList tubStructIndexMap
                                ]
               }
 
