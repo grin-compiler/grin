@@ -1,7 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
 module Reducer.Pure (reduceFun) where
 
-import Debug.Trace
+import Text.Printf
+import Text.PrettyPrint.ANSI.Leijen
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -13,6 +14,7 @@ import Text.Printf
 
 import Reducer.PrimOps
 import Grin
+import Pretty
 
 -- models computer memory
 data StoreMap
@@ -31,7 +33,7 @@ bindPatMany :: Env -> [Val] -> [LPat] -> Env
 bindPatMany env [] [] = env
 bindPatMany env (val : vals) (lpat : lpats) = bindPatMany (bindPat env val lpat) vals lpats
 bindPatMany env [] (lpat : lpats) = bindPatMany (bindPat env Undefined lpat) [] lpats
-bindPatMany _ vals lpats = error $ "bindPatMany - pattern mismatch: " ++ show (vals, lpats)
+bindPatMany _ vals lpats = error $ printf "bindPatMany - pattern mismatch: %s %s" (show . pretty $ vals) (show . pretty $ lpats)
 
 bindPat :: Env -> Val -> LPat -> Env
 bindPat env val lpat = case lpat of
@@ -39,13 +41,13 @@ bindPat env val lpat = case lpat of
   ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
   VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
   Unit -> env
-  _ -> error $ "bindPat - pattern mismatch" ++ show (val,lpat)
+  _ -> error $ printf "bindPat - pattern mismatch %s %s" (show . pretty $ val) (show . pretty $ lpat)
 
 lookupEnv :: Name -> Env -> Val
-lookupEnv n env = Map.findWithDefault (error $ "missing variable: " ++ n) n env
+lookupEnv n env = Map.findWithDefault (error $ printf "missing variable: %s" n) n env
 
 lookupStore :: Int -> StoreMap -> Val
-lookupStore i s = IntMap.findWithDefault (error $ "missing location: " ++ show i) i $ storeMap s
+lookupStore i s = IntMap.findWithDefault (error $ printf "missing location: %s" (show i)) i $ storeMap s
 
 evalVal :: Env -> Val -> Val
 evalVal env = \case
@@ -56,63 +58,63 @@ evalVal env = \case
                   -- NOTE: must be impossible (I guess)
                   -- Var n     -> VarTagNode n $ map (evalVal env) a
                   ValTag t  -> ConstTagNode t $ map (evalVal env) a
-                  x -> error $ "evalVal - invalid VarTagNode tag: " ++ show x
+                  x -> error $ printf "evalVal - invalid VarTagNode tag: %s" (show $ pretty x)
   v@ValTag{}  -> v
   v@Unit      -> v
   v@Loc{}     -> v
-  x -> error $ "evalVal: " ++ show x
+  x -> error $ printf "evalVal: %s" (show $ pretty x)
 
 evalSimpleExp :: Env -> SimpleExp -> GrinM Val
 evalSimpleExp env = \case
-  SApp n a -> {-# SCC eSE_App #-}do
+  SApp n a -> do
               let args = map (evalVal env) a
                   go a [] [] = a
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                  go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
+                  go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (show $ pretty x) (show $ pretty y)
               if isPrimName n
                 then evalPrimOp n args
                 else do
-                  Def _ vars body <- reader $ Map.findWithDefault (error $ "unknown function: " ++ n) n
+                  Def _ vars body <- reader $ Map.findWithDefault (error $ printf "unknown function: %s" n) n
                   evalExp (go env vars args) body
-  SReturn v -> {-# SCC eSE_Return #-}return $ evalVal env v
-  SStore v -> {-# SCC eSE_Store #-}do
-              l <- {-# SCC eSE_Store_size #-}gets storeSize
+  SReturn v -> return $ evalVal env v
+  SStore v -> do
+              l <- gets storeSize
               let v' = evalVal env v
-              modify' ({-# SCC eSE_Store_insert #-}\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
+              modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               return $ Loc l
-  SFetchI n index -> {-# SCC eSE_Fetch #-}case lookupEnv n env of
+  SFetchI n index -> case lookupEnv n env of
               Loc l -> gets $ (selectNodeItem index . lookupStore l)
-              x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
+              x -> error $ printf "evalSimpleExp - Fetch expected location, got: %s" (show $ pretty x)
 --  | FetchI  Name Int -- fetch node component
-  SUpdate n v -> {-# SCC eSE_Update #-}do
+  SUpdate n v -> do
               let v' = evalVal env v
               case lookupEnv n env of
                 Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
-                            False -> error $ "evalSimpleExp - Update unknown location: " ++ show l
+                            False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
                             True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> return Unit
-                x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
-  SBlock a -> {-# SCC eSE_Block #-}evalExp env a
-  x -> error $ "evalSimpleExp: " ++ show x
+                x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (show $ pretty x)
+  SBlock a -> evalExp env a
+  x -> error $ printf "evalSimpleExp: " (show $ pretty x)
 
 evalExp :: Env -> Exp -> GrinM Val
 evalExp env = \case
   EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
   ECase v alts -> case evalVal env v of
     ConstTagNode t l ->
-                   let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
+                   let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error (printf "evalExp - missing Case Node alternative for: %s" (show $ pretty t))
                        go a [] [] = a
                        go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                       go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
+                       go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (show $ pretty t) (show $ pretty x) (show $ pretty y)
                    in  evalExp (go env vars l) exp
-    ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
-    Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
-    x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
+    ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ error (printf "evalExp - missing Case Tag alternative for: %s" (show $ pretty t))
+    Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ error (printf "evalExp - missing Case Lit alternative for: %s" (show $ pretty l))
+    x -> error $ printf "evalExp - invalid Case dispatch value: %s" (show $ pretty x)
   exp -> evalSimpleExp env exp
 
 reduceFun :: [Def] -> Name -> Val
 reduceFun l n = evalState (runReaderT (evalExp mempty e) m) emptyStore where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
   e = case Map.lookup n m of
-        Nothing -> error $ "missing function: " ++ n
+        Nothing -> error $ printf "missing function: %s" n
         Just (Def _ [] a) -> a
-        _ -> error $ "function " ++ n ++ " has arguments"
+        _ -> error $ printf "function %s has arguments" n
