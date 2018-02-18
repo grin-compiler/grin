@@ -5,8 +5,6 @@ module Reducer.LLVM.CodeGen
   , toLLVM
   ) where
 
-import Debug.Trace
-import Text.Show.Pretty hiding (Value)
 import Text.Printf
 import Control.Monad as M
 import Control.Monad.State
@@ -35,6 +33,7 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
 import Grin
+import Pretty
 import qualified TypeEnv
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
@@ -47,17 +46,6 @@ toLLVM fname mod = withContext $ \ctx -> do
   BS.writeFile fname llvm
   pure llvm
 
-{-
-data Val
-  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag)
-  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
-  | ValTag        Tag
-  | Unit
-  -- simple val
-  | Lit Lit
-  | Var Name
--}
-
 codeGenLit :: Lit -> C.Constant
 codeGenLit = \case
   LInt64 v  -> Int {integerBits=64, integerValue=fromIntegral v}
@@ -66,32 +54,32 @@ codeGenLit = \case
   LBool v   -> Int {integerBits=1, integerValue=if v then 1 else 0}
 
 codeGenVal :: Val -> CG Operand
-codeGenVal = \case
-  -- TODO: support nodes
-  ConstTagNode tag args -> do -- complete node (constant tag)
+codeGenVal val = case val of
+  -- TODO: var tag node support
+  ConstTagNode tag args -> do
     opTag <- ConstantOperand <$> getTagId tag
     opArgs <- mapM codeGenVal args
-    pure $ ConstantOperand $ Struct
-      { structName    = Nothing
-      , isPacked      = True -- or False?
-      , memberValues  = replicate (1 + length opArgs) (Undef i64)-- TODO :: [ Constant ]
-      }
-  VarTagNode tagVar args -> do
-    opTag <- codeGenVal $ Var tagVar
-    opArgs <- mapM codeGenVal args -- complete node (variable tag)
-    {-
-      TODO:
-        - create the struct type
-            - type of tag
-            - type of args
-        - create struct with constants
-        - fot the rest emit insertvalue
-    -}
-    pure $ ConstantOperand $ Struct
-      { structName    = Nothing
-      , isPacked      = True -- or False?
-      , memberValues  = replicate (1 + length opArgs) (Undef i64)-- TODO :: [ Constant ]
-      }
+
+    TypeEnv.T_NodeSet ns <- typeOfVal val
+    let TaggedUnion{..} = taggedUnion ns
+        agg0 = I $ AST.InsertValue
+            { aggregate = undef tuLLVMType
+            , element   = opTag
+            , indices'  = [0]
+            , metadata  = []
+            }
+        build mAgg (item, TUIndex{..}) = do
+          agg <- getOperand mAgg
+          pure $ I $ AST.InsertValue
+            { aggregate = agg
+            , element   = item
+            , indices'  = [1 + tuStructIndex, tuArrayIndex]
+            , metadata  = []
+            }
+
+    agg <- foldM build agg0 $ zip opArgs $ V.toList $ tuMapping Map.! tag
+    getOperand agg
+
   ValTag tag  -> ConstantOperand <$> getTagId tag
   Unit        -> unit
   Lit lit     -> pure . ConstantOperand . codeGenLit $ lit
@@ -103,7 +91,7 @@ codeGenVal = \case
                                   pure $ LocalReference ty (mkName name) -- TODO: lookup in constant map
                       Just operand  -> pure operand
 
-  val -> error $ "codeGenVal: " ++ show val
+  _ -> error $ printf "codeGenVal: %s" (show $ pretty val)
 
 getCPatConstant :: CPat -> CG Constant
 getCPatConstant = \case
@@ -245,29 +233,30 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       sequence_ (map snd defs) >> O <$> unit <*> pure undefined
 
     SStoreF val -> do
-      -- TODO: allocate memory; calculate types properly
-      let opAddress = ConstantOperand $ Null $ PointerType i64 (AddrSpace 0)
-      opVal <- codeGenVal val
-      pure . I $ Store
-        { volatile        = False
-        , address         = opAddress
-        , value           = opVal
-        , maybeAtomicity  = Nothing
-        , alignment       = 0
-        , metadata        = []
-        }
       {-
-      tempName <- uniqueTempName
-      emit [tempName := Store
-        { volatile        = False
-        , address         = opAddress
-        , value           = opVal
-        , maybeAtomicity  = Nothing
-        , alignment       = 0
-        , metadata        = []
-        }]
-      pure . O $ LocalReference i64 tempName
+        TODO:
+          - case on possible tags
+              - convert to singleton node set
+              - store
       -}
+      TypeEnv.T_NodeSet ns <- typeOfVal val
+      let TaggedUnion{..} = taggedUnion ns
+          opAddress = ConstantOperand $ Null $ ptr tuLLVMType
+      opVal <- codeGenVal val
+      -- TODO: allocate memory; calculate types properly
+      if Map.size ns == 1
+        then do
+          pure . I $ Store
+            { volatile        = False
+            , address         = opAddress
+            , value           = opVal
+            , maybeAtomicity  = Nothing
+            , alignment       = 0
+            , metadata        = []
+            }
+        else do
+          pure undefined
+
     SFetchIF name Nothing -> do
       {-
         read tag
