@@ -623,7 +623,7 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
         _ -> mzero
 
 gMain :: GoalM TDef
-gMain = TDef (TName "grinMain") [] <$> solve (Exp [] TTUnit)
+gMain = fmap (TDef (TName "grinMain") []) $ mresize 20 $ solve (Exp [] TTUnit)
 
 -- | Generate n functions and extend the context with the definitions,
 -- run the final computation.
