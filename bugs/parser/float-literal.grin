@@ -1,0 +1,45 @@
+grinMain =
+  hin <- _prim_word_add 5643543699801269706u 16226936514204278295u
+  wao <- pure ()
+  ne <- pure (Csoa 8060978406774983327 56.37897 hin 6.9922633)
+  meyu <- do
+    kuri <- _prim_int_add 3133513188 -4020161891
+    n <- pure (Cnii 32.17341)
+    yuhi <- pure hin
+    nisa <- pure ()
+    roya <- pure (Cmu hin kuri hin)
+    noko <- do
+      he <- _prim_float_add -22.266552 34.105877
+      _prim_float_sub he he
+    case 36560 of
+      -61891 -> nasu <- do
+                  woo <- _prim_int_print kuri
+                  ke <- _prim_int_gt kuri kuri
+                  huwa <- pure noko
+                  sa <- _prim_int_mul kuri kuri
+                  case (Cnii noko) of
+                    (Cnii eka) -> case (Co hin) of
+                                    (Ce muho mumo more nera kama) -> tuka <- pure (Cno kama kuri kama mumo)
+                                                                     ti <- pure mumo
+                                                                     u <- pure (Ce nera yuhi kama noko kuri)
+                                                                     ku <- pure huwa
+                                                                     yoa <- pure ti
+                                                                     noma <- do
+                                                                       rayu <- _prim_int_print kuri
+                                                                       se <- _prim_word_sub ti ti
+                                                                       ka <- _prim_word_sub se mumo
+                                                                       nuwa <- pure hin
+                                                                       _prim_word_lt yoa se
+                                                                     ro <- pure (Csotu kama)
+                                                                     wo <- pure kuri
+                                                                     pure kuri
+                                    (Cmuu eku meyo) -> pure meyo
+                                    (Cna rere tete noro) -> pure sa
+                                    (Co hose) -> pure kuri
+                    (Cno hiewo raso nihu sena) -> pure nihu
+                    (Csotu heha) -> _prim_int_div kuri sa
+                    (Cte suwo ka mawi horawa he) -> _prim_int_add horawa sa
+                _prim_int_mul nasu kuri
+      36560 -> pure kuri
+  _prim_int_print meyu
+ 
