@@ -145,6 +145,7 @@ test-suite grin-test
                      , Transformations.SubstitutionSpec
                      , TestSpec
                      , PipelineSpec
+                     , ParserSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
