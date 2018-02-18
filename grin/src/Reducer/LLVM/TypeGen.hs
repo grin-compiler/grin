@@ -90,7 +90,7 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
   getArrayIndex :: LLVM.Type -> TU Word32
   getArrayIndex ty = state $ \tub@TUBuild{..} ->
     let i = Map.findWithDefault 0 ty tubArrayPosMap
-    in (i, tub {tubArrayPosMap = Map.insert ty i tubArrayPosMap})
+    in (i, tub {tubArrayPosMap = Map.insert ty (succ i) tubArrayPosMap})
 
   allocIndex :: SimpleType -> TU TUIndex
   allocIndex sTy = TUIndex <$> getStructIndex t <*> getArrayIndex t where t = typeGenSimpleType sTy
