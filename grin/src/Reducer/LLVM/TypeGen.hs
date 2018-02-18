@@ -205,14 +205,12 @@ getFunctionType name = do
       argTypes <- mapM typeGenValue $ V.toList argValues
       pure (retType, argTypes)
 
-getTagId :: Tag -> Constant
-getTagId tag = case Map.lookup tag tagMap of
-  Nothing -> trace ("unknown tag " ++ show (pretty tag)) $ Int 64 0
-  Just (ty, c) -> c
- where
-  -- TODO: create Tag map ; get as parameter ; store in reader environment
-  {-
-    question: how to calculate from grin or hpt result?
-  -}
-  tagMap :: Map Tag (Type, Constant)
-  tagMap = Map.fromList []
+getTagId :: Tag -> CG Constant
+getTagId tag = do
+  tagMap <- use envTagMap
+  case Map.lookup tag tagMap of
+    Just c  -> pure c
+    Nothing -> do
+      let c = Int 64 $ fromIntegral $ Map.size tagMap
+      envTagMap %= (Map.insert tag c)
+      pure c

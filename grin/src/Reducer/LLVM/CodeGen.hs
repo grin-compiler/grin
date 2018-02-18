@@ -69,7 +69,7 @@ codeGenVal :: Val -> CG Operand
 codeGenVal = \case
   -- TODO: support nodes
   ConstTagNode tag args -> do -- complete node (constant tag)
-    let opTag = ConstantOperand $ getTagId tag
+    opTag <- ConstantOperand <$> getTagId tag
     opArgs <- mapM codeGenVal args
     pure $ ConstantOperand $ Struct
       { structName    = Nothing
@@ -92,7 +92,7 @@ codeGenVal = \case
       , isPacked      = True -- or False?
       , memberValues  = replicate (1 + length opArgs) (Undef i64)-- TODO :: [ Constant ]
       }
-  ValTag tag  -> pure $ ConstantOperand $ getTagId tag
+  ValTag tag  -> ConstantOperand <$> getTagId tag
   Unit        -> unit
   Lit lit     -> pure . ConstantOperand . codeGenLit $ lit
   Var name    -> do
@@ -105,10 +105,10 @@ codeGenVal = \case
 
   val -> error $ "codeGenVal: " ++ show val
 
-getCPatConstant :: CPat -> Constant
+getCPatConstant :: CPat -> CG Constant
 getCPatConstant = \case
   TagPat  tag       -> getTagId tag
-  LitPat  lit       -> codeGenLit lit
+  LitPat  lit       -> pure $ codeGenLit lit
   NodePat tag args  -> getTagId tag -- TODO
 
 getCPatName :: CPat -> String
@@ -196,7 +196,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
               }
         (altDests, altValues) <- fmap unzip . forM alts $ \(Alt cpat _, altBody) -> do
           let altBlockName  = mkName ("switch." ++ getCPatName cpat) -- TODO: generate unique names
-              altCPatVal    = getCPatConstant cpat
+          altCPatVal <- getCPatConstant cpat
           addBlock altBlockName $ do
             case cpat of
               NodePat tags args -> forM_ args $ \argName -> do

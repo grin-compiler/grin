@@ -40,6 +40,7 @@ data Env
   , _envTempCounter   :: Int
   , _envTypeEnv       :: TypeEnv.TypeEnv
   , _envLLVMTypeMap   :: Map TypeEnv.NodeSet LLVM.Type
+  , _envTagMap        :: Map Tag Constant
   }
 
 emptyEnv = Env
@@ -51,6 +52,7 @@ emptyEnv = Env
   , _envTempCounter   = 0
   , _envTypeEnv       = TypeEnv.TypeEnv mempty mempty mempty
   , _envLLVMTypeMap   = mempty
+  , _envTagMap        = mempty
   }
 
 concat <$> mapM makeLenses [''Env]
