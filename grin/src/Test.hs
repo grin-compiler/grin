@@ -570,6 +570,8 @@ gExpSized n t = \case
   es -> mzero
 
 -- TODO: Effects
+-- TODO: Remove overlappings
+-- TODO: Mix values and variables in tags
 gAlts :: TVal -> Type -> Type -> GoalM [TAlt]
 gAlts val typeOfVal typeOfExp = case typeOfVal of
   TTag name params -> do
@@ -580,7 +582,12 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
     gAlts val typOfV typeOfExp
   _ -> case val of
         TSimpleVal (TLit lit) -> do
-          pure . TAlt (LitPat lit) <$> (solve (Exp [] typeOfExp))
+          n <- gen $ choose (1, 5)
+          alts <- replicateM n $ do
+            (TLit lit0) <- gLiteral typeOfVal
+            TAlt (LitPat lit0) <$> (solve (Exp [] typeOfExp))
+          matching <- TAlt (LitPat lit) <$> (solve (Exp [] typeOfExp))
+          gen $ shuffle (matching:alts)
         _ -> mzero
 
 gProg :: GoalM TProg
