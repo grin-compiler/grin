@@ -30,6 +30,7 @@ emptyStore1 = STStore <$> new (10 * 1024 * 1024) <*> newSTRef 0
 
 -- models cpu registers
 type Env = Map Name Val
+type Prog = Map Name Def
 type GrinS s a = RWST Prog () (STStore s) (ST s) a
 
 getProg :: GrinS s Prog
@@ -155,8 +156,8 @@ evalSimpleExp env = \case
   SBlock a -> evalExp env a
   x -> error $ "evalSimpleExp: " ++ show x
 
-reduceFun :: [Def] -> Name -> Val
-reduceFun l n = runST $ do
+reduceFun :: Program -> Name -> Val
+reduceFun (Program l) n = runST $ do
   store <- emptyStore1
   (val, _, _) <- runRWST (evalExp mempty e) m store
   return val

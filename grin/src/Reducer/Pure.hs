@@ -30,6 +30,7 @@ emptyStore = StoreMap mempty 0
 
 -- models cpu registers
 type Env = Map Name Val
+type Prog = Map Name Def
 type GrinM = ReaderT Prog (State StoreMap)
 
 bindPatMany :: Env -> [Val] -> [LPat] -> Env
@@ -117,8 +118,8 @@ evalExp env = \case
     x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp env exp
 
-reduceFun :: [Def] -> Name -> Val
-reduceFun l n = evalState (runReaderT (evalExp mempty e) m) emptyStore where
+reduceFun :: Program -> Name -> Val
+reduceFun (Program l) n = evalState (runReaderT (evalExp mempty e) m) emptyStore where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
   e = case Map.lookup n m of
         Nothing -> error $ printf "missing function: %s" n

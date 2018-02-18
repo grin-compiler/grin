@@ -16,8 +16,6 @@ import Data.List (isPrefixOf)
 
 type Name = String
 
-type Prog = Map Name Def
-
 type SimpleExp = Exp
 type Alt = Exp
 type Def = Exp

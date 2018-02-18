@@ -118,7 +118,6 @@ main = do
   Options files steps outputDir <- defaultPipeline <$> options
   forM_ files $ \fname -> do
     content <- readFile fname
-    let grin = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
-        program = Program grin
+    let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
         opts = PipelineOpts { _poOutputDir = outputDir }
     pipeline opts program steps

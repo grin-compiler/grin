@@ -23,17 +23,17 @@ eval' reducer fname = do
   content <- readFile fname
   case parseGrin fname content of
     Left err -> error $ parseErrorPretty' content  err
-    Right e  ->
+    Right program ->
       case reducer of
-        PureReducer -> pure $ Reducer.Pure.reduceFun e "grinMain"
-        STReducer   -> pure $ Reducer.ST.reduceFun e "grinMain"
-        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv (Program e)) "grinMain" where
+        PureReducer -> pure $ Reducer.Pure.reduceFun program "grinMain"
+        STReducer   -> pure $ Reducer.ST.reduceFun program "grinMain"
+        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
           typeEnv     = typeEnvFromHPTResult hptResult
           hptResult   = HPT.toHPTResult hptProgram $ HPT.evalHPT hptProgram
-          hptProgram  = HPT.codeGen (Program e)
+          hptProgram  = HPT.codeGen program
 
 evalProgram :: Reducer -> Program -> Val
-evalProgram reducer (Program defs) =
+evalProgram reducer program =
   case reducer of
-    PureReducer -> Reducer.Pure.reduceFun defs "grinMain"
-    STReducer   -> Reducer.ST.reduceFun defs "grinMain"
+    PureReducer -> Reducer.Pure.reduceFun program "grinMain"
+    STReducer   -> Reducer.ST.reduceFun program "grinMain"
