@@ -440,7 +440,8 @@ gValue = \case
 gPureFunction :: Type -> GoalM (Name, [Type])
 gPureFunction t = do
   (Env vars funs adts) <- view _1
-  (name, (params, ret, [])) <- melements . Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
+  funs <- gen $ shuffle $ Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
+  (name, (params, ret, [])) <- melements funs
   pure (name, params)
 
 mGetSize :: GoalM Int
@@ -559,7 +560,7 @@ gDef = do
   let effs = []
   retType <- mfreq [ (90, simpleType), (10, definedAdt) ]
   n <- gen $ choose (1, 5)
-  ptypes <- replicateM n $ moneof [simpleType, definedAdt]
+  ptypes <- replicateM n $ mfreq [ (90, simpleType), (10, definedAdt) ]
   (fname:pnames) <- newNames (n+1)
   CMR.local
 --    TODO: Self recursive: Generate eval creates in infinite loop
@@ -632,14 +633,16 @@ gDefs n f = go n f [] where
   go n f defs = do
     (def@(TDef (TName name) _ _), (ptypes, rtype, effs)) <- gDef
     CMR.local (ctxEnv %~ insertFun (name, ptypes, rtype, effs)) $
-      go (n - 1) f (def:defs)
+      -- TODO: Make this as a config parameter
+      mresize 20 $ go (n - 1) f (def:defs)
 
 gProg :: GoalM TProg
 gProg = retry 10 $ do
-  n <- gen $ choose (0, 10)
+  n <- gen $ choose (0, 30)
   gDefs n $ \defs -> do
     m <- gMain
-    pure $ TProg $ NonEmpty (defs ++ [m])
+    defs1 <- gen $ shuffle defs
+    pure $ TProg $ NonEmpty (defs1 ++ [m])
 
 primitiveADTs :: Set Type
 primitiveADTs = Set.fromList
