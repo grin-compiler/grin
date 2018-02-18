@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
 module Test where
 
 import Prelude hiding (GT)
@@ -249,11 +249,20 @@ instance Arbitrary Type where arbitrary = genericArbitraryU
 
 simpleType :: GoalM Type
 simpleType = melements
-  [ TTUnit
-  , TInt
+  [ TInt
   , TFloat
   , TWord
-  , TTLoc
+  , TTUnit
+--  , TTLoc
+  ]
+
+primitiveType :: GoalM Type
+primitiveType = melements
+  [ TInt
+  , TFloat
+  , TWord
+--  , TTUnit
+--  , TTLoc
   ]
 
 
@@ -316,10 +325,6 @@ genProg =
 
 sampleGoalM :: Show a => GoalM a -> IO ()
 sampleGoalM g = sample $ runGoalM g
-
-testExp :: IO ()
-testExp = sampleGoalM (gExp boolT [])
-
 
 type GoalM a = ReaderT Context (LogicT Gen) a
 
@@ -384,10 +389,10 @@ gBool = gValue boolT
 
 adt :: GoalM Type
 adt = do
-  constructors <- newNames =<< gen (choose (1, 10))
+  constructors <- newNames =<< gen (choose (1, 5))
   fmap (TUnion . Set.fromList) $ forM constructors $ \name -> do
-    fields <- gen $ choose (1, 10)
-    TTag name <$> replicateM fields simpleType
+    fields <- gen $ choose (0, 5)
+    TTag name <$> replicateM fields primitiveType
 
 -- | Select a variable from a context which has a given type.
 gEnv :: Type -> GoalM Name
@@ -407,7 +412,7 @@ gSimpleVal = \case
   TInt   -> varFromEnv TInt   `mplus` gLiteral TInt
   TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
   TWord  -> varFromEnv TWord  `mplus` gLiteral TWord
-  TTLoc  -> varFromEnv TTLoc
+  TTLoc  -> mzero -- TODO: Locations are created via stores of function parameters ... varFromEnv TTLoc
   _      -> mzero
   where
     varFromEnv t = (TVar . TName <$> gEnv t)
@@ -420,7 +425,9 @@ gValue = \case
   TWord           -> TSimpleVal <$> gSimpleVal TWord
   TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
   TTag tag types  -> TConstTagNode (Tag C tag (length types)) <$> mapM gSimpleVal types
-  TUnion types    -> gValue =<< melements (Set.toList types)
+  TUnion types    -> do
+    t <- melements (Set.toList types)
+    solve (GVal t)
 
 gPureFunction :: Type -> GoalM (Name, [Type])
 gPureFunction t = do
@@ -428,23 +435,42 @@ gPureFunction t = do
   (name, (params, ret, [])) <- melements . Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
   pure (name, params)
 
+mGetSize :: GoalM Int
+mGetSize = gen $ sized pure
+
 gSExp :: Eff -> GoalM TSExp
-gSExp = \case
-  NoEff t       -> moneof
-    [ do (funName, paramTypes) <- gPureFunction t
-         TSApp (TName funName) <$> forM paramTypes gSimpleVal
-    , TSReturn <$> solve (GVal t)
---    , TSBlock <$> gExp t [] -- TODO: Resize
-    ]
+gSExp e = do
+  s <- mGetSize
+  gSExpSized s e
+
+gSExpSized :: Int -> Eff -> GoalM TSExp
+gSExpSized s = \case
+  NoEff t ->
+    case s of
+      0 -> moneof
+            [ do (funName, paramTypes) <- gPureFunction t
+                 TSApp (TName funName) <$> forM paramTypes gSimpleVal
+            , TSReturn <$> solve (GVal t)
+            ]
+      n -> moneof
+            [ do (funName, paramTypes) <- gPureFunction t
+                 TSApp (TName funName) <$> forM paramTypes gSimpleVal
+            , TSReturn <$> solve (GVal t)
+            , fmap TSBlock $ solve (Exp [] t)
+            ]
 
   NewLoc t      -> TSStore <$> solve (GVal t) -- TODO: Add a block
   ReadLoc l t   -> mzero -- find a name that contains the location and the given type.
   UpdateLoc l t -> mzero -- fing a name that contains the location and generate  value of a given type
 
-moneof :: [GoalM a] -> GoalM a
-moneof gs = do
+tryout :: [GoalM a] -> GoalM a
+tryout gs = do
   (g, gs') <- select gs
-  g `mplus` moneof gs'
+  g `mplus` tryout gs'
+
+moneof :: [GoalM a] -> GoalM a
+moneof [] = mzero
+moneof gs = join $ fmap fst $ select gs
 
 -- TODO: Limit the number of retries
 mSuchThat :: GoalM a -> (a -> Bool) -> GoalM a
@@ -459,8 +485,9 @@ melements [] = mzero
 melements es = gen $ elements es
 
 select :: [a] -> GoalM (a, [a])
-select [] = mzero
-select xs = do
+select []  = mzero
+select [a] = pure (a, [])
+select xs  = do
   n <- gen $ choose (0, length xs - 1)
   case (splitAt n xs) of
     ([]    , [])     -> mzero
@@ -478,23 +505,42 @@ retry n _ | n < 0 = mzero
 retry 0 g = g
 retry n g = g `mplus` retry (n-1) g
 
+liftGenTr :: (forall r . Gen r -> Gen r) -> GoalM a -> GoalM a
+liftGenTr fg (ReaderT g) =
+  ReaderT $ \ctx ->
+    let l' = unLogicT (g ctx)
+    in (LogicT (\f g1 -> l' (\a g0 -> f a (fg g0)) (fg g1)))
+
+mresize :: Int -> GoalM a -> GoalM a
+mresize n = liftGenTr (resize n)
+
+mscale :: (Int -> Int) -> GoalM a -> GoalM a
+mscale f = liftGenTr (scale f)
+
+gExp :: Type -> [Eff] -> GoalM TExp
+gExp t es = do
+  s <- mGetSize
+  gExpSized s t es
+
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
 -- TODO: Use size parameter to limit the generation of programs.
-gExp :: Type -> [Eff] -> GoalM TExp
-gExp t = \case
-  [] -> moneof
-    [ TSExp <$> gSExp (NoEff t)
-    , do t' <- moneof [simpleType, definedAdt]
-         se <- gSExp $ NoEff t'
-         newVar t' $ \n -> do -- TODO: Gen LPat
-           rest <- solve (Exp [] t)
-           pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
-    , do t'   <- moneof [simpleType, definedAdt]
-         val  <- gValue t'
-         alts <- gAlts val t' t
-         pure $ TECase val $ NonEmpty alts
-    ]
+gExpSized :: Int -> Type -> [Eff] -> GoalM TExp
+gExpSized n t = \case
+  [] -> case n of
+    0 -> TSExp <$> (solve (SExp (NoEff t)))
+    _ -> tryout
+            [ TSExp <$> (solve (SExp (NoEff t)))
+            , do t' <- tryout [simpleType, definedAdt]
+                 se <- (solve (SExp (NoEff t')))
+                 newVar t' $ \n -> do -- TODO: Gen LPat
+                   rest <- solve (Exp [] t)
+                   pure (TEBind se (TLPatSVal (TVar (TName n))) rest)
+            , do t'   <- tryout [simpleType, definedAdt]
+                 val  <- gValue t'
+                 alts <- gAlts val t' t
+                 pure $ TECase val $ NonEmpty alts
+            ]
   es -> mzero
 
 -- TODO: Effects
@@ -503,25 +549,18 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
   TTag name params -> do
     names <- newNames (length params)
     pure . TAlt (NodePat (Tag C name (length params)) names)
-      <$> withVars (names `zip` params) (gExp typeOfExp [])
+      <$> withVars (names `zip` params) (solve (Exp [] typeOfExp))
   TUnion types -> fmap concat . forM (Set.toList types) $ \typOfV ->
     gAlts val typOfV typeOfExp
   _ -> case val of
         TSimpleVal (TLit lit) -> do
-          pure . TAlt (LitPat lit) <$> gExp typeOfExp []
+          pure . TAlt (LitPat lit) <$> (solve (Exp [] typeOfExp))
         _ -> mzero
-
-{-
-TECase TVal (NonEmptyList TAlt)
-
-data TAlt = TAlt CPat TExp
-  deriving (Generic, Show)
--}
 
 gProg :: GoalM TProg
 gProg =
   (TProg . NonEmpty . pure . TDef (TName "grinMain") [])
-  <$> gExp TTUnit []
+  <$> (solve (Exp [] TTUnit))
 
 primitiveADTs :: Set Type
 primitiveADTs = Set.fromList
@@ -548,7 +587,10 @@ solve :: Solve t => Goal -> GoalM t
 solve g = do
 --  (Env vars funs adts) <- view _1
 --  traceShowM adts
-  solve' g
+--  s <- gen $ sized pure
+--  traceShowM s
+--  traceShowM (Solve, g)
+  mscale (`div` 2) $ solve' g
 
 instance Solve TVal where
   solve' = \case

@@ -3,6 +3,9 @@ module TestSpec where
 import Test
 import Test.Hspec
 import Test.QuickCheck
+import Test.QuickCheck.Monadic
+import Control.DeepSeq
+import Check
 
 import Data.List (nub)
 import qualified Data.Set as Set
@@ -27,3 +30,9 @@ spec = do
       (do n <- abs <$> arbitrary
           runGoalUnsafe $ withADTs n getADTs)
       (uniqueValues . concatMap tagNames . Set.toList)
+
+  it "genProg does not generate big programs" $ property $
+    forAll genProg $ \p -> label (show $ programSize p) $
+      monadicIO $ do
+        () <- pure $ rnf p
+        pure ()

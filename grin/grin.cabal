@@ -135,6 +135,7 @@ test-suite grin-test
                      , hspec
                      , hspec-discover
                      , QuickCheck
+                     , deepseq
   other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec

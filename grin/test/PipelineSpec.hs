@@ -36,4 +36,10 @@ shrinkPipeline (printast:chpt:hpt:rest) = ([printast, chpt, hpt]++) <$> shrinkLi
 transformations :: Gen [Transformation]
 transformations = do
   ts <- shuffle [toEnum 0 .. ]
-  fmap nub $ listOf1 $ elements (ts \\ [Vectorisation])
+  fmap nub $ listOf1 $ elements (ts \\ knownIssues)
+
+knownIssues :: [Transformation]
+knownIssues =
+  [ Vectorisation        -- Needs maintained HTP results
+  , RegisterIntroduction -- Memory leak
+  ]
