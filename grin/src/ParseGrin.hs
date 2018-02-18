@@ -44,7 +44,7 @@ var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_")) >>
   False -> return x
 
 con :: Parser String
-con = lexeme $ (:) <$> upperChar <*> many (alphaNumChar)
+con = lexeme $ some (alphaNumChar)
 
 integer = lexeme L.decimal
 signedInteger = L.signed sc' integer
@@ -102,9 +102,9 @@ value = Unit <$ op "()" <|>
         simpleValue
 
 literal :: Parser Lit
-literal = LInt64 . fromIntegral <$> signedInteger <|>
-          LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u') <|>
-          LFloat . realToFrac <$> signedFloat <|>
+literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
+          (try $ LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u')) <|>
+          LInt64 . fromIntegral <$> signedInteger <|>
           LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")
 
 grinModule :: Parser [Exp]
