@@ -97,6 +97,9 @@ evalSimpleExp env = \case
                             True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> return Unit
                 x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (prettyDebug x)
   SBlock a -> evalExp env a
+
+  e@ECase{} -> evalExp env e -- FIXME: this should not be here!!! please investigate.
+
   x -> error $ printf "invalid simple expression %s" (prettyDebug x)
 
 evalExp :: Env -> Exp -> GrinM Val
