@@ -1,5 +1,10 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module Pretty where
+module Pretty
+  ( pretty
+  , printGrin
+  , PP(..)
+  , prettyKeyValue
+  ) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
