@@ -109,10 +109,10 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
               }
 
 copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand
-copyTaggedUnion nodeVal nodeTU resultTU = do
+copyTaggedUnion srcVal srcTU dstTU = do
   let -- calculate mapping
       mapping :: [(TUIndex, TUIndex)] -- src dst
-      mapping = concat . map V.toList . Map.elems $ Map.intersectionWith V.zip (tuMapping nodeTU) (tuMapping resultTU)
+      mapping = concat . map V.toList . Map.elems $ Map.intersectionWith V.zip (tuMapping srcTU) (tuMapping dstTU)
       validatedMapping = fst $ foldl validate mempty mapping
       validate (l,m) x@(src, dst) = case Map.lookup dst m of
         Nothing -> ((x:l), Map.insert dst src m)
@@ -122,7 +122,7 @@ copyTaggedUnion nodeVal nodeTU resultTU = do
       build mAgg (srcIndex, dstIndex) = do
         agg <- getOperand mAgg
         item <- getOperand $ I $ AST.ExtractValue
-          { aggregate = nodeVal
+          { aggregate = srcVal
           , indices'  = srcIndex
           , metadata  = []
           }
@@ -133,7 +133,7 @@ copyTaggedUnion nodeVal nodeTU resultTU = do
           , metadata  = []
           }
       tagIndex = [0]
-      agg0 = O (undef (tuLLVMType resultTU)) undefined -- FIXME
+      agg0 = O (undef (tuLLVMType dstTU)) undefined -- FIXME
   agg <- foldM build agg0 $ (tagIndex,tagIndex) :
     [ ( [1 + tuStructIndex src, tuArrayIndex src]
       , [1 + tuStructIndex dst, tuArrayIndex dst]
