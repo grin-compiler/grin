@@ -14,6 +14,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Vector (Vector)
 import qualified Data.Vector as V
 
 import LLVM.AST hiding (callingConvention)
@@ -235,12 +236,12 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       sequence_ (map snd defs) >> O <$> unit <*> pure undefined
 
     SStoreF val -> do
-      T_NodeSet ns <- typeOfVal val
-      let TaggedUnion{..} = taggedUnion ns
-          opAddress = ConstantOperand $ Null $ ptr tuLLVMType
+      T_NodeSet nodeSet <- typeOfVal val
+      let TaggedUnion{..} = taggedUnion nodeSet
+          opAddress = ConstantOperand $ Null $ ptr tuLLVMType -- TODO
       opVal <- codeGenVal val
       -- TODO: allocate memory; calculate types properly
-      if Map.size ns == 1
+      if Map.size nodeSet == 1
         then do
           pure . I $ Store
             { volatile        = False
@@ -267,47 +268,22 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       TypeEnv{..} <- gets _envTypeEnv
       let T_SimpleType (T_Location locs) = _variable Map.! name
           nodeSet       = mconcat [_location V.! loc | loc <- locs]
-          possibleNodes = Map.toList nodeSet
           resultTU      = taggedUnion nodeSet
-      curBlockName <- gets _currentBlockName
-      switchExit <- uniqueName "fetch.switch.exit" -- this is the next block
-      rec
-        closeBlock $ Switch
-          { operand0'   = tagVal
-          , defaultDest = switchExit -- QUESTION: do we want to catch this error?
-          , dests       = altDests
-          , metadata'   = []
+      codeGenTagSwitch tagVal nodeSet (tuLLVMType resultTU) $ \tag items -> do
+        let nodeTU = taggedUnion $ Map.singleton tag items
+        nodeAddress <- getOperand . I $ AST.BitCast
+          { operand0  = tagAddress
+          , type'     = tuLLVMType nodeTU
+          , metadata  = []
           }
-        (altDests, altValues) <- fmap unzip . forM possibleNodes $ \(tag, items) -> do
-          let cpat = TagPat tag
-          altBlockName <- uniqueName ("fetch.switch." ++ getCPatName cpat)
-          altCPatVal <- getCPatConstant cpat
-          addBlock altBlockName $ do
-            let nodeTU = taggedUnion $ Map.singleton tag items
-            nodeAddress <- getOperand . I $ AST.BitCast
-              { operand0  = tagAddress
-              , type'     = tuLLVMType nodeTU
-              , metadata  = []
-              }
-            nodeVal <- getOperand . I $ Load
-              { volatile        = False
-              , address         = nodeAddress
-              , maybeAtomicity  = Nothing
-              , alignment       = 0
-              , metadata        = []
-              }
-            resultOp <- copyTaggedUnion nodeVal nodeTU resultTU
-            closeBlock $ Br
-              { dest      = switchExit
-              , metadata' = []
-              }
-            pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
-      startNewBlock switchExit
-      pure . I $ Phi
-        { type'           = tuLLVMType resultTU
-        , incomingValues  = (undef (tuLLVMType resultTU), curBlockName) : altValues
-        , metadata        = []
-        }
+        nodeVal <- getOperand . I $ Load
+          { volatile        = False
+          , address         = nodeAddress
+          , maybeAtomicity  = Nothing
+          , alignment       = 0
+          , metadata        = []
+          }
+        copyTaggedUnion nodeVal nodeTU resultTU
 
     SUpdateF name val -> do
       opAddress <- codeGenVal $ Var name
@@ -320,6 +296,38 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         , alignment       = 0
         , metadata        = []
         }
+
+codeGenTagSwitch :: Operand -> NodeSet -> LLVM.Type -> (Tag -> Vector SimpleType -> CG Operand) -> CG Result
+codeGenTagSwitch tagVal nodeSet resultLLVMType tagAltGen | Map.size nodeSet > 1 = do
+  let possibleNodes = Map.toList nodeSet
+  curBlockName <- gets _currentBlockName
+  switchExit <- uniqueName "tag.switch.exit" -- this is the next block
+  rec
+    closeBlock $ Switch
+      { operand0'   = tagVal
+      , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+      , dests       = altDests
+      , metadata'   = []
+      }
+    (altDests, altValues) <- fmap unzip . forM possibleNodes $ \(tag, items) -> do
+      let cpat = TagPat tag
+      altBlockName <- uniqueName ("tag.switch." ++ getCPatName cpat)
+      altCPatVal <- getCPatConstant cpat
+      addBlock altBlockName $ do
+        resultOp <- tagAltGen tag items
+        closeBlock $ Br
+          { dest      = switchExit
+          , metadata' = []
+          }
+        pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
+  startNewBlock switchExit
+  pure . I $ Phi
+    { type'           = resultLLVMType
+    , incomingValues  = (undef resultLLVMType, curBlockName) : altValues
+    , metadata        = []
+    }
+codeGenTagSwitch tagVal nodeSet resultLLVMType tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
+  O <$> tagAltGen tag items <*> pure (T_NodeSet nodeSet)
 
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
 external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions}) where
