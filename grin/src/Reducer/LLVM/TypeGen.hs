@@ -109,6 +109,7 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
               }
 
 copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand
+copyTaggedUnion srcVal srcTU dstTU | srcTU == dstTU = pure srcVal
 copyTaggedUnion srcVal srcTU dstTU = do
   let -- calculate mapping
       mapping :: [(TUIndex, TUIndex)] -- src dst
@@ -185,7 +186,7 @@ typeGenValue value@(T_NodeSet ns) = gets _envLLVMTypeMap >>= \tm -> case Map.loo
   _ -> do
         let tu = taggedUnion ns
         pure $ tuLLVMType tu
-  _ -> error $ printf "unsupported type: %s" (show $ pretty value)
+--  _ -> error $ printf "unsupported type: %s" (show $ pretty value)
 
 getVarType :: Grin.Name -> CG LLVM.Type
 getVarType name = do
