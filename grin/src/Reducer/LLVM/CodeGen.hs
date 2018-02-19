@@ -18,7 +18,6 @@ import qualified Data.Vector as V
 
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type as LLVM
-import LLVM.AST.AddrSpace
 import LLVM.AST.Constant as C hiding (Add, ICmp)
 import LLVM.AST.IntegerPredicate
 import qualified LLVM.AST.CallingConvention as CC
@@ -34,6 +33,7 @@ import qualified Data.ByteString.Char8 as BS
 
 import Grin
 import Pretty
+import TypeEnv hiding (Type)
 import qualified TypeEnv
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
@@ -60,14 +60,16 @@ codeGenVal val = case val of
     opTag <- ConstantOperand <$> getTagId tag
     opArgs <- mapM codeGenVal args
 
-    TypeEnv.T_NodeSet ns <- typeOfVal val
+    T_NodeSet ns <- typeOfVal val
     let TaggedUnion{..} = taggedUnion ns
+        -- set tag
         agg0 = I $ AST.InsertValue
             { aggregate = undef tuLLVMType
             , element   = opTag
             , indices'  = [0]
             , metadata  = []
             }
+        -- set node items
         build mAgg (item, TUIndex{..}) = do
           agg <- getOperand mAgg
           pure $ I $ AST.InsertValue
@@ -132,7 +134,7 @@ toModule Env{..} = defaultModule
     ?? - SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
     ok - SUpdate     Name Val
 -}
-codeGen :: TypeEnv.TypeEnv -> Exp -> AST.Module
+codeGen :: TypeEnv -> Exp -> AST.Module
 codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
@@ -173,9 +175,9 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
     AltF _ a -> snd a
     ECaseF val alts -> do
       opVal <- codeGenVal val
-      let switchExit  = mkName "switch.exit" -- TODO: generate unique name ; this is the next block
+      switchExit <- uniqueName "switch.exit" -- this is the next block
+      curBlockName <- gets _currentBlockName
       rec
-        curBlockName <- gets _currentBlockName
         closeBlock $ Switch
               { operand0'   = opVal
               , defaultDest = switchExit -- QUESTION: do we want to catch this error?
@@ -183,7 +185,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
               , metadata'   = []
               }
         (altDests, altValues) <- fmap unzip . forM alts $ \(Alt cpat _, altBody) -> do
-          let altBlockName  = mkName ("switch." ++ getCPatName cpat) -- TODO: generate unique names
+          altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
           altCPatVal <- getCPatConstant cpat
           addBlock altBlockName $ do
             case cpat of
@@ -233,13 +235,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       sequence_ (map snd defs) >> O <$> unit <*> pure undefined
 
     SStoreF val -> do
-      {-
-        TODO:
-          - case on possible tags
-              - convert to singleton node set
-              - store
-      -}
-      TypeEnv.T_NodeSet ns <- typeOfVal val
+      T_NodeSet ns <- typeOfVal val
       let TaggedUnion{..} = taggedUnion ns
           opAddress = ConstantOperand $ Null $ ptr tuLLVMType
       opVal <- codeGenVal val
@@ -258,22 +254,58 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           pure undefined
 
     SFetchIF name Nothing -> do
-      {-
-        read tag
-        tag case
-          ->  1 - cast node type
-              2 - load node
-              3 - create undef tagged union
-              4 - fill tagged union
-        return tagged union operand
-      -}
-      -- TODO: alter address according mIdx; using getelementptr
-      opAddress <- codeGenVal $ Var name
-      pure . I $ Load
+      -- load tag
+      tagAddress <- codeGenVal $ Var name
+      tagVal <- getOperand . I $ Load
         { volatile        = False
-        , address         = opAddress
+        , address         = tagAddress
         , maybeAtomicity  = Nothing
         , alignment       = 0
+        , metadata        = []
+        }
+      -- switch on possible tags
+      TypeEnv{..} <- gets _envTypeEnv
+      let T_SimpleType (T_Location locs) = _variable Map.! name
+          nodeSet       = mconcat [_location V.! loc | loc <- locs]
+          possibleNodes = Map.toList nodeSet
+          resultTU      = taggedUnion nodeSet
+      curBlockName <- gets _currentBlockName
+      switchExit <- uniqueName "fetch.switch.exit" -- this is the next block
+      rec
+        closeBlock $ Switch
+          { operand0'   = tagVal
+          , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+          , dests       = altDests
+          , metadata'   = []
+          }
+        (altDests, altValues) <- fmap unzip . forM possibleNodes $ \(tag, items) -> do
+          let cpat = TagPat tag
+          altBlockName <- uniqueName ("fetch.switch." ++ getCPatName cpat)
+          altCPatVal <- getCPatConstant cpat
+          addBlock altBlockName $ do
+            let nodeTU = taggedUnion $ Map.singleton tag items
+            nodeAddress <- getOperand . I $ AST.BitCast
+              { operand0  = tagAddress
+              , type'     = tuLLVMType nodeTU
+              , metadata  = []
+              }
+            nodeVal <- getOperand . I $ Load
+              { volatile        = False
+              , address         = nodeAddress
+              , maybeAtomicity  = Nothing
+              , alignment       = 0
+              , metadata        = []
+              }
+            resultOp <- copyTaggedUnion nodeVal nodeTU resultTU
+            closeBlock $ Br
+              { dest      = switchExit
+              , metadata' = []
+              }
+            pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
+      startNewBlock switchExit
+      pure . I $ Phi
+        { type'           = tuLLVMType resultTU
+        , incomingValues  = (undef (tuLLVMType resultTU), curBlockName) : altValues
         , metadata        = []
         }
 

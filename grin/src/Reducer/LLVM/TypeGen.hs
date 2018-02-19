@@ -18,6 +18,7 @@ import qualified Data.List as List
 import Control.Monad.State
 import Lens.Micro.Platform
 
+import LLVM.AST as AST hiding (Type, void)
 import LLVM.AST.Constant as C hiding (Add, ICmp)
 import LLVM.AST.Type hiding (Type, void)
 import qualified LLVM.AST.Type as LLVM
@@ -54,12 +55,14 @@ data TUIndex
   { tuStructIndex :: Word32
   , tuArrayIndex  :: Word32
   }
+  deriving (Eq, Ord, Show)
 
 data TaggedUnion
   = TaggedUnion
   { tuLLVMType  :: LLVM.Type -- struct of arrays of SimpleType with size
   , tuMapping   :: Map Tag (Vector TUIndex)
   }
+  deriving (Eq, Ord, Show)
 
 
 data TUBuild
@@ -105,26 +108,41 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
                                ]
               }
 
+copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand
+copyTaggedUnion nodeVal nodeTU resultTU = do
+  let -- calculate mapping
+      mapping :: [(TUIndex, TUIndex)] -- src dst
+      mapping = concat . map V.toList . Map.elems $ Map.intersectionWith V.zip (tuMapping nodeTU) (tuMapping resultTU)
+      validatedMapping = fst $ foldl validate mempty mapping
+      validate (l,m) x@(src, dst) = case Map.lookup dst m of
+        Nothing -> ((x:l), Map.insert dst src m)
+        Just prevSrc | prevSrc == src -> (l,m)
+                     | otherwise      -> error $ printf "invalid tagged union mapping: %s" (show mapping)
+      -- set node items
+      build mAgg (srcIndex, dstIndex) = do
+        agg <- getOperand mAgg
+        item <- getOperand $ I $ AST.ExtractValue
+          { aggregate = nodeVal
+          , indices'  = srcIndex
+          , metadata  = []
+          }
+        pure $ I $ AST.InsertValue
+          { aggregate = agg
+          , element   = item
+          , indices'  = dstIndex
+          , metadata  = []
+          }
+      tagIndex = [0]
+      agg0 = O (undef (tuLLVMType resultTU)) undefined -- FIXME
+  agg <- foldM build agg0 $ (tagIndex,tagIndex) :
+    [ ( [1 + tuStructIndex src, tuArrayIndex src]
+      , [1 + tuStructIndex dst, tuArrayIndex dst]
+      )
+    | (src,dst) <- validatedMapping
+    ]
+  getOperand agg
+
 {-
-  simple type, node, location, tagged union
-  possible conversions
-    OK - simple type + node
-          simple type --> node: val + build function
-          simple type <-- node: lpat + project function
-
-    NO - simple type + location
-    NO - simple type + tagged union
-
-    OK - node + location
-          location --> node: val + build function
-          location <-- node: lpat + project function
-    OK - node + tagged union
-          node --> tagged union: store, app
-          node <-- tagged union: case, bind
-
-    OK - location + tagged union
-
-  ---------------
     NEW approach: everything is tagged union
 
     compilation:
@@ -144,38 +162,19 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
       Map Tag (Vector Int, Vector Int) -- node order -> union, union -> node order
 
     tagged union construction:
-      - allocate empty struct
-      - fill with content from another union
+      done - allocate empty struct
+      done - fill with content from another union
 
     TODO:
-           - union construction
+      done - union construction
       done - union mapping
-           - union conversion
+      done - union conversion
+              - copy    (DST array size > SRC array size) -> copy SRC arrays to DST item by item ; llvm does not have instruction for this
+                        (DST array size = SRC array size) -> bypass
+              - shrink  (DST array size < SRC array size) -> copy SRC arrays to DST item by item
 
-    implement fetch
+    done - implement fetch
 
--}
-
-{-
-      modify' (\env@Env{..} -> env {envDefinitions = def : envDefinitions})
-
-      TypeDefinition (UnName 0) (
-         Just $ StructureType False [
-           i32,
-           ptr (NamedTypeReference (UnName 1)),
-           ptr (NamedTypeReference (UnName 0))
-          ]),
-      TypeDefinition (UnName 1) Nothing,
--}
-
-{-
-  slim = fat
-  node layout = {tag + data con1 + ... + data conN}
-  prj function:
-    for each NodeSet have an index function/map: tag -> Int
-    NodeSet -> (Type, Map Int (Value, Type))
-    OR
-    NodeSet -> (Type, Map Int Value) ; fat node type / conDataN type
 -}
 
 -- HINT: does hash consing

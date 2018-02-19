@@ -91,13 +91,13 @@ addBlock name block = do
   modify' (\env@Env{..} -> env {_envInstructions = instructions, _currentBlockName = curBlockName})
   pure result
 
-uniqueTempName :: CG AST.Name
-uniqueTempName = state (\env@Env{..} -> (mkName $ printf "tmp%d" _envTempCounter, env {_envTempCounter = succ _envTempCounter}))
+uniqueName :: String -> CG AST.Name
+uniqueName name = state (\env@Env{..} -> (mkName $ printf "%s.%d" name _envTempCounter, env {_envTempCounter = succ _envTempCounter}))
 
 getOperand :: Result -> CG Operand
 getOperand = \case
   O a _ -> pure a
   I i -> do
-          tmp <- uniqueTempName
+          tmp <- uniqueName "tmp"
           emit [tmp := i]
           pure $ LocalReference i64 tmp -- TODO: handle type
