@@ -35,10 +35,16 @@ typeGenSimpleType = \case
   T_Float   -> float
   T_Bool    -> i1
   T_Unit    -> LLVM.void
-  T_Location _  -> ptr tagLLVMType
+  T_Location _  -> locationLLVMType
+
+locationLLVMType :: LLVM.Type
+locationLLVMType = ptr tagLLVMType
 
 tagLLVMType :: LLVM.Type
 tagLLVMType = i64
+
+voidLLVMType :: LLVM.Type
+voidLLVMType = LLVM.void
 
 -- Tagged union
 {-
@@ -142,6 +148,22 @@ copyTaggedUnion srcVal srcTU dstTU = do
     | (src,dst) <- validatedMapping
     ]
   getOperand agg
+
+codeGenExtractTag :: Operand -> CG Operand
+codeGenExtractTag tuVal = do
+  getOperand $ I $ AST.ExtractValue
+    { aggregate = tuVal
+    , indices'  = []
+    , metadata  = []
+    }
+
+codeGenBitCast :: Operand -> LLVM.Type -> CG Operand
+codeGenBitCast value dstType = do
+  getOperand . I $ AST.BitCast
+    { operand0  = value
+    , type'     = dstType
+    , metadata  = []
+    }
 
 {-
     NEW approach: everything is tagged union

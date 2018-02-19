@@ -228,7 +228,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             }
       clearDefState
       modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions})
-      O <$> unit <*> pure undefined
+      O <$> unit <*> pure (T_SimpleType T_Unit)
 
     ProgramF defs -> do
       -- register prim fun lib
@@ -236,23 +236,11 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       sequence_ (map snd defs) >> O <$> unit <*> pure undefined
 
     SStoreF val -> do
-      T_NodeSet nodeSet <- typeOfVal val
-      let TaggedUnion{..} = taggedUnion nodeSet
-          opAddress = ConstantOperand $ Null $ ptr tuLLVMType -- TODO
-      opVal <- codeGenVal val
-      -- TODO: allocate memory; calculate types properly
-      if Map.size nodeSet == 1
-        then do
-          pure . I $ Store
-            { volatile        = False
-            , address         = opAddress
-            , value           = opVal
-            , maybeAtomicity  = Nothing
-            , alignment       = 0
-            , metadata        = []
-            }
-        else do
-          pure undefined
+      -- TODO: adjust heap pointer
+      let heapPointer   = ConstantOperand $ Null locationLLVMType -- TODO
+          nodeLocation  = heapPointer
+      codeGenStoreNode val nodeLocation
+      pure $ O nodeLocation (T_SimpleType $ T_Location []) -- TODO
 
     SFetchIF name Nothing -> do
       -- load tag
@@ -271,11 +259,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           resultTU      = taggedUnion nodeSet
       codeGenTagSwitch tagVal nodeSet (tuLLVMType resultTU) $ \tag items -> do
         let nodeTU = taggedUnion $ Map.singleton tag items
-        nodeAddress <- getOperand . I $ AST.BitCast
-          { operand0  = tagAddress
-          , type'     = tuLLVMType nodeTU
-          , metadata  = []
-          }
+        nodeAddress <- codeGenBitCast tagAddress (ptr $ tuLLVMType nodeTU)
         nodeVal <- getOperand . I $ Load
           { volatile        = False
           , address         = nodeAddress
@@ -286,16 +270,30 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         copyTaggedUnion nodeVal nodeTU resultTU
 
     SUpdateF name val -> do
-      opAddress <- codeGenVal $ Var name
-      opVal <- codeGenVal val
-      pure . I $ Store
-        { volatile        = False
-        , address         = opAddress
-        , value           = opVal
-        , maybeAtomicity  = Nothing
-        , alignment       = 0
-        , metadata        = []
-        }
+      nodeLocation <- codeGenVal $ Var name
+      codeGenStoreNode val nodeLocation
+      O <$> unit <*> pure (T_SimpleType T_Unit)
+
+codeGenStoreNode :: Val -> Operand -> CG ()
+codeGenStoreNode val nodeLocation = do
+  tuVal <- codeGenVal val
+  tagVal <- codeGenExtractTag tuVal
+  T_NodeSet nodeSet <- typeOfVal val
+  let valueTU = taggedUnion nodeSet
+  codeGenTagSwitch tagVal nodeSet voidLLVMType $ \tag items -> do
+    let nodeTU = taggedUnion $ Map.singleton tag items
+    nodeVal <- copyTaggedUnion tuVal valueTU nodeTU
+    nodeAddress <- codeGenBitCast nodeLocation (ptr $ tuLLVMType nodeTU)
+    getOperand . I $ Store
+      { volatile        = False
+      , address         = nodeAddress
+      , value           = nodeVal
+      , maybeAtomicity  = Nothing
+      , alignment       = 0
+      , metadata        = []
+      }
+    unit
+  pure ()
 
 codeGenTagSwitch :: Operand -> NodeSet -> LLVM.Type -> (Tag -> Vector SimpleType -> CG Operand) -> CG Result
 codeGenTagSwitch tagVal nodeSet resultLLVMType tagAltGen | Map.size nodeSet > 1 = do
