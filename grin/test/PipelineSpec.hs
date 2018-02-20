@@ -29,6 +29,7 @@ spec = do
 genPipeline :: Gen [Pipeline]
 genPipeline = do
   ([PrintGrin id, HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
+--  ([HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
 
 shrinkPipeline :: [Pipeline] -> [[Pipeline]]
 shrinkPipeline (printast:chpt:hpt:rest) = ([printast, chpt, hpt]++) <$> shrinkList (const []) rest

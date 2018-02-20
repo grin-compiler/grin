@@ -22,7 +22,8 @@ import Data.Maybe (fromJust)
 import Data.Semigroup
 import qualified Data.Text as Text
 import GHC.Generics
-import Grin
+import Grin hiding (Def)
+import qualified Grin
 import qualified PrimOps
 import Test.QuickCheck
 import Generic.Random.Generic
@@ -31,6 +32,7 @@ import Lens.Micro.Mtl
 
 import Data.Set (Set); import qualified Data.Set as Set
 import Data.Map (Map); import qualified Data.Map as Map
+import Data.List
 
 import Debug.Trace
 
@@ -124,7 +126,7 @@ instance AsExp TProg where
 
 instance AsExp TDef where
   asExp = \case
-    TDef name params exp -> Def (toName name) (toName <$> params) (asExp exp)
+    TDef name params exp -> Grin.Def (toName name) (toName <$> params) (asExp exp)
 
 instance AsExp TSExp where
   asExp = \case
@@ -437,12 +439,18 @@ gValue = \case
     t <- melements (Set.toList types)
     solve (GVal t)
 
-gPureFunction :: Type -> GoalM (Name, [Type])
-gPureFunction t = do
+gPureFunction :: (Name -> Bool) -> Type -> GoalM (Name, [Type])
+gPureFunction p t = do
   (Env vars funs adts) <- view _1
-  funs <- gen $ shuffle $ Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
+  funs <- gen $ shuffle $ filter (p . fst) $ Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
   (name, (params, ret, [])) <- melements funs
   pure (name, params)
+
+gPureNonPrimFun :: Type -> GoalM (Name, [Type])
+gPureNonPrimFun = gPureFunction (not . ("_prim_" `isPrefixOf`))
+
+gPurePrimFun :: Type -> GoalM (Name, [Type])
+gPurePrimFun = gPureFunction ("_prim_" `isPrefixOf`)
 
 mGetSize :: GoalM Int
 mGetSize = gen $ sized pure
@@ -457,12 +465,12 @@ gSExpSized s = \case
   NoEff t ->
     case s of
       0 -> moneof
-            [ do (funName, paramTypes) <- gPureFunction t
+            [ do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
                  TSApp (TName funName) <$> forM paramTypes gSimpleVal
             , TSReturn <$> solve (GVal t)
             ]
       n -> mfreq
-            [ (45, do (funName, paramTypes) <- gPureFunction t
+            [ (45, do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
                       TSApp (TName funName) <$> forM paramTypes gSimpleVal)
             , (45, TSReturn <$> solve (GVal t))
             , (10, fmap TSBlock $ solve (Exp [] t))
@@ -544,7 +552,7 @@ liftGenTr :: (forall r . Gen r -> Gen r) -> GoalM a -> GoalM a
 liftGenTr fg (ReaderT g) =
   ReaderT $ \ctx ->
     let l' = unLogicT (g ctx)
-    in (LogicT (\f g1 -> l' (\a g0 -> f a (fg g0)) (fg g1)))
+    in (LogicT (\f g1 -> fg $ l' (\a g0 -> (f a g0)) g1))
 
 mresize :: Int -> GoalM a -> GoalM a
 mresize n = liftGenTr (resize n)
@@ -555,10 +563,9 @@ mscale f = liftGenTr (scale f)
 -- TODO: Effects
 -- TODO: Always succedd with a trivial function
 -- TODO: Self Recursive
-gDef :: GoalM (TDef, ([Type], Type, [Eff]))
-gDef = do
+gDef :: Type -> GoalM (TDef, ([Type], Type, [Eff]))
+gDef retType = do
   let effs = []
-  retType <- mfreq [ (90, simpleType), (10, definedAdt) ]
   n <- gen $ choose (1, 5)
   ptypes <- replicateM n $ mfreq [ (90, simpleType), (10, definedAdt) ]
   (fname:pnames) <- newNames (n+1)
@@ -588,13 +595,13 @@ gExpSized n t = \case
   [] -> case n of
     0 -> TSExp <$> (solve (SExp (NoEff t)))
     _ -> tryoutF
-            [ (10, TSExp <$> (solve (SExp (NoEff t))))
-            , (80, do t' <- tryout [simpleType, definedAdt]
+            [ -- (10, TSExp <$> (solve (SExp (NoEff t))))
+              (80, do t' <- tryout [simpleType, definedAdt]
                       se <- (solve (SExp (NoEff t')))
                       newVar t' $ \n -> do -- TODO: Gen LPat
                         rest <- solve (Exp [] t)
                         pure (TEBind se (TLPatSVal (TVar (TName n))) rest))
-            , (10, do t'   <- tryout [simpleType, definedAdt]
+            , (20, do t'   <- tryout [simpleType, definedAdt]
                       val  <- gValue t'
                       alts <- gAlts val t' t
                       pure $ TECase val $ NonEmpty alts)
@@ -627,19 +634,27 @@ gMain = fmap (TDef (TName "grinMain") []) $ mresize 20 $ solve (Exp [] TTUnit)
 
 -- | Generate n functions and extend the context with the definitions,
 -- run the final computation.
-gDefs :: Int -> ([TDef] -> GoalM a) -> GoalM a
+gDefs :: [Type] -> ([TDef] -> GoalM a) -> GoalM a
 gDefs n f = go n f [] where
-  go 0 f defs = f defs
-  go n f defs = do
-    (def@(TDef (TName name) _ _), (ptypes, rtype, effs)) <- gDef
+  go [] f defs = f defs
+  go (t:ts) f defs = do
+    (def@(TDef (TName name) _ _), (ptypes, rtype, effs)) <- mresize 20 $ gDef t
     CMR.local (ctxEnv %~ insertFun (name, ptypes, rtype, effs)) $
       -- TODO: Make this as a config parameter
-      mresize 20 $ go (n - 1) f (def:defs)
+      go ts f (def:defs)
+
+definedAdts :: GoalM (Set Type)
+definedAdts = do
+  (Env _ _ adts) <- view ctxEnv
+  pure adts
 
 gProg :: GoalM TProg
 gProg = retry 10 $ do
-  n <- gen $ choose (0, 30)
-  gDefs n $ \defs -> do
+  n <- gen $ choose (0, 10)
+  adts <- Set.toList <$> definedAdts
+  -- let adts = []
+  ts <- replicateM n $ moneof [simpleType, definedAdt]
+  gDefs (adts ++ ts) $ \defs -> do
     m <- gMain
     defs1 <- gen $ shuffle defs
     pure $ TProg $ NonEmpty (defs1 ++ [m])
@@ -672,8 +687,8 @@ solve g = do
 --  traceShowM (Map.keys funs)
 --  s <- gen $ sized pure
 --  traceShowM s
---  traceShowM (Solve, g)
-  mscale (`div` 2) $ solve' g
+--  traceShowM ("Solve", g)
+  mscale (\x -> if x > 0 then x - 1 else 0) $ solve' g
 
 instance Solve TVal where
   solve' = \case
