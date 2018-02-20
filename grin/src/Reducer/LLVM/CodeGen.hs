@@ -192,9 +192,10 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           altCPatVal <- getCPatConstant cpat
           addBlock altBlockName $ do
             case cpat of
+              -- bind pattern variables
               NodePat tags args -> forM_ args $ \argName -> do
                 emit [(mkName argName) := AST.ExtractValue {aggregate = opVal, indices' = [0], metadata = []}] -- TODO: extract items
-              _ -> error $ printf "unimplemented case pattern codegen for %s" (show $ pretty cpat)
+              _ -> pure () -- nothing to bind
             result <- altBody
             -- TODO: calculate the tagged union type from the alternative results
             resultOp <- getOperand result
