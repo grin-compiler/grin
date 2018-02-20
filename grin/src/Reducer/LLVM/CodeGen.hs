@@ -194,24 +194,27 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             }
 
     AltF _ a -> snd a
-    ECaseF val alts -> typeOfVal val >>= \case
+
+    ECaseF val alts -> typeOfVal val >>= \case -- distinct implementation for tagged unions and simple types
       T_NodeSet nodeSet -> do
         tuVal <- codeGenVal val
         tagVal <- codeGenExtractTag tuVal
-        let resultLLVMType = tuLLVMType $ taggedUnion nodeSet -- LLVM.void -- TODO
+        let valTU = taggedUnion nodeSet
+            resultLLVMType = tuLLVMType valTU -- TODO: calculate result type
             altMap = Map.fromList [(tag, alt) | alt@(Alt (NodePat tag _) _, _) <- alts]
         codeGenTagSwitch tagVal nodeSet resultLLVMType $ \tag items -> do
           let (Alt (NodePat _ args) _, altBody) = altMap Map.! tag
-          -- TODO: bind cpat
-          forM_ args $ \argName -> do
-              emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = [0], metadata = []}]
+              mapping = tuMapping valTU Map.! tag
+          -- bind cpat variables
+          forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
+            let indices = [1 + tuStructIndex, tuArrayIndex]
+            emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
           altBody >>= getOperand
 
       T_SimpleType{} -> do
         opVal <- codeGenVal val
         switchExit <- uniqueName "switch.exit" -- this is the next block
         curBlockName <- gets _currentBlockName
-        -- TODO: distinct implementation for tagged unions and simple types
         rec
           closeBlock $ Switch
                 { operand0'   = opVal
@@ -223,13 +226,8 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
             altCPatVal <- getCPatConstant cpat
             addBlock altBlockName $ do
-              case cpat of
-                -- bind pattern variables
-                NodePat tags args -> forM_ args $ \argName -> do
-                  emit [(mkName argName) := AST.ExtractValue {aggregate = opVal, indices' = [0], metadata = []}] -- TODO: extract items
-                _ -> pure () -- nothing to bind
-              result <- altBody
               -- TODO: calculate the tagged union type from the alternative results
+              result <- altBody
               resultOp <- getOperand result
               closeBlock $ Br
                 { dest      = switchExit
