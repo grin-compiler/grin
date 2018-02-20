@@ -22,6 +22,7 @@ spec = do
     forAll genPipeline $ \ppln ->
     monadicIO $ do
       transformed      <- run $ pipeline defaultOpts original ppln
+      pre $ transformed /= original
       originalValue    <- run $ pure $ evalProgram PureReducer original
       transformedValue <- run $ pure $ evalProgram PureReducer transformed
       run (transformedValue `shouldBe` originalValue)
