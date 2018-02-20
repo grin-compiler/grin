@@ -17,12 +17,15 @@
 - no garbage collector
 - support for builtin types and primops
 - single module (no module system)
+- GRIN type system
+- typed simplification transformations
 - compiled HPT
 
 # documentation
 - HPT
 - llvm codegen ; HPT as LLVM type inference
 - shape functor ; pro / cons
+- GRIN type system
 
 # sample programs
 - observe compilation stages: GRIN -> LLVM -> x64
