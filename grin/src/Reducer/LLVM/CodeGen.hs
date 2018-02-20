@@ -19,6 +19,7 @@ import qualified Data.Vector as V
 
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type as LLVM
+import qualified LLVM.AST.Typed as LLVM
 import LLVM.AST.Constant as C hiding (Add, ICmp)
 import LLVM.AST.IntegerPredicate
 import qualified LLVM.AST.CallingConvention as CC
@@ -64,7 +65,7 @@ codeGenVal val = case val of
     T_NodeSet ns <- typeOfVal val
     let TaggedUnion{..} = taggedUnion ns
         -- set tag
-        agg0 = I $ AST.InsertValue
+        agg0 = I tuLLVMType $ AST.InsertValue
             { aggregate = undef tuLLVMType
             , element   = opTag
             , indices'  = [0]
@@ -73,7 +74,7 @@ codeGenVal val = case val of
         -- set node items
         build mAgg (item, TUIndex{..}) = do
           agg <- getOperand mAgg
-          pure $ I $ AST.InsertValue
+          pure $ I tuLLVMType $ AST.InsertValue
             { aggregate = agg
             , element   = item
             , indices'  = [1 + tuStructIndex, tuArrayIndex]
@@ -91,7 +92,7 @@ codeGenVal val = case val of
                       -- QUESTION: what is this?
                       Nothing -> do
                                   ty <- getVarType name
-                                  pure $ LocalReference ty (mkName name) -- TODO: lookup in constant map
+                                  pure $ LocalReference ty (mkName name)
                       Just operand  -> pure operand
 
   _ -> error $ printf "codeGenVal: %s" (show $ pretty val)
@@ -100,7 +101,7 @@ getCPatConstant :: CPat -> CG Constant
 getCPatConstant = \case
   TagPat  tag       -> getTagId tag
   LitPat  lit       -> pure $ codeGenLit lit
-  NodePat tag args  -> getTagId tag -- TODO
+  NodePat tag args  -> getTagId tag
 
 getCPatName :: CPat -> String
 getCPatName = \case
@@ -139,7 +140,7 @@ codeGen :: TypeEnv -> Exp -> AST.Module
 codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
-    SReturnF val -> O <$> codeGenVal val <*> typeOfVal val
+    SReturnF val -> O <$> codeGenVal val
     SBlockF a -> snd $ a
     {-
     EBindF (SStore{}, sexp) (Var name) (_, exp) -> do
@@ -147,11 +148,11 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
     -}
     EBindF (_,sexp) pat (_,exp) -> do
       sexp >>= \case
-        I instruction -> case pat of
+        I _ instruction -> case pat of
           Var name -> emit [(mkName name) := instruction]
           -- TODO: node binding
           _ -> emit [Do instruction]
-        O operand _ -> case pat of
+        O operand -> case pat of
           Var name -> addConstant name operand
           _ -> pure () -- TODO: perform binding
       exp
@@ -163,7 +164,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         else do
           -- call to top level functions
           (retType, argTypes) <- getFunctionType name
-          pure . I $ Call
+          pure . I retType $ Call
             { tailCallKind        = Just Tail
             , callingConvention   = CC.C
             , returnAttributes    = []
@@ -178,6 +179,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       opVal <- codeGenVal val
       switchExit <- uniqueName "switch.exit" -- this is the next block
       curBlockName <- gets _currentBlockName
+      -- TODO: distinct implementation for tagged unions and simple types
       rec
         closeBlock $ Switch
               { operand0'   = opVal
@@ -191,9 +193,10 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           addBlock altBlockName $ do
             case cpat of
               NodePat tags args -> forM_ args $ \argName -> do
-                emit [(mkName argName) := AST.ExtractValue {aggregate = opVal, indices' = [0], metadata = []}] -- TODO
-              _ -> pure ()
+                emit [(mkName argName) := AST.ExtractValue {aggregate = opVal, indices' = [0], metadata = []}] -- TODO: extract items
+              _ -> error $ printf "unimplemented case pattern codegen for %s" (show $ pretty cpat)
             result <- altBody
+            -- TODO: calculate the tagged union type from the alternative results
             resultOp <- getOperand result
             closeBlock $ Br
               { dest      = switchExit
@@ -201,9 +204,12 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
               }
             pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
       startNewBlock switchExit
-      pure . I $ Phi
-        { type'           = i64 -- TODO :: Type,
-        , incomingValues  = (undef i64, curBlockName) : altValues
+      -- validate: each alternative must return a value of a common type
+      let altType = LLVM.typeOf . fst . head $ altValues
+      when (any ((altType /=) . LLVM.typeOf . fst) altValues) $ fail $ printf "varying case alt types\n%s" (unlines $ map (show . LLVM.typeOf . fst) altValues)
+      pure . I altType $ Phi
+        { type'           = altType
+        , incomingValues  = (undef altType, curBlockName) : altValues
         , metadata        = []
         }
 
@@ -228,24 +234,24 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             }
       clearDefState
       modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions})
-      O <$> unit <*> pure (T_SimpleType T_Unit)
+      O <$> unit
 
     ProgramF defs -> do
       -- register prim fun lib
       registerPrimFunLib
-      sequence_ (map snd defs) >> O <$> unit <*> pure undefined
+      sequence_ (map snd defs) >> O <$> unit
 
     SStoreF val -> do
       -- TODO: adjust heap pointer
       let heapPointer   = ConstantOperand $ Null locationLLVMType -- TODO
           nodeLocation  = heapPointer
       codeGenStoreNode val nodeLocation
-      pure $ O nodeLocation (T_SimpleType $ T_Location []) -- TODO
+      pure $ O nodeLocation
 
     SFetchIF name Nothing -> do
       -- load tag
       tagAddress <- codeGenVal $ Var name
-      tagVal <- getOperand . I $ Load
+      tagVal <- getOperand . I tagLLVMType $ Load
         { volatile        = False
         , address         = tagAddress
         , maybeAtomicity  = Nothing
@@ -260,7 +266,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       codeGenTagSwitch tagVal nodeSet (tuLLVMType resultTU) $ \tag items -> do
         let nodeTU = taggedUnion $ Map.singleton tag items
         nodeAddress <- codeGenBitCast tagAddress (ptr $ tuLLVMType nodeTU)
-        nodeVal <- getOperand . I $ Load
+        nodeVal <- getOperand . I (tuLLVMType nodeTU) $ Load
           { volatile        = False
           , address         = nodeAddress
           , maybeAtomicity  = Nothing
@@ -272,7 +278,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
     SUpdateF name val -> do
       nodeLocation <- codeGenVal $ Var name
       codeGenStoreNode val nodeLocation
-      O <$> unit <*> pure (T_SimpleType T_Unit)
+      O <$> unit
 
 codeGenStoreNode :: Val -> Operand -> CG ()
 codeGenStoreNode val nodeLocation = do
@@ -284,7 +290,7 @@ codeGenStoreNode val nodeLocation = do
     let nodeTU = taggedUnion $ Map.singleton tag items
     nodeVal <- copyTaggedUnion tuVal valueTU nodeTU
     nodeAddress <- codeGenBitCast nodeLocation (ptr $ tuLLVMType nodeTU)
-    getOperand . I $ Store
+    getOperand . I LLVM.void $ Store
       { volatile        = False
       , address         = nodeAddress
       , value           = nodeVal
@@ -319,13 +325,13 @@ codeGenTagSwitch tagVal nodeSet resultLLVMType tagAltGen | Map.size nodeSet > 1 
           }
         pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
   startNewBlock switchExit
-  pure . I $ Phi
+  pure . I resultLLVMType $ Phi
     { type'           = resultLLVMType
     , incomingValues  = (undef resultLLVMType, curBlockName) : altValues
     , metadata        = []
     }
 codeGenTagSwitch tagVal nodeSet resultLLVMType tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
-  O <$> tagAltGen tag items <*> pure (T_NodeSet nodeSet)
+  O <$> tagAltGen tag items
 
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
 external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions}) where

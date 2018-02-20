@@ -72,8 +72,8 @@ undef :: Type -> Operand
 undef = ConstantOperand . Undef
 
 data Result
-  = I Instruction
-  | O Operand TypeEnv.Type
+  = I LLVM.Type Instruction
+  | O Operand
 
 -- utils
 closeBlock :: Terminator -> CG ()
@@ -96,8 +96,9 @@ uniqueName name = state (\env@Env{..} -> (mkName $ printf "%s.%d" name _envTempC
 
 getOperand :: Result -> CG Operand
 getOperand = \case
-  O a _ -> pure a
-  I i -> do
+  O a -> pure a
+  I VoidType i -> emit [Do i] >> unit
+  I t i -> do
           tmp <- uniqueName "tmp"
           emit [tmp := i]
-          pure $ LocalReference i64 tmp -- TODO: handle type
+          pure $ LocalReference t tmp

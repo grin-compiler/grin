@@ -58,8 +58,9 @@ voidLLVMType = LLVM.void
 -}
 data TUIndex
   = TUIndex
-  { tuStructIndex :: Word32
-  , tuArrayIndex  :: Word32
+  { tuStructIndex   :: Word32
+  , tuArrayIndex    :: Word32
+  , tuItemLLVMType  :: LLVM.Type
   }
   deriving (Eq, Ord, Show)
 
@@ -102,7 +103,7 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
     in (i, tub {tubArrayPosMap = Map.insert ty (succ i) tubArrayPosMap})
 
   allocIndex :: SimpleType -> TU TUIndex
-  allocIndex sTy = TUIndex <$> getStructIndex t <*> getArrayIndex t where t = typeGenSimpleType sTy
+  allocIndex sTy = TUIndex <$> getStructIndex t <*> getArrayIndex t <*> pure t where t = typeGenSimpleType sTy
 
   (tuMapping, tub) = runState (mapM mapNode ns) emptyTUBuild
 
@@ -123,26 +124,28 @@ copyTaggedUnion srcVal srcTU dstTU = do
       validatedMapping = fst $ foldl validate mempty mapping
       validate (l,m) x@(src, dst) = case Map.lookup dst m of
         Nothing -> ((x:l), Map.insert dst src m)
-        Just prevSrc | prevSrc == src -> (l,m)
+        Just prevSrc | prevSrc == src && tuItemLLVMType src == tuItemLLVMType dst -> (l,m)
                      | otherwise      -> error $ printf "invalid tagged union mapping: %s" (show mapping)
       -- set node items
-      build mAgg (srcIndex, dstIndex) = do
+      build mAgg (itemType, srcIndex, dstIndex) = do
         agg <- getOperand mAgg
-        item <- getOperand $ I $ AST.ExtractValue
+        item <- getOperand $ I itemType $ AST.ExtractValue
           { aggregate = srcVal
           , indices'  = srcIndex
           , metadata  = []
           }
-        pure $ I $ AST.InsertValue
+        pure $ I dstTULLVMType $ AST.InsertValue
           { aggregate = agg
           , element   = item
           , indices'  = dstIndex
           , metadata  = []
           }
       tagIndex = [0]
-      agg0 = O (undef (tuLLVMType dstTU)) undefined -- FIXME
-  agg <- foldM build agg0 $ (tagIndex,tagIndex) :
-    [ ( [1 + tuStructIndex src, tuArrayIndex src]
+      dstTULLVMType = tuLLVMType dstTU
+      agg0 = O (undef dstTULLVMType)
+  agg <- foldM build agg0 $ (tagLLVMType, tagIndex,tagIndex) :
+    [ ( tuItemLLVMType src
+      , [1 + tuStructIndex src, tuArrayIndex src]
       , [1 + tuStructIndex dst, tuArrayIndex dst]
       )
     | (src,dst) <- validatedMapping
@@ -151,7 +154,7 @@ copyTaggedUnion srcVal srcTU dstTU = do
 
 codeGenExtractTag :: Operand -> CG Operand
 codeGenExtractTag tuVal = do
-  getOperand $ I $ AST.ExtractValue
+  getOperand $ I tagLLVMType $ AST.ExtractValue
     { aggregate = tuVal
     , indices'  = []
     , metadata  = []
@@ -159,7 +162,7 @@ codeGenExtractTag tuVal = do
 
 codeGenBitCast :: Operand -> LLVM.Type -> CG Operand
 codeGenBitCast value dstType = do
-  getOperand . I $ AST.BitCast
+  getOperand . I dstType $ AST.BitCast
     { operand0  = value
     , type'     = dstType
     , metadata  = []
@@ -187,8 +190,6 @@ codeGenBitCast value dstType = do
     tagged union construction:
       done - allocate empty struct
       done - fill with content from another union
-
-    TODO:
       done - union construction
       done - union mapping
       done - union conversion
