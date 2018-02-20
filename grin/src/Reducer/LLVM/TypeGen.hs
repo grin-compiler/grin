@@ -156,7 +156,7 @@ codeGenExtractTag :: Operand -> CG Operand
 codeGenExtractTag tuVal = do
   getOperand $ I tagLLVMType $ AST.ExtractValue
     { aggregate = tuVal
-    , indices'  = []
+    , indices'  = [0] -- tag index
     , metadata  = []
     }
 
