@@ -146,16 +146,35 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
     EBindF (SStore{}, sexp) (Var name) (_, exp) -> do
       error "TODO"
     -}
-    EBindF (_,sexp) pat (_,exp) -> do
-      sexp >>= \case
-        I _ instruction -> case pat of
+    -- TODO: refactor
+    EBindF (_,leftResultM) lpat (_,rightResultM) -> do
+      leftResult <- leftResultM
+      case leftResult of
+        I _ instruction -> case lpat of
+          VarTagNode{} -> error $ printf "TODO: codegen not implemented %s" (show $ pretty lpat)
+          ConstTagNode tag args -> do
+            operand <- getOperand leftResult
+            forM_ args $ \case
+              Var argName -> do
+                -- TODO: extract items
+                emit [(mkName argName) := AST.ExtractValue {aggregate = operand, indices' = [0], metadata = []}]
+              _ -> pure ()
           Var name -> emit [(mkName name) := instruction]
-          -- TODO: node binding
           _ -> emit [Do instruction]
-        O operand -> case pat of
-          Var name -> addConstant name operand
-          _ -> pure () -- TODO: perform binding
-      exp
+        O operand -> case lpat of
+          VarTagNode{} -> error $ printf "TODO: codegen not implemented %s" (show $ pretty lpat)
+          ConstTagNode tag args -> forM_ args $ \case
+            Var argName -> do
+              {-
+                TODO: extract items
+                  - construct tagged union
+                  - extract items for specific tag
+              -}
+              emit [(mkName argName) := AST.ExtractValue {aggregate = operand, indices' = [0], metadata = []}]
+            _ -> pure ()
+          Var name  -> addConstant name operand
+          _         -> pure () -- nothing to bind
+      rightResultM
 
     SAppF name args -> do
       operands <- mapM codeGenVal args
@@ -175,44 +194,57 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             }
 
     AltF _ a -> snd a
-    ECaseF val alts -> do
-      opVal <- codeGenVal val
-      switchExit <- uniqueName "switch.exit" -- this is the next block
-      curBlockName <- gets _currentBlockName
-      -- TODO: distinct implementation for tagged unions and simple types
-      rec
-        closeBlock $ Switch
-              { operand0'   = opVal
-              , defaultDest = switchExit -- QUESTION: do we want to catch this error?
-              , dests       = altDests
-              , metadata'   = []
-              }
-        (altDests, altValues) <- fmap unzip . forM alts $ \(Alt cpat _, altBody) -> do
-          altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
-          altCPatVal <- getCPatConstant cpat
-          addBlock altBlockName $ do
-            case cpat of
-              -- bind pattern variables
-              NodePat tags args -> forM_ args $ \argName -> do
-                emit [(mkName argName) := AST.ExtractValue {aggregate = opVal, indices' = [0], metadata = []}] -- TODO: extract items
-              _ -> pure () -- nothing to bind
-            result <- altBody
-            -- TODO: calculate the tagged union type from the alternative results
-            resultOp <- getOperand result
-            closeBlock $ Br
-              { dest      = switchExit
-              , metadata' = []
-              }
-            pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
-      startNewBlock switchExit
-      -- validate: each alternative must return a value of a common type
-      let altType = LLVM.typeOf . fst . head $ altValues
-      when (any ((altType /=) . LLVM.typeOf . fst) altValues) $ fail $ printf "varying case alt types\n%s" (unlines $ map (show . LLVM.typeOf . fst) altValues)
-      pure . I altType $ Phi
-        { type'           = altType
-        , incomingValues  = (undef altType, curBlockName) : altValues
-        , metadata        = []
-        }
+    ECaseF val alts -> typeOfVal val >>= \case
+      T_NodeSet nodeSet -> do
+        tuVal <- codeGenVal val
+        tagVal <- codeGenExtractTag tuVal
+        let resultLLVMType = tuLLVMType $ taggedUnion nodeSet -- LLVM.void -- TODO
+            altMap = Map.fromList [(tag, alt) | alt@(Alt (NodePat tag _) _, _) <- alts]
+        codeGenTagSwitch tagVal nodeSet resultLLVMType $ \tag items -> do
+          let (Alt (NodePat _ args) _, altBody) = altMap Map.! tag
+          -- TODO: bind cpat
+          forM_ args $ \argName -> do
+              emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = [0], metadata = []}]
+          altBody >>= getOperand
+
+      T_SimpleType{} -> do
+        opVal <- codeGenVal val
+        switchExit <- uniqueName "switch.exit" -- this is the next block
+        curBlockName <- gets _currentBlockName
+        -- TODO: distinct implementation for tagged unions and simple types
+        rec
+          closeBlock $ Switch
+                { operand0'   = opVal
+                , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+                , dests       = altDests
+                , metadata'   = []
+                }
+          (altDests, altValues) <- fmap unzip . forM alts $ \(Alt cpat _, altBody) -> do
+            altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
+            altCPatVal <- getCPatConstant cpat
+            addBlock altBlockName $ do
+              case cpat of
+                -- bind pattern variables
+                NodePat tags args -> forM_ args $ \argName -> do
+                  emit [(mkName argName) := AST.ExtractValue {aggregate = opVal, indices' = [0], metadata = []}] -- TODO: extract items
+                _ -> pure () -- nothing to bind
+              result <- altBody
+              -- TODO: calculate the tagged union type from the alternative results
+              resultOp <- getOperand result
+              closeBlock $ Br
+                { dest      = switchExit
+                , metadata' = []
+                }
+              pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
+        startNewBlock switchExit
+        -- validate: each alternative must return a value of a common type
+        let altType = LLVM.typeOf . fst . head $ altValues
+        -- when (any ((altType /=) . LLVM.typeOf . fst) altValues) $ fail $ printf "varying case alt types\n%s" (unlines $ map (show . LLVM.typeOf . fst) altValues)
+        pure . I altType $ Phi
+          { type'           = altType
+          , incomingValues  = (undef altType, curBlockName) : altValues
+          , metadata        = []
+          }
 
     DefF name args (_,body) -> do
       -- clear def local state
