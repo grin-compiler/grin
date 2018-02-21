@@ -99,7 +99,7 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
                                ]
               }
 
-copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand -- TODO
+copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand
 copyTaggedUnion srcVal srcTU dstTU | srcTU == dstTU = pure srcVal
 copyTaggedUnion srcVal srcTU dstTU = do
   let -- calculate mapping

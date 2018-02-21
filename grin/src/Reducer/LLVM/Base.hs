@@ -32,25 +32,27 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 data Env
   = Env
-  { _envDefinitions   :: [Definition]
-  , _envBasicBlocks   :: [BasicBlock]
-  , _envInstructions  :: [Named Instruction]
-  , _constantMap      :: Map Grin.Name Operand
-  , _currentBlockName :: AST.Name
-  , _envTempCounter   :: Int
-  , _envTypeEnv       :: TypeEnv.TypeEnv
-  , _envTagMap        :: Map Tag Constant
+  { _envDefinitions       :: [Definition]
+  , _envBasicBlocks       :: [BasicBlock]
+  , _envInstructions      :: [Named Instruction]
+  , _constantMap          :: Map Grin.Name Operand
+  , _currentBlockName     :: AST.Name
+  , _envBlockInstructions :: Map AST.Name [Named Instruction]
+  , _envTempCounter       :: Int
+  , _envTypeEnv           :: TypeEnv.TypeEnv
+  , _envTagMap            :: Map Tag Constant
   }
 
 emptyEnv = Env
-  { _envDefinitions   = mempty
-  , _envBasicBlocks   = mempty
-  , _envInstructions  = mempty
-  , _constantMap      = mempty
-  , _currentBlockName = mkName ""
-  , _envTempCounter   = 0
-  , _envTypeEnv       = TypeEnv.TypeEnv mempty mempty mempty
-  , _envTagMap        = mempty
+  { _envDefinitions       = mempty
+  , _envBasicBlocks       = mempty
+  , _envInstructions      = mempty
+  , _constantMap          = mempty
+  , _currentBlockName     = mkName ""
+  , _envBlockInstructions = mempty
+  , _envTempCounter       = 0
+  , _envTypeEnv           = TypeEnv.TypeEnv mempty mempty mempty
+  , _envTagMap            = mempty
   }
 
 concat <$> mapM makeLenses [''Env]
@@ -112,18 +114,25 @@ data Result
 
 -- utils
 closeBlock :: Terminator -> CG ()
-closeBlock tr = modify' (\env@Env{..} -> env {_envInstructions = mempty, _envBasicBlocks = _envBasicBlocks ++ [BasicBlock _currentBlockName _envInstructions (Do tr)]})
+closeBlock tr = modify' $ \env@Env{..} -> env
+  { _envInstructions      = mempty
+  , _envBasicBlocks       = _envBasicBlocks ++ [BasicBlock _currentBlockName _envInstructions (Do tr)]
+  , _envBlockInstructions = Map.delete _currentBlockName _envBlockInstructions
+  }
 
-startNewBlock :: AST.Name -> CG ()
-startNewBlock name = modify' (\env@Env{..} -> env {_envInstructions = mempty, _currentBlockName = name})
+activeBlock :: AST.Name -> CG ()
+activeBlock name =  modify' $ \env@Env{..} -> env
+  { _envInstructions      = Map.findWithDefault mempty name _envBlockInstructions
+  , _currentBlockName     = name
+  , _envBlockInstructions = Map.insert _currentBlockName _envInstructions _envBlockInstructions
+  }
 
 addBlock :: AST.Name -> CG a -> CG a
 addBlock name block = do
-  instructions <- gets _envInstructions
   curBlockName <- gets _currentBlockName
-  startNewBlock name
+  activeBlock name
   result <- block
-  modify' (\env@Env{..} -> env {_envInstructions = instructions, _currentBlockName = curBlockName})
+  activeBlock curBlockName
   pure result
 
 uniqueName :: String -> CG AST.Name

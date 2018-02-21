@@ -208,22 +208,76 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         tuVal <- codeGenVal val
         tagVal <- codeGenExtractTag tuVal
         let valTU = taggedUnion nodeSet
-            resultLLVMType = fakeType -- TODO: calculate result type
             altMap = Map.fromList [(tag, alt) | alt@(Alt (NodePat tag _) _, _) <- alts]
-        codeGenTagSwitch tagVal nodeSet resultLLVMType $ \tag items -> do
+        codeGenTagSwitch tagVal nodeSet $ \tag items -> do
           let (Alt (NodePat _ args) _, altBody) = altMap Map.! tag
               mapping = tuMapping valTU Map.! tag
           -- bind cpat variables
           forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
             let indices = [1 + tuStructIndex, tuArrayIndex]
             emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
-          altBody >>= getOperand
+          altBody >>= getOperand "altResult"
 -}
+      T_NodeSet nodeSet -> do
+        tuVal <- codeGenVal val
+        tagVal <- codeGenExtractTag tuVal
+
+        let valTU = taggedUnion nodeSet
+
+        switchExit <- uniqueName "switch.exit" -- this is the next block
+        curBlockName <- gets _currentBlockName
+
+        (altDests, altValues, altCGTypes) <- fmap unzip3 . forM alts $ \(Alt cpat _, altBody) -> do
+          altCPatVal <- getCPatConstant cpat
+          altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
+          activeBlock altBlockName
+
+          let NodePat tag args = cpat
+              mapping = tuMapping valTU Map.! tag
+          -- bind cpat variables
+          forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
+            let indices = [1 + tuStructIndex, tuArrayIndex]
+            emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
+
+          altResult <- altBody
+          (altCGTy, altOp) <- getOperand "altResult" altResult
+          pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy)
+
+        let resultCGType = commonCGType altCGTypes
+
+        altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
+          activeBlock altBlockName
+          convertedAltOp <- case altCGTy of
+            CG_SimpleType{} -> pure altOp
+            -- HINT: convert alt result to common type
+            _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
+          closeBlock $ Br
+            { dest      = switchExit
+            , metadata' = []
+            }
+          pure (convertedAltOp, altBlockName)
+
+        activeBlock curBlockName
+        closeBlock $ Switch
+              { operand0'   = tagVal
+              , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+              , dests       = altDests
+              , metadata'   = []
+              }
+
+        activeBlock switchExit
+        pure . I resultCGType $ Phi
+          { type'           = cgLLVMType resultCGType
+          , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
+          , metadata        = []
+          }
+
+{-
       T_SimpleType{} -> do
         opVal <- codeGenVal val
         switchExit <- uniqueName "switch.exit" -- this is the next block
         curBlockName <- gets _currentBlockName
-        rec
+        rec -- TODO: remove rec
           closeBlock $ Switch
                 { operand0'   = opVal
                 , defaultDest = switchExit -- QUESTION: do we want to catch this error?
@@ -247,18 +301,18 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
                 }
               pure ((altCPatVal, altBlockName), (convertedAltOp, altBlockName), altCGTy)
 
-        startNewBlock switchExit
+        activeBlock switchExit
         pure . I resultCGType $ Phi
           { type'           = cgLLVMType resultCGType
           , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altValues
           , metadata        = []
           }
-
+-}
     DefF name args (_,body) -> do
       -- clear def local state
       let clearDefState = modify' (\env -> env {_envBasicBlocks = mempty, _envInstructions = mempty, _constantMap = mempty})
       clearDefState
-      startNewBlock (mkName $ name ++ ".entry")
+      activeBlock (mkName $ name ++ ".entry")
       (cgTy,result) <- body >>= getOperand "defResult"
       closeBlock $ Ret
         { returnOperand = Just result
@@ -305,7 +359,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           nodeSet       = mconcat [_location V.! loc | loc <- locs]
           resultCGType  = toCGType $ T_NodeSet nodeSet
           resultTU      = cgTaggedUnion resultCGType
-      codeGenTagSwitch tagVal nodeSet resultCGType $ \tag items -> do
+      codeGenTagSwitch tagVal nodeSet $ \tag items -> do
         let nodeCGType  = toCGType $ T_NodeSet $ Map.singleton tag items
             nodeTU      = cgTaggedUnion nodeCGType
         nodeAddress <- codeGenBitCast "nodeAddress" tagAddress (ptr $ tuLLVMType nodeTU)
@@ -316,7 +370,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           , alignment       = 0
           , metadata        = []
           }
-        copyTaggedUnion nodeVal nodeTU resultTU
+        (resultCGType,) <$> copyTaggedUnion nodeVal nodeTU resultTU
 
     SUpdateF name val -> do
       nodeLocation <- codeGenVal $ Var name
@@ -329,7 +383,7 @@ codeGenStoreNode val nodeLocation = do
   tagVal <- codeGenExtractTag tuVal
   T_NodeSet nodeSet <- typeOfVal val
   let valueTU = taggedUnion nodeSet
-  codeGenTagSwitch tagVal nodeSet unitCGType $ \tag items -> do
+  codeGenTagSwitch tagVal nodeSet $ \tag items -> do
     let nodeTU = taggedUnion $ Map.singleton tag items
     nodeVal <- copyTaggedUnion tuVal valueTU nodeTU
     nodeAddress <- codeGenBitCast "nodeAddress" nodeLocation (ptr $ tuLLVMType nodeTU)
@@ -341,40 +395,45 @@ codeGenStoreNode val nodeLocation = do
       , alignment       = 0
       , metadata        = []
       }]
-    pure unit
+    pure $ (unitCGType, unit)
   pure ()
 
-codeGenTagSwitch :: Operand -> NodeSet -> CGType -> (Tag -> Vector SimpleType -> CG Operand) -> CG Result
-codeGenTagSwitch tagVal nodeSet resultCGType tagAltGen | Map.size nodeSet > 1 = do
+codeGenTagSwitch :: Operand -> NodeSet -> (Tag -> Vector SimpleType -> CG (CGType, Operand)) -> CG Result
+codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
   let possibleNodes = Map.toList nodeSet
   curBlockName <- gets _currentBlockName
   switchExit <- uniqueName "tag.switch.exit" -- this is the next block
-  rec
+  rec -- TODO: remove rec
     closeBlock $ Switch
       { operand0'   = tagVal
       , defaultDest = switchExit -- QUESTION: do we want to catch this error?
       , dests       = altDests
       , metadata'   = []
       }
-    (altDests, altValues) <- fmap unzip . forM possibleNodes $ \(tag, items) -> do
+    let resultCGType = commonCGType altCGTypes
+    (altDests, altValues, altCGTypes) <- fmap unzip3 . forM possibleNodes $ \(tag, items) -> do
       let cpat = TagPat tag
       altBlockName <- uniqueName ("tag.switch." ++ getCPatName cpat)
       altCPatVal <- getCPatConstant cpat
       addBlock altBlockName $ do
-        resultOp <- tagAltGen tag items
+        (altCGTy, altOp) <- tagAltGen tag items
+        convertedAltOp <- case altCGTy of
+          CG_SimpleType{} -> pure altOp
+          -- HINT: convert alt result to common type
+          _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
         closeBlock $ Br
           { dest      = switchExit
           , metadata' = []
           }
-        pure ((altCPatVal, altBlockName), (resultOp, altBlockName))
-  startNewBlock switchExit
+        pure ((altCPatVal, altBlockName), (convertedAltOp, altBlockName), altCGTy)
+  activeBlock switchExit
   pure . I resultCGType $ Phi
     { type'           = cgLLVMType resultCGType
     , incomingValues  = (undef $ cgLLVMType resultCGType, curBlockName) : altValues
     , metadata        = []
     }
-codeGenTagSwitch tagVal nodeSet resultCGType tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
-  O resultCGType <$> tagAltGen tag items
+codeGenTagSwitch tagVal nodeSet tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
+  uncurry O <$> tagAltGen tag items
 
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
 external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions}) where
