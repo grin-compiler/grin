@@ -647,11 +647,15 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
   _ -> case val of
         (Just (TSimpleVal (TLit lit))) -> do
           n <- gen $ choose (1, 5)
-          alts <- replicateM n $ do
+          alts0 <- replicateM n $ do
             (TLit lit0) <- gLiteral typeOfVal
             TAlt (LitPat lit0) <$> (solve (Exp [] typeOfExp))
           matching <- TAlt (LitPat lit) <$> (solve (Exp [] typeOfExp))
-          gen $ shuffle (matching:alts)
+          let alts = Map.elems $
+                     Map.fromList $
+                     map (\v@(TAlt pat body) -> (pat, v)) $
+                     matching:alts0
+          gen $ shuffle alts
         _ -> mzero
 
 gMain :: GoalM TDef

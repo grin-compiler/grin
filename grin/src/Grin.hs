@@ -114,7 +114,7 @@ data CPat
   = NodePat Tag [Name]  -- HIGH level GRIN
   | LitPat  Lit         -- HIGH level GRIN
   | TagPat  Tag
-  deriving (Generic, NFData, Eq, Show)
+  deriving (Generic, NFData, Eq, Show, Ord)
 
 isBasicCPat :: CPat -> Bool
 isBasicCPat = \case
