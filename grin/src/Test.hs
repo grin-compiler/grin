@@ -248,6 +248,7 @@ data Type
   = TTUnit
   | TInt
   | TFloat
+  | TBool
   | TWord
   | TTLoc
   | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
@@ -263,6 +264,7 @@ simpleType = melements
   , TFloat
   , TWord
   , TTUnit
+  , TBool
 --  , TTLoc
   ]
 
@@ -271,6 +273,7 @@ primitiveType = melements
   [ TInt
   , TFloat
   , TWord
+  , TBool
 --  , TTUnit
 --  , TTLoc
   ]
@@ -290,6 +293,7 @@ instance TypeOf TSimpleVal where
     TLit (LInt64 _)  -> TInt
     TLit (LWord64 _) -> TWord
     TLit (LFloat _)  -> TFloat
+    TLit (LBool _)   -> TBool
     bad              -> error $ "typeOf @TSimpleVal got:" ++ show bad
 
 instance TypeOf TVal where
@@ -329,7 +333,6 @@ genProg =
   fmap head $
   asExp <$$>
   (runGoalM $
-    CMR.local ((ctxEnv . adtsL) %~ Set.union primitiveADTs) $
     withADTs 10 $
     solve @TProg Prog)
 
@@ -346,7 +349,7 @@ initContext = (Env mempty primitives mempty, mempty)
       PrimOps.TInt   -> TInt
       PrimOps.TWord  -> TWord
       PrimOps.TFloat -> TFloat
-      PrimOps.TBool  -> boolT
+      PrimOps.TBool  -> TBool
       PrimOps.TUnit  -> TTUnit
 
 runGoalM :: GoalM a -> Gen [a]
@@ -391,12 +394,6 @@ withVars vars = CMR.local (ctxEnv %~ insertVars vars)
 
 type GBool = Type
 
-boolT :: GBool
-boolT = TUnion $ Set.fromList [TTag "True" [], TTag "False" []]
-
-gBool :: GoalM TVal
-gBool = gValue boolT
-
 adt :: GoalM Type
 adt = do
   constructors <- newNames =<< gen (choose (1, 5))
@@ -415,17 +412,27 @@ gLiteral = fmap TLit . \case
   TInt   -> LInt64  <$> gen arbitrary
   TFloat -> LFloat  <$> gen arbitrary
   TWord  -> LWord64 <$> gen arbitrary
+  TBool  -> LBool   <$> gen arbitrary
   _      -> mzero
+
+varFromEnv :: Type -> GoalM TSimpleVal
+varFromEnv t = (TVar . TName <$> gEnv t)
 
 gSimpleVal :: Type -> GoalM TSimpleVal
 gSimpleVal = \case
-  TInt   -> tryout [varFromEnv TInt, gLiteral TInt]
-  TFloat -> tryout [varFromEnv TFloat, gLiteral TFloat]
-  TWord  -> tryout [varFromEnv TWord, gLiteral TWord]
+  TInt   -> varFromEnv TInt `mplus` gLiteral TInt
+  TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
+  TWord  -> varFromEnv TWord `mplus` gLiteral TWord
+  TBool  -> varFromEnv TBool `mplus` gLiteral TBool
   TTLoc  -> mzero -- TODO: Locations are created via stores of function parameters ... varFromEnv TTLoc
   _      -> mzero
-  where
-    varFromEnv t = (TVar . TName <$> gEnv t)
+
+gNodeValue :: Type -> GoalM TVal
+gNodeValue = \case
+  TTag tag types ->
+    (TSimpleVal <$> varFromEnv (TTag tag types)) `mplus`
+    (TConstTagNode (Tag C tag) <$> mapM gSimpleVal types)
+  _ -> mzero
 
 gValue :: Type -> GoalM TVal
 gValue = \case
@@ -434,7 +441,8 @@ gValue = \case
   TFloat          -> TSimpleVal <$> gSimpleVal TFloat
   TWord           -> TSimpleVal <$> gSimpleVal TWord
   TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
-  TTag tag types  -> TConstTagNode (Tag C tag) <$> mapM gSimpleVal types
+  TBool           -> TSimpleVal <$> gSimpleVal TBool
+  TTag tag types  -> gNodeValue $ TTag tag types
   TUnion types    -> do
     t <- melements (Set.toList types)
     solve (GVal t)
@@ -460,18 +468,21 @@ gSExp e = do
   s <- mGetSize
   gSExpSized s e
 
+gFunction :: Type -> GoalM TSExp
+gFunction t =
+  do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
+     TSApp (TName funName) <$> forM paramTypes gSimpleVal
+
 gSExpSized :: Int -> Eff -> GoalM TSExp
 gSExpSized s = \case
   NoEff t ->
     case s of
       0 -> moneof
-            [ do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
-                 TSApp (TName funName) <$> forM paramTypes gSimpleVal
+            [ gFunction t
             , TSReturn <$> solve (GVal t)
             ]
       n -> mfreq
-            [ (45, do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
-                      TSApp (TName funName) <$> forM paramTypes gSimpleVal)
+            [ (45, gFunction t)
             , (45, TSReturn <$> solve (GVal t))
             , (10, fmap TSBlock $ solve (Exp [] t))
             ]
@@ -601,17 +612,31 @@ gExpSized n t = \case
                       newVar t' $ \n -> do -- TODO: Gen LPat
                         rest <- solve (Exp [] t)
                         pure (TEBind se (TLPatSVal (TVar (TName n))) rest))
-            , (20, do t'   <- tryout [simpleType, definedAdt]
-                      val  <- gValue t'
-                      alts <- gAlts val t' t
-                      pure $ TECase val $ NonEmpty alts)
+            , (20, gCase t)
             ]
   es -> mzero
+
+gCase :: Type -> GoalM TExp
+gCase t = tryout
+  [ -- Make variable for the case
+    do t'   <- tryout [simpleType, definedAdt]
+       se   <- gFunction t'
+       newVar t' $ \n -> do
+         alts <- gAlts Nothing t' t
+         pure
+           $ TEBind se (TLPatSVal (TVar (TName n)))
+           $ TECase (TSimpleVal (TVar (TName n))) $ NonEmpty alts
+    -- Try to lookup variable or make a value
+  , do t'   <- tryout [simpleType, definedAdt]
+       val  <- gValue t'
+       alts <- gAlts (Just val) t' t
+       pure $ TECase val $ NonEmpty alts
+  ]
 
 -- TODO: Effects
 -- TODO: Remove overlappings
 -- TODO: Mix values and variables in tags
-gAlts :: TVal -> Type -> Type -> GoalM [TAlt]
+gAlts :: Maybe TVal -> Type -> Type -> GoalM [TAlt]
 gAlts val typeOfVal typeOfExp = case typeOfVal of
   TTag name params -> do
     names <- newNames (length params)
@@ -620,7 +645,7 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
   TUnion types -> fmap concat . forM (Set.toList types) $ \typOfV ->
     gAlts val typOfV typeOfExp
   _ -> case val of
-        TSimpleVal (TLit lit) -> do
+        (Just (TSimpleVal (TLit lit))) -> do
           n <- gen $ choose (1, 5)
           alts <- replicateM n $ do
             (TLit lit0) <- gLiteral typeOfVal
@@ -652,17 +677,11 @@ gProg :: GoalM TProg
 gProg = retry 10 $ do
   n <- gen $ choose (0, 10)
   adts <- Set.toList <$> definedAdts
-  -- let adts = []
   ts <- replicateM n $ moneof [simpleType, definedAdt]
   gDefs (adts ++ ts) $ \defs -> do
     m <- gMain
     defs1 <- gen $ shuffle defs
     pure $ TProg $ NonEmpty (defs1 ++ [m])
-
-primitiveADTs :: Set Type
-primitiveADTs = Set.fromList
-  [ boolT
-  ]
 
 -- | Generate the given number of ADTs, and register them
 -- in the context, running the computation with the new context.
