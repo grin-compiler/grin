@@ -468,8 +468,8 @@ gSExp e = do
   s <- mGetSize
   gSExpSized s e
 
-gFunction :: Type -> GoalM TSExp
-gFunction t =
+gFunctionCall :: Type -> GoalM TSExp
+gFunctionCall t =
   do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
      TSApp (TName funName) <$> forM paramTypes gSimpleVal
 
@@ -478,11 +478,11 @@ gSExpSized s = \case
   NoEff t ->
     case s of
       0 -> moneof
-            [ gFunction t
+            [ gFunctionCall t
             , TSReturn <$> solve (GVal t)
             ]
       n -> mfreq
-            [ (45, gFunction t)
+            [ (45, gFunctionCall t)
             , (45, TSReturn <$> solve (GVal t))
             , (10, fmap TSBlock $ solve (Exp [] t))
             ]
@@ -620,7 +620,7 @@ gCase :: Type -> GoalM TExp
 gCase t = tryout
   [ -- Make variable for the case
     do t'   <- tryout [simpleType, definedAdt]
-       se   <- gFunction t'
+       se   <- gFunctionCall t'
        newVar t' $ \n -> do
          alts <- gAlts Nothing t' t
          pure
