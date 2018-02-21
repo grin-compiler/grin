@@ -37,40 +37,24 @@ typeGenSimpleType = \case
   T_Unit    -> LLVM.void
   T_Location _  -> locationLLVMType
 
+
 locationLLVMType :: LLVM.Type
 locationLLVMType = ptr tagLLVMType
+
+locationCGType :: CGType
+locationCGType = toCGType $ T_SimpleType $ T_Location []
 
 tagLLVMType :: LLVM.Type
 tagLLVMType = i64
 
+tagCGType :: CGType
+tagCGType = toCGType $ T_SimpleType $ T_Int64
+
+unitCGType :: CGType
+unitCGType = toCGType $ T_SimpleType $ T_Unit
+
 voidLLVMType :: LLVM.Type
 voidLLVMType = LLVM.void
-
--- Tagged union
-{-
-  HINT: tagged union LLVM representation
-
-    struct {
-      Int64[N1];
-      Word64[N2];
-      ...
-    }
--}
-data TUIndex
-  = TUIndex
-  { tuStructIndex   :: Word32
-  , tuArrayIndex    :: Word32
-  , tuItemLLVMType  :: LLVM.Type
-  }
-  deriving (Eq, Ord, Show)
-
-data TaggedUnion
-  = TaggedUnion
-  { tuLLVMType  :: LLVM.Type -- struct of arrays of SimpleType with size
-  , tuMapping   :: Map Tag (Vector TUIndex)
-  }
-  deriving (Eq, Ord, Show)
-
 
 data TUBuild
   = TUBuild
@@ -115,7 +99,7 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
                                ]
               }
 
-copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand
+copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand -- TODO
 copyTaggedUnion srcVal srcTU dstTU | srcTU == dstTU = pure srcVal
 copyTaggedUnion srcVal srcTU dstTU = do
   let -- calculate mapping
@@ -127,14 +111,13 @@ copyTaggedUnion srcVal srcTU dstTU = do
         Just prevSrc | prevSrc == src && tuItemLLVMType src == tuItemLLVMType dst -> (l,m)
                      | otherwise      -> error $ printf "invalid tagged union mapping: %s" (show mapping)
       -- set node items
-      build mAgg (itemType, srcIndex, dstIndex) = do
-        agg <- getOperand mAgg
-        item <- getOperand $ I itemType $ AST.ExtractValue
+      build agg (itemType, srcIndex, dstIndex) = do
+        item <- codeGenLocalVar "item" itemType $ AST.ExtractValue
           { aggregate = srcVal
           , indices'  = srcIndex
           , metadata  = []
           }
-        pure $ I dstTULLVMType $ AST.InsertValue
+        codeGenLocalVar "node" dstTULLVMType $ AST.InsertValue
           { aggregate = agg
           , element   = item
           , indices'  = dstIndex
@@ -142,27 +125,26 @@ copyTaggedUnion srcVal srcTU dstTU = do
           }
       tagIndex = [0]
       dstTULLVMType = tuLLVMType dstTU
-      agg0 = O (undef dstTULLVMType)
-  agg <- foldM build agg0 $ (tagLLVMType, tagIndex,tagIndex) :
+      agg0 = undef dstTULLVMType
+  foldM build agg0 $ (tagLLVMType, tagIndex,tagIndex) :
     [ ( tuItemLLVMType src
       , [1 + tuStructIndex src, tuArrayIndex src]
       , [1 + tuStructIndex dst, tuArrayIndex dst]
       )
     | (src,dst) <- validatedMapping
     ]
-  getOperand agg
 
 codeGenExtractTag :: Operand -> CG Operand
 codeGenExtractTag tuVal = do
-  getOperand $ I tagLLVMType $ AST.ExtractValue
+  codeGenLocalVar "tag" tagLLVMType $ AST.ExtractValue
     { aggregate = tuVal
     , indices'  = [0] -- tag index
     , metadata  = []
     }
 
-codeGenBitCast :: Operand -> LLVM.Type -> CG Operand
-codeGenBitCast value dstType = do
-  getOperand . I dstType $ AST.BitCast
+codeGenBitCast :: String -> Operand -> LLVM.Type -> CG Operand
+codeGenBitCast name value dstType = do
+  codeGenLocalVar name dstType $ AST.BitCast
     { operand0  = value
     , type'     = dstType
     , metadata  = []
@@ -201,31 +183,34 @@ codeGenBitCast value dstType = do
 
 -}
 
--- HINT: does hash consing
-typeGenValue :: Type -> CG LLVM.Type
-typeGenValue (T_SimpleType sTy) = pure $ typeGenSimpleType sTy
-typeGenValue value@(T_NodeSet ns) = gets _envLLVMTypeMap >>= \tm -> case Map.lookup ns tm of
-  Just t  -> pure t
-  _ -> do
-        let tu = taggedUnion ns
-        pure $ tuLLVMType tu
---  _ -> error $ printf "unsupported type: %s" (show $ pretty value)
+commonCGType :: [CGType] -> CGType
+commonCGType (ty@CG_SimpleType{} : tys) | all (ty==) tys = ty
+commonCGType tys | all isNodeSet tys = toCGType $ T_NodeSet $ mconcat [ns | CG_NodeSet _ (T_NodeSet ns) _ <- tys] where
+  isNodeSet = \case
+    CG_NodeSet{} -> True
+    _ -> False
+commonCGType tys = error $ printf "no common type for %s" (show $ pretty $ map cgType tys)
 
-getVarType :: Grin.Name -> CG LLVM.Type
+toCGType :: Type -> CGType
+toCGType t = case t of
+  T_SimpleType sTy  -> CG_SimpleType (typeGenSimpleType sTy) t
+  T_NodeSet ns      -> CG_NodeSet (tuLLVMType tu) t tu where tu = taggedUnion ns
+
+getVarType :: Grin.Name -> CG CGType
 getVarType name = do
   TypeEnv{..} <- gets _envTypeEnv
   case Map.lookup name _variable of
     Nothing -> error ("unknown variable " ++ name)
-    Just value -> typeGenValue value
+    Just ty -> pure $ toCGType ty
 
-getFunctionType :: Grin.Name -> CG (LLVM.Type, [LLVM.Type])
+getFunctionType :: Grin.Name -> CG (CGType, [CGType])
 getFunctionType name = do
   TypeEnv{..} <- gets _envTypeEnv
   case Map.lookup name _function of
     Nothing -> error $ printf "unknown function %s" name
     Just (retValue, argValues) -> do
-      retType <- typeGenValue retValue
-      argTypes <- mapM typeGenValue $ V.toList argValues
+      retType <- pure $ toCGType retValue
+      argTypes <- pure $ map toCGType $ V.toList argValues
       pure (retType, argTypes)
 
 getTagId :: Tag -> CG Constant

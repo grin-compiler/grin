@@ -2,21 +2,21 @@
 
 module Reducer.LLVM.Base where
 
-import Debug.Trace
---import Text.Show.Pretty
 import Text.Printf
 import Control.Monad as M
 import Control.Monad.State
 import Data.Functor.Foldable as Foldable
 import Lens.Micro.Platform
 
+import Data.Word
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Vector (Vector)
 
 import Grin
 import qualified TypeEnv
 
-import LLVM.AST hiding (callingConvention)
+import LLVM.AST as LLVM hiding (callingConvention)
 import LLVM.AST.Type as LLVM
 import LLVM.AST.AddrSpace
 import LLVM.AST.Constant hiding (Add, ICmp)
@@ -39,7 +39,6 @@ data Env
   , _currentBlockName :: AST.Name
   , _envTempCounter   :: Int
   , _envTypeEnv       :: TypeEnv.TypeEnv
-  , _envLLVMTypeMap   :: Map TypeEnv.NodeSet LLVM.Type
   , _envTagMap        :: Map Tag Constant
   }
 
@@ -51,11 +50,47 @@ emptyEnv = Env
   , _currentBlockName = mkName ""
   , _envTempCounter   = 0
   , _envTypeEnv       = TypeEnv.TypeEnv mempty mempty mempty
-  , _envLLVMTypeMap   = mempty
   , _envTagMap        = mempty
   }
 
 concat <$> mapM makeLenses [''Env]
+
+-- Tagged union
+{-
+  HINT: tagged union LLVM representation
+
+    struct {
+      Int64[N1];
+      Word64[N2];
+      ...
+    }
+-}
+data TUIndex
+  = TUIndex
+  { tuStructIndex   :: Word32
+  , tuArrayIndex    :: Word32
+  , tuItemLLVMType  :: LLVM.Type
+  }
+  deriving (Eq, Ord, Show)
+
+data TaggedUnion
+  = TaggedUnion
+  { tuLLVMType  :: LLVM.Type -- struct of arrays of SimpleType with size
+  , tuMapping   :: Map Tag (Vector TUIndex)
+  }
+  deriving (Eq, Ord, Show)
+
+data CGType
+  = CG_SimpleType
+    { cgLLVMType    :: LLVM.Type
+    , cgType        :: TypeEnv.Type
+    }
+  | CG_NodeSet
+    { cgLLVMType    :: LLVM.Type
+    , cgType        :: TypeEnv.Type
+    , cgTaggedUnion :: TaggedUnion
+    }
+  deriving (Eq, Ord, Show)
 
 type CG = State Env
 
@@ -65,15 +100,15 @@ emit instructions = modify' (\env@Env{..} -> env {_envInstructions = _envInstruc
 addConstant :: Grin.Name -> Operand -> CG ()
 addConstant name operand = modify' (\env@Env{..} -> env {_constantMap = Map.insert name operand _constantMap})
 
-unit :: CG Operand
-unit = pure $ ConstantOperand $ Undef VoidType
+unit :: Operand
+unit = ConstantOperand $ Undef VoidType
 
 undef :: Type -> Operand
 undef = ConstantOperand . Undef
 
 data Result
-  = I LLVM.Type Instruction
-  | O Operand
+  = I CGType Instruction
+  | O CGType Operand
 
 -- utils
 closeBlock :: Terminator -> CG ()
@@ -94,11 +129,15 @@ addBlock name block = do
 uniqueName :: String -> CG AST.Name
 uniqueName name = state (\env@Env{..} -> (mkName $ printf "%s.%d" name _envTempCounter, env {_envTempCounter = succ _envTempCounter}))
 
-getOperand :: Result -> CG Operand
-getOperand = \case
-  O a -> pure a
-  I VoidType i -> emit [Do i] >> unit
-  I t i -> do
-          tmp <- uniqueName "tmp"
-          emit [tmp := i]
-          pure $ LocalReference t tmp
+getOperand :: String -> Result -> CG (CGType, Operand)
+getOperand name = \case
+  O cgTy a -> pure (cgTy, a)
+  I cgTy i -> case cgLLVMType cgTy of
+    VoidType  -> emit [Do i] >> pure (cgTy, unit)
+    t         -> (cgTy,) <$> codeGenLocalVar name t i
+
+codeGenLocalVar :: String -> LLVM.Type -> AST.Instruction -> CG LLVM.Operand
+codeGenLocalVar name ty instruction = do
+  varName <- uniqueName name
+  emit [varName := instruction]
+  pure $ LocalReference ty varName
