@@ -30,6 +30,13 @@ import LLVM.Module
 
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
+
+tagLLVMType :: LLVM.Type
+tagLLVMType = i64
+
+locationLLVMType :: LLVM.Type
+locationLLVMType = ptr tagLLVMType
+
 data Env
   = Env
   { _envDefinitions       :: [Definition]                     -- Program state
@@ -39,6 +46,7 @@ data Env
   , _currentBlockName     :: AST.Name                         -- Def state
   , _envBlockInstructions :: Map AST.Name [Named Instruction] -- Def state
   , _envBlockOrder        :: Map AST.Name Int                 -- Def state
+  , _envHeapPointer       :: Operand                          -- Def state
   , _envTempCounter       :: Int
   , _envTypeEnv           :: TypeEnv.TypeEnv
   , _envTagMap            :: Map Tag Constant
@@ -52,6 +60,7 @@ emptyEnv = Env
   , _currentBlockName     = mkName ""
   , _envBlockInstructions = mempty
   , _envBlockOrder        = mempty
+  , _envHeapPointer       = ConstantOperand $ Null locationLLVMType
   , _envTempCounter       = 0
   , _envTypeEnv           = TypeEnv.TypeEnv mempty mempty mempty
   , _envTagMap            = mempty

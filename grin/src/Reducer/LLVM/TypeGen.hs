@@ -37,15 +37,8 @@ typeGenSimpleType = \case
   T_Unit    -> LLVM.void
   T_Location _  -> locationLLVMType
 
-
-locationLLVMType :: LLVM.Type
-locationLLVMType = ptr tagLLVMType
-
 locationCGType :: CGType
 locationCGType = toCGType $ T_SimpleType $ T_Location []
-
-tagLLVMType :: LLVM.Type
-tagLLVMType = i64
 
 tagCGType :: CGType
 tagCGType = toCGType $ T_SimpleType $ T_Int64

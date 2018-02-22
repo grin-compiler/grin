@@ -174,18 +174,21 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           (retType, argTypes) <- getFunctionType name
           let functionType = FunctionType
                 { resultType    = cgLLVMType retType
-                , argumentTypes = map cgLLVMType argTypes
+                , argumentTypes = locationLLVMType : map cgLLVMType argTypes
                 , isVarArg      = False
                 }
+          -- HINT: pass heap pointer as the first argument
+          heapPointer <- gets _envHeapPointer
           pure . I retType $ Call
             { tailCallKind        = Just Tail
             , callingConvention   = CC.C
             , returnAttributes    = []
             , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName name)
-            , arguments           = zip operands (repeat [])
+            , arguments           = zip (heapPointer : operands) (repeat [])
             , functionAttributes  = []
             , metadata            = []
             }
+          -- TODO: extract the new heap pointer from the result and replace the old one
 
     AltF _ a -> snd a
 
@@ -217,7 +220,10 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             , _currentBlockName     = mkName ""
             , _envBlockInstructions = mempty
             , _envBlockOrder        = mempty
+            , _envHeapPointer       = LocalReference locationLLVMType heapPointerName
             }
+          heapPointerName       = mkName "__heap_ptr_"
+          heapPointerParameter  = Parameter locationLLVMType heapPointerName []
       clearDefState
       activeBlock (mkName $ name ++ ".entry")
       (cgTy,result) <- body >>= getOperand "defResult"
@@ -229,8 +235,8 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       (retType, argTypes) <- getFunctionType name
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
-            , parameters  = ([Parameter (cgLLVMType argType) (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
-            , returnType  = cgLLVMType retType
+            , parameters  = (heapPointerParameter : [Parameter (cgLLVMType argType) (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
+            , returnType  = cgLLVMType retType -- TODO: include the heap pointer
             , basicBlocks = Map.elems blocks
             , callingConvention = CC.C
             }
@@ -244,9 +250,9 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       sequence_ (map snd defs) >> pure (O unitCGType unit)
 
     SStoreF val -> do
-      -- TODO: adjust heap pointer
-      let heapPointer   = ConstantOperand $ Null locationLLVMType -- TODO
-          nodeLocation  = heapPointer
+      heapPointer <- gets _envHeapPointer
+      -- TODO: increase heap pointer
+      let nodeLocation  = heapPointer
       codeGenStoreNode val nodeLocation
       pure $ O locationCGType nodeLocation
 
