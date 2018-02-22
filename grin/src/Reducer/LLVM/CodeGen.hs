@@ -166,14 +166,17 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       rightResultM
 
     SAppF name args -> do
+      (retType, argTypes) <- getFunctionType name
       operands <- mapM codeGenVal args
+      operandsTypes <- mapM (\x -> toCGType <$> typeOfVal x) args
+      -- convert values to function argument type
+      convertedArgs <- sequence $ zipWith3 codeGenValueConversion operandsTypes operands argTypes
       if isPrimName name
-        then codeGenPrimOp name args operands
+        then codeGenPrimOp name args convertedArgs
         else do
           -- call to top level functions
-          (retType, argTypes) <- getFunctionType name
           let functionType = FunctionType
-                { resultType    = cgLLVMType retType
+                { resultType    = cgLLVMType retType -- TODO: add the returning heap pointer
                 , argumentTypes = locationLLVMType : map cgLLVMType argTypes
                 , isVarArg      = False
                 }
@@ -184,7 +187,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             , callingConvention   = CC.C
             , returnAttributes    = []
             , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName name)
-            , arguments           = zip (heapPointer : operands) (repeat [])
+            , arguments           = zip (heapPointer : convertedArgs) (repeat [])
             , functionAttributes  = []
             , metadata            = []
             }
@@ -331,10 +334,8 @@ codeGenCase opVal alts bindingGen = do
 
   altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
     activeBlock altBlockName
-    convertedAltOp <- case altCGTy of
-      CG_SimpleType{} -> pure altOp
-      -- HINT: convert alt result to common type
-      _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
+    -- HINT: convert alt result to common type
+    convertedAltOp <- codeGenValueConversion altCGTy altOp resultCGType
     closeBlock $ Br
       { dest      = switchExit
       , metadata' = []
@@ -374,10 +375,8 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
 
   altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
     activeBlock altBlockName
-    convertedAltOp <- case altCGTy of
-      CG_SimpleType{} -> pure altOp
-      -- HINT: convert alt result to common type
-      _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
+    -- HINT: convert alt result to common type
+    convertedAltOp <- codeGenValueConversion altCGTy altOp resultCGType
     closeBlock $ Br
       { dest      = switchExit
       , metadata' = []

@@ -176,6 +176,15 @@ codeGenBitCast name value dstType = do
 
 -}
 
+codeGenValueConversion :: CGType -> Operand -> CGType -> CG Operand
+codeGenValueConversion srcCGType srcOp dstCGType = case srcCGType of
+  CG_SimpleType{} | srcCGType == dstCGType          -> pure srcOp
+  _ | isLocation srcCGType && isLocation dstCGType  -> pure srcOp
+  _ -> copyTaggedUnion srcOp (cgTaggedUnion srcCGType) (cgTaggedUnion dstCGType)
+  where isLocation = \case
+          CG_SimpleType{cgType = T_SimpleType (T_Location{})} -> True
+          _ -> False
+
 commonCGType :: [CGType] -> CGType
 commonCGType (ty@CG_SimpleType{} : tys) | all (ty==) tys = ty
 commonCGType tys | all isNodeSet tys = toCGType $ T_NodeSet $ mconcat [ns | CG_NodeSet _ (T_NodeSet ns) _ <- tys] where
