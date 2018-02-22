@@ -464,15 +464,13 @@ codeGenIncreaseHeapPointer name = do
   -- increase heap pointer
   CG_SimpleType {cgType = T_SimpleType (T_Location [loc])} <- getVarType name
   nodeSet <- use $ envTypeEnv.location.ix loc
-  heapPointer <- gets _envHeapPointer
+  heapPointer0 <- gets _envHeapPointer
 
-  let tuArrayPtrTy = ptr $ ArrayType
-        { nArrayElements  = 2
-        , elementType     = tuLLVMType $ taggedUnion nodeSet
-        }
-  newHeapPointer0 <- codeGenLocalVar heapPointerName tuArrayPtrTy $ AST.GetElementPtr
+  let tuPtrTy = ptr $ tuLLVMType $ taggedUnion nodeSet
+  heapPointer1 <- codeGenBitCast heapPointerName heapPointer0 tuPtrTy
+  newHeapPointer0 <- codeGenLocalVar heapPointerName tuPtrTy $ AST.GetElementPtr
     { inBounds  = True
-    , address   = heapPointer
+    , address   = heapPointer1
     , indices   = [ConstantOperand $ C.Int 32 1]
     , metadata  = []
     }
