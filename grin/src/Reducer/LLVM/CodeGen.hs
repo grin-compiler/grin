@@ -9,6 +9,7 @@ import Text.Printf
 import Control.Monad as M
 import Control.Monad.State
 import Data.Functor.Foldable as Foldable
+import Lens.Micro.Platform
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -145,11 +146,8 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       ty <- typeOfVal val
       O (toCGType ty) <$> codeGenVal val
     SBlockF a -> snd $ a
-    {-
-    EBindF (SStore{}, sexp) (Var name) (_, exp) -> do
-      error "TODO"
-    -}
-    EBindF (_,leftResultM) lpat (_,rightResultM) -> do
+
+    EBindF (leftExp, leftResultM) lpat (_,rightResultM) -> do
       leftResult <- leftResultM
       case lpat of
           VarTagNode{} -> error $ printf "TODO: codegen not implemented %s" (show $ pretty lpat)
@@ -162,7 +160,13 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
                 let indices = [1 + tuStructIndex, tuArrayIndex]
                 emit [(mkName argName) := AST.ExtractValue {aggregate = operand, indices' = indices, metadata = []}]
               _ -> pure ()
-          Var name -> getOperand name leftResult >>= addConstant name . snd
+          Var name -> do
+            getOperand name leftResult >>= addConstant name . snd
+            case leftExp of
+              -- NOTE: increase the heap ponter where the location information is avalable ; weird solution
+              SStore{}  -> codeGenIncreaseHeapPointer name
+              _         -> pure ()
+
           _ -> getOperand "tmp" leftResult >> pure ()
       rightResultM
 
@@ -285,13 +289,6 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       registerPrimFunLib
       sequence_ (map snd defs) >> pure (O unitCGType unit)
 
-    SStoreF val -> do
-      heapPointer <- gets _envHeapPointer
-      -- TODO: increase heap pointer
-      let nodeLocation  = heapPointer
-      codeGenStoreNode val nodeLocation
-      pure $ O locationCGType nodeLocation
-
     SFetchIF name Nothing -> do
       -- load tag
       tagAddress <- codeGenVal $ Var name
@@ -320,6 +317,11 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           , metadata        = []
           }
         (resultCGType,) <$> copyTaggedUnion nodeVal nodeTU resultTU
+
+    SStoreF val -> do
+      nodeLocation <- gets _envHeapPointer
+      codeGenStoreNode val nodeLocation
+      pure $ O locationCGType nodeLocation
 
     SUpdateF name val -> do
       nodeLocation <- codeGenVal $ Var name
@@ -457,6 +459,26 @@ withHeapPointer ty = StructureType
   , elementTypes  = [locationLLVMType, ty]
   }
 
+codeGenIncreaseHeapPointer :: String -> CG ()
+codeGenIncreaseHeapPointer name = do
+  -- increase heap pointer
+  CG_SimpleType {cgType = T_SimpleType (T_Location [loc])} <- getVarType name
+  nodeSet <- use $ envTypeEnv.location.ix loc
+  heapPointer <- gets _envHeapPointer
+
+  let tuArrayPtrTy = ptr $ ArrayType
+        { nArrayElements  = 2
+        , elementType     = tuLLVMType $ taggedUnion nodeSet
+        }
+  newHeapPointer0 <- codeGenLocalVar heapPointerName tuArrayPtrTy $ AST.GetElementPtr
+    { inBounds  = True
+    , address   = heapPointer
+    , indices   = [ConstantOperand $ C.Int 32 1]
+    , metadata  = []
+    }
+  -- cast to tag pointer ; generic heap pointer type
+  newHeapPointer <- codeGenBitCast heapPointerName newHeapPointer0 locationLLVMType
+  modify' $ \env -> env {_envHeapPointer = newHeapPointer}
 
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
 external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions}) where
