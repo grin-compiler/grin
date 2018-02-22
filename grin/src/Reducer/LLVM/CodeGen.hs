@@ -319,15 +319,18 @@ codeGenCase opVal alts bindingGen = do
   switchExit <- uniqueName "switch.exit" -- this is the next block
   curBlockName <- gets _currentBlockName
 
+  -- TODO: save heap pointer operand
   (altDests, altValues, altCGTypes) <- fmap unzip3 . forM alts $ \(Alt cpat _, altBody) -> do
     altCPatVal <- getCPatConstant cpat
     altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
     activeBlock altBlockName
 
+    -- TODO: restore saved heap pointer operand
     bindingGen cpat
 
     altResult <- altBody
     (altCGTy, altOp) <- getOperand "altResult" altResult
+    -- TODO: capture alternative's heap pointer and return along with altOp
     pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy)
 
   let resultCGType = commonCGType altCGTypes
@@ -351,6 +354,7 @@ codeGenCase opVal alts bindingGen = do
         }
 
   activeBlock switchExit
+  -- TODO: update heap pointer with the one comes from the alternatives
   pure . I resultCGType $ Phi
     { type'           = cgLLVMType resultCGType
     , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
