@@ -130,25 +130,21 @@ data Result
 closeBlock :: Terminator -> CG ()
 closeBlock tr = modify' $ \env@Env{..} -> env
   { _envInstructions      = mempty
-  , _envBasicBlocks       = Map.insert (_envBlockOrder Map.! _currentBlockName) (BasicBlock _currentBlockName _envInstructions (Do tr)) _envBasicBlocks
+  , _envBasicBlocks       = Map.insert (Map.findWithDefault undefined _currentBlockName _envBlockOrder) (BasicBlock _currentBlockName _envInstructions (Do tr)) _envBasicBlocks
   , _envBlockInstructions = Map.delete _currentBlockName _envBlockInstructions
+  , _currentBlockName     = mkName ""
   }
 
 activeBlock :: AST.Name -> CG ()
-activeBlock name =  modify' $ \env@Env{..} -> env
-  { _envInstructions      = Map.findWithDefault mempty name _envBlockInstructions
-  , _currentBlockName     = name
-  , _envBlockInstructions = Map.insert _currentBlockName _envInstructions _envBlockInstructions
-  , _envBlockOrder        = Map.insert name (Map.findWithDefault (Map.size _envBlockOrder) name _envBlockOrder) _envBlockOrder
-  }
-
-addBlock :: AST.Name -> CG a -> CG a
-addBlock name block = do
-  curBlockName <- gets _currentBlockName
-  activeBlock name
-  result <- block
-  activeBlock curBlockName
-  pure result
+activeBlock name = modify' f where
+  f env@Env{..}
+    | name == _currentBlockName = env
+    | otherwise = env
+      { _envInstructions      = Map.findWithDefault mempty name _envBlockInstructions
+      , _currentBlockName     = name
+      , _envBlockInstructions = Map.insert _currentBlockName _envInstructions _envBlockInstructions
+      , _envBlockOrder        = Map.insert name (Map.findWithDefault (Map.size _envBlockOrder) name _envBlockOrder) _envBlockOrder
+      }
 
 uniqueName :: String -> CG AST.Name
 uniqueName name = state (\env@Env{..} -> (mkName $ printf "%s.%d" name _envTempCounter, env {_envTempCounter = succ _envTempCounter}))

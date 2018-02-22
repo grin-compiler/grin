@@ -19,7 +19,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Data.List (unzip4)
 
-import LLVM.AST hiding (callingConvention)
+import LLVM.AST hiding (callingConvention, functionAttributes)
 import LLVM.AST.Type as LLVM
 import qualified LLVM.AST.Typed as LLVM
 import LLVM.AST.Constant as C hiding (Add, ICmp)
@@ -28,6 +28,7 @@ import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.Linkage as L
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Float as F
+import qualified LLVM.AST.FunctionAttribute as FA
 import LLVM.AST.Global
 import LLVM.Context
 import LLVM.Module
@@ -84,7 +85,7 @@ codeGenVal val = case val of
             , indices'  = [0]
             , metadata  = []
             }
-    foldM build agg0 $ zip opArgs $ V.toList $ tuMapping Map.! tag
+    foldM build agg0 $ zip opArgs $ V.toList $ Map.findWithDefault undefined tag tuMapping
 
   ValTag tag  -> ConstantOperand <$> getTagId tag
   Unit        -> pure unit
@@ -155,7 +156,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             (cgTy,operand) <- getOperand "node" leftResult
             let mapping = tuMapping $ cgTaggedUnion cgTy
             -- bind node pattern variables
-            forM_ (zip (V.toList $ mapping Map.! tag) args) $ \(TUIndex{..}, arg) -> case arg of
+            forM_ (zip (V.toList $ Map.findWithDefault undefined tag mapping) args) $ \(TUIndex{..}, arg) -> case arg of
               Var argName -> do
                 let indices = [1 + tuStructIndex, tuArrayIndex]
                 emit [(mkName argName) := AST.ExtractValue {aggregate = operand, indices' = indices, metadata = []}]
@@ -224,12 +225,14 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         tagVal <- codeGenExtractTag tuVal
         let valTU = taggedUnion nodeSet
         codeGenCase tagVal alts $ \case
-          NodePat tag args -> do
-            let mapping = tuMapping valTU Map.! tag
-            -- bind cpat variables
-            forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
-              let indices = [1 + tuStructIndex, tuArrayIndex]
-              emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
+          NodePat tag args -> case Map.lookup tag $ tuMapping valTU of
+            Nothing -> pure ()
+            Just mapping -> do
+            --let mapping = Map.findWithDefault undefined tag $ tuMapping valTU
+              -- bind cpat variables
+              forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
+                let indices = [1 + tuStructIndex, tuArrayIndex]
+                emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
 
           _ -> error "not implemented"
 
@@ -270,6 +273,9 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         { returnOperand = Just wrappedResult1
         , metadata'     = []
         }
+      errorBlock
+      blockInstructions <- Map.delete (mkName "") <$> gets _envBlockInstructions
+      unless (Map.null blockInstructions) $ error $ printf "unclosed blocks in %s\n  %s" name (show blockInstructions)
       blocks <- gets _envBasicBlocks
       (retType, argTypes) <- getFunctionType name
       when (retType /= cgTy) $ error $ printf "return type mismatch for %s\n  retTy: %s\n  cgTy: %s\n" name (show retType) (show cgTy)
@@ -279,6 +285,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             , returnType  = wrappedRetType -- includes the heap pointer
             , basicBlocks = Map.elems blocks
             , callingConvention = CC.C
+            , functionAttributes = [Right $ FA.StringAttribute "no-jump-tables" "true"]
             }
       clearDefState
       modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions})
@@ -296,12 +303,12 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         { volatile        = False
         , address         = tagAddress
         , maybeAtomicity  = Nothing
-        , alignment       = 0
+        , alignment       = 1
         , metadata        = []
         }
       -- switch on possible tags
       TypeEnv{..} <- gets _envTypeEnv
-      let T_SimpleType (T_Location locs) = _variable Map.! name
+      let T_SimpleType (T_Location locs) = Map.findWithDefault undefined name _variable
           nodeSet       = mconcat [_location V.! loc | loc <- locs]
           resultCGType  = toCGType $ T_NodeSet nodeSet
           resultTU      = cgTaggedUnion resultCGType
@@ -313,7 +320,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
           { volatile        = False
           , address         = nodeAddress
           , maybeAtomicity  = Nothing
-          , alignment       = 0
+          , alignment       = 1
           , metadata        = []
           }
         (resultCGType,) <$> copyTaggedUnion nodeVal nodeTU resultTU
@@ -343,7 +350,7 @@ codeGenStoreNode val nodeLocation = do
       , address         = nodeAddress
       , value           = nodeVal
       , maybeAtomicity  = Nothing
-      , alignment       = 0
+      , alignment       = 1
       , metadata        = []
       }]
     pure $ (unitCGType, unit)
@@ -351,7 +358,6 @@ codeGenStoreNode val nodeLocation = do
 
 codeGenCase :: Operand -> [(Alt, CG Result)] -> (CPat -> CG ()) -> CG Result
 codeGenCase opVal alts bindingGen = do
-  switchExit <- uniqueName "switch.exit" -- this is the next block
   curBlockName <- gets _currentBlockName
 
   -- save heap pointer operand
@@ -359,8 +365,8 @@ codeGenCase opVal alts bindingGen = do
 
   (altDests, altValues, altCGTypes, altHeapPointers) <- fmap unzip4 . forM alts $ \(Alt cpat _, altBody) -> do
     altCPatVal <- getCPatConstant cpat
-    altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
-    activeBlock altBlockName
+    altEntryBlock <- uniqueName ("switch." ++ getCPatName cpat)
+    activeBlock altEntryBlock
 
     -- restore saved heap pointer operand
     modify' $ \env -> env {_envHeapPointer = heapPointer}
@@ -370,24 +376,28 @@ codeGenCase opVal alts bindingGen = do
     (altCGTy, altOp) <- getOperand "altResult" altResult
     -- capture alternative's heap pointer and return along with altOp
     altHeapPointer <- gets _envHeapPointer
-    pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy, (altHeapPointer, altBlockName))
+
+    lastAltBlock <- gets _currentBlockName
+
+    pure ((altCPatVal, altEntryBlock), (altOp, lastAltBlock, altCGTy), altCGTy, (altHeapPointer, lastAltBlock))
 
   let resultCGType = commonCGType altCGTypes
+  switchExit <- uniqueName "switch.exit" -- this is the next block
 
-  altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
-    activeBlock altBlockName
+  altConvertedValues <- forM altValues $ \(altOp, lastAltBlock, altCGTy) -> do
+    activeBlock lastAltBlock
     -- HINT: convert alt result to common type
     convertedAltOp <- codeGenValueConversion altCGTy altOp resultCGType
     closeBlock $ Br
       { dest      = switchExit
       , metadata' = []
       }
-    pure (convertedAltOp, altBlockName)
+    pure (convertedAltOp, lastAltBlock)
 
   activeBlock curBlockName
   closeBlock $ Switch
         { operand0'   = opVal
-        , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+        , defaultDest = mkName "error_block" -- QUESTION: do we want to catch this error?
         , dests       = altDests
         , metadata'   = []
         }
@@ -397,57 +407,81 @@ codeGenCase opVal alts bindingGen = do
   -- update heap pointer with the one comes from the alternatives
   newHeapPointer <- codeGenLocalVar heapPointerName locationLLVMType $ Phi
     { type'           = locationLLVMType
-    , incomingValues  = (heapPointer, curBlockName) : altHeapPointers
+    , incomingValues  = {-(heapPointer, curBlockName) : -}altHeapPointers
     , metadata        = []
     }
   modify' $ \env -> env {_envHeapPointer = newHeapPointer}
 
   pure . I resultCGType $ Phi
     { type'           = cgLLVMType resultCGType
-    , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
+    , incomingValues  = {-(undef (cgLLVMType resultCGType), curBlockName) : -}altConvertedValues
     , metadata        = []
     }
 
+-- merge heap pointers from alt branches
 codeGenTagSwitch :: Operand -> NodeSet -> (Tag -> Vector SimpleType -> CG (CGType, Operand)) -> CG Result
 codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
   let possibleNodes = Map.toList nodeSet
-  switchExit <- uniqueName "switch.exit" -- this is the next block
   curBlockName <- gets _currentBlockName
 
-  (altDests, altValues, altCGTypes) <- fmap unzip3 . forM possibleNodes $ \(tag, items) -> do
+  -- save heap pointer operand
+  heapPointer <- gets _envHeapPointer
+
+  (altDests, altValues, altCGTypes, altHeapPointers) <- fmap unzip4 . forM possibleNodes $ \(tag, items) -> do
     let cpat = TagPat tag
-    altBlockName <- uniqueName ("tag.switch." ++ getCPatName cpat)
+    altEntryBlock <- uniqueName ("tag.switch." ++ getCPatName cpat)
     altCPatVal <- getCPatConstant cpat
-    activeBlock altBlockName
+    activeBlock altEntryBlock
+
+    -- restore saved heap pointer operand
+    modify' $ \env -> env {_envHeapPointer = heapPointer}
+
     (altCGTy, altOp) <- tagAltGen tag items
-    pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy)
+
+    -- capture alternative's heap pointer and return along with altOp
+    altHeapPointer <- gets _envHeapPointer
+
+    lastAltBlock <- gets _currentBlockName
+
+    pure ((altCPatVal, altEntryBlock), (altOp, lastAltBlock, altCGTy), altCGTy, (altHeapPointer, lastAltBlock))
 
   let resultCGType = commonCGType altCGTypes
+  switchExit <- uniqueName "tag.switch.exit" -- this is the next block
 
-  altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
-    activeBlock altBlockName
+  altConvertedValues <- forM altValues $ \(altOp, lastAltBlock, altCGTy) -> do
+    activeBlock lastAltBlock
     -- HINT: convert alt result to common type
     convertedAltOp <- codeGenValueConversion altCGTy altOp resultCGType
     closeBlock $ Br
       { dest      = switchExit
       , metadata' = []
       }
-    pure (convertedAltOp, altBlockName)
+    pure (convertedAltOp, lastAltBlock)
 
   activeBlock curBlockName
   closeBlock $ Switch
     { operand0'   = tagVal
-    , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+    , defaultDest = mkName "error_block" -- QUESTION: do we want to catch this error?
     , dests       = altDests
     , metadata'   = []
     }
 
   activeBlock switchExit
-  pure . I resultCGType $ Phi
-    { type'           = cgLLVMType resultCGType
-    , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
+
+  -- update heap pointer with the one comes from the alternatives
+  newHeapPointer <- codeGenLocalVar heapPointerName locationLLVMType $ Phi
+    { type'           = locationLLVMType
+    , incomingValues  = {-(heapPointer, curBlockName) : -}altHeapPointers
     , metadata        = []
     }
+  modify' $ \env -> env {_envHeapPointer = newHeapPointer}
+
+  pure . I resultCGType $ Phi
+    { type'           = cgLLVMType resultCGType
+    , incomingValues  = {-(undef (cgLLVMType resultCGType), curBlockName) : -}altConvertedValues
+    , metadata        = []
+    }
+
 codeGenTagSwitch tagVal nodeSet tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
   uncurry O <$> tagAltGen tag items
 
@@ -492,3 +526,22 @@ external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = de
 registerPrimFunLib :: CG ()
 registerPrimFunLib = do
   external i64 (mkName "_prim_int_print") [(i64, mkName "x")]
+
+errorBlock = do
+  activeBlock $ mkName "error_block"
+  let functionType = FunctionType
+                { resultType    = i64
+                , argumentTypes = [i64]
+                , isVarArg      = False
+                }
+
+  codeGenLocalVar "error_result" i64 $ Call
+            { tailCallKind        = Just Tail
+            , callingConvention   = CC.C
+            , returnAttributes    = []
+            , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName "_prim_int_print")
+            , arguments           = zip [ConstantOperand $ C.Int 64 666] (repeat [])
+            , functionAttributes  = []
+            , metadata            = []
+            }
+  closeBlock $ Unreachable []

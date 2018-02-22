@@ -85,7 +85,7 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
   tuLLVMType TUBuild{..} = StructureType
               { isPacked = True
               , elementTypes = tagLLVMType :
-                               [ ArrayType (fromIntegral $ tubArraySizeMap Map.! ty) ty
+                               [ ArrayType (fromIntegral $ Map.findWithDefault undefined ty tubArraySizeMap) ty
                                | (ty, _idx) <- List.sortBy (\(_,a) (_,b) -> compare a b) $ Map.toList tubStructIndexMap
                                ]
               }
