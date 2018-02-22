@@ -2,9 +2,7 @@
 
 module Reducer.LLVM.InferType where
 
-import Debug.Trace
 import Text.Printf
-import Text.PrettyPrint.ANSI.Leijen (pretty)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -17,7 +15,7 @@ import Lens.Micro.Platform
 import Reducer.LLVM.Base
 import Grin
 import TypeEnv
-import Pretty ()
+import Pretty
 
 -- allows simple type singletons or locations
 validateNodeItem :: Type -> CG ()
