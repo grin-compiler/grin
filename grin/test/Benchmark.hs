@@ -44,7 +44,8 @@ main = do
       , bench "sum_opt" $ nfIO $ eval' STReducer "grin/sum_opt.grin"
       ]
     , bgroup "LLVM"
-      [ bench "sum_opt" $ nfIO $ eval' LLVMReducer "grin/sum_opt.grin"
+      [ bench "sum_simple" $ nfIO $ eval' LLVMReducer "grin/sum_simple.grin"
+      , bench "sum_opt" $ nfIO $ eval' LLVMReducer "grin/sum_opt.grin"
       ]
     , bgroup "GHC"
       [ bench "hs_sum_opt" $ nfIO $ hs_sum_opt
