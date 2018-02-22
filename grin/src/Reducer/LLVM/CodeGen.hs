@@ -16,6 +16,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import Data.List (unzip4)
 
 import LLVM.AST hiding (callingConvention)
 import LLVM.AST.Type as LLVM
@@ -351,19 +352,23 @@ codeGenCase opVal alts bindingGen = do
   switchExit <- uniqueName "switch.exit" -- this is the next block
   curBlockName <- gets _currentBlockName
 
-  -- TODO: save heap pointer operand
-  (altDests, altValues, altCGTypes) <- fmap unzip3 . forM alts $ \(Alt cpat _, altBody) -> do
+  -- save heap pointer operand
+  heapPointer <- gets _envHeapPointer
+
+  (altDests, altValues, altCGTypes, altHeapPointers) <- fmap unzip4 . forM alts $ \(Alt cpat _, altBody) -> do
     altCPatVal <- getCPatConstant cpat
     altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
     activeBlock altBlockName
 
-    -- TODO: restore saved heap pointer operand
+    -- restore saved heap pointer operand
+    modify' $ \env -> env {_envHeapPointer = heapPointer}
     bindingGen cpat
 
     altResult <- altBody
     (altCGTy, altOp) <- getOperand "altResult" altResult
-    -- TODO: capture alternative's heap pointer and return along with altOp
-    pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy)
+    -- capture alternative's heap pointer and return along with altOp
+    altHeapPointer <- gets _envHeapPointer
+    pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy, (altHeapPointer, altBlockName))
 
   let resultCGType = commonCGType altCGTypes
 
@@ -386,7 +391,15 @@ codeGenCase opVal alts bindingGen = do
         }
 
   activeBlock switchExit
-  -- TODO: update heap pointer with the one comes from the alternatives
+
+  -- update heap pointer with the one comes from the alternatives
+  newHeapPointer <- codeGenLocalVar heapPointerName locationLLVMType $ Phi
+    { type'           = locationLLVMType
+    , incomingValues  = (heapPointer, curBlockName) : altHeapPointers
+    , metadata        = []
+    }
+  modify' $ \env -> env {_envHeapPointer = newHeapPointer}
+
   pure . I resultCGType $ Phi
     { type'           = cgLLVMType resultCGType
     , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
