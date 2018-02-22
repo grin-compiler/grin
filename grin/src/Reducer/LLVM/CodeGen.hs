@@ -148,34 +148,21 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
     EBindF (SStore{}, sexp) (Var name) (_, exp) -> do
       error "TODO"
     -}
-    -- TODO: refactor
     EBindF (_,leftResultM) lpat (_,rightResultM) -> do
       leftResult <- leftResultM
-      case leftResult of
-        I _ instruction -> case lpat of
+      case lpat of
           VarTagNode{} -> error $ printf "TODO: codegen not implemented %s" (show $ pretty lpat)
           ConstTagNode tag args -> do
-            (opCGTy,operand) <- getOperand "node" leftResult
-            forM_ args $ \case
+            (cgTy,operand) <- getOperand "node" leftResult
+            let mapping = tuMapping $ cgTaggedUnion cgTy
+            -- bind node pattern variables
+            forM_ (zip (V.toList $ mapping Map.! tag) args) $ \(TUIndex{..}, arg) -> case arg of
               Var argName -> do
-                -- TODO: extract items
-                emit [(mkName argName) := AST.ExtractValue {aggregate = operand, indices' = [0], metadata = []}]
+                let indices = [1 + tuStructIndex, tuArrayIndex]
+                emit [(mkName argName) := AST.ExtractValue {aggregate = operand, indices' = indices, metadata = []}]
               _ -> pure ()
-          Var name -> emit [(mkName name) := instruction]
-          _ -> emit [Do instruction]
-        O _ operand -> case lpat of
-          VarTagNode{} -> error $ printf "TODO: codegen not implemented %s" (show $ pretty lpat)
-          ConstTagNode tag args -> forM_ args $ \case
-            Var argName -> do
-              {-
-                TODO: extract items
-                  - construct tagged union
-                  - extract items for specific tag
-              -}
-              emit [(mkName argName) := AST.ExtractValue {aggregate = operand, indices' = [0], metadata = []}]
-            _ -> pure ()
-          Var name  -> addConstant name operand
-          _         -> pure () -- nothing to bind
+          Var name -> getOperand name leftResult >>= addConstant name . snd
+          _ -> getOperand "tmp" leftResult >> pure ()
       rightResultM
 
     SAppF name args -> do
