@@ -31,6 +31,9 @@ import LLVM.Module
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
+heapPointerName :: String
+heapPointerName = "_heap_ptr_"
+
 tagLLVMType :: LLVM.Type
 tagLLVMType = i64
 

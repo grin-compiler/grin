@@ -175,14 +175,16 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         then codeGenPrimOp name args convertedArgs
         else do
           -- call to top level functions
-          let functionType = FunctionType
-                { resultType    = cgLLVMType retType -- TODO: add the returning heap pointer
+          let wrappedResultType = withHeapPointer $ cgLLVMType retType -- add the returning heap pointer
+              functionType      = FunctionType
+                { resultType    = wrappedResultType
                 , argumentTypes = locationLLVMType : map cgLLVMType argTypes
                 , isVarArg      = False
                 }
           -- HINT: pass heap pointer as the first argument
           heapPointer <- gets _envHeapPointer
-          pure . I retType $ Call
+          -- HINT: wrapped result = heap pointer + function result
+          wrappedResult <- codeGenLocalVar (printf "%s_result" name) wrappedResultType $ Call
             { tailCallKind        = Just Tail
             , callingConvention   = CC.C
             , returnAttributes    = []
@@ -191,7 +193,19 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             , functionAttributes  = []
             , metadata            = []
             }
-          -- TODO: extract the new heap pointer from the result and replace the old one
+          -- extract the new heap pointer
+          newHeapPointer <- codeGenLocalVar heapPointerName locationLLVMType $ AST.ExtractValue
+            { aggregate = wrappedResult
+            , indices'  = [0]
+            , metadata  = []
+            }
+          modify' $ \env -> env {_envHeapPointer = newHeapPointer}
+          -- extract the  real result from the wrapped result
+          pure . I retType $ AST.ExtractValue
+            { aggregate = wrappedResult
+            , indices'  = [1]
+            , metadata  = []
+            }
 
     AltF _ a -> snd a
 
@@ -216,30 +230,48 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
 
     DefF name args (_,body) -> do
       -- clear def local state
-      let clearDefState = modify' $ \env -> env
+      -- set heap pointer
+      localHeapPointerName <- uniqueName heapPointerName
+      let heapPointerParameter = Parameter locationLLVMType localHeapPointerName []
+          clearDefState = modify' $ \env -> env
             { _envBasicBlocks       = mempty
             , _envInstructions      = mempty
             , _constantMap          = mempty
             , _currentBlockName     = mkName ""
             , _envBlockInstructions = mempty
             , _envBlockOrder        = mempty
-            , _envHeapPointer       = LocalReference locationLLVMType heapPointerName
+            , _envHeapPointer       = LocalReference locationLLVMType localHeapPointerName
             }
-          heapPointerName       = mkName "__heap_ptr_"
-          heapPointerParameter  = Parameter locationLLVMType heapPointerName []
       clearDefState
       activeBlock (mkName $ name ++ ".entry")
-      (cgTy,result) <- body >>= getOperand "defResult"
+      (cgTy,result) <- body >>= getOperand (printf "%s_result" name)
+      let wrappedRetType = withHeapPointer $ cgLLVMType cgTy
+      -- return the heap pointer + function result
+      heapPointer <- gets _envHeapPointer
+      wrappedResult0 <- codeGenLocalVar (printf "%s_wrapped_result" name) wrappedRetType $ AST.InsertValue
+        { aggregate = undef wrappedRetType
+        , element   = heapPointer
+        , indices'  = [0]
+        , metadata  = []
+        }
+      wrappedResult1 <- codeGenLocalVar (printf "%s_wrapped_result" name) wrappedRetType $ AST.InsertValue
+        { aggregate = wrappedResult0
+        , element   = result
+        , indices'  = [1]
+        , metadata  = []
+        }
+
       closeBlock $ Ret
-        { returnOperand = Just result
+        { returnOperand = Just wrappedResult1
         , metadata'     = []
         }
       blocks <- gets _envBasicBlocks
       (retType, argTypes) <- getFunctionType name
+      when (retType /= cgTy) $ error $ printf "return type mismatch for %s\n  retTy: %s\n  cgTy: %s\n" name (show retType) (show cgTy)
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
             , parameters  = (heapPointerParameter : [Parameter (cgLLVMType argType) (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
-            , returnType  = cgLLVMType retType -- TODO: include the heap pointer
+            , returnType  = wrappedRetType -- includes the heap pointer
             , basicBlocks = Map.elems blocks
             , callingConvention = CC.C
             }
@@ -403,6 +435,15 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
     }
 codeGenTagSwitch tagVal nodeSet tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
   uncurry O <$> tagAltGen tag items
+
+-- heap pointer related functions
+
+withHeapPointer :: LLVM.Type -> LLVM.Type
+withHeapPointer ty = StructureType
+  { isPacked      = True
+  , elementTypes  = [locationLLVMType, ty]
+  }
+
 
 external :: Type -> AST.Name -> [(Type, AST.Name)] -> CG ()
 external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions}) where
