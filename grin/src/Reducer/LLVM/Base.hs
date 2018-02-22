@@ -32,12 +32,13 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 data Env
   = Env
-  { _envDefinitions       :: [Definition]
-  , _envBasicBlocks       :: [BasicBlock]
-  , _envInstructions      :: [Named Instruction]
-  , _constantMap          :: Map Grin.Name Operand
-  , _currentBlockName     :: AST.Name
-  , _envBlockInstructions :: Map AST.Name [Named Instruction]
+  { _envDefinitions       :: [Definition]                     -- Program state
+  , _envBasicBlocks       :: Map Int BasicBlock               -- Def state ;  order -> basic block
+  , _envInstructions      :: [Named Instruction]              -- Def state
+  , _constantMap          :: Map Grin.Name Operand            -- Def state
+  , _currentBlockName     :: AST.Name                         -- Def state
+  , _envBlockInstructions :: Map AST.Name [Named Instruction] -- Def state
+  , _envBlockOrder        :: Map AST.Name Int                 -- Def state
   , _envTempCounter       :: Int
   , _envTypeEnv           :: TypeEnv.TypeEnv
   , _envTagMap            :: Map Tag Constant
@@ -50,6 +51,7 @@ emptyEnv = Env
   , _constantMap          = mempty
   , _currentBlockName     = mkName ""
   , _envBlockInstructions = mempty
+  , _envBlockOrder        = mempty
   , _envTempCounter       = 0
   , _envTypeEnv           = TypeEnv.TypeEnv mempty mempty mempty
   , _envTagMap            = mempty
@@ -116,7 +118,7 @@ data Result
 closeBlock :: Terminator -> CG ()
 closeBlock tr = modify' $ \env@Env{..} -> env
   { _envInstructions      = mempty
-  , _envBasicBlocks       = _envBasicBlocks ++ [BasicBlock _currentBlockName _envInstructions (Do tr)]
+  , _envBasicBlocks       = Map.insert (_envBlockOrder Map.! _currentBlockName) (BasicBlock _currentBlockName _envInstructions (Do tr)) _envBasicBlocks
   , _envBlockInstructions = Map.delete _currentBlockName _envBlockInstructions
   }
 
@@ -125,6 +127,7 @@ activeBlock name =  modify' $ \env@Env{..} -> env
   { _envInstructions      = Map.findWithDefault mempty name _envBlockInstructions
   , _currentBlockName     = name
   , _envBlockInstructions = Map.insert _currentBlockName _envInstructions _envBlockInstructions
+  , _envBlockOrder        = Map.insert name (Map.findWithDefault (Map.size _envBlockOrder) name _envBlockOrder) _envBlockOrder
   }
 
 addBlock :: AST.Name -> CG a -> CG a

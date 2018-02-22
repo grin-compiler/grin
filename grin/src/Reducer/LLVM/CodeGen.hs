@@ -125,7 +125,7 @@ getCPatName = \case
 toModule :: Env -> AST.Module
 toModule Env{..} = defaultModule
   { moduleName = "basic"
-  , moduleDefinitions = _envDefinitions
+  , moduleDefinitions = reverse _envDefinitions
   }
 
 {-
@@ -203,114 +203,34 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
     AltF _ a -> snd a
 
     ECaseF val alts -> typeOfVal val >>= \case -- distinct implementation for tagged unions and simple types
-{-
-      T_NodeSet nodeSet -> do
-        tuVal <- codeGenVal val
-        tagVal <- codeGenExtractTag tuVal
-        let valTU = taggedUnion nodeSet
-            altMap = Map.fromList [(tag, alt) | alt@(Alt (NodePat tag _) _, _) <- alts]
-        codeGenTagSwitch tagVal nodeSet $ \tag items -> do
-          let (Alt (NodePat _ args) _, altBody) = altMap Map.! tag
-              mapping = tuMapping valTU Map.! tag
-          -- bind cpat variables
-          forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
-            let indices = [1 + tuStructIndex, tuArrayIndex]
-            emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
-          altBody >>= getOperand "altResult"
--}
-      T_NodeSet nodeSet -> do
-        tuVal <- codeGenVal val
-        tagVal <- codeGenExtractTag tuVal
-
-        let valTU = taggedUnion nodeSet
-
-        switchExit <- uniqueName "switch.exit" -- this is the next block
-        curBlockName <- gets _currentBlockName
-
-        (altDests, altValues, altCGTypes) <- fmap unzip3 . forM alts $ \(Alt cpat _, altBody) -> do
-          altCPatVal <- getCPatConstant cpat
-          altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
-          activeBlock altBlockName
-
-          let NodePat tag args = cpat
-              mapping = tuMapping valTU Map.! tag
-          -- bind cpat variables
-          forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
-            let indices = [1 + tuStructIndex, tuArrayIndex]
-            emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
-
-          altResult <- altBody
-          (altCGTy, altOp) <- getOperand "altResult" altResult
-          pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy)
-
-        let resultCGType = commonCGType altCGTypes
-
-        altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
-          activeBlock altBlockName
-          convertedAltOp <- case altCGTy of
-            CG_SimpleType{} -> pure altOp
-            -- HINT: convert alt result to common type
-            _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
-          closeBlock $ Br
-            { dest      = switchExit
-            , metadata' = []
-            }
-          pure (convertedAltOp, altBlockName)
-
-        activeBlock curBlockName
-        closeBlock $ Switch
-              { operand0'   = tagVal
-              , defaultDest = switchExit -- QUESTION: do we want to catch this error?
-              , dests       = altDests
-              , metadata'   = []
-              }
-
-        activeBlock switchExit
-        pure . I resultCGType $ Phi
-          { type'           = cgLLVMType resultCGType
-          , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
-          , metadata        = []
-          }
-
-{-
       T_SimpleType{} -> do
         opVal <- codeGenVal val
-        switchExit <- uniqueName "switch.exit" -- this is the next block
-        curBlockName <- gets _currentBlockName
-        rec -- TODO: remove rec
-          closeBlock $ Switch
-                { operand0'   = opVal
-                , defaultDest = switchExit -- QUESTION: do we want to catch this error?
-                , dests       = altDests
-                , metadata'   = []
-                }
-          let resultCGType = commonCGType altCGTypes
-          (altDests, altValues, altCGTypes) <- fmap unzip3 . forM alts $ \(Alt cpat _, altBody) -> do
-            altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
-            altCPatVal <- getCPatConstant cpat
-            addBlock altBlockName $ do
-              altResult <- altBody
-              (altCGTy, altOp) <- getOperand "altResult" altResult
-              convertedAltOp <- case altCGTy of
-                CG_SimpleType{} -> pure altOp
-                -- HINT: convert alt result to common type
-                _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
-              closeBlock $ Br
-                { dest      = switchExit
-                , metadata' = []
-                }
-              pure ((altCPatVal, altBlockName), (convertedAltOp, altBlockName), altCGTy)
+        codeGenCase opVal alts $ \_ -> pure ()
 
-        activeBlock switchExit
-        pure . I resultCGType $ Phi
-          { type'           = cgLLVMType resultCGType
-          , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altValues
-          , metadata        = []
-          }
--}
+      T_NodeSet nodeSet -> do
+        tuVal <- codeGenVal val
+        tagVal <- codeGenExtractTag tuVal
+        let valTU = taggedUnion nodeSet
+        codeGenCase tagVal alts $ \case
+          NodePat tag args -> do
+            let mapping = tuMapping valTU Map.! tag
+            -- bind cpat variables
+            forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
+              let indices = [1 + tuStructIndex, tuArrayIndex]
+              emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
+
+          _ -> error "not implemented"
+
     DefF name args (_,body) -> do
       -- clear def local state
-      let clearDefState = modify' (\env -> env {_envBasicBlocks = mempty, _envInstructions = mempty, _constantMap = mempty})
+      let clearDefState = modify' $ \env -> env
+            { _envBasicBlocks       = mempty
+            , _envInstructions      = mempty
+            , _constantMap          = mempty
+            , _currentBlockName     = mkName ""
+            , _envBlockInstructions = mempty
+            , _envBlockOrder        = mempty
+            }
       clearDefState
       activeBlock (mkName $ name ++ ".entry")
       (cgTy,result) <- body >>= getOperand "defResult"
@@ -324,7 +244,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             { name        = mkName name
             , parameters  = ([Parameter (cgLLVMType argType) (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
             , returnType  = cgLLVMType retType
-            , basicBlocks = blocks
+            , basicBlocks = Map.elems blocks
             , callingConvention = CC.C
             }
       clearDefState
@@ -398,38 +318,91 @@ codeGenStoreNode val nodeLocation = do
     pure $ (unitCGType, unit)
   pure ()
 
-codeGenTagSwitch :: Operand -> NodeSet -> (Tag -> Vector SimpleType -> CG (CGType, Operand)) -> CG Result
-codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
-  let possibleNodes = Map.toList nodeSet
+codeGenCase :: Operand -> [(Alt, CG Result)] -> (CPat -> CG ()) -> CG Result
+codeGenCase opVal alts bindingGen = do
+  switchExit <- uniqueName "switch.exit" -- this is the next block
   curBlockName <- gets _currentBlockName
-  switchExit <- uniqueName "tag.switch.exit" -- this is the next block
-  rec -- TODO: remove rec
-    closeBlock $ Switch
-      { operand0'   = tagVal
-      , defaultDest = switchExit -- QUESTION: do we want to catch this error?
-      , dests       = altDests
-      , metadata'   = []
+
+  (altDests, altValues, altCGTypes) <- fmap unzip3 . forM alts $ \(Alt cpat _, altBody) -> do
+    altCPatVal <- getCPatConstant cpat
+    altBlockName <- uniqueName ("switch." ++ getCPatName cpat)
+    activeBlock altBlockName
+
+    bindingGen cpat
+
+    altResult <- altBody
+    (altCGTy, altOp) <- getOperand "altResult" altResult
+    pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy)
+
+  let resultCGType = commonCGType altCGTypes
+
+  altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
+    activeBlock altBlockName
+    convertedAltOp <- case altCGTy of
+      CG_SimpleType{} -> pure altOp
+      -- HINT: convert alt result to common type
+      _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
+    closeBlock $ Br
+      { dest      = switchExit
+      , metadata' = []
       }
-    let resultCGType = commonCGType altCGTypes
-    (altDests, altValues, altCGTypes) <- fmap unzip3 . forM possibleNodes $ \(tag, items) -> do
-      let cpat = TagPat tag
-      altBlockName <- uniqueName ("tag.switch." ++ getCPatName cpat)
-      altCPatVal <- getCPatConstant cpat
-      addBlock altBlockName $ do
-        (altCGTy, altOp) <- tagAltGen tag items
-        convertedAltOp <- case altCGTy of
-          CG_SimpleType{} -> pure altOp
-          -- HINT: convert alt result to common type
-          _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
-        closeBlock $ Br
-          { dest      = switchExit
-          , metadata' = []
-          }
-        pure ((altCPatVal, altBlockName), (convertedAltOp, altBlockName), altCGTy)
+    pure (convertedAltOp, altBlockName)
+
+  activeBlock curBlockName
+  closeBlock $ Switch
+        { operand0'   = opVal
+        , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+        , dests       = altDests
+        , metadata'   = []
+        }
+
   activeBlock switchExit
   pure . I resultCGType $ Phi
     { type'           = cgLLVMType resultCGType
-    , incomingValues  = (undef $ cgLLVMType resultCGType, curBlockName) : altValues
+    , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
+    , metadata        = []
+    }
+
+codeGenTagSwitch :: Operand -> NodeSet -> (Tag -> Vector SimpleType -> CG (CGType, Operand)) -> CG Result
+codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
+  let possibleNodes = Map.toList nodeSet
+  switchExit <- uniqueName "switch.exit" -- this is the next block
+  curBlockName <- gets _currentBlockName
+
+  (altDests, altValues, altCGTypes) <- fmap unzip3 . forM possibleNodes $ \(tag, items) -> do
+    let cpat = TagPat tag
+    altBlockName <- uniqueName ("tag.switch." ++ getCPatName cpat)
+    altCPatVal <- getCPatConstant cpat
+    activeBlock altBlockName
+    (altCGTy, altOp) <- tagAltGen tag items
+    pure ((altCPatVal, altBlockName), (altOp, altBlockName, altCGTy), altCGTy)
+
+  let resultCGType = commonCGType altCGTypes
+
+  altConvertedValues <- forM altValues $ \(altOp, altBlockName, altCGTy) -> do
+    activeBlock altBlockName
+    convertedAltOp <- case altCGTy of
+      CG_SimpleType{} -> pure altOp
+      -- HINT: convert alt result to common type
+      _ -> copyTaggedUnion altOp (cgTaggedUnion altCGTy) (cgTaggedUnion resultCGType)
+    closeBlock $ Br
+      { dest      = switchExit
+      , metadata' = []
+      }
+    pure (convertedAltOp, altBlockName)
+
+  activeBlock curBlockName
+  closeBlock $ Switch
+    { operand0'   = tagVal
+    , defaultDest = switchExit -- QUESTION: do we want to catch this error?
+    , dests       = altDests
+    , metadata'   = []
+    }
+
+  activeBlock switchExit
+  pure . I resultCGType $ Phi
+    { type'           = cgLLVMType resultCGType
+    , incomingValues  = (undef (cgLLVMType resultCGType), curBlockName) : altConvertedValues
     , metadata        = []
     }
 codeGenTagSwitch tagVal nodeSet tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
