@@ -13,13 +13,13 @@
 - eq / ne (float + int + word + bool)
 
 # features
-- node support for codegen
-- no garbage collector
-- support for builtin types and primops
-- single module (no module system)
-- GRIN type system
-- typed simplification transformations
-- compiled HPT
+- [x] node support for codegen
+- [x] no garbage collector
+- [x] support for builtin types and primops
+- [x] single module (no module system)
+- [ ] GRIN type system
+- [ ] typed simplification transformations
+- [ ] compiled HPT (with LLVM)
 
 # documentation
 - HPT
