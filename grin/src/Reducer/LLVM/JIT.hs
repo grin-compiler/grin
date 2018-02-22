@@ -18,9 +18,10 @@ import qualified Data.ByteString.Char8 as BS
 
 import Data.Int
 import Foreign.Ptr
+import Foreign.Marshal.Alloc
 
 foreign import ccall "dynamic"
-  mkMain :: FunPtr (IO Int64) -> IO Int64
+  mkMain :: FunPtr (Ptr Int8 -> IO Int64) -> Ptr Int8 -> IO Int64
 
 foreign import ccall "wrapper"
   wrapIntPrint :: (Int64 -> IO Int64) -> IO (FunPtr (Int64 -> IO Int64))
@@ -45,6 +46,9 @@ nullResolver s = return (JITSymbol 0 (JITSymbolFlags False False))
 failInIO :: ExceptT String IO a -> IO a
 failInIO = either fail return <=< runExceptT
 
+grinHeapSize :: Int
+grinHeapSize = 100 * 1024 * 1024
+
 eagerJit :: AST.Module -> String -> IO Grin.Val
 eagerJit amod mainName =
     withTestModule amod $ \mod ->
@@ -59,5 +63,10 @@ eagerJit amod mainName =
               \moduleSet -> do
                 mainSymbol <- mangleSymbol compileLayer (fromString mainName)
                 JITSymbol mainFn _ <- findSymbol compileLayer mainSymbol True
-                result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn))
+                -- allocate GRIN heap
+                heapPointer <- callocBytes grinHeapSize :: IO (Ptr Int8)
+                -- run function
+                result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn)) heapPointer
+                -- free GRIN heap
+                free heapPointer
                 return $ Unit
