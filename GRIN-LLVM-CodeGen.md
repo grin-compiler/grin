@@ -114,3 +114,7 @@ Type set tagged union operations:
 Node operations:
   - `build    (tag :: node tag) (values :: [type]) = (node :: type)`
   - `project  (node :: type) (elemIndex :: Int) = (element :: type)`
+
+## TODO
+  - prune dead variables from HPTResult before converting to TypeEnv
+  - hash cons TypeEnv to get rid of duplicate types
