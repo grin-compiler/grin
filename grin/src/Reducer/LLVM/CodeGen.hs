@@ -335,6 +335,8 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       codeGenStoreNode val nodeLocation
       pure $ O unitCGType unit
 
+    expF -> error $ printf "missing codegen for:\n%s" (show $ pretty $ embed $ fmap fst expF)
+
 codeGenStoreNode :: Val -> Operand -> CG ()
 codeGenStoreNode val nodeLocation = do
   tuVal <- codeGenVal val
