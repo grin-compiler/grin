@@ -118,3 +118,5 @@ Node operations:
 ## TODO
   - prune dead variables from HPTResult before converting to TypeEnv
   - hash cons TypeEnv to get rid of duplicate types
+  - use better variable names in the generated LLVM IR
+  - remove special heap pointer handling from codegen ; expose it in GRIN via a transfromation ; heap pointer should be a parameter and return value of `store`.
