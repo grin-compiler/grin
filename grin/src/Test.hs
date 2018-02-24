@@ -236,18 +236,18 @@ instance Monoid Store where
   mappend (Store s0) (Store s1) = Store (s0 <> s1)
 
 data Eff
-  = NoEff -- Generate a value returning expression of the given type
-  | NewLoc Type -- Store a value of a given type
-  | ReadLoc Loc Type -- Read a location with a given type
-  | UpdateLoc Loc Type -- Update a location with a given type
+  = NoEff          -- Generate a value returning expression of the given type
+  | NewLoc    Type -- Store a value of a given type
+  | ReadLoc   Type -- Read a location with a given type
+  | UpdateLoc Type -- Update a location with a given type
   deriving (Eq, Generic, Ord, Show)
 
 getSExpTypeInEff :: Eff -> Maybe Type
 getSExpTypeInEff = \case
   NoEff         -> mzero
-  NewLoc      t -> pure (TTLoc t)
-  ReadLoc   l t -> pure t
-  UpdateLoc l t -> pure t
+  NewLoc    t -> pure (TTLoc t)
+  ReadLoc   t -> pure t
+  UpdateLoc t -> pure TTUnit
 
 instance Arbitrary Eff where arbitrary = genericArbitraryU
 
@@ -496,10 +496,17 @@ gSExpSized s t = \case
 
   NewLoc t' -> case t of
     TTLoc t0 -> TSStore <$> solve (GVal t0) -- TODO: Add a block
-    _                 -> mzero
+    _        -> mzero
 
-  ReadLoc l t   -> mzero -- find a name that contains the location and the given type.
-  UpdateLoc l t -> mzero -- fing a name that contains the location and generate  value of a given type
+  -- find a name that contains the location and the given type.
+  ReadLoc t' -> do
+    (TVar name) <- varFromEnv (TTLoc t')
+    pure $ TSFetchI name Nothing
+
+  UpdateLoc t' -> do
+    (TVar name) <- varFromEnv (TTLoc t')
+    val <- solve (GVal t')
+    pure $ TSUpdate name val -- fing a name that contains the location and generate  value of a given type
 
 tryout :: [GoalM a] -> GoalM a
 tryout gs = do
@@ -583,7 +590,12 @@ mscale f = liftGenTr (scale f)
 
 gEffs :: GoalM [Eff]
 gEffs = moneof
-  [ pure [NoEff, NewLoc TInt, NoEff, NewLoc TInt]
+  [ pure []
+  , gen $ do
+      n <- choose (0, 3)
+      let noeffs = replicate n NoEff
+      rest <- listOf1 $ elements [NoEff, NewLoc TInt, ReadLoc TInt, UpdateLoc TInt]
+      pure $ noeffs ++ [NewLoc TInt] ++ rest
   ]
 
 -- TODO: Effects
@@ -712,7 +724,7 @@ gProg = retry 10 $ do
   n <- gen $ choose (0, 10)
   adts <- Set.toList <$> definedAdts
   ts <- replicateM n $ moneof [simpleType, definedAdt]
-  gDefs [] $ \defs -> do
+  gDefs (ts ++ adts) $ \defs -> do
     m <- gMain
     defs1 <- gen $ shuffle defs
     pure $ TProg $ NonEmpty (defs1 ++ [m])
@@ -740,7 +752,7 @@ solve g = do
 --  traceShowM (Map.keys funs)
 --  s <- gen $ sized pure
 --  traceShowM s
-  traceShowM ("Solve", g)
+--  traceShowM ("Solve", g)
   mscale (\x -> if x > 0 then x - 1 else 0) $ solve' g
 
 instance Solve TVal where
