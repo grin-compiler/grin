@@ -236,11 +236,18 @@ instance Monoid Store where
   mappend (Store s0) (Store s1) = Store (s0 <> s1)
 
 data Eff
-  = NoEff Type -- Generate a value returning expression of the given type
+  = NoEff -- Generate a value returning expression of the given type
   | NewLoc Type -- Store a value of a given type
   | ReadLoc Loc Type -- Read a location with a given type
   | UpdateLoc Loc Type -- Update a location with a given type
   deriving (Eq, Generic, Ord, Show)
+
+getSExpTypeInEff :: Eff -> Maybe Type
+getSExpTypeInEff = \case
+  NoEff         -> mzero
+  NewLoc      t -> pure (TTLoc t)
+  ReadLoc   l t -> pure t
+  UpdateLoc l t -> pure t
 
 instance Arbitrary Eff where arbitrary = genericArbitraryU
 
@@ -250,7 +257,7 @@ data Type
   | TFloat
   | TBool
   | TWord
-  | TTLoc
+  | TTLoc Type
   | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
   deriving (Eq, Generic, Ord, Show)
@@ -306,7 +313,7 @@ instance TypeOf TVal where
 
 instance TypeOf TExtraVal where
   typeOf = \case
-    TLoc _ -> TTLoc
+    TLoc _ -> TTLoc TInt -- TODO: More types...
 
 instance (TypeOf l, TypeOf r) => TypeOf (Either l r) where
   typeOf = either typeOf typeOf
@@ -323,7 +330,7 @@ getADTs = view (ctxEnv . adtsL)
 
 data Goal
   = Exp [Eff] Type
-  | SExp Eff
+  | SExp Eff Type
   | GVal Type
   | Prog
   deriving (Eq, Ord, Show)
@@ -424,7 +431,7 @@ gSimpleVal = \case
   TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
   TWord  -> varFromEnv TWord `mplus` gLiteral TWord
   TBool  -> varFromEnv TBool `mplus` gLiteral TBool
-  TTLoc  -> mzero -- TODO: Locations are created via stores of function parameters ... varFromEnv TTLoc
+  (TTLoc t) -> varFromEnv (TTLoc t) -- Locations have no literals
   _      -> mzero
 
 gNodeValue :: Type -> GoalM TVal
@@ -440,7 +447,7 @@ gValue = \case
   TInt            -> TSimpleVal <$> gSimpleVal TInt
   TFloat          -> TSimpleVal <$> gSimpleVal TFloat
   TWord           -> TSimpleVal <$> gSimpleVal TWord
-  TTLoc           -> TSimpleVal <$> gSimpleVal TTLoc
+  TTLoc t         -> TSimpleVal <$> gSimpleVal (TTLoc t)
   TBool           -> TSimpleVal <$> gSimpleVal TBool
   TTag tag types  -> gNodeValue $ TTag tag types
   TUnion types    -> do
@@ -463,19 +470,19 @@ gPurePrimFun = gPureFunction ("_prim_" `isPrefixOf`)
 mGetSize :: GoalM Int
 mGetSize = gen $ sized pure
 
-gSExp :: Eff -> GoalM TSExp
-gSExp e = do
+gSExp :: Eff -> Type -> GoalM TSExp
+gSExp e t = do
   s <- mGetSize
-  gSExpSized s e
+  gSExpSized s t e
 
 gFunctionCall :: Type -> GoalM TSExp
 gFunctionCall t =
   do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
      TSApp (TName funName) <$> forM paramTypes gSimpleVal
 
-gSExpSized :: Int -> Eff -> GoalM TSExp
-gSExpSized s = \case
-  NoEff t ->
+gSExpSized :: Int -> Type -> Eff -> GoalM TSExp
+gSExpSized s t = \case
+  NoEff ->
     case s of
       0 -> moneof
             [ gFunctionCall t
@@ -487,7 +494,10 @@ gSExpSized s = \case
             , (10, fmap TSBlock $ solve (Exp [] t))
             ]
 
-  NewLoc t      -> TSStore <$> solve (GVal t) -- TODO: Add a block
+  NewLoc t' -> case t of
+    TTLoc t0 -> TSStore <$> solve (GVal t0) -- TODO: Add a block
+    _                 -> mzero
+
   ReadLoc l t   -> mzero -- find a name that contains the location and the given type.
   UpdateLoc l t -> mzero -- fing a name that contains the location and generate  value of a given type
 
@@ -571,12 +581,17 @@ mresize n = liftGenTr (resize n)
 mscale :: (Int -> Int) -> GoalM a -> GoalM a
 mscale f = liftGenTr (scale f)
 
+gEffs :: GoalM [Eff]
+gEffs = moneof
+  [ pure [NoEff, NewLoc TInt, NoEff, NewLoc TInt]
+  ]
+
 -- TODO: Effects
 -- TODO: Always succedd with a trivial function
 -- TODO: Self Recursive
 gDef :: Type -> GoalM (TDef, ([Type], Type, [Eff]))
 gDef retType = do
-  let effs = []
+  effs <- gEffs
   n <- gen $ choose (1, 5)
   ptypes <- replicateM n $ mfreq [ (90, simpleType), (10, definedAdt) ]
   (fname:pnames) <- newNames (n+1)
@@ -604,53 +619,64 @@ gExp t es = do
 gExpSized :: Int -> Type -> [Eff] -> GoalM TExp
 gExpSized n t = \case
   [] -> case n of
-    0 -> TSExp <$> (solve (SExp (NoEff t)))
+    0 -> TSExp <$> (solve (SExp NoEff t))
     _ -> tryoutF
             [ -- (10, TSExp <$> (solve (SExp (NoEff t))))
               (80, do t' <- tryout [simpleType, definedAdt]
-                      se <- (solve (SExp (NoEff t')))
+                      se <- (solve (SExp NoEff t'))
                       newVar t' $ \n -> do -- TODO: Gen LPat
                         rest <- solve (Exp [] t)
                         pure (TEBind se (TLPatSVal (TVar (TName n))) rest))
-            , (20, gCase t)
+            , (20, gCase [] t)
             ]
-  es -> mzero
+  (e:es) -> case n of
+    0 -> TSExp <$> (solve (SExp NoEff t)) -- TODO: Consume all effects
+    _ -> tryoutF
+            [ -- (10, TSExp <$> (solve (SExp (NoEff t))))
+              (80, do t' <- maybe (tryout [simpleType, definedAdt]) pure
+                            $ getSExpTypeInEff e
+                      se <- (solve (SExp e t'))
+                      newVar t' $ \n -> do -- TODO: Gen LPat
+                        rest <- solve (Exp es t)
+                        pure (TEBind se (TLPatSVal (TVar (TName n))) rest))
+            , (20, gCase (e:es) t)
+            ]
 
-gCase :: Type -> GoalM TExp
-gCase t = tryout
+gCase :: [Eff] -> Type -> GoalM TExp
+gCase eff t = tryout
   [ -- Make variable for the case
     do t'   <- tryout [simpleType, definedAdt]
        se   <- gFunctionCall t'
        newVar t' $ \n -> do
-         alts <- gAlts Nothing t' t
+         alts <- gAlts eff Nothing t' t
          pure
            $ TEBind se (TLPatSVal (TVar (TName n)))
            $ TECase (TSimpleVal (TVar (TName n))) $ NonEmpty alts
     -- Try to lookup variable or make a value
   , do t'   <- tryout [simpleType, definedAdt]
        val  <- gValue t'
-       alts <- gAlts (Just val) t' t
+       alts <- gAlts eff (Just val) t' t
        pure $ TECase val $ NonEmpty alts
   ]
 
 -- TODO: Effects
 -- TODO: Remove overlappings
 -- TODO: Mix values and variables in tags
-gAlts :: Maybe TVal -> Type -> Type -> GoalM [TAlt]
-gAlts val typeOfVal typeOfExp = case typeOfVal of
+gAlts :: [Eff] -> Maybe TVal -> Type -> Type -> GoalM [TAlt]
+gAlts eff val typeOfVal typeOfExp = case typeOfVal of
   TTag name params -> do
     names <- newNames (length params)
     pure . TAlt (NodePat (Tag C name) names)
-      <$> withVars (names `zip` params) (solve (Exp [] typeOfExp))
+      <$> withVars (names `zip` params) (solve (Exp eff typeOfExp))
   TUnion types -> fmap concat . forM (Set.toList types) $ \typOfV ->
-    gAlts val typOfV typeOfExp
+    gAlts eff val typOfV typeOfExp
   _ -> case val of
         (Just (TSimpleVal (TLit lit))) -> do
-          n <- gen $ choose (1, 5)
+          n <- gen $ choose (0, 5)
           alts0 <- replicateM n $ do
             (TLit lit0) <- gLiteral typeOfVal
-            TAlt (LitPat lit0) <$> (solve (Exp [] typeOfExp))
-          matching <- TAlt (LitPat lit) <$> (solve (Exp [] typeOfExp))
+            TAlt (LitPat lit0) <$> (solve (Exp eff typeOfExp))
+          matching <- TAlt (LitPat lit) <$> (solve (Exp eff typeOfExp))
           let alts = Map.elems $
                      Map.fromList $
                      map (\v@(TAlt pat body) -> (pat, v)) $
@@ -659,7 +685,11 @@ gAlts val typeOfVal typeOfExp = case typeOfVal of
         _ -> mzero
 
 gMain :: GoalM TDef
-gMain = fmap (TDef (TName "grinMain") []) $ mresize 20 $ solve (Exp [] TTUnit)
+gMain =
+  fmap (TDef (TName "grinMain") [])
+  $ mresize 20
+  $ do effs <- gEffs
+       solve (Exp effs TTUnit)
 
 -- | Generate n functions and extend the context with the definitions,
 -- run the final computation.
@@ -682,7 +712,7 @@ gProg = retry 10 $ do
   n <- gen $ choose (0, 10)
   adts <- Set.toList <$> definedAdts
   ts <- replicateM n $ moneof [simpleType, definedAdt]
-  gDefs (adts ++ ts) $ \defs -> do
+  gDefs [] $ \defs -> do
     m <- gMain
     defs1 <- gen $ shuffle defs
     pure $ TProg $ NonEmpty (defs1 ++ [m])
@@ -710,7 +740,7 @@ solve g = do
 --  traceShowM (Map.keys funs)
 --  s <- gen $ sized pure
 --  traceShowM s
---  traceShowM ("Solve", g)
+  traceShowM ("Solve", g)
   mscale (\x -> if x > 0 then x - 1 else 0) $ solve' g
 
 instance Solve TVal where
@@ -720,8 +750,8 @@ instance Solve TVal where
 
 instance Solve TSExp where
   solve' = \case
-    SExp e -> gSExp e
-    _      -> mzero
+    SExp e t -> gSExp e t
+    _        -> mzero
 
 instance Solve TExp where
   solve' = \case
