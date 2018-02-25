@@ -39,6 +39,7 @@ import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
 import System.Process
+import Data.Bifunctor
 
 import qualified Data.Bimap as Bimap
 import Data.Map as Map
@@ -160,9 +161,15 @@ data PState = PState
 makeLenses ''PState
 makeLenses ''PipelineOpts
 
-pipelineStep :: Pipeline -> PipelineM ()
+data PipelineEff
+  = None
+  | ExpChanged
+  deriving (Eq, Show)
+
+pipelineStep :: Pipeline -> PipelineM PipelineEff
 pipelineStep p = do
   liftIO $ putStrLn $ "Pipeline: " ++ show p
+  before <- use psExp
   case p of
     HPT hptStep -> case hptStep of
       CompileHPT      -> compileHPT
@@ -177,12 +184,12 @@ pipelineStep p = do
     SaveGrin path   -> saveGrin path
     PrintAST        -> printAST
     DebugTransformation t -> debugTransformation t
+  after <- use psExp
+  let eff = if before == after then None else ExpChanged
+  liftIO $ putStrLn $ unwords ["Pipeline:", show p, "has effect:", show eff]
 
-  -- Strictness
-  when False $ do
-    grin <- use psExp
-    () <- pure $ rnf grin
-    pure ()
+  -- TODO: Test this only for development mode.
+  return eff
 
 compileHPT :: PipelineM ()
 compileHPT = do
@@ -295,16 +302,16 @@ check = do
   let nonDefined = nonDefinedNames e
   liftIO . putStrLn $ unwords ["Non defined names:", show nonDefined]
 
+
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
-pipeline :: PipelineOpts -> Exp -> [Pipeline] -> IO Exp
-pipeline o e p = do
-  print p
-  fmap _psExp .
-    flip execStateT start .
-    flip runReaderT o   .
-    sequence_           .
-    intersperse check $ Prelude.map pipelineStep p
+pipeline :: PipelineOpts -> Exp -> [Pipeline] -> IO ([(Pipeline, PipelineEff)], Exp)
+pipeline o e ps = do
+  print ps
+  fmap (second _psExp) .
+    flip runStateT start .
+    flip runReaderT o $
+    mapM (\p -> (,) p <$> pipelineStep p) ps
   where
     start = PState
       { _psExp        = e

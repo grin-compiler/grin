@@ -9,6 +9,7 @@ import Pipeline
 import Test
 import Eval
 import Pretty
+import Debug.Trace
 
 
 runTests :: IO ()
@@ -21,7 +22,9 @@ spec = do
 --    forAllShrink genPipeline shrinkPipeline $ \ppln ->
     forAll genPipeline $ \ppln ->
     monadicIO $ do
-      transformed      <- run $ pipeline defaultOpts original ppln
+      (pipelineInfo, transformed) <- run $ pipeline defaultOpts original ppln
+      pre $ any ((==ExpChanged) . snd) pipelineInfo
+      traceShowM pipelineInfo
       pre $ transformed /= original
       originalValue    <- run $ pure $ evalProgram PureReducer original
       transformedValue <- run $ pure $ evalProgram PureReducer transformed
