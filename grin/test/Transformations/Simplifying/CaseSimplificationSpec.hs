@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeApplications, OverloadedStrings, LambdaCase #-}
 module Transformations.Simplifying.CaseSimplificationSpec where
 
+import Control.Monad
 import Data.Monoid hiding (Alt)
 import Transformations.Simplifying.CaseSimplification
 import Test.Hspec
@@ -54,11 +55,13 @@ spec = do
 
     caseSimplification before `sameAs` after
 
-  it "Program size does not change" $ property $
-    forAll nonWellFormedPrograms programSizeDoesNotChange
+  forM_ programGenerators $ \(name, gen) -> do
+    describe name $ do
+      it "Program size does not change" $ property $
+        forAll gen programSizeDoesNotChange
 
-  it "Cases with tags as values have tags in their alternatives" $ property $
-    forAll nonWellFormedPrograms effectedAlternativesHasOnlyTags
+      it "Cases with tags as values have tags in their alternatives" $ property $
+        forAll gen effectedAlternativesHasOnlyTags
 
 varTagCover :: Exp -> Property -> Property
 varTagCover exp =

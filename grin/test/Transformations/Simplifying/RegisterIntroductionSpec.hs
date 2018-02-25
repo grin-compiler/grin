@@ -1,12 +1,15 @@
 {-# LANGUAGE TypeApplications, OverloadedStrings #-}
 module Transformations.Simplifying.RegisterIntroductionSpec where
 
+import Control.Monad
 import Test.Hspec
 import Transformations.Simplifying.RegisterIntroduction
+import Test.QuickCheck.Property
 
 import Free
 import Grin
 import Assertions
+import Test hiding (asVal)
 
 
 spec :: Spec
@@ -38,6 +41,14 @@ spec = do
       unit @Int 2
 
     registerIntroduction 0 before `sameAs` after
+
+  forM_ programGenerators $ \(name, gen) -> do
+    describe name $ do
+      it "transformation has effect" $ property $
+        forAll gen $ \before ->
+          let after = registerIntroduction 0 before
+          in changed before after True
+
 
 runTests :: IO ()
 runTests = hspec spec

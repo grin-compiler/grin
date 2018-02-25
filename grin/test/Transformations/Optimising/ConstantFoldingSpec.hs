@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeApplications, OverloadedStrings, LambdaCase #-}
 module Transformations.Optimising.ConstantFoldingSpec where
 
+import Control.Monad
 import Test.Hspec
 import Test.QuickCheck
 import Transformations.Optimising.ConstantFolding
@@ -61,12 +62,14 @@ spec = do
           unit @Int 3
       constantFolding x `sameAs` e
 
-    it "the program size shrinks" $ property $ forAll nonWellFormedPrograms $ \original ->
-      let transformed = constantFolding original
-      in conjoin
-          [ transformed `smallerThan` original
-          , checkUniqueNames transformed
-          ]
+  forM_ programGenerators $ \(name, gen) -> do
+    describe name $ do
+      it "the program size shrinks" $ property $ forAll gen $ \original ->
+        let transformed = constantFolding original
+        in changed original transformed $ conjoin
+            [ transformed `smallerThan` original
+            , checkUniqueNames transformed
+            ]
 
 -- Check if the number of nodes in a program is less rhan or equals after the transformation.
 smallerThan :: Exp -> Exp -> Property

@@ -2,7 +2,10 @@
 
 module Transformations.Simplifying.RightHoistFetchSpec where
 
+import Control.Monad
 import Test.Hspec
+import Test hiding (asVal)
+import Test.QuickCheck.Property
 
 import Free
 import Grin
@@ -44,6 +47,12 @@ spec = do
         ]
     rightHoistFetch before `sameAs` after
 
+  forM_ programGenerators $ \(name, gen) -> do
+    describe name $ do
+      it "transformation has effect" $ property $
+        forAll gen $ \before ->
+          let after = rightHoistFetch before
+          in changed before after True
 
 runTests :: IO ()
 runTests = hspec spec

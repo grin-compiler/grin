@@ -117,8 +117,14 @@ instance AsVal TLPat where
 class AsExp t where
   asExp :: t -> Exp
 
-nonWellFormedPrograms :: Gen Exp
-nonWellFormedPrograms = resize 1 (asExp <$> arbitrary @TProg)
+programGenerators :: [(String, Gen Exp)]
+programGenerators =
+  [ ("Semantically incorrect programs", semanticallyIncorrectPrograms)
+  , ("Semantically correct programs", genProg)
+  ]
+
+semanticallyIncorrectPrograms :: Gen Exp
+semanticallyIncorrectPrograms = resize 1 (asExp <$> arbitrary @TProg)
 
 instance AsExp TProg where
   asExp = \case
@@ -774,3 +780,6 @@ instance Solve TProg where
   solve' = \case
     Prog -> gProg
     _    -> mzero
+
+changed :: (Testable prop) => Exp -> Exp -> prop -> Property
+changed old new = cover (old /= new) 1 "Transformation has effect"
