@@ -220,10 +220,17 @@ instance TypeOf G.ExtraVal where
 instance (TypeOf l, TypeOf r) => TypeOf (Either l r) where
   typeOf = either typeOf typeOf
 
-type Context = (Env, Store)
+data Context = Context
+  { _ctxEnv    :: Env
+  , _ctxStore  :: Store
+  , _ctxExpGen :: GoalM G.Exp
+  }
 
 ctxEnv :: Lens' Context Env
-ctxEnv = _1
+ctxEnv = lens _ctxEnv (\c e -> c { _ctxEnv = e })
+
+ctxExpGen :: Lens' Context (GoalM G.Exp)
+ctxExpGen = lens _ctxExpGen (\c e -> c { _ctxExpGen = e })
 
 getADTs :: GoalM (Set Type)
 getADTs = view (ctxEnv . adtsL)
@@ -238,20 +245,23 @@ data Goal
   deriving (Eq, Ord, Show)
 
 genProg :: Gen Exp
-genProg =
+genProg = genProgWith mzero
+
+genProgWith :: GoalM G.Exp -> Gen Exp
+genProgWith gexp =
   fmap head $
   G.asExp <$$>
-  (runGoalM $
+  (runGoalM gexp $
     withADTs 10 $
     solve @G.Prog Prog)
 
 sampleGoalM :: Show a => GoalM a -> IO ()
-sampleGoalM g = sample $ runGoalM g
+sampleGoalM g = sample $ runGoalM mzero g
 
 type GoalM a = ReaderT Context (LogicT Gen) a
 
-initContext :: Context
-initContext = (Env mempty primitives mempty, mempty)
+initContext :: GoalM G.Exp -> Context
+initContext expGen = Context (Env mempty primitives mempty) mempty expGen
   where
     primitives = Map.map (\(params, ret) -> (convPrimTypes <$> params, convPrimTypes ret, [])) PrimOps.primOps
     convPrimTypes = \case
@@ -261,11 +271,11 @@ initContext = (Env mempty primitives mempty, mempty)
       PrimOps.TBool  -> TBool
       PrimOps.TUnit  -> TUnit
 
-runGoalM :: GoalM a -> Gen [a]
-runGoalM = observeManyT 1 . flip runReaderT initContext
+runGoalM :: GoalM G.Exp -> GoalM a -> Gen [a]
+runGoalM expGen = observeManyT 1 . flip runReaderT (initContext expGen)
 
 runGoalUnsafe :: GoalM a -> Gen a
-runGoalUnsafe = fmap checkSolution . runGoalM
+runGoalUnsafe = fmap checkSolution . runGoalM mzero
   where
     checkSolution [] = error "No solution is found."
     checkSolution xs = head xs
@@ -280,7 +290,7 @@ tagNames _              = []
 
 newName :: GoalM String
 newName = do
-  (Env vars funs adts) <- view _1
+  (Env vars funs adts) <- view ctxEnv
   let names = Map.keys vars <> Map.keys funs <> (concatMap tagNames $ Set.toList adts)
   gen $ ((G.unName <$> arbitrary) `suchThatIncreases` (`notElem` names))
 
@@ -293,7 +303,7 @@ newNames = go [] where
 
 newVar :: Type -> (String -> GoalM a) -> GoalM a
 newVar t k = do
-  (Env vars funs adts) <- view _1
+  (Env vars funs adts) <- view ctxEnv
   name <- newName
   CMR.local (ctxEnv %~ insertVarT name t) $ do
     k name
@@ -313,7 +323,7 @@ adt = do
 -- | Select a variable from a context which has a given type.
 gEnv :: Type -> GoalM Name
 gEnv t = do
-  (Env vars funs adts) <- view _1
+  (Env vars funs adts) <- view ctxEnv
   melements . Map.keys $ Map.filter (==t) vars
 
 gLiteral :: Type -> GoalM G.SimpleVal
@@ -358,7 +368,7 @@ gValue = \case
 
 gPureFunction :: (Name -> Bool) -> Type -> GoalM (Name, [Type])
 gPureFunction p t = do
-  (Env vars funs adts) <- view _1
+  (Env vars funs adts) <- view ctxEnv
   funs <- gen $ shuffle $ filter (p . fst) $ Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
   (name, (params, ret, [])) <- melements funs
   pure (name, params)
@@ -535,14 +545,20 @@ gExpSized n t = \case
   [] -> case n of
     0 -> G.SExp <$> (solve (SExp NoEff t))
     _ -> tryoutF
-            [ -- (10, G.SExp <$> (solve (SExp (NoEff t))))
-              (80, do t' <- tryout [simpleType, definedAdt]
-                      se <- (solve (SExp NoEff t'))
-                      newVar t' $ \n -> do -- TODO: Gen LPat
-                        rest <- solve (Exp [] t)
-                        pure (G.EBind se (G.LPatSVal (G.Var (G.Name n))) rest))
-            , (20, gCase [] t)
-            ]
+          [ -- (10, G.SExp <$> (solve (SExp (NoEff t))))
+            (80, do (t', se) <-
+                      tryout
+                        [ do t' <- tryout [simpleType, definedAdt]
+                             se <- (solve (SExp NoEff t'))
+                             pure (t', se)
+                        , do se <- fmap G.SBlock $ join $ view ctxExpGen
+                             pure (TUnit, se)
+                        ]
+                    newVar t' $ \n -> do -- TODO: Gen LPat
+                      rest <- solve (Exp [] t)
+                      pure (G.EBind se (G.LPatSVal (G.Var (G.Name n))) rest))
+          , (20, gCase [] t)
+          ]
   (e:es) -> case n of
     0 -> G.SExp <$> (solve (SExp NoEff t)) -- TODO: Consume all effects
     _ -> tryoutF
