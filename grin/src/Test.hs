@@ -29,6 +29,7 @@ import Test.QuickCheck
 import Generic.Random.Generic
 import Lens.Micro
 import Lens.Micro.Mtl
+import qualified Grammar as G
 
 import Data.Set (Set); import qualified Data.Set as Set
 import Data.Map (Map); import qualified Data.Map as Map
@@ -37,85 +38,6 @@ import Data.List
 import Debug.Trace
 
 
-data TName = TName { unTName :: String }
-  deriving (Eq, Generic, Show)
-
-deriving instance Generic (NonEmptyList a)
-
-data TProg = TProg (NonEmptyList TDef)
-  deriving (Generic, Show)
-
-data TDef = TDef TName [TName] TExp
-  deriving (Generic, Show)
-
-data TExp
-  = TEBind TSExp TLPat TExp
-  | TECase TVal (NonEmptyList TAlt)
-  | TSExp TSExp
-  deriving (Generic, Show)
-
-data TAlt = TAlt CPat TExp
-  deriving (Generic, Show)
-
-data TSExp
-  = TSApp     TName [TSimpleVal]
-  | TSReturn  TVal
-  | TSStore   TVal
-  | TSFetchI  TName (Maybe Int)
-  | TSUpdate  TName TVal
-  | TSBlock   TExp
-  deriving (Generic, Show)
-
-data TVal
-  = TConstTagNode  Tag   [TSimpleVal]
-  | TVarTagNode    TName [TSimpleVal]
-  | TValTag        Tag
-  | TUnit
-  | TSimpleVal TSimpleVal
-  deriving (Eq, Generic, Show)
-
-data TSimpleVal
-  = TLit Lit
-  | TVar TName
-  deriving (Eq, Generic, Show)
-
-data TLPat
-  = TLPatVal  TVal
-  | TLPatSVal TSimpleVal
-  deriving (Generic, Show)
-
-type Loc = Int
-
-data TExtraVal
-  = TLoc Loc
-  deriving (Eq, Generic, Show)
-
-
-toName (TName n) = n
-
-class AsVal t where
-  asVal :: t -> Val
-
-instance AsVal TVal where
-  asVal = \case
-    TConstTagNode  tag  simpleVals -> ConstTagNode tag (asVal <$> simpleVals)
-    TVarTagNode    name simpleVals -> VarTagNode (toName name) (asVal <$> simpleVals)
-    TValTag        tag             -> ValTag tag
-    TUnit                          -> Unit
-    TSimpleVal     simpleVal       -> asVal simpleVal
-
-instance AsVal TSimpleVal where
-  asVal = \case
-    TLit lit  -> Lit lit
-    TVar name -> Var (toName name)
-
-instance AsVal TLPat where
-  asVal = \case
-    TLPatVal  val  -> asVal val
-    TLPatSVal sval -> asVal sval
-
-class AsExp t where
-  asExp :: t -> Exp
 
 programGenerators :: [(String, Gen Exp)]
 programGenerators =
@@ -124,56 +46,30 @@ programGenerators =
   ]
 
 semanticallyIncorrectPrograms :: Gen Exp
-semanticallyIncorrectPrograms = resize 1 (asExp <$> arbitrary @TProg)
+semanticallyIncorrectPrograms = resize 1 (G.asExp <$> arbitrary @G.Prog)
 
-instance AsExp TProg where
-  asExp = \case
-    TProg defs -> Program (asExp <$> getNonEmpty defs)
-
-instance AsExp TDef where
-  asExp = \case
-    TDef name params exp -> Grin.Def (toName name) (toName <$> params) (asExp exp)
-
-instance AsExp TSExp where
-  asExp = \case
-    TSApp     name simpleVals -> SApp (toName name) (asVal <$> simpleVals)
-    TSReturn  val -> SReturn (asVal val)
-    TSStore   val -> SStore (asVal val)
-    TSFetchI  name pos -> SFetchI (toName name) pos
-    TSUpdate  name val -> SUpdate (toName name) (asVal val)
-    TSBlock   exp -> SBlock (asExp exp)
-
-instance AsExp TExp where
-  asExp = \case
-    TEBind sexp lpat exp -> EBind (asExp sexp) (asVal lpat) (asExp exp)
-    TECase val alts      -> ECase (asVal val) (asExp <$> getNonEmpty alts)
-    TSExp sexp           -> asExp sexp
-
-instance AsExp TAlt where
-  asExp = \case
-    TAlt cpat exp -> Alt cpat (asExp exp)
 
 downScale :: Gen a -> Gen a
 downScale = scale (`div` 2)
 
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
-instance Arbitrary TProg where arbitrary = genericArbitraryU
-instance Arbitrary TDef where arbitrary = genericArbitraryU
-instance Arbitrary TExp where arbitrary = downScale genericArbitraryU
-instance Arbitrary TSExp where arbitrary = genericArbitraryU
-instance Arbitrary TAlt where arbitrary = genericArbitraryU
+instance Arbitrary G.Prog where arbitrary = genericArbitraryU
+instance Arbitrary G.Def where arbitrary = genericArbitraryU
+instance Arbitrary G.Exp where arbitrary = downScale genericArbitraryU
+instance Arbitrary G.SExp where arbitrary = genericArbitraryU
+instance Arbitrary G.Alt where arbitrary = genericArbitraryU
 instance Arbitrary Val where arbitrary = genericArbitraryU
 instance Arbitrary Lit where arbitrary = genericArbitraryU
 instance Arbitrary TagType where arbitrary =genericArbitraryU
-instance Arbitrary TVal where arbitrary = genericArbitraryU
-instance Arbitrary TSimpleVal where arbitrary = genericArbitraryU
-instance Arbitrary TExtraVal where arbitrary = genericArbitraryU
-instance Arbitrary TLPat where arbitrary = genericArbitraryU
+instance Arbitrary G.Val where arbitrary = genericArbitraryU
+instance Arbitrary G.SimpleVal where arbitrary = genericArbitraryU
+instance Arbitrary G.ExtraVal where arbitrary = genericArbitraryU
+instance Arbitrary G.LPat where arbitrary = genericArbitraryU
 
 instance Arbitrary CPat where
   arbitrary = oneof
-    [ NodePat <$> arbitrary <*> (unTName <$$> listOf1 arbitrary)
+    [ NodePat <$> arbitrary <*> (G.unName <$$> listOf1 arbitrary)
     , TagPat  <$> arbitrary
     , LitPat  <$> arbitrary
     ]
@@ -181,10 +77,10 @@ instance Arbitrary CPat where
 instance Arbitrary Tag where
   arbitrary = Tag
     <$> arbitrary
-    <*> (unTName <$> arbitrary)
+    <*> (G.unName <$> arbitrary)
 
-instance Arbitrary TName where
-  arbitrary = TName . concat <$> listOf1 hiragana
+instance Arbitrary G.Name where
+  arbitrary = G.Name . concat <$> listOf1 hiragana
 
 -- | Increase the size parameter until the generator succeds.
 suchThatIncreases :: Gen a -> (a -> Bool) -> Gen a
@@ -219,7 +115,7 @@ instance Monoid Env where
   mempty = Env mempty mempty mempty
   mappend (Env v0 f0 a0) (Env v1 f1 a1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1) (a0 <> a1)
 
-insertVar :: Name -> Either TVal TExtraVal -> Env -> Env
+insertVar :: Name -> Either G.Val G.ExtraVal -> Env -> Env
 insertVar name val (Env vars funs adts) = Env (Map.singleton name (typeOf val) <> vars) funs adts
 
 insertVarT :: Name -> Type -> Env -> Env
@@ -234,7 +130,7 @@ insertFun (fname, params, rtype, effs) (Env vars funs adts) =
   where
     funs' = Map.insert fname (params, rtype, effs) funs
 
-data Store = Store (Map Loc (TVal, Type))
+data Store = Store (Map G.Loc (G.Val, Type))
   deriving (Eq, Show)
 
 instance Monoid Store where
@@ -251,19 +147,19 @@ data Eff
 getSExpTypeInEff :: Eff -> Maybe Type
 getSExpTypeInEff = \case
   NoEff         -> mzero
-  NewLoc    t -> pure (TTLoc t)
+  NewLoc    t -> pure (TLoc t)
   ReadLoc   t -> pure t
-  UpdateLoc t -> pure TTUnit
+  UpdateLoc t -> pure TUnit
 
 instance Arbitrary Eff where arbitrary = genericArbitraryU
 
 data Type
-  = TTUnit
+  = TUnit -- TODO: Rename
   | TInt
   | TFloat
   | TBool
   | TWord
-  | TTLoc Type
+  | TLoc Type
   | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
   deriving (Eq, Generic, Ord, Show)
@@ -276,9 +172,9 @@ simpleType = melements
   [ TInt
   , TFloat
   , TWord
-  , TTUnit
+  , TUnit
   , TBool
---  , TTLoc
+--  , TLoc
   ]
 
 primitiveType :: GoalM Type
@@ -287,8 +183,8 @@ primitiveType = melements
   , TFloat
   , TWord
   , TBool
---  , TTUnit
---  , TTLoc
+--  , TUnit
+--  , TLoc
   ]
 
 
@@ -301,25 +197,25 @@ instance Semigroup Type where
 class TypeOf t where
   typeOf :: t -> Type
 
-instance TypeOf TSimpleVal where
+instance TypeOf G.SimpleVal where
   typeOf = \case
-    TLit (LInt64 _)  -> TInt
-    TLit (LWord64 _) -> TWord
-    TLit (LFloat _)  -> TFloat
-    TLit (LBool _)   -> TBool
-    bad              -> error $ "typeOf @TSimpleVal got:" ++ show bad
+    G.Lit (LInt64 _)  -> TInt
+    G.Lit (LWord64 _) -> TWord
+    G.Lit (LFloat _)  -> TFloat
+    G.Lit (LBool _)   -> TBool
+    bad              -> error $ "typeOf @G.SimpleVal got:" ++ show bad
 
-instance TypeOf TVal where
+instance TypeOf G.Val where
   typeOf = \case
-    TConstTagNode  tag vals -> TTag (tagName tag) (typeOf <$> vals)
-    TValTag        tag      -> TTag (tagName tag) []
-    TUnit                   -> TTUnit
-    TSimpleVal val          -> typeOf val
+    G.ConstTagNode  tag vals -> TTag (tagName tag) (typeOf <$> vals)
+    G.ValTag        tag      -> TTag (tagName tag) []
+    G.Unit                   -> TUnit
+    G.SimpleVal val          -> typeOf val
     bad -> error $ "typeOf got:" ++ show bad
 
-instance TypeOf TExtraVal where
+instance TypeOf G.ExtraVal where
   typeOf = \case
-    TLoc _ -> TTLoc TInt -- TODO: More types...
+    G.Loc _ -> TLoc TInt -- TODO: More types...
 
 instance (TypeOf l, TypeOf r) => TypeOf (Either l r) where
   typeOf = either typeOf typeOf
@@ -344,10 +240,10 @@ data Goal
 genProg :: Gen Exp
 genProg =
   fmap head $
-  asExp <$$>
+  G.asExp <$$>
   (runGoalM $
     withADTs 10 $
-    solve @TProg Prog)
+    solve @G.Prog Prog)
 
 sampleGoalM :: Show a => GoalM a -> IO ()
 sampleGoalM g = sample $ runGoalM g
@@ -363,7 +259,7 @@ initContext = (Env mempty primitives mempty, mempty)
       PrimOps.TWord  -> TWord
       PrimOps.TFloat -> TFloat
       PrimOps.TBool  -> TBool
-      PrimOps.TUnit  -> TTUnit
+      PrimOps.TUnit  -> TUnit
 
 runGoalM :: GoalM a -> Gen [a]
 runGoalM = observeManyT 1 . flip runReaderT initContext
@@ -386,7 +282,7 @@ newName :: GoalM String
 newName = do
   (Env vars funs adts) <- view _1
   let names = Map.keys vars <> Map.keys funs <> (concatMap tagNames $ Set.toList adts)
-  gen $ ((unTName <$> arbitrary) `suchThatIncreases` (`notElem` names))
+  gen $ ((G.unName <$> arbitrary) `suchThatIncreases` (`notElem` names))
 
 newNames :: Int -> GoalM [String]
 newNames = go [] where
@@ -420,41 +316,41 @@ gEnv t = do
   (Env vars funs adts) <- view _1
   melements . Map.keys $ Map.filter (==t) vars
 
-gLiteral :: Type -> GoalM TSimpleVal
-gLiteral = fmap TLit . \case
+gLiteral :: Type -> GoalM G.SimpleVal
+gLiteral = fmap G.Lit . \case
   TInt   -> LInt64  <$> gen arbitrary
   TFloat -> LFloat  <$> gen arbitrary
   TWord  -> LWord64 <$> gen arbitrary
   TBool  -> LBool   <$> gen arbitrary
   _      -> mzero
 
-varFromEnv :: Type -> GoalM TSimpleVal
-varFromEnv t = (TVar . TName <$> gEnv t)
+varFromEnv :: Type -> GoalM G.SimpleVal
+varFromEnv t = (G.Var . G.Name <$> gEnv t)
 
-gSimpleVal :: Type -> GoalM TSimpleVal
+gSimpleVal :: Type -> GoalM G.SimpleVal
 gSimpleVal = \case
   TInt   -> varFromEnv TInt `mplus` gLiteral TInt
   TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
   TWord  -> varFromEnv TWord `mplus` gLiteral TWord
   TBool  -> varFromEnv TBool `mplus` gLiteral TBool
-  (TTLoc t) -> varFromEnv (TTLoc t) -- Locations have no literals
+  (TLoc t) -> varFromEnv (TLoc t) -- Locations have no literals
   _      -> mzero
 
-gNodeValue :: Type -> GoalM TVal
+gNodeValue :: Type -> GoalM G.Val
 gNodeValue = \case
   TTag tag types ->
-    (TSimpleVal <$> varFromEnv (TTag tag types)) `mplus`
-    (TConstTagNode (Tag C tag) <$> mapM gSimpleVal types)
+    (G.SimpleVal <$> varFromEnv (TTag tag types)) `mplus`
+    (G.ConstTagNode (Tag C tag) <$> mapM gSimpleVal types)
   _ -> mzero
 
-gValue :: Type -> GoalM TVal
+gValue :: Type -> GoalM G.Val
 gValue = \case
-  TTUnit          -> pure TUnit
-  TInt            -> TSimpleVal <$> gSimpleVal TInt
-  TFloat          -> TSimpleVal <$> gSimpleVal TFloat
-  TWord           -> TSimpleVal <$> gSimpleVal TWord
-  TTLoc t         -> TSimpleVal <$> gSimpleVal (TTLoc t)
-  TBool           -> TSimpleVal <$> gSimpleVal TBool
+  TUnit          -> pure G.Unit
+  TInt            -> G.SimpleVal <$> gSimpleVal TInt
+  TFloat          -> G.SimpleVal <$> gSimpleVal TFloat
+  TWord           -> G.SimpleVal <$> gSimpleVal TWord
+  TLoc t        -> G.SimpleVal <$> gSimpleVal (TLoc t)
+  TBool           -> G.SimpleVal <$> gSimpleVal TBool
   TTag tag types  -> gNodeValue $ TTag tag types
   TUnion types    -> do
     t <- melements (Set.toList types)
@@ -476,43 +372,43 @@ gPurePrimFun = gPureFunction ("_prim_" `isPrefixOf`)
 mGetSize :: GoalM Int
 mGetSize = gen $ sized pure
 
-gSExp :: Eff -> Type -> GoalM TSExp
+gSExp :: Eff -> Type -> GoalM G.SExp
 gSExp e t = do
   s <- mGetSize
   gSExpSized s t e
 
-gFunctionCall :: Type -> GoalM TSExp
+gFunctionCall :: Type -> GoalM G.SExp
 gFunctionCall t =
   do (funName, paramTypes) <- (gPureNonPrimFun t `mplus` gPurePrimFun t)
-     TSApp (TName funName) <$> forM paramTypes gSimpleVal
+     G.SApp (G.Name funName) <$> forM paramTypes gSimpleVal
 
-gSExpSized :: Int -> Type -> Eff -> GoalM TSExp
+gSExpSized :: Int -> Type -> Eff -> GoalM G.SExp
 gSExpSized s t = \case
   NoEff ->
     case s of
       0 -> moneof
             [ gFunctionCall t
-            , TSReturn <$> solve (GVal t)
+            , G.SReturn <$> solve (GVal t)
             ]
       n -> mfreq
             [ (45, gFunctionCall t)
-            , (45, TSReturn <$> solve (GVal t))
-            , (10, fmap TSBlock $ solve (Exp [] t))
+            , (45, G.SReturn <$> solve (GVal t))
+            , (10, fmap G.SBlock $ solve (Exp [] t))
             ]
 
   NewLoc t' -> case t of
-    TTLoc t0 -> TSStore <$> solve (GVal t0) -- TODO: Add a block
+    TLoc t0 -> G.SStore <$> solve (GVal t0) -- TODO: Add a block
     _        -> mzero
 
   -- find a name that contains the location and the given type.
   ReadLoc t' -> do
-    (TVar name) <- varFromEnv (TTLoc t')
-    pure $ TSFetchI name Nothing
+    (G.Var name) <- varFromEnv (TLoc t')
+    pure $ G.SFetchI name Nothing
 
   UpdateLoc t' -> do
-    (TVar name) <- varFromEnv (TTLoc t')
+    (G.Var name) <- varFromEnv (TLoc t')
     val <- solve (GVal t')
-    pure $ TSUpdate name val -- fing a name that contains the location and generate  value of a given type
+    pure $ G.SUpdate name val -- fing a name that contains the location and generate  value of a given type
 
 tryout :: [GoalM a] -> GoalM a
 tryout gs = do
@@ -607,7 +503,7 @@ gEffs = moneof
 -- TODO: Effects
 -- TODO: Always succedd with a trivial function
 -- TODO: Self Recursive
-gDef :: Type -> GoalM (TDef, ([Type], Type, [Eff]))
+gDef :: Type -> GoalM (G.Def, ([Type], Type, [Eff]))
 gDef retType = do
   effs <- gEffs
   n <- gen $ choose (1, 5)
@@ -622,11 +518,11 @@ gDef retType = do
     ) $ do
         body <- solve (Exp effs retType)
         pure $
-          ( TDef (TName fname) (map TName pnames) body
+          ( G.Def (G.Name fname) (map G.Name pnames) body
           , (ptypes, retType, effs)
           )
 
-gExp :: Type -> [Eff] -> GoalM TExp
+gExp :: Type -> [Eff] -> GoalM G.Exp
 gExp t es = do
   s <- mGetSize
   gExpSized s t es
@@ -634,33 +530,33 @@ gExp t es = do
 -- TODO: Generate values for effects
 -- TODO: Limit exp generation by values
 -- TODO: Use size parameter to limit the generation of programs.
-gExpSized :: Int -> Type -> [Eff] -> GoalM TExp
+gExpSized :: Int -> Type -> [Eff] -> GoalM G.Exp
 gExpSized n t = \case
   [] -> case n of
-    0 -> TSExp <$> (solve (SExp NoEff t))
+    0 -> G.SExp <$> (solve (SExp NoEff t))
     _ -> tryoutF
-            [ -- (10, TSExp <$> (solve (SExp (NoEff t))))
+            [ -- (10, G.SExp <$> (solve (SExp (NoEff t))))
               (80, do t' <- tryout [simpleType, definedAdt]
                       se <- (solve (SExp NoEff t'))
                       newVar t' $ \n -> do -- TODO: Gen LPat
                         rest <- solve (Exp [] t)
-                        pure (TEBind se (TLPatSVal (TVar (TName n))) rest))
+                        pure (G.EBind se (G.LPatSVal (G.Var (G.Name n))) rest))
             , (20, gCase [] t)
             ]
   (e:es) -> case n of
-    0 -> TSExp <$> (solve (SExp NoEff t)) -- TODO: Consume all effects
+    0 -> G.SExp <$> (solve (SExp NoEff t)) -- TODO: Consume all effects
     _ -> tryoutF
-            [ -- (10, TSExp <$> (solve (SExp (NoEff t))))
+            [ -- (10, G.SExp <$> (solve (SExp (NoEff t))))
               (80, do t' <- maybe (tryout [simpleType, definedAdt]) pure
                             $ getSExpTypeInEff e
                       se <- (solve (SExp e t'))
                       newVar t' $ \n -> do -- TODO: Gen LPat
                         rest <- solve (Exp es t)
-                        pure (TEBind se (TLPatSVal (TVar (TName n))) rest))
+                        pure (G.EBind se (G.LPatSVal (G.Var (G.Name n))) rest))
             , (20, gCase (e:es) t)
             ]
 
-gCase :: [Eff] -> Type -> GoalM TExp
+gCase :: [Eff] -> Type -> GoalM G.Exp
 gCase eff t = tryout
   [ -- Make variable for the case
     do t'   <- tryout [simpleType, definedAdt]
@@ -668,54 +564,54 @@ gCase eff t = tryout
        newVar t' $ \n -> do
          alts <- gAlts eff Nothing t' t
          pure
-           $ TEBind se (TLPatSVal (TVar (TName n)))
-           $ TECase (TSimpleVal (TVar (TName n))) $ NonEmpty alts
+           $ G.EBind se (G.LPatSVal (G.Var (G.Name n)))
+           $ G.ECase (G.SimpleVal (G.Var (G.Name n))) $ NonEmpty alts
     -- Try to lookup variable or make a value
   , do t'   <- tryout [simpleType, definedAdt]
        val  <- gValue t'
        alts <- gAlts eff (Just val) t' t
-       pure $ TECase val $ NonEmpty alts
+       pure $ G.ECase val $ NonEmpty alts
   ]
 
 -- TODO: Effects
 -- TODO: Remove overlappings
 -- TODO: Mix values and variables in tags
-gAlts :: [Eff] -> Maybe TVal -> Type -> Type -> GoalM [TAlt]
+gAlts :: [Eff] -> Maybe G.Val -> Type -> Type -> GoalM [G.Alt]
 gAlts eff val typeOfVal typeOfExp = case typeOfVal of
   TTag name params -> do
     names <- newNames (length params)
-    pure . TAlt (NodePat (Tag C name) names)
+    pure . G.Alt (NodePat (Tag C name) names)
       <$> withVars (names `zip` params) (solve (Exp eff typeOfExp))
   TUnion types -> fmap concat . forM (Set.toList types) $ \typOfV ->
     gAlts eff val typOfV typeOfExp
   _ -> case val of
-        (Just (TSimpleVal (TLit lit))) -> do
+        (Just (G.SimpleVal (G.Lit lit))) -> do
           n <- gen $ choose (0, 5)
           alts0 <- replicateM n $ do
-            (TLit lit0) <- gLiteral typeOfVal
-            TAlt (LitPat lit0) <$> (solve (Exp eff typeOfExp))
-          matching <- TAlt (LitPat lit) <$> (solve (Exp eff typeOfExp))
+            (G.Lit lit0) <- gLiteral typeOfVal
+            G.Alt (LitPat lit0) <$> (solve (Exp eff typeOfExp))
+          matching <- G.Alt (LitPat lit) <$> (solve (Exp eff typeOfExp))
           let alts = Map.elems $
                      Map.fromList $
-                     map (\v@(TAlt pat body) -> (pat, v)) $
+                     map (\v@(G.Alt pat body) -> (pat, v)) $
                      matching:alts0
           gen $ shuffle alts
         _ -> mzero
 
-gMain :: GoalM TDef
+gMain :: GoalM G.Def
 gMain =
-  fmap (TDef (TName "grinMain") [])
+  fmap (G.Def (G.Name "grinMain") [])
   $ mresize 20
   $ do effs <- gEffs
-       solve (Exp effs TTUnit)
+       solve (Exp effs TUnit)
 
 -- | Generate n functions and extend the context with the definitions,
 -- run the final computation.
-gDefs :: [Type] -> ([TDef] -> GoalM a) -> GoalM a
+gDefs :: [Type] -> ([G.Def] -> GoalM a) -> GoalM a
 gDefs n f = go n f [] where
   go [] f defs = f defs
   go (t:ts) f defs = do
-    (def@(TDef (TName name) _ _), (ptypes, rtype, effs)) <- mresize 20 $ gDef t
+    (def@(G.Def (G.Name name) _ _), (ptypes, rtype, effs)) <- mresize 20 $ gDef t
     CMR.local (ctxEnv %~ insertFun (name, ptypes, rtype, effs)) $
       -- TODO: Make this as a config parameter
       go ts f (def:defs)
@@ -725,7 +621,7 @@ definedAdts = do
   (Env _ _ adts) <- view ctxEnv
   pure adts
 
-gProg :: GoalM TProg
+gProg :: GoalM G.Prog
 gProg = retry 10 $ do
   n <- gen $ choose (0, 10)
   adts <- Set.toList <$> definedAdts
@@ -733,7 +629,7 @@ gProg = retry 10 $ do
   gDefs (ts ++ adts) $ \defs -> do
     m <- gMain
     defs1 <- gen $ shuffle defs
-    pure $ TProg $ NonEmpty (defs1 ++ [m])
+    pure $ G.Prog $ NonEmpty (defs1 ++ [m])
 
 -- | Generate the given number of ADTs, and register them
 -- in the context, running the computation with the new context.
@@ -761,22 +657,22 @@ solve g = do
 --  traceShowM ("Solve", g)
   mscale (\x -> if x > 0 then x - 1 else 0) $ solve' g
 
-instance Solve TVal where
+instance Solve G.Val where
   solve' = \case
     GVal e -> gValue e
     _      -> mzero
 
-instance Solve TSExp where
+instance Solve G.SExp where
   solve' = \case
     SExp e t -> gSExp e t
     _        -> mzero
 
-instance Solve TExp where
+instance Solve G.Exp where
   solve' = \case
     Exp es t -> gExp t es
     _        -> mzero
 
-instance Solve TProg where
+instance Solve G.Prog where
   solve' = \case
     Prog -> gProg
     _    -> mzero
