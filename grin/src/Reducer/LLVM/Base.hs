@@ -76,6 +76,7 @@ concat <$> mapM makeLenses [''Env]
   HINT: tagged union LLVM representation
 
     struct {
+      Int64 tag;
       Int64[N1];
       Word64[N2];
       ...

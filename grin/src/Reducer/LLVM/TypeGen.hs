@@ -146,32 +146,6 @@ codeGenBitCast name value dstType = do
 
     compilation:
       if type sets does not match then convert them
-
-      bind    - id or prj tag index union :: simple
-      case    - id or prj tag index union :: simple
-
-      app     - id or extend ; change
-      return  - id or build new ; no change
-      store   - id or build new or extend ; change
-      fetch   - mapping A -> mapping B ; case on loc ; change
-      update  - mapping A -> mapping B ; case on loc ; change
-
-    tagged union projection encoding:
-      tagged union = TagIndex + [SimpleType]
-      Map Tag (Vector Int, Vector Int) -- node order -> union, union -> node order
-
-    tagged union construction:
-      done - allocate empty struct
-      done - fill with content from another union
-      done - union construction
-      done - union mapping
-      done - union conversion
-              - copy    (DST array size > SRC array size) -> copy SRC arrays to DST item by item ; llvm does not have instruction for this
-                        (DST array size = SRC array size) -> bypass
-              - shrink  (DST array size < SRC array size) -> copy SRC arrays to DST item by item
-
-    done - implement fetch
-
 -}
 
 codeGenValueConversion :: CGType -> Operand -> CGType -> CG Operand
