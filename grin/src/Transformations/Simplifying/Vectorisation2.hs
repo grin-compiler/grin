@@ -54,18 +54,19 @@ data TUBuild
   , tubSize     :: Int
   }
 
-emptyTUBuild = TUBuild mempty mempty mempty 1
+emptyTUBuild = TUBuild mempty mempty mempty 0
 
 type TU = State TUBuild
 
 createVarTagNode :: Name -> NodeSet -> (Map Name Type, Val)
 createVarTagNode name nodeSet = (varTypes, varTagNode) where
+  -- TODO: create ConstTagNode for singleton node set
   tagName    = printf "%s.tag" name
   varTypes   = Map.fromList $ (tagName, T_Tag nodeSet) : items
   varTagNode = VarTagNode tagName (map (Var . fst) items) tuMapping
 
   (tuMapping, tub) = runState (mapM mapNode nodeSet) emptyTUBuild
-  items = [(printf "%s.%d" name idx, T_SimpleType sTy) | (idx, sTy) <- zip [(1 :: Int)..] $ reverse $ tubLayout tub]
+  items = [(printf "%s.%d" name idx, T_SimpleType sTy) | (idx, sTy) <- zip [(0 :: Int)..] $ reverse $ tubLayout tub]
 
   mapNode :: Vector SimpleType -> TU [Int]
   mapNode v = do

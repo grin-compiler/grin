@@ -1,9 +1,11 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
 module Transformations.Simplifying.CaseSimplification where
 
+import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.List (foldl')
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 
 import Data.Functor.Foldable as Foldable
 
@@ -11,14 +13,20 @@ import Grin
 import Transformations.Util
 
 caseSimplification :: Exp -> Exp
-caseSimplification e = ana builder (mempty, e) where
-  builder :: (Map Val Val, Exp) -> ExpF (Map Val Val, Exp)
-  builder (env, exp) =
+caseSimplification e = ana builder (mempty, mempty, e) where
+  builder :: (Map Val Val, Map Name Name, Exp) -> ExpF (Map Val Val, Map Name Name, Exp)
+  builder (valEnv, nameEnv, exp) =
     case exp of
-      ECase (VarTagNode tagVar vals mapping {-TODO-}) alts -> ECaseF (subst env $ Var tagVar) (map (substAlt env vals) alts)
-      e -> (env,) <$> project (substVals env e)
+      ECase (VarTagNode tagVar vals mapping) alts -> ECaseF (Var $ subst nameEnv tagVar) (map (buildAlt (V.fromList vals) mapping) alts)
+      -- TODO: handle const tag node
+      e -> (valEnv, nameEnv,) <$> project (substVals valEnv . substVarRefExp nameEnv $ e)
 
-  substAlt env vals = \case
-      Alt (NodePat tag vars) e -> (altEnv, Alt (TagPat tag) e)
-                             where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) (subst env val) m) env (zip vars vals)
-      alt -> (env, alt)
+    where
+      buildAlt valVector mapping = \case
+        Alt (NodePat tag vars) e -> (altValEnv, altNameEnv, Alt (TagPat tag) e) where
+          vals = map (valVector V.!) $ mapping Map.! tag
+          (altValEnv, altNameEnv) = foldl' add (valEnv, nameEnv) (zip vars vals)
+          add (vEnv, nEnv) (name, val) = case val of
+            Var n -> (vEnv, Map.insert name (subst nEnv n) nEnv)          -- name -> name substitution
+            _     -> (Map.insert (Var name) (subst vEnv val) vEnv, nEnv)  -- Val -> Val substitution ; i.e. Var name -> Lit
+        alt -> (valEnv, nameEnv, alt)
