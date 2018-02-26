@@ -64,15 +64,15 @@ type SimpleVal = Val
 -- TODO: use data types a la carte style to build different versions of Val?
 data Val
   = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
-  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
+  | VarTagNode    Name [SimpleVal] (Map Tag [Int]) -- tag var, union members, mapping
   | ValTag        Tag
   | Unit                           -- HIGH level GRIN
   -- simple val
   | Lit Lit                        -- HIGH level GRIN
   | Var Name                       -- HIGH level GRIN
-  -- extra
-  | Loc Int
-  | Undefined
+  -- extra ; TODO: remove
+  | Loc Int     -- TODO: remove ; does not belong here!
+  | Undefined   -- TODO: remove ; does not belong here!
   deriving (Generic, NFData, Eq, Ord, Show)
 
 isBasicValue :: Val -> Bool
@@ -88,7 +88,7 @@ class FoldNames n where
 instance FoldNames Val where
   foldNames f = \case
     ConstTagNode  _tag vals -> mconcat $ foldNames f <$> vals
-    VarTagNode    name vals -> mconcat $ (f name) : (foldNames f <$> vals)
+    VarTagNode    name vals _ -> mconcat $ (f name) : (foldNames f <$> vals)
     ValTag        _tag      -> mempty
     Unit                    -> mempty
     -- simple val
@@ -193,7 +193,7 @@ type instance Base Val = ValF
 
 data ValF a
   = ConstTagNodeF  Tag  [a] -- complete node (constant tag)
-  | VarTagNodeF    Name [a] -- complete node (variable tag)
+  | VarTagNodeF    Name [a] (Map Tag [Int]) -- complete node (variable tag)
   | ValTagF        Tag
   | UnitF
   -- simple val
@@ -207,7 +207,7 @@ data ValF a
 instance Recursive Val where
   project = \case
     ConstTagNode  tag  simpleVals -> ConstTagNodeF tag simpleVals
-    VarTagNode    name simpleVals -> VarTagNodeF name simpleVals
+    VarTagNode    name simpleVals mapping -> VarTagNodeF name simpleVals mapping
     ValTag        tag             -> ValTagF tag
     Unit                          -> UnitF
 
@@ -220,7 +220,7 @@ instance Recursive Val where
 instance Corecursive Val where
   embed = \case
     ConstTagNodeF  tag  as -> ConstTagNode tag  as
-    VarTagNodeF    name as -> VarTagNode   name as
+    VarTagNodeF    name as m -> VarTagNode name as m
     ValTagF        tag     -> ValTag       tag
     UnitF                  -> Unit
 

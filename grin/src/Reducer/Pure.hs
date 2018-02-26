@@ -43,7 +43,7 @@ bindPat :: Env -> Val -> LPat -> Env
 bindPat env val lpat = case lpat of
   Var n -> Map.insert n val env
   ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
-  VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
+  VarTagNode varname pargs mapping {-TODO-} | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
   Unit -> env
   _ -> error $ printf "bindPat - pattern mismatch %s %s" (prettyDebug val) (prettyDebug lpat)
 
@@ -58,7 +58,7 @@ evalVal env = \case
   v@Lit{}     -> v
   Var n       -> lookupEnv n env
   ConstTagNode t a -> ConstTagNode t $ map (evalVal env) a
-  VarTagNode n a -> case lookupEnv n env of
+  VarTagNode n a mapping {-TODO-} -> case lookupEnv n env of
                   -- NOTE: must be impossible (I guess)
                   -- Var n     -> VarTagNode n $ map (evalVal env) a
                   ValTag t  -> ConstTagNode t $ map (evalVal env) a

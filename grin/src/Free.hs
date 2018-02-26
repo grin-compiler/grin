@@ -48,7 +48,7 @@ instance FromTag Tag where
   (@:) cname params = Tag C cname
 
 (#:) :: String -> [String] -> Val
-(#:) tname params = VarTagNode tname (Var <$> params)
+(#:) tname params = VarTagNode tname (Var <$> params) mempty {-TODO-}
 
 constTagNode :: String -> [Val] -> Val
 constTagNode name params = ConstTagNode (Tag C name) params

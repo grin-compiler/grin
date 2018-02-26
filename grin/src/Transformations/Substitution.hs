@@ -38,7 +38,7 @@ substitution substituitons = ana builder where
     Just val -> val
   subst (ConstTagNode tag simpleVals) = ConstTagNode tag (subst <$> simpleVals)
   subst (ValTag tag)                  = ValTag tag
-  subst (VarTagNode name simpleVals)  = VarTagNode name (subst <$> simpleVals)
+  subst (VarTagNode name simpleVals mapping)  = VarTagNode name (subst <$> simpleVals) mapping
   subst other                         = other
 
 

@@ -31,7 +31,7 @@ vectorisation hptResult expression = apo folder (Map.empty, expression)
           Nothing           -> EBindF (Right (nameStore, simpleexp)) var (Right (nameStore, exp))
           Just maximumArity -> EBindF (Right (nameStore, simpleexp)) nodeContents (Right (newNameStore, exp))
            where
-            nodeContents = VarTagNode (name <> show 0) (map (\i -> Var (name <> show i)) [1 .. maximumArity])
+            nodeContents = VarTagNode (name <> show 0) (map (\i -> Var (name <> show i)) [1 .. maximumArity]) mempty {-TODO-}
             newNameStore = Map.insert name nodeContents nameStore
         ECase (Var name) alts | Just nodeContents <- Map.lookup name nameStore -> ECaseF nodeContents (map (\subExpression -> Right (nameStore, subExpression)) alts)
         SApp name vals -> SAppF name (map replaceVar vals)

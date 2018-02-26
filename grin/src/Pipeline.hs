@@ -73,7 +73,7 @@ transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
 transformation typeEnv n = \case
   CaseSimplification      -> caseSimplification
   SplitFetch              -> splitFetch
-  Vectorisation           -> Vectorisation2.vectorisation (fromJust typeEnv)
+  Vectorisation           -> snd . Vectorisation2.vectorisation (fromJust typeEnv)
   RegisterIntroduction    -> registerIntroductionI n
   BindNormalisation       -> bindNormalisation
   RightHoistFetch         -> RHF.rightHoistFetch

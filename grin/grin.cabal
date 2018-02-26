@@ -43,6 +43,7 @@ library
     Transformations.Rename
     Transformations.Substitution
     Transformations.Playground
+    Transformations.Util
     Transformations.Simplifying.Vectorisation
     Transformations.Simplifying.Vectorisation2
     Transformations.Simplifying.SplitFetch

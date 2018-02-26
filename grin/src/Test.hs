@@ -99,7 +99,7 @@ class AsVal t where
 instance AsVal TVal where
   asVal = \case
     TConstTagNode  tag  simpleVals -> ConstTagNode tag (asVal <$> simpleVals)
-    TVarTagNode    name simpleVals -> VarTagNode (toName name) (asVal <$> simpleVals)
+    TVarTagNode    name simpleVals -> VarTagNode (toName name) (asVal <$> simpleVals) mempty {-TODO-}
     TValTag        tag             -> ValTag tag
     TUnit                          -> Unit
     TSimpleVal     simpleVal       -> asVal simpleVal

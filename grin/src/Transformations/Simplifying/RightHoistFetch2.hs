@@ -15,54 +15,7 @@ import qualified Data.Foldable
 import Lens.Micro.Platform
 
 import Grin
-
-{-
-  HINT: Name usage in Exp
-    - variable binder
-        names in CPat
-        names in LPat
-        arg names in Def
-
-    - variable reference
-        names in Val
-        names in FetchI and Update
-
-    - function binder
-        function name in Def
-
-    - function reference
-        function name in SApp
--}
-
--- variable reference substitution (non recursive)
-
-mapNamesVal :: (Name -> Name) -> Val -> Val
-mapNamesVal f = \case
-  ConstTagNode tag vals -> ConstTagNode tag (map (mapNamesVal f) vals)
-  VarTagNode name vals  -> VarTagNode (f name) (map (mapNamesVal f) vals)
-  Var name              -> Var $ f name
-  val                   -> val
-
-mapValsExp :: (Val -> Val) -> Exp -> Exp
-mapValsExp f = \case
-  ECase val alts    -> ECase (f val) alts
-  SApp name vals    -> SApp name (map f vals)
-  SReturn val       -> SReturn $ f val
-  SStore val        -> SStore $ f val
-  SUpdate name val  -> SUpdate name $ f val
-  exp               -> exp
-
-mapVarRefExp :: (Name -> Name) -> Exp -> Exp
-mapVarRefExp f = \case
-  SFetchI name i    -> SFetchI (f name) i
-  SUpdate name val  -> SUpdate (f name) $ mapNamesVal f val
-  exp               -> mapValsExp (mapNamesVal f) exp
-
-substVarRefExp :: Map Name Name -> Exp -> Exp
-substVarRefExp env = mapVarRefExp (substName env) where
-
-substName :: Map Name Name -> Name -> Name
-substName env x = Map.findWithDefault x x env
+import Transformations.Util
 
 -- path tracking
 
@@ -184,7 +137,7 @@ rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ a
           | Set.member fetchVar globalFetchMap && Set.notMember name (rhf ^. emitSet) -> case idx of
               -- keep caseVar fetch and save for case recognition
               0 -> let newBuild = rhf & caseMap . at name .~ Just fetchVar
-                   in EBindF (rhf, fetch) (Var $ substName (rhf^.substMap) name) (newBuild, rightExp)
+                   in EBindF (rhf, fetch) (Var $ subst (rhf^.substMap) name) (newBuild, rightExp)
               -- remove original itemVar fetch
               -- FIXME: must emit some code, apo does not have a skip command
               _ -> EBindF (rhf, SReturn Unit) Unit (rhf & hoistMap . at fetchVar . non mempty %~ ((name,idx):), rightExp)
@@ -206,7 +159,7 @@ rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ a
                       altBuild = newBuild & path .~ altPath
                                           & substMap %~ (Map.union altSubst)
                                           & emitSet %~ (mappend altNameS)
-               in ECaseF (Var $ substName (rhf^.substMap) caseVar) $ zipWith genAlt [0..] alts
+               in ECaseF (Var $ subst (rhf^.substMap) caseVar) $ zipWith genAlt [0..] alts
 
       _ -> (rhf,) <$> project (substVarRefExp (rhf^.substMap) exp)
 

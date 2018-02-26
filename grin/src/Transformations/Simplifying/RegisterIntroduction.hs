@@ -20,7 +20,7 @@ import Test.Hspec
 
 
 type FreshM a = State Int a
-
+{-
 registerIntroductionM :: Int -> Exp -> Exp
 registerIntroductionM nth exp = flip evalState 0 $ cata folder exp where
   folder :: ExpF (FreshM Exp) -> FreshM Exp
@@ -121,7 +121,7 @@ registerIntroduction nth e = apo builder (branchVar nth newVarGen, e) where
         introduction SBlock
           (\(Just t) vs -> context $ VarTagNode t (tail vs))
           ((ValTag tag):vals)
-
+-}
 nth :: Int -> Int -> [a] -> [a]
 nth s n = go 1 . drop s where
   go 1 (x:xs) = x:go n   xs
@@ -134,7 +134,7 @@ nthSpec = describe "nth" $ do
   it "works for 1 2" $ do
     (take 5 $ nth 1 2 [1..]) `shouldBe` [2,4,6,8,10]
 
-
+{-
 type Ids = [Int]
 
 newIds :: Exp -> Exp
@@ -161,18 +161,20 @@ newIdsCA coAlg (ids,x) = case coAlg x of
   -- Alt
   AltF cpat a -> AltF cpat (ids, a)
 
-
+-}
 registerIntroductionI :: Int -> Exp -> Exp
+registerIntroductionI _ = id
+{-
 registerIntroductionI _ e = apo builder ([1..], e) where
   builder :: ([Int], Exp) -> ExpF (Either Exp ([Int], Exp))
   builder (path, exp) =
     case exp of
-      SStore (VarTagNode name vals)         -> varTagNode   SStore          name vals
+      SStore (VarTagNode name vals m)         -> varTagNode   SStore          name vals m
       SStore (ConstTagNode tag vals)        -> constTagNode SStore          tag vals
       SStore (Lit lit)                      -> literal      SStore          lit
-      SReturn (VarTagNode name vals)        -> varTagNode   SReturn         name vals
+      SReturn (VarTagNode name vals m)        -> varTagNode   SReturn         name vals m
       SReturn (ConstTagNode tag vals)       -> constTagNode SReturn         tag vals
-      SUpdate uname (VarTagNode tname vals) -> varTagNode   (SUpdate uname) tname vals
+      SUpdate uname (VarTagNode tname vals m) -> varTagNode   (SUpdate uname) tname vals m
       SUpdate uname (ConstTagNode tag vals) -> constTagNode (SUpdate uname) tag vals
       SUpdate uname (Lit lit)               -> literal      (SUpdate uname) lit
       SApp name vals                        -> appExp (if any isLit vals then SBlock else id) name vals
@@ -208,12 +210,12 @@ registerIntroductionI _ e = apo builder ([1..], e) where
             newVars
 
       appExp       block name = introduction block (const $ SApp name)
-      varTagNode   context name = introduction id (const $ context . VarTagNode name)
+      varTagNode   context name x y = introduction id (const $ context $ VarTagNode name x y)
       constTagNode context tag vals =
         introduction SBlock
           (\(Just t) vs -> context $ VarTagNode t (tail vs))
           ((ValTag tag):vals)
-
+-}
 
 -- Work In Progress
 type VariablePath = [String]
@@ -227,6 +229,7 @@ type VariablePath = [String]
   IDEA:
     - shape functor over Val
 -}
+{-
 registerIntroduction2 :: Exp -> Exp
 registerIntroduction2 e = ana builder ([], e) where
   builder :: (VariablePath, Exp) -> ExpF (VariablePath, Exp)
@@ -269,7 +272,7 @@ splitSVal :: Val -> (Val, Maybe Val)
 splitSVal val = case val of
   Var{} -> (val, Nothing)
   _ -> (Var "newName", Just val)
-
+-}
 tests :: Spec
 tests = do
   nthSpec

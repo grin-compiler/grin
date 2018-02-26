@@ -80,7 +80,7 @@ bindPat env val lpat = case lpat of
   ConstTagNode ptag pargs -> case val of
                   ConstTagNode vtag vargs | ptag == vtag -> bindPatMany env vargs pargs
                   _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
-  VarTagNode varname pargs -> case val of
+  VarTagNode varname pargs _mapping {-TODO-} -> case val of
                   ConstTagNode vtag vargs -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
                   _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
   Unit -> env
@@ -94,8 +94,8 @@ evalVal env = \case
   v@Lit{}     -> v
   Var n       -> lookupEnv n env
   ConstTagNode t a -> ConstTagNode t $ map (evalVal env) a
-  VarTagNode n a -> case lookupEnv n env of
-                  Var n     -> VarTagNode n $ map (evalVal env) a
+  VarTagNode n a m {-TODO-} -> case lookupEnv n env of
+                  Var n     -> VarTagNode n (map (evalVal env) a) mempty {-TODO-}
                   ValTag t  -> ConstTagNode t $ map (evalVal env) a
                   x -> error $ "evalVal - invalid VarTagNode tag: " ++ show x
   v@ValTag{}  -> v
