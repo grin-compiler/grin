@@ -1,39 +1,31 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
 module Transformations.Simplifying.CaseSimplification where
 
+import Data.List (foldl')
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.List (foldl')
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 
 import Data.Functor.Foldable as Foldable
 
 import Grin
-
-type SubstMap = Map SimpleVal SimpleVal
-
-mapVals :: (Val -> Val) -> Exp -> Exp
-mapVals f = \case
-  ECase val alts -> ECase (f val) alts
-  SApp name vals -> SApp name (map f vals)
-  SReturn val -> SReturn $ f val
-  SStore val -> SStore $ f val
-  SUpdate name val -> SUpdate name $ f val
-  exp -> exp
-
-substExpVals :: SubstMap -> Exp -> Exp
-substExpVals env = mapVals (subst env)
-
-subst env x = Map.findWithDefault x x env
+import Transformations.Util
 
 caseSimplification :: Exp -> Exp
-caseSimplification e = ana builder (mempty, e) where
-  builder :: (SubstMap, Exp) -> ExpF (SubstMap, Exp)
-  builder (env, exp) =
+caseSimplification e = ana builder (mempty, mempty, e) where
+  builder :: (Map Val Val, Map Name Name, Exp) -> ExpF (Map Val Val, Map Name Name, Exp)
+  builder (valEnv, nameEnv, exp) =
     case exp of
-      ECase (VarTagNode tagVar vals) alts -> ECaseF (subst env $ Var tagVar) (map (substAlt env vals) alts)
-      e -> (env,) <$> project (substExpVals env e)
+      ECase (VarTagNode tagVar vals) alts -> ECaseF (Var $ subst nameEnv tagVar) (map (buildAlt vals) alts)
+      -- TODO: handle const tag node
+      e -> (valEnv, nameEnv,) <$> project (substVals valEnv . substVarRefExp nameEnv $ e)
 
-  substAlt env vals = \case
-      Alt (NodePat tag vars) e -> (altEnv, Alt (TagPat tag) e)
-                             where altEnv = foldl' (\m (name,val) -> Map.insert (Var name) (subst env val) m) env (zip vars vals)
-      alt -> (env, alt)
+    where
+      buildAlt vals = \case
+        Alt (NodePat tag vars) e -> (altValEnv, altNameEnv, Alt (TagPat tag) e) where
+          (altValEnv, altNameEnv) = foldl' add (valEnv, nameEnv) (zip vars vals)
+          add (vEnv, nEnv) (name, val) = case val of
+            Var n -> (vEnv, Map.insert name (subst nEnv n) nEnv)          -- name -> name substitution
+            _     -> (Map.insert (Var name) (subst vEnv val) vEnv, nEnv)  -- Val -> Val substitution ; i.e. Var name -> Lit
+        alt -> (valEnv, nameEnv, alt)
