@@ -71,8 +71,8 @@ data Val
   | Lit Lit                        -- HIGH level GRIN
   | Var Name                       -- HIGH level GRIN
   -- extra
-  | Loc Int
-  | Undefined
+  | Loc Int   -- TODO: remove ASAP!
+  | Undefined -- TODO: remove ASAP!
   deriving (Generic, NFData, Eq, Ord, Show)
 
 isBasicValue :: Val -> Bool
