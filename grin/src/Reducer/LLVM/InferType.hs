@@ -27,13 +27,6 @@ nodeType tag items = do
   mapM_ validateNodeItem items
   pure $ T_NodeSet $ Map.singleton tag $ V.fromList $ map _simpleType items
 
-typeOfLit :: Lit -> Type
-typeOfLit lit = T_SimpleType $ case lit of
-  LInt64{}  -> T_Int64
-  LWord64{} -> T_Word64
-  LFloat{}  -> T_Float
-  LBool{}   -> T_Bool
-
 typeOfVal :: Val -> CG Type
 typeOfVal val = do
   case val of

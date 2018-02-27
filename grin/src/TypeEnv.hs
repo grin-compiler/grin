@@ -9,7 +9,7 @@ import qualified Data.Map as Map
 
 import Lens.Micro.Platform
 
-import Grin (Name, Tag)
+import Grin
 
 data SimpleType
   = T_Int64
@@ -47,3 +47,10 @@ variableType :: TypeEnv -> Name -> Type
 variableType TypeEnv{..} name = case Map.lookup name _variable of
   Nothing -> error $ printf "variable %s is missing from type environment" name
   Just t -> t
+
+typeOfLit :: Lit -> Type
+typeOfLit lit = T_SimpleType $ case lit of
+  LInt64{}  -> T_Int64
+  LWord64{} -> T_Word64
+  LFloat{}  -> T_Float
+  LBool{}   -> T_Bool
