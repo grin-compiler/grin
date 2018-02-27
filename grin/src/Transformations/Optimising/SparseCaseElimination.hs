@@ -28,4 +28,4 @@ sparseCaseElimination typeEnv = ana builder where
     LitPat lit -> ty == typeOfLit lit
     _ -> False
 
-  possible _ _ = True -- bypass evrything else
+  possible _ _ = True -- bypass everything else

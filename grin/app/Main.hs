@@ -32,6 +32,7 @@ transformOpts =
   <|> flg ConstantFolding "cfl" "Constant Folding"
   <|> flg EvaluatedCaseElimination "ece" "Evaluated Case Elimination"
   <|> flg TrivialCaseElimination "tce" "Trivial Case Elimination"
+  <|> flg SparseCaseElimination "sce" "Sparse Case Elimination"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -85,11 +86,17 @@ defaultPipeline = \case
       , SaveLLVM "high-level-code"
       , JITLLVM
 
+      , T SparseCaseElimination
+      , SaveGrin "SparseCaseElimination"
+      , T BindNormalisation
+      , SaveGrin "SparseCaseElimination"
+      , PrintGrin ondullcyan
+
       , T EvaluatedCaseElimination
       , SaveGrin "EvaluatedCaseElimination"
       , T BindNormalisation
       , SaveGrin "EvaluatedCaseElimination"
-      , PrintGrin ondullcyan
+      , PrintGrin ondullblack
 
       , T TrivialCaseElimination
       , SaveGrin "TrivialCaseElimination"
