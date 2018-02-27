@@ -1,9 +1,11 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
 module TypeEnv where
 
+import Text.Printf
 import Data.Int
 import Data.Map (Map)
 import Data.Vector (Vector)
+import qualified Data.Map as Map
 
 import Lens.Micro.Platform
 
@@ -40,3 +42,8 @@ data TypeEnv
   deriving (Eq, Show)
 
 concat <$> mapM makeLenses [''TypeEnv, ''Type, ''SimpleType]
+
+variableType :: TypeEnv -> Name -> Type
+variableType TypeEnv{..} name = case Map.lookup name _variable of
+  Nothing -> error $ printf "variable %s is missing from type environment" name
+  Just t -> t
