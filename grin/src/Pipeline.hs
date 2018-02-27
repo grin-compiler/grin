@@ -68,18 +68,20 @@ data Transformation
   | GenerateEval
   -- Optimizations
   | ConstantFolding
+  | EvaluatedCaseElimination
   deriving (Enum, Eq, Ord, Show)
 
 transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
 transformation typeEnv n = \case
-  CaseSimplification      -> caseSimplification
-  SplitFetch              -> splitFetch
-  Vectorisation           -> Vectorisation2.vectorisation (fromJust typeEnv)
-  RegisterIntroduction    -> registerIntroductionI n
-  BindNormalisation       -> bindNormalisation
-  RightHoistFetch         -> RHF.rightHoistFetch
-  GenerateEval            -> generateEval
-  ConstantFolding         -> constantFolding
+  CaseSimplification        -> caseSimplification
+  SplitFetch                -> splitFetch
+  Vectorisation             -> Vectorisation2.vectorisation (fromJust typeEnv)
+  RegisterIntroduction      -> registerIntroductionI n
+  BindNormalisation         -> bindNormalisation
+  RightHoistFetch           -> RHF.rightHoistFetch
+  GenerateEval              -> generateEval
+  ConstantFolding           -> constantFolding
+  EvaluatedCaseElimination  -> evaluatedCaseElimination
 
 precondition :: Transformation -> [Check]
 precondition = \case
@@ -91,6 +93,7 @@ precondition = \case
   RightHoistFetch -> []
   GenerateEval -> []
   ConstantFolding -> []
+  _ -> []
 
 
 postcondition :: Transformation -> [Check]
@@ -103,6 +106,7 @@ postcondition = \case
   RightHoistFetch -> []
   GenerateEval -> []
   ConstantFolding -> []
+  _ -> []
 
 
 newtype Hidden a = H a

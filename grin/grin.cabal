@@ -51,6 +51,7 @@ library
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch
     Transformations.Simplifying.RightHoistFetch2
+    Transformations.Optimising.EvaluatedCaseElimination
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult

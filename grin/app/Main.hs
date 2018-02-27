@@ -30,6 +30,7 @@ transformOpts =
   <|> flg RightHoistFetch "rhf" "Right Hoist Fetch"
   <|> flg GenerateEval "ge" "Generate Eval"
   <|> flg ConstantFolding "cfl" "Constant Folding"
+  <|> flg EvaluatedCaseElimination "ece" "Evaluated Case Elimination"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -82,6 +83,13 @@ defaultPipeline = \case
       , HPT PrintHPTResult
       , SaveLLVM "high-level-code"
       , JITLLVM
+
+      , T EvaluatedCaseElimination
+      , SaveGrin "EvaluatedCaseElimination"
+      , T BindNormalisation
+      , SaveGrin "EvaluatedCaseElimination"
+      , PrintGrin ondullcyan
+
       , T Vectorisation
       , SaveGrin "Vectorisation"
       , T BindNormalisation
