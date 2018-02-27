@@ -53,6 +53,7 @@ library
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Optimising.EvaluatedCaseElimination
     Transformations.Optimising.TrivialCaseElimination
+    Transformations.Optimising.SparseCaseElimination
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult
