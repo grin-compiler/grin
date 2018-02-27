@@ -69,6 +69,7 @@ data Transformation
   -- Optimizations
   | ConstantFolding
   | EvaluatedCaseElimination
+  | TrivialCaseElimination
   deriving (Enum, Eq, Ord, Show)
 
 transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
@@ -82,6 +83,7 @@ transformation typeEnv n = \case
   GenerateEval              -> generateEval
   ConstantFolding           -> constantFolding
   EvaluatedCaseElimination  -> evaluatedCaseElimination
+  TrivialCaseElimination    -> trivialCaseElimination
 
 precondition :: Transformation -> [Check]
 precondition = \case

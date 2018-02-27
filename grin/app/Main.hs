@@ -31,6 +31,7 @@ transformOpts =
   <|> flg GenerateEval "ge" "Generate Eval"
   <|> flg ConstantFolding "cfl" "Constant Folding"
   <|> flg EvaluatedCaseElimination "ece" "Evaluated Case Elimination"
+  <|> flg TrivialCaseElimination "tce" "Trivial Case Elimination"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -88,6 +89,12 @@ defaultPipeline = \case
       , SaveGrin "EvaluatedCaseElimination"
       , T BindNormalisation
       , SaveGrin "EvaluatedCaseElimination"
+      , PrintGrin ondullcyan
+
+      , T TrivialCaseElimination
+      , SaveGrin "TrivialCaseElimination"
+      , T BindNormalisation
+      , SaveGrin "TrivialCaseElimination"
       , PrintGrin ondullcyan
 
       , T Vectorisation
