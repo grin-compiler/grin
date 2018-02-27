@@ -33,6 +33,7 @@ transformOpts =
   <|> flg EvaluatedCaseElimination "ece" "Evaluated Case Elimination"
   <|> flg TrivialCaseElimination "tce" "Trivial Case Elimination"
   <|> flg SparseCaseElimination "sce" "Sparse Case Elimination"
+  <|> flg UpdateElimination "ue" "Update Elimination"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -85,6 +86,12 @@ defaultPipeline = \case
       , HPT PrintHPTResult
       , SaveLLVM "high-level-code"
       , JITLLVM
+
+      , T UpdateElimination
+      , SaveGrin "UpdateElimination"
+      , T BindNormalisation
+      , SaveGrin "UpdateElimination"
+      , PrintGrin ondullblack
 
       , T SparseCaseElimination
       , SaveGrin "SparseCaseElimination"
