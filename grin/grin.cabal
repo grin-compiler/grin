@@ -55,6 +55,7 @@ library
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.SparseCaseElimination
     Transformations.Optimising.UpdateElimination
+    Transformations.Optimising.CopyPropagation
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult
