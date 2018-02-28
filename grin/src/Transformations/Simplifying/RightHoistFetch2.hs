@@ -124,9 +124,14 @@ concat <$> mapM makeLenses [''Build]
 emptyBuild = Build mempty mempty mempty mempty mempty
 
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ ana builder (emptyBuild, e)
+rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ hylo skip builder (emptyBuild, e)
   where
     globalFetchMap = collectFetchVars e
+
+    skip :: ExpF Exp -> Exp
+    skip = \case
+      EBindF (SReturn Unit) Unit rightExp -> rightExp
+      exp -> embed exp
 
     builder :: (Build, Exp) -> ExpF (Build, Exp)
     builder (rhf, exp) = case exp of
