@@ -24,8 +24,9 @@ deadProcedureElimination (Program defs) = Program [def | def@(Def name _ _) <- d
   liveDefs = fst $ until (\(live, visited) -> live == visited) visit (Set.singleton "grinMain", mempty)
 
   visit :: (Set Name, Set Name) -> (Set Name, Set Name)
-  visit (live, visited) = (mappend visited seen, live) where
-    seen = foldMap (cata collect . lookupDef) $ Set.difference live visited
+  visit (live, visited) = (mappend live seen, mappend visited toVisit) where
+    toVisit = Set.difference live visited
+    seen    = foldMap (cata collect . lookupDef) toVisit
 
   collect :: ExpF (Set Name) -> Set Name
   collect = \case
