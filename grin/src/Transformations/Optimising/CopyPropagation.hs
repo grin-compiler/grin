@@ -19,20 +19,20 @@ copyPropagation e = ana builder (mempty, e) where
     EBind leftExp valIn (SReturn valOut) | valIn == valOut -> (env,) <$> project leftExp
 
     -- left unit law
-    EBind (SReturn val) lpat rightExp | Just newEnv <- unify lpat val -> (mappend env newEnv,) <$> project rightExp
+    EBind (SReturn val) lpat rightExp | Just newEnv <- unify env lpat val -> (mappend env newEnv,) <$> project rightExp
 
     _ -> (env,) <$> project e
 
   -- HINT: unify controls which (lpat/val) cases should be handled by copy propagation
-  unify :: LPat -> Val -> Maybe Env
-  unify lpat val = case (lpat, val) of
+  unify :: Env -> LPat -> Val -> Maybe Env
+  unify env@(nameEnv, valEnv) lpat val = case (lpat, val) of
     (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs) ->
       if lpatTag /= valTag
         then error $ printf "mismatching tags, lpat: %s val: %s" (show $ pretty lpatTag) (show $ pretty valTag)
-        else mconcat $ zipWith unify lpatArgs valArgs
+        else mconcat $ zipWith (unify env) lpatArgs valArgs
 
-    (Var{}, ConstTagNode{})   -> Just (mempty, Map.singleton lpat val)        -- update val env
-    (Var lpatVar, Var valVar) -> Just (Map.singleton lpatVar valVar, mempty)  -- update name env
+    (Var{}, ConstTagNode{})   -> Just (mempty, Map.singleton lpat $ subst valEnv val)         -- update val env
+    (Var lpatVar, Var valVar) -> Just (Map.singleton lpatVar $ subst nameEnv valVar, mempty)  -- update name env
 
     --  case A: Unit, Lit
     _ | lpat == val && isBasicValue lpat -> Just mempty -- HINT: nothing to do
