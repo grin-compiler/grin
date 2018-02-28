@@ -11,6 +11,7 @@ import Transformations.Util
 
 type Env = (Map Name Name, Map Val Val)
 
+-- FIXME: this might use futu because it can remove operations
 copyPropagation :: Exp -> Exp
 copyPropagation e = ana builder (mempty, e) where
   builder :: (Env, Exp) -> ExpF (Env, Exp)
