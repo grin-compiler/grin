@@ -73,3 +73,10 @@ anaM
   => (a -> m (Base t a)) -> a -> m t
 anaM coalg = a where
   a = (return . embed) <=< traverse a <=< coalg
+
+-- misc
+
+skipUnit :: ExpF Exp -> Exp
+skipUnit = \case
+  EBindF (SReturn Unit) Unit rightExp -> rightExp
+  exp -> embed exp

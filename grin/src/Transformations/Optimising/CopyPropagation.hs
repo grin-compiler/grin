@@ -11,16 +11,16 @@ import Transformations.Util
 
 type Env = (Map Name Name, Map Val Val)
 
--- FIXME: this might use futu because it can remove operations
 copyPropagation :: Exp -> Exp
-copyPropagation e = ana builder (mempty, e) where
+copyPropagation e = hylo skipUnit builder (mempty, e) where
+
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env@(nameEnv, valEnv), exp) = let e = substVals valEnv . substVarRefExp nameEnv $ exp in case e of
     -- right unit law
-    EBind leftExp valIn (SReturn valOut) | valIn == valOut -> (env,) <$> project leftExp
+    EBind leftExp valIn (SReturn valOut) | valIn == valOut -> (env,) <$> EBindF (SReturn Unit) Unit leftExp
 
     -- left unit law
-    EBind (SReturn val) lpat rightExp | Just newEnv <- unify env lpat val -> (mappend env newEnv,) <$> project rightExp
+    EBind (SReturn val) lpat rightExp | Just newEnv <- unify env lpat val -> (mappend env newEnv,) <$> EBindF (SReturn Unit) Unit rightExp
 
     _ -> (env,) <$> project e
 

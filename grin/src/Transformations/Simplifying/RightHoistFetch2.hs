@@ -124,14 +124,9 @@ concat <$> mapM makeLenses [''Build]
 emptyBuild = Build mempty mempty mempty mempty mempty
 
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ hylo skip builder (emptyBuild, e)
+rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ hylo skipUnit builder (emptyBuild, e)
   where
     globalFetchMap = collectFetchVars e
-
-    skip :: ExpF Exp -> Exp
-    skip = \case
-      EBindF (SReturn Unit) Unit rightExp -> rightExp
-      exp -> embed exp
 
     builder :: (Build, Exp) -> ExpF (Build, Exp)
     builder (rhf, exp) = case exp of
@@ -144,7 +139,6 @@ rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ h
               0 -> let newBuild = rhf & caseMap . at name .~ Just fetchVar
                    in EBindF (rhf, fetch) (Var $ subst (rhf^.substMap) name) (newBuild, rightExp)
               -- remove original itemVar fetch
-              -- FIXME: must emit some code, apo does not have a skip command
               _ -> EBindF (rhf, SReturn Unit) Unit (rhf & hoistMap . at fetchVar . non mempty %~ ((name,idx):), rightExp)
 
       -- always generate bind sequences, it will be empty if there is none anyway
