@@ -217,6 +217,11 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
     ECaseF val alts -> do
       valReg <- codeGenVal val
       caseResultReg <- newReg
+      {-
+        TODO:
+          - create scope monadic combinator to handle scopes
+          - set scrutinee value to the case alternative pattern value in the alternative scope
+      -}
       forM_ alts $ \alt -> do
         (A cpat altM) <- alt
         case cpat of
