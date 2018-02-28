@@ -40,4 +40,4 @@ typeOfVal val = do
     Var name  -> use (envTypeEnv.variable.at name) >>= \case
                   Nothing -> error $ printf "unknown variable %s" name
                   Just ty -> pure ty
-    _ -> error $ printf "unsupported val" (show $ pretty val)
+    _ -> error $ printf "unsupported val %s" (show $ pretty val)
