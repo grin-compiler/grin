@@ -27,7 +27,6 @@ import Grin
         function name in SApp
 -}
 
-
 mapNamesVal :: (Name -> Name) -> Val -> Val
 mapNamesVal f = \case
   ConstTagNode tag vals -> ConstTagNode tag (map (mapNamesVal f) vals)
@@ -60,6 +59,12 @@ substVarRefExp env = mapVarRefExp (subst env)
 -- val substitution (non recursive)
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (subst env)
+
+cpatToLPat :: CPat -> LPat
+cpatToLPat = \case
+  NodePat tag args  -> ConstTagNode tag (map Var args)
+  LitPat  lit       -> Lit lit
+  TagPat  tag       -> ValTag tag
 
 -- monadic recursion schemes
 
