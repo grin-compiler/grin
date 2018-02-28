@@ -35,6 +35,7 @@ transformOpts =
   <|> flg SparseCaseElimination "sce" "Sparse Case Elimination"
   <|> flg UpdateElimination "ue" "Update Elimination"
   <|> flg CopyPropagation "cp" "Copy Propagation"
+  <|> flg ConstantPropagation "cnp" "Constant Propagation"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -116,6 +117,12 @@ defaultPipeline = \case
       , SaveGrin "CopyPropagation"
       , T BindNormalisation
       , SaveGrin "CopyPropagation"
+      , PrintGrin ondullblack
+
+      , T ConstantPropagation
+      , SaveGrin "ConstantPropagation"
+      , T BindNormalisation
+      , SaveGrin "ConstantPropagation"
       , PrintGrin ondullblack
 
       , T Vectorisation
