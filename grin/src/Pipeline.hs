@@ -72,6 +72,7 @@ data Transformation
   | TrivialCaseElimination
   | SparseCaseElimination
   | UpdateElimination
+  | CopyPropagation
   deriving (Enum, Eq, Ord, Show)
 
 transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
@@ -88,6 +89,7 @@ transformation typeEnv n = \case
   TrivialCaseElimination    -> trivialCaseElimination
   SparseCaseElimination     -> sparseCaseElimination (fromJust typeEnv)
   UpdateElimination         -> updateElimination
+  CopyPropagation           -> copyPropagation
 
 precondition :: Transformation -> [Check]
 precondition = \case
