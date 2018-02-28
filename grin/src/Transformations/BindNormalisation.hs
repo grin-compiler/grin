@@ -5,7 +5,7 @@ import Data.Functor.Foldable as Foldable
 
 import Grin
 
--- Bind normalisation (EXTREME UGLY first version)
+-- Bind normalisation (EXTREMELY UGLY first version, REFACTORING NEEDED!)
 bindNormalisation :: Exp -> Exp
 bindNormalisation = ($ id) . snd . cata folder where
   folder :: ExpF (Bool, (Exp -> Exp) -> Exp) -> (Bool, (Exp -> Exp) -> Exp)

@@ -15,3 +15,6 @@ updateElimination = ana builder where
         -> EBindF (SFetch fetchLoc) fetchVal rightExp
 
     exp -> project exp
+{-
+  QUESTION: can this be subsumed by CSE which understands fetch/store/update?
+-}
