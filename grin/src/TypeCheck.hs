@@ -14,6 +14,7 @@ import qualified Data.Vector as V
 
 import Lens.Micro.Platform
 
+import Grin (Tag)
 import Pretty
 import AbstractInterpretation.PrettyHPT
 
@@ -29,6 +30,7 @@ import qualified TypeEnv
 -}
 typeEnvFromHPTResult :: HPTResult -> TypeEnv.TypeEnv
 typeEnvFromHPTResult hptResult = typeEnv where
+  convertSimpleType :: SimpleType -> TypeEnv.SimpleType
   convertSimpleType = \case
     T_Int64   -> TypeEnv.T_Int64
     T_Word64  -> TypeEnv.T_Word64
@@ -37,16 +39,20 @@ typeEnvFromHPTResult hptResult = typeEnv where
     T_Unit    -> TypeEnv.T_Unit
     T_Location l -> TypeEnv.T_Location [l]
 
+  isLocation :: SimpleType -> Bool
   isLocation = \case
     T_Location _ -> True
     _ -> False
 
+  convertNodeItem :: [SimpleType] -> TypeEnv.SimpleType
   convertNodeItem [sTy] = convertSimpleType sTy
   convertNodeItem tys | all isLocation tys = TypeEnv.T_Location [l | T_Location l <- tys]
   convertNodeItem tys = error $ printf "illegal type %s" (show . pretty $ Set.fromList tys)
 
+  convertNodeSet :: NodeSet -> Map Tag (Vector TypeEnv.SimpleType)
   convertNodeSet (NodeSet ns) = Map.map (V.map (convertNodeItem . Set.toList)) ns
 
+  convertTypeSet :: TypeSet -> TypeEnv.Type
   convertTypeSet ts = let ns = ts^.nodeSet
                           st = ts^.simpleType
                       in case (Set.size st, Map.size $ ns^.nodeTagMap) of
@@ -54,8 +60,10 @@ typeEnvFromHPTResult hptResult = typeEnv where
                           (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType $ convertNodeItem $ Set.toList st
                           _ -> error $ printf "illegal type %s" (show . pretty $ ts)
 
+  convertFunction :: (TypeSet, Vector TypeSet) -> (TypeEnv.Type, Vector TypeEnv.Type)
   convertFunction (ret, args) = (convertTypeSet ret, V.map convertTypeSet args)
 
+  typeEnv :: TypeEnv.TypeEnv
   typeEnv = TypeEnv.TypeEnv
     { _location = V.map convertNodeSet $ _memory hptResult
     , _variable = Map.map convertTypeSet $ _register hptResult
