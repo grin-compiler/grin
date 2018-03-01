@@ -39,7 +39,7 @@ data Exp
   | SBlock      Exp
   -- Alt
   | Alt CPat Exp
-  deriving (Generic, NFData, Eq, Show)
+  deriving (Generic, NFData, Eq, Ord, Show)
 
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
