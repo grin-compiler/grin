@@ -41,6 +41,11 @@ THOUGHTS:
     program optimization is evaluation
     type inference/check is evaluation
 
+  GRIN optimisations vs supercompilation
+    GRIN does calculation on tags that comes from the frontend language's type system therefore it terminates for sure.
+    The tag related calculations are much more limited than computations on arbitrary values.
+    Supercompilation does general computation without binding time annotations.
+
 micro TODO:
   - compile LC_SmallStep
   - closure conversion
