@@ -53,13 +53,14 @@ library
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Optimising.EvaluatedCaseElimination
     Transformations.Optimising.TrivialCaseElimination
-    Transformations.Optimising.SparseCaseElimination
+    Transformations.Optimising.SparseCaseOptimisation
     Transformations.Optimising.UpdateElimination
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.ConstantPropagation
     Transformations.Optimising.DeadProcedureElimination
     Transformations.Optimising.DeadVariableElimination
     Transformations.Optimising.CSE
+    Transformations.Optimising.Inlining
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult

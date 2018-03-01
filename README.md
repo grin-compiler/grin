@@ -29,7 +29,7 @@ Transformation | Schema
 
 - [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=141">evaluated case elimination</a>
 - [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=142">trivial case elimination</a>
-- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143">sparse case elimination</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143">sparse case optimisation</a>
 - [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=148">update elimination</a>
 - [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=129">copy propagation</a>
 - [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=159">constant propagation</a>

@@ -32,7 +32,7 @@ transformOpts =
   <|> flg ConstantFolding "cfl" "Constant Folding"
   <|> flg EvaluatedCaseElimination "ece" "Evaluated Case Elimination"
   <|> flg TrivialCaseElimination "tce" "Trivial Case Elimination"
-  <|> flg SparseCaseElimination "sce" "Sparse Case Elimination"
+  <|> flg SparseCaseOptimisation "sco" "Sparse Case Optimisation"
   <|> flg UpdateElimination "ue" "Update Elimination"
   <|> flg CopyPropagation "cp" "Copy Propagation"
   <|> flg ConstantPropagation "cnp" "Constant Propagation"
@@ -98,10 +98,10 @@ defaultPipeline = \case
       , SaveGrin "UpdateElimination"
       , PrintGrin ondullblack
 
-      , T SparseCaseElimination
-      , SaveGrin "SparseCaseElimination"
+      , T SparseCaseOptimisation
+      , SaveGrin "SparseCaseOptimisation"
       , T BindNormalisation
-      , SaveGrin "SparseCaseElimination"
+      , SaveGrin "SparseCaseOptimisation"
       , PrintGrin ondullcyan
 
       , T EvaluatedCaseElimination

@@ -1,13 +1,13 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
-module Transformations.Optimising.SparseCaseElimination where
+module Transformations.Optimising.SparseCaseOptimisation where
 
 import qualified Data.Map as Map
 import Data.Functor.Foldable as Foldable
 import Grin
 import TypeEnv
 
-sparseCaseElimination :: TypeEnv -> Exp -> Exp
-sparseCaseElimination typeEnv = ana builder where
+sparseCaseOptimisation :: TypeEnv -> Exp -> Exp
+sparseCaseOptimisation typeEnv = ana builder where
   builder :: Exp -> ExpF Exp
   builder = \case
     ECase val@(Var name) alts ->

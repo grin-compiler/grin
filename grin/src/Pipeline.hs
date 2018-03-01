@@ -70,7 +70,7 @@ data Transformation
   | ConstantFolding
   | EvaluatedCaseElimination
   | TrivialCaseElimination
-  | SparseCaseElimination
+  | SparseCaseOptimisation
   | UpdateElimination
   | CopyPropagation
   | ConstantPropagation
@@ -91,7 +91,7 @@ transformation typeEnv n = \case
   ConstantFolding                 -> constantFolding
   EvaluatedCaseElimination        -> evaluatedCaseElimination
   TrivialCaseElimination          -> trivialCaseElimination
-  SparseCaseElimination           -> sparseCaseElimination (fromJust typeEnv)
+  SparseCaseOptimisation          -> sparseCaseOptimisation (fromJust typeEnv)
   UpdateElimination               -> updateElimination
   CopyPropagation                 -> copyPropagation
   ConstantPropagation             -> constantPropagation
