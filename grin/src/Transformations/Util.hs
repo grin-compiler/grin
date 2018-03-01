@@ -26,6 +26,22 @@ import Grin
     - function reference
         function name in SApp
 -}
+foldNamesVal :: (Monoid m) => (Name -> m) -> Val -> m
+foldNamesVal f = \case
+  ConstTagNode tag vals -> mconcat $ map (foldNamesVal f) vals
+  VarTagNode name vals  -> mconcat $ f name : map (foldNamesVal f) vals
+  Var name              -> f name
+  _                     -> mempty
+
+foldVarRefExpF :: (Monoid m) => (Name -> m) -> ExpF a -> m
+foldVarRefExpF f = \case
+  ECaseF val _      -> foldNamesVal f val
+  SAppF name vals   -> mconcat $ map (foldNamesVal f) vals
+  SReturnF val      -> foldNamesVal f val
+  SStoreF val       -> foldNamesVal f val
+  SUpdateF name val -> mconcat $ [f name, foldNamesVal f val]
+  SFetchIF name i   -> f name
+  _                 -> mempty
 
 mapNamesVal :: (Name -> Name) -> Val -> Val
 mapNamesVal f = \case

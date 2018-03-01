@@ -58,6 +58,7 @@ library
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.ConstantPropagation
     Transformations.Optimising.DeadProcedureElimination
+    Transformations.Optimising.DeadVariableElimination
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult
