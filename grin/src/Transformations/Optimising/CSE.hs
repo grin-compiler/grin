@@ -23,6 +23,7 @@ commonSubExpressionElimination typeEnv e = ana builder (mempty, e) where
   builder (env, exp) = case exp of
     EBind leftExp lpat rightExp -> EBindF (env, leftExp) lpat (newEnv, rightExp) where
       newEnv = case leftExp of
+        -- HINT: also save fetch (the inverse operation) for store and update
         SUpdate name val              -> Map.insert (SFetch name) (SReturn val) env
         SStore val | Var name <- lpat -> Map.insert (SFetch name) (SReturn val) extEnv
         -- HINT: location parameters might be updated in the called function, so forget their content
