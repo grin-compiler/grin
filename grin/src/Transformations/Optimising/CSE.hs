@@ -14,7 +14,7 @@ import Transformations.Util
 
 type Env = (Map SimpleExp SimpleExp)
 
--- TODO: track if location parameters can be updated to improve CSE
+-- TODO: track if function parameters with location type can be updated in the called function to improve CSE
 
 commonSubExpressionElimination :: TypeEnv -> Exp -> Exp
 commonSubExpressionElimination typeEnv e = ana builder (mempty, e) where
