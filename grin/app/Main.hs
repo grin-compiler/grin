@@ -37,6 +37,7 @@ transformOpts =
   <|> flg CopyPropagation "cp" "Copy Propagation"
   <|> flg ConstantPropagation "cnp" "Constant Propagation"
   <|> flg DeadProcedureElimination "dpe" "Dead Procedure Elimination"
+  <|> flg DeadVariableElimination "dve" "Dead Variable Elimination"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -130,6 +131,12 @@ defaultPipeline = \case
       , SaveGrin "DeadProcedureElimination"
       , T BindNormalisation
       , SaveGrin "DeadProcedureElimination"
+      , PrintGrin ondullblack
+
+      , T DeadVariableElimination
+      , SaveGrin "DeadVariableElimination"
+      , T BindNormalisation
+      , SaveGrin "DeadVariableElimination"
       , PrintGrin ondullblack
 
       , T Vectorisation

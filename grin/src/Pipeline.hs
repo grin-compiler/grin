@@ -75,6 +75,7 @@ data Transformation
   | CopyPropagation
   | ConstantPropagation
   | DeadProcedureElimination
+  | DeadVariableElimination
   deriving (Enum, Eq, Ord, Show)
 
 transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
@@ -94,6 +95,7 @@ transformation typeEnv n = \case
   CopyPropagation           -> copyPropagation
   ConstantPropagation       -> constantPropagation
   DeadProcedureElimination  -> deadProcedureElimination
+  DeadVariableElimination   -> deadVariableElimination
 
 precondition :: Transformation -> [Check]
 precondition = \case
