@@ -76,26 +76,28 @@ data Transformation
   | ConstantPropagation
   | DeadProcedureElimination
   | DeadVariableElimination
+  | CommonSubExpressionElimination
   deriving (Enum, Eq, Ord, Show)
 
 transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
 transformation typeEnv n = \case
-  CaseSimplification        -> caseSimplification
-  SplitFetch                -> splitFetch
-  Vectorisation             -> Vectorisation2.vectorisation (fromJust typeEnv)
-  RegisterIntroduction      -> registerIntroductionI n
-  BindNormalisation         -> bindNormalisation
-  RightHoistFetch           -> RHF.rightHoistFetch
-  GenerateEval              -> generateEval
-  ConstantFolding           -> constantFolding
-  EvaluatedCaseElimination  -> evaluatedCaseElimination
-  TrivialCaseElimination    -> trivialCaseElimination
-  SparseCaseElimination     -> sparseCaseElimination (fromJust typeEnv)
-  UpdateElimination         -> updateElimination
-  CopyPropagation           -> copyPropagation
-  ConstantPropagation       -> constantPropagation
-  DeadProcedureElimination  -> deadProcedureElimination
-  DeadVariableElimination   -> deadVariableElimination
+  CaseSimplification              -> caseSimplification
+  SplitFetch                      -> splitFetch
+  Vectorisation                   -> Vectorisation2.vectorisation (fromJust typeEnv)
+  RegisterIntroduction            -> registerIntroductionI n
+  BindNormalisation               -> bindNormalisation
+  RightHoistFetch                 -> RHF.rightHoistFetch
+  GenerateEval                    -> generateEval
+  ConstantFolding                 -> constantFolding
+  EvaluatedCaseElimination        -> evaluatedCaseElimination
+  TrivialCaseElimination          -> trivialCaseElimination
+  SparseCaseElimination           -> sparseCaseElimination (fromJust typeEnv)
+  UpdateElimination               -> updateElimination
+  CopyPropagation                 -> copyPropagation
+  ConstantPropagation             -> constantPropagation
+  DeadProcedureElimination        -> deadProcedureElimination
+  DeadVariableElimination         -> deadVariableElimination
+  CommonSubExpressionElimination  -> commonSubExpressionElimination (fromJust typeEnv)
 
 precondition :: Transformation -> [Check]
 precondition = \case

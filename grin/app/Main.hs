@@ -38,6 +38,7 @@ transformOpts =
   <|> flg ConstantPropagation "cnp" "Constant Propagation"
   <|> flg DeadProcedureElimination "dpe" "Dead Procedure Elimination"
   <|> flg DeadVariableElimination "dve" "Dead Variable Elimination"
+  <|> flg CommonSubExpressionElimination "cse" "Common Sub-Expression Elimination"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -137,6 +138,12 @@ defaultPipeline = \case
       , SaveGrin "DeadVariableElimination"
       , T BindNormalisation
       , SaveGrin "DeadVariableElimination"
+      , PrintGrin ondullblack
+
+      , T CommonSubExpressionElimination
+      , SaveGrin "CommonSubExpressionElimination"
+      , T BindNormalisation
+      , SaveGrin "CommonSubExpressionElimination"
       , PrintGrin ondullblack
 
       , T Vectorisation
