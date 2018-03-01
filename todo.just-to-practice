@@ -157,9 +157,9 @@ sum opt optimising transformations:
   done - dead procedure elimination
   done - dead variable elimination
   done - common sub-expression elimination
+  done - late inlining
+  skip - inline calls to eval
 
-  - late inlining
-  - inline calls to eval
 =================================
   - unboxing of return values
   - arity raising
@@ -175,9 +175,7 @@ optimising transformations:
   done - dead procedure elimination
   done - dead variable elimination
   done - common sub-expression elimination
-
- medium:
-  - late inlining
+  done - late inlining
 
  complex:
   - generalised unboxing

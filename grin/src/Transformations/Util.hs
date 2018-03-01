@@ -43,6 +43,12 @@ foldVarRefExpF f = \case
   SFetchIF name i   -> f name
   _                 -> mempty
 
+mapNamesCPat :: (Name -> Name) -> CPat -> CPat
+mapNamesCPat f = \case
+  NodePat tag args  -> NodePat tag (map f args)
+  LitPat  lit       -> LitPat lit
+  TagPat  tag       -> TagPat tag
+
 mapNamesVal :: (Name -> Name) -> Val -> Val
 mapNamesVal f = \case
   ConstTagNode tag vals -> ConstTagNode tag (map (mapNamesVal f) vals)
@@ -65,6 +71,12 @@ mapVarRefExp f = \case
   SUpdate name val  -> SUpdate (f name) $ mapNamesVal f val
   exp               -> mapValsExp (mapNamesVal f) exp
 
+mapVarBindExp :: (Name -> Name) -> Exp -> Exp
+mapVarBindExp f = \case
+  EBind leftExp lpat rightExp -> EBind leftExp (mapNamesVal f lpat) rightExp
+  Alt cpat body               -> Alt (mapNamesCPat f cpat) body
+  exp                         -> exp
+
 subst :: Ord a => Map a a -> a -> a
 subst env x = Map.findWithDefault x x env
 
@@ -83,12 +95,33 @@ cpatToLPat = \case
   TagPat  tag       -> ValTag tag
 
 -- monadic recursion schemes
+--  see: https://jtobin.io/monadic-recursion-schemes
 
 anaM
   :: (Monad m, Traversable (Base t), Corecursive t)
   => (a -> m (Base t a)) -> a -> m t
 anaM coalg = a where
   a = (return . embed) <=< traverse a <=< coalg
+
+paraM
+  :: (Monad m, Traversable (Base t), Recursive t)
+  => (Base t (t, a) -> m a) -> t -> m a
+paraM alg = p where
+  p   = alg <=< traverse f . project
+  f t = liftM2 (,) (return t) (p t)
+
+apoM
+  :: (Monad m, Traversable (Base t), Corecursive t)
+  => (a -> m (Base t (Either t a))) -> a -> m t
+apoM coalg = a where
+  a = (return . embed) <=< traverse f <=< coalg
+  f = either return a
+
+hyloM
+  :: (Monad m, Traversable t)
+  => (t b -> m b) -> (a -> m (t a)) -> a -> m b
+hyloM alg coalg = h
+  where h = alg <=< traverse h <=< coalg
 
 -- misc
 
