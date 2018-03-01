@@ -41,6 +41,7 @@ defStatistics = cata folder where
   done - substitute the arguments with parameters
   done - substitute all binding names with fresh names ; separate builder
   - generate name suffix
+  - add the cloned variables to the type env
 -}
 
 
