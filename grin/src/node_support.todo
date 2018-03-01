@@ -1,0 +1,44 @@
+done - calculate node types (node layout)
+done - build llvm typemap for variables
+done - in llvm codegen track type of values
+done - introduce heap pointer
+    can be:
+      (A) global variable, handled with atomic operations
+      (B) passed as local parameter
+    decision: (B)
+
+done - read inline eval
+done - read inline apply
+done - read update specialisation
+done - read node layout calculation
+done - read tag assignement
+done - risc codegen
+done - figure out how to handle the heap and the heap pointer
+
+- read llvm alias analysis documentation
+- read llvm gc features
+
+- read llvm language reference (multiple times)
+
+- check bedrock node representation
+- check ghc llvm backend node representation
+- check jhc node representation
+
+- study how to achieve discriminative unions in llvm (e.g. node_test_reg3.ll or node_test_reg3.ll.1)
+
+QUESTION:
+  would llvm map a <8 x i1> vector to a byte?
+  can i1 be 1 bit aligned?
+
+to understand in LLVM:
+  - meta nodes; optimization and debugging related
+
+  - exception handling
+
+  - atomic operations
+
+
+node representation alternatives:
+  - (A) mega struct that contains the data payload for all constructors
+  - (B) call site allocated result on stack that is filled by the callee + attached aliasing information
+  decision: (A)

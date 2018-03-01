@@ -1,0 +1,194 @@
+MISSING:
+  done - case / tagged union: bind pattern variables for constant node pattern
+
+  done - CGType: Result should carry: Type + LLVMType + tagged union for T_NodeSet
+
+  done - recude the usage of getOperand to the minimum
+
+  done - case (full revisit) / calculate result type from alternatives
+      done - tagged union ; requires CG_Type
+      done - simple type  ; requires CG_Type
+
+  done - refactor switch codegen to be reusable
+
+  done - bind: pattern variables for constant node pattern
+      done - exract items from tagged union ; requires CGType
+      done - simplify code
+
+  done -  heap support in LLVMJIT
+      done - allocate heap with Foreign.Marshal.Alloc callocBytes
+      done - pass initial heap pointer to grinMain
+
+  - merge codeGenCase and codeGenTagSwitch if possible
+
+  done - heap pointer handling
+      done - add heap pointer to env
+      done - def   ; return the heap pointer ; adjust function ret type              = wrap type + insert heap pointer
+      done - app   ; extract the returning heap pointer ; adjust function ret type   = wrap type + extract heap pointer
+      done - case  ; join heap pointers from alternatives
+
+      done - store ; calculate the max location size, increase the pointer accordingly
+          REQUIREMENT: store resul must be binded to a variable ; store must not be the last operation!
+          TODO: ensure this with a simple transformation.
+
+operations for HPT result
+
+- get possible tags for variable
+- get possible tags for fetch result
+
+new value types (for HPT result)
+  - tag
+  - undefined (dependent types subsumes undefined) ; try to avoid undefined and prefer more precise type description
+  - type depend on tag variable ???
+
+LLVM codegen IDEA:
+  use
+    {Tag} -> Layout + component projection functions `prj :: Tag -> Int -> a`
+  instead of
+    Tag -> Layout
+
+LLVM codegen TODO:
+  done - calculate llvm types for all possible node set combination
+  done - value projection:
+          done - bind (var pat / cpat)
+          done - case
+
+  - llvm types
+    - Hash cons HPTResult
+    - build all possible llvm types
+    - create type projection function
+
+PRIORITIES:
+  done - working LLVM codegen for GRIN
+  - GRIN type system
+  - typed simplifications
+  - HPT improvements
+
+INSIGHT: HPT could work on typed GRIN on any source
+
+QUESTION:
+  (A) should GRIN expose the simple type groups of tagged unions?
+  or
+  (B) should GRIN stick to the concept of nodes and it's arguments and hide the register mapping of nodes?
+
+  (A)
+    pro:  visible representation, even advanced packing can be visible and explicit (many bools / bits in a byte)
+    cons: requires syntax for tagged unions with type categories
+  (B)
+    pro:  more functional programming like
+    cons: hide details
+
+  GOAL: be explicit and make everything observable
+  IDEA: implement smart data packing with typed builtin operations + packer transformations instead of smart backend
+
+  PREFERENCE: use vectorisation to map nodes to tagged unions ; instead of using dependent types
+
+HINT:
+  Due to having multiple types for node items (i.e. Int64 and Float) the node item indices must be tagged with the types.
+  The actual item index that maps a node item to a tagged union is Type x Index
+IDEA:
+  Extend CPatNode and VarPat node with type annotations:
+  VarPat:   m0 >>= \(tag; i64 a1, float a2; i64 b1) -- tag + int/float as first item + int as second item
+  CPatNode  (Ffun float x ; i64 y)
+
+  alternative syntax #1
+
+  VarPat:   m0 >>= \(tag {i64 a1, float a2} {i64 b1}) -- tag + int/float as first item + int as second item
+  CPatNode  (Ffun float x, i64 y)
+
+  alternative syntax #2 (efficient maping, the most explicit)
+
+  VarPat:   m0 >>= \(tag; i64 a1, b1; float a2)@{Ffun a2 a1, Cxx a1 b1} -- VarTagNode = tagged union content + mapping
+  CPatNode  (Ffun float x ; i64 y)
+
+  alternative syntax #3 (the minimal syntax adjustment) ; my vote
+
+  VarPat:   m0 >>= \(tag a1 b1 a2)@{Ffun a2 a1, Cxx a1 b1} -- VarTagNode = tagged union content + mapping
+  CPatNode  (Ffun x y)
+
+IDEA:
+  indexed fetch index should consist of Type x Index
+  i.e. FetchI Name (Maybe Int) (Maybe Tag)
+
+codegen improvements:
+  - vectorisation as tagged union conversion
+  - flat tagged union representation ; no struct unless it's a function call
+  - cut back codegen complexity
+      - remove full node case ; keep lit + tag
+      - remove untagged fetch/store/update ; support only tagged + indexed fetch
+  - better variable names ; keep original names as much as possible
+  - merge cases (optimised case codegen)
+  - support for product return types (without tag) ; i.e. (() 1 2.0 4u)
+  transformations:
+    - packer ; bools -> bytes, pointers -> ints
+    - explicit heap pointer introduction ; used by store arg + result
+
+primary goal: typed transformations, open the road for optimization transformations
+
+feb 14 - feb 25
+W: GRIN type system insight: prj :: Tag -> Int -> a OR prjNode :: {Node A, ..., Node Z} -> Tag -> Node Tag, prjItem :: Node Tag -> Int -> a
+T: video call with Igor ; start work on type compilation (HPTResult -> LLVM type) and node codegen
+F: ??
+S: ??
+S: ??
+M: tagged union copy
+T: evening - type theory seminar ; was good
+W: case codegen
+T: heap pointer handling ; working sum_simple.grin with llvm codegen!! :P
+F: grin type system
+S: grin type system vs tagged union vs vectorisation
+S: morning brainstorming
+M: vectorisation as conversion to tagged unions
+T: new approach: optimise high level grin ; implement some optimisations
+W: copy propagation, constant propagation, dead procedure elimination, use hylo to skip operations, dead variable elimination
+T:
+F:
+S:
+S:
+
+- linter that check all possible alternatives are handled by case alternatives
+- dead code elimination using HPTResult ; empty type is dead code i.e. {}
+sum opt optimising transformations:
+  done - evaluated case elimination
+  done - trivial case elimination
+  done - sparse case elimination
+  done - copy propagation
+  done - constant propagation
+  done - dead procedure elimination
+  done - dead variable elimination
+  done - common sub-expression elimination
+
+  - late inlining
+  - inline calls to eval
+=================================
+  - unboxing of return values
+  - arity raising
+  done - vectorisation + case simplification (skip)
+
+optimising transformations:
+  done - evaluated case elimination
+  done - trivial case elimination
+  done - sparse case elimination
+  done - update elimination
+  done - copy propagation
+  done - constant propagation
+  done - dead procedure elimination
+  done - dead variable elimination
+  done - common sub-expression elimination
+
+ medium:
+  - late inlining
+
+ complex:
+  - generalised unboxing
+  - arity raising
+
+============================
+
+ remaining (medium):
+  - dead parameter elimination
+  - case copy propagation
+  - case hoisting
+  - whnf update elimination ; requires sharing analysis
+
+IDEA: rerun HPT time to time on the transformed code during the optimisation process to get more accurate tag and type information

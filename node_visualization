@@ -1,0 +1,37 @@
+node editor:
+
+https://github.com/Ni55aN/D3-Node-Editor
+https://github.com/jagenjo/litegraph.js
+
+demo:
+  1. place nodes; save to json; parse in haskell
+  idea: reactive editing (connection between the editor and the compiler)
+
+  2. visualize compiled lambdacube pipeline
+
+high performance graph visualization:
+Sigma.js
+http://js.cytoscape.org/
+
+fancy graph visualization:
+https://d3js.org/
+https://github.com/wbkd/awesome-d3
+
+http://visjs.org/
+http://www.chartjs.org/samples/latest/
+http://graphalchemist.github.io/Alchemy/#/
+
+purescript:
+
+https://github.com/pelotom/purescript-d3
+
+
+to choose:
+
+https://constructive.co/insights/6-best-data-visualization-tools-2016-pt-1/
+https://constructive.co/insights/6-best-interactive-data-visualization-tools-2016-part-2/
+https://www.quora.com/What-is-best-for-graph-rendering-sigma-js-or-d3-js-Why
+
+current choice:
+  plotly (based on d3)
+  d3-node-editor

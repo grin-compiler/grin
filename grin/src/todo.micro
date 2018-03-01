@@ -1,0 +1,47 @@
+HPT + LLVM codegen
+
+LLVM types:
+ misc:
+  - void
+  - function
+  - label
+  - metadata
+
+ simple:
+  - int
+  - float
+  - vector
+  - pointer
+
+ aggregate:
+  - array
+  - struct
+
+Node layout:
+  done - pass in registers
+  done - store on heap
+
+HINT: Node in Node is not supported ; only Node pointer in Node but no node value
+
+TODO:
+  - collect tag info
+  - update specialization
+  done - tag (node type) to LLVM
+  done - pass heap pointer
+  done - return node in register
+  done - store node on heap
+
+NODE ZOO ; documented llvm examples of:
+  - node construction
+  - node return
+
+STAGE 1:
+  done - working hpt
+  done - llvm codegen from lo grin
+  done - working codegen for sum_simple and sum_opt without any hardcoded values or assumptions
+  - working simplification transformations, using hpt
+
+Big tasks for MVP:
+  - HPT IR LLVM
+  - read back heap and return value to haskell
+  - High level GRIN to LLVM (maybe similar to HPT IR LLVM)

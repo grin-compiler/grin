@@ -1,0 +1,43 @@
+idea:
+  The runtime system collects data on demand.
+  The user can specify the focus of inspection via a query language.
+
+  The raw data is fed to the UI tool.
+  e.g. grafana or custom implementation
+
+debug trap triggers:
+  - function call
+  - release of specific resource or node
+
+debug and profiling queries:
+  - control flow traces
+
+visualize:
+  - hot spots of cfg
+  - longest reference chain
+  - longest thunk
+  - memory usage
+  - open resources
+  - longest reference loop
+
+summary:
+  collectable data X query language X visualization
+  many - connection - many
+
+
+prototype:
+  - visualize grin reference graph, with strict and lazy distinction
+
+query language?
+  graphql?
+  purescript?
+  gluon?
+  haskell?
+
+ideal query language:
+  typed + inference
+  code completion (type based)
+  very simple
+
+approach:
+  iterative, agile, free
