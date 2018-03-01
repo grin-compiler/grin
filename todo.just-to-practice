@@ -141,7 +141,7 @@ S: morning brainstorming
 M: vectorisation as conversion to tagged unions
 T: new approach: optimise high level grin ; implement some optimisations
 W: copy propagation, constant propagation, dead procedure elimination, use hylo to skip operations, dead variable elimination
-T:
+T: common sub-expression elimination, 
 F:
 S:
 S:
@@ -191,4 +191,6 @@ optimising transformations:
   - case hoisting
   - whnf update elimination ; requires sharing analysis
 
-IDEA: rerun HPT time to time on the transformed code during the optimisation process to get more accurate tag and type information
+IDEA:
+  - rerun HPT time to time on the transformed code during the optimisation process to get more accurate tag and type information
+  - use HPT to drive the inliner i.e. try to inline functions which have the biggest node sets for return values or parameters
