@@ -27,19 +27,19 @@ Transformation | Schema
 
 ## Optimising Transformations
 
-- [x] evaluated case elimination
-- [x] trivial case elimination
-- [x] sparse case elimination
-- [x] update elimination
-- [x] copy propagation
-- [x] constant propagation
-- [x] dead procedure elimination
-- [x] dead variable elimination
-- [x] common sub-expression elimination
-- [ ] late inlining
-- [ ] generalised unboxing
-- [ ] arity raising
-- [ ] dead parameter elimination
-- [ ] case copy propagation
-- [ ] case hoisting
-- [ ] whnf update elimination ; requires sharing analysis
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=141">evaluated case elimination</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=142">trivial case elimination</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143">sparse case elimination</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=148">update elimination</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=129">copy propagation</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=159">constant propagation</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=169">dead procedure elimination</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=170">dead variable elimination</a>
+- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=164">common sub-expression elimination</a>
+- [ ] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=151">late inlining</a>
+- [ ] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=134">generalised unboxing</a>
+- [ ] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=160">arity raising</a>
+- [ ] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=171">dead parameter elimination</a>
+- [ ] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=144">case copy propagation</a>
+- [ ] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=153">case hoisting</a>
+- [ ] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=149">whnf update elimination</a> _requires sharing analysis_
