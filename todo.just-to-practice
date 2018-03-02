@@ -160,9 +160,9 @@ sum opt optimising transformations:
   done - late inlining
   skip - inline calls to eval
 
-=================================
   - unboxing of return values
   - arity raising
+
   done - vectorisation + case simplification (skip)
 
 optimising transformations:
@@ -192,3 +192,5 @@ optimising transformations:
 IDEA:
   - rerun HPT time to time on the transformed code during the optimisation process to get more accurate tag and type information
   - use HPT to drive the inliner i.e. try to inline functions which have the biggest node sets for return values or parameters
+  - scoped type env during the HPT analysis and the transformations
+  - name handling with scope ADT ; same as bound
