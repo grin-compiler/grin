@@ -29,11 +29,6 @@ Transformation | Schema
 
 Transformation | Schema
 -------------- | ------
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=159">constant propagation</a>               | 
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=164">common sub-expression elimination</a>  | 
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=169">dead procedure elimination</a>         | 
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=170">dead variable elimination</a>          | 
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=171">dead parameter elimination</a>         | 
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=141">evaluated case elimination</a>         | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=141"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/evaluated-case-elimination.png" width="500" ></a>
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=142">trivial case elimination</a>           | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=142"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/trivial-case-elimination.png" width="500" ></a>
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143">sparse case optimisation</a>           | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/sparse-case-optimisation.png" width="500" ></a>
@@ -45,3 +40,8 @@ Transformation | Schema
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=144">case copy propagation</a>              | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=144"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/case-copy-propagation.png" width="500" ></a>
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=153">case hoisting</a>                      | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=153"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/case-hoisting.png" width="500" ></a>
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=149">whnf update elimination</a>            | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=149"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/whnf-update-elimination.png" width="500" ></a>
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=159">constant propagation</a>               | 
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=164">common sub-expression elimination</a>  | 
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=169">dead procedure elimination</a>         | 
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=170">dead variable elimination</a>          | 
+<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=171">dead parameter elimination</a>         | 
