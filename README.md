@@ -17,18 +17,30 @@ Code Optimisation Techniques for Lazy Functional Languages
 
 ## Simplifying Transformations
 
-Transformation | Schema
--------------- | ------
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=113">vectorisation</a>                | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=113"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/vectorisation.png" width="500" ></a>
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=116">case simplification</a>          | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=116"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/case-simplification.png" width="500" ></a>
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=118">split fetch operation</a>        | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=118"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/split-fetch-operation.png" width="500" ></a>
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=123">right hoist fetch operation</a>  | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=123"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/right-hoist-fetch.png" width="500" ></a>
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=126">register introduction</a>        | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=126"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/register-introduction.png" width="500" ></a>
+Transformation | Schema | Source Code
+-------------- | ------ | -----------
+[vectorisation][113]                | [![vectorisation.png]][113]         | 
+[case simplification][116]          | [![case-simplification.png]][116]   | 
+[split fetch operation][118]        | [![split-fetch-operation.png]][118] | [SplitFetch.hs][SplitFetch.hs]
+[right hoist fetch operation][123]  | [![right-hoist-fetch.png]][123]     | 
+[register introduction][126]        | [![register-introduction.png]][126] | 
+
+[113]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=113
+[116]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=116
+[118]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=118
+[123]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=123
+[126]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=126
+
+[SplitFetch.hs]: https://github.com/andorp/grin/blob/master/grin/src/Transformations/Simplifying/SplitFetch.hs
+
+[vectorisation.png]: images/vectorisation.png
+{: width="500px"}
+
 
 ## Optimising Transformations
 
-Transformation | Schema
--------------- | ------
+Transformation | Schema | Source Code
+-------------- | ------ | -----------
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=141">evaluated case elimination</a>         | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=141"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/evaluated-case-elimination.png" width="500" ></a>
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=142">trivial case elimination</a>           | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=142"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/trivial-case-elimination.png" width="500" ></a>
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143">sparse case optimisation</a>           | <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143"><img src="https://raw.githubusercontent.com/andorp/grin/master/images/sparse-case-optimisation.png" width="500" ></a>
