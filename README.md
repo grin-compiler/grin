@@ -41,8 +41,8 @@ Transformation | Schema
 
 ## Optimising Transformations
 
-Transformation | Schema | Source Code
--------------- | ------ | -----------
+Transformation | Schema
+-------------- | ------
 [evaluated case elimination][141]         <br><br> _source code:_ <br> [EvaluatedCaseElimination.hs]  | [<img src="images/evaluated-case-elimination.png" width="500">][141]
 [trivial case elimination][142]           <br><br> _source code:_ <br> [TrivialCaseElimination.hs]    | [<img src="images/trivial-case-elimination.png"   width="500">][142]
 [sparse case optimisation][143]           <br><br> _source code:_ <br> [SparseCaseOptimisation.hs]    | [<img src="images/sparse-case-optimisation.png"   width="500">][143]
