@@ -62,7 +62,10 @@ visitRhs id rhs = case rhs of
     -}
     visitExpr body
     pure ()
-
+{-
+  TODO:
+    - add default case alternative support for grin
+-}
 visitBinding :: StgBinding -> CG ()
 visitBinding = \case
   StgNonRec id stgRhs -> visitRhs id stgRhs
