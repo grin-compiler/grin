@@ -7,21 +7,26 @@
 - generate unique names when branching (unique name A + branching direction = unique name B)
 - efficient substitution
 - type safer and easy to use AST
-- add simple frontend language with grin conversion
+- add simple frontend language with grin conversion (GHC/STG -> GRIN)
 - generate apply
 
-# JIT requirements
-
-simplifaction transformations required by the codegen
-
-- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=113">vectorisation</a>
-- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=116">case simplification</a>
-- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=118">split fetch operation</a>
-- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=123">right hoist fetch operation</a>
-- [x] <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=126">register introduction</a>
 
 # CodeGen
 
-- LLVM codegen from high level GRIN (HPT + Type Set + Tagged Union)
-- GRIN type system (typed simplification)
 - simplify/refactor LLVM codegen
+- vectorisation = tagged union conversion (on branch: var-tag-node-is-tagged-union) ; better syntax for tagged union (parser + pretty printer)
+- read back LLVM reduced result to Haskell data (including the heap)
+
+# GRIN framework
+
+- scoped type environment
+- scoped names ; it would make inlining easy (the idea is similar to bound)
+  - HPT
+  - optimisiations
+  - type env
+
+# HPT
+
+- LLVM backend for HPT IR
+- inline support
+- sharing analysis
