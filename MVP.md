@@ -18,8 +18,8 @@
 - [x] support for builtin types and primops
 - [x] single module (no module system)
 - [ ] GRIN type system
-- [ ] typed simplification transformations
-- [ ] compiled HPT (with LLVM)
+- [ ] typed transformations
+- [x] compiled HPT
 
 # documentation
 - HPT
