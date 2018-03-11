@@ -55,6 +55,7 @@ library
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.SparseCaseOptimisation
     Transformations.Optimising.UpdateElimination
+    Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.ConstantPropagation
     Transformations.Optimising.DeadProcedureElimination
@@ -156,6 +157,7 @@ test-suite grin-test
                      , Transformations.Simplifying.SplitFetchSpec
                      , Transformations.Simplifying.RightHoistFetchSpec
                      , Transformations.Simplifying.VectorisationSpec
+                     , Transformations.Optimising.CaseCopyPropagationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.SubstitutionSpec
                      , TestSpec
