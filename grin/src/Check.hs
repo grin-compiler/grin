@@ -22,6 +22,7 @@ data Check
   | OnlyTagsInAlts
   | OnlyUniqueNames
   | AllowedBindStoreValues
+  | SimpleExpOnLHS
   deriving (Enum, Eq, Show)
 
 data Result
@@ -48,6 +49,7 @@ check hpt = \case
   OnlyTagsInAlts         -> boolResult . getAll . patsInAlts    (All . isBasicCPat)
   OnlyUniqueNames        -> result . nonUniqueNames
   AllowedBindStoreValues -> boolResult . allowedBindStoreValues
+  SimpleExpOnLHS         -> boolResult . simpleExpOnLHS
 
 result :: Show a => [a] -> Result
 result = \case
@@ -160,3 +162,13 @@ programSize = cata $ \case
   SUpdateF  _ _     -> 1
   SBlockF   !a      -> 1 + a
   AltF _ !a         -> 1 + a
+
+simpleExpOnLHS :: Exp -> Bool
+simpleExpOnLHS = para $ \case
+  ProgramF  ds      -> and $ fmap snd ds
+  DefF      _ _ a   -> snd a
+  EBindF    (s, a) _ b -> and [isSimpleExp s, a, snd b]
+  ECaseF    _ as    -> and $ fmap snd as
+  SBlockF   a       -> snd a
+  AltF _ a          -> snd a
+  _                 -> False
