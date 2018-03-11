@@ -9,7 +9,8 @@ The GRIN Project
 </a> article. To grasp the details take your time and read Urban Boquist's PhD thesis on
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf">
 Code Optimisation Techniques for Lazy Functional Languages
-</a>.
+</a>.  
+Also check the performance [benchmark](https://rawgit.com/andorp/grin/master/grin/grin-benchmark.html).
 
 <a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=41">
 <img src="https://raw.githubusercontent.com/andorp/grin/master/images/grin-syntax.png" width="500" >
