@@ -61,6 +61,7 @@ library
     Transformations.Optimising.DeadVariableElimination
     Transformations.Optimising.CSE
     Transformations.Optimising.Inlining
+    Transformations.Optimising.ArityRaising
     Transformations.Optimising.ConstantFolding
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult
