@@ -18,7 +18,7 @@ checkName name = maybe (error $ "primOp is not defined:" ++ name) (const id) $ M
 -- TODO: Record effects
 primOps :: Map String ([PrimType], PrimType)
 primOps = Map.fromList $
-  [ ("_prim_int_print", ([TInt], TUnit))
+  [ ("_prim_int_print", ([TInt], TInt)) -- HINT: this primop is adhoc, will be removed
   -- Int
   , ("_prim_int_add", ([TInt, TInt], TInt))
   , ("_prim_int_sub", ([TInt, TInt], TInt))
@@ -52,4 +52,7 @@ primOps = Map.fromList $
   , ("_prim_float_ge", ([TFloat, TFloat], TBool))
   , ("_prim_float_lt", ([TFloat, TFloat], TBool))
   , ("_prim_float_le", ([TFloat, TFloat], TBool))
+  -- Bool
+  , ("_prim_bool_eq", ([TBool, TBool], TBool))
+  , ("_prim_bool_ne", ([TBool, TBool], TBool))
   ]
