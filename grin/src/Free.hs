@@ -39,6 +39,8 @@ instance FromTag CPat where
   tag name a = TagPat $ Tag C name
   (@:) cname params = NodePat (Tag C cname) params
 
+(@@:) fname params = NodePat (Tag F fname) params
+
 instance FromTag Val where
   tag name a = ValTag $ Tag C name
   (@:) cname params = ConstTagNode (Tag C cname) (Var <$> params)
