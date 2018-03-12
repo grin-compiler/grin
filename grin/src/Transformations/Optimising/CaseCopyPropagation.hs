@@ -4,8 +4,6 @@ module Transformations.Optimising.CaseCopyPropagation where
 import Control.Arrow
 import Grin
 import Data.Functor.Foldable
-import Control.Monad.Free
-import Control.Comonad.Cofree
 import Data.Monoid hiding (Alt)
 import Debug.Trace
 import Data.Maybe
@@ -85,6 +83,7 @@ collectInfo = para convert where
     ECaseF v ((mconcat . map snd) -> info) -> case info of
       Info returns cases -> case (allTheSame $ map snd returns) of
         Just (Just tag) -> Info mempty (([], tag):cases) -- The case is the same return values
+        Just Nothing    -> Info mempty cases
         Nothing         -> Info mempty cases
 
     AltF pat (ei, info) -> info
@@ -131,6 +130,21 @@ caseCopyPropagation e = apo builder (Build e info False) where
       | otherwise -> EBindF (stepInF lhs) pat (stepIn rhs)
       where
         i1 = zoom 2 i
+        newVar = Var (n <> "'")
+
+    -- Exp: The last statement is a case
+    EBind lhs pat rhs@(ECase var@(Var n) alts)
+      | caseFocusOnStep (toStepE rhs) i1 ->
+          EBindF
+            (stepIn lhs)
+            pat
+            (Right $ Skip 3
+              (EBind (SBlock rhs) newVar (SReturn (ConstTagNode (fromJust (caseTagOnStep (toStepE rhs) i1)) [newVar])))
+              i1
+              True)
+      | otherwise -> EBindF (stepIn lhs) pat (stepIn rhs)
+      where
+        i1 = zoom 1 i
         newVar = Var (n <> "'")
 
     EBind lhs pat rhs | isSimpleExp lhs -> EBindF (Left lhs)   pat (stepIn rhs)

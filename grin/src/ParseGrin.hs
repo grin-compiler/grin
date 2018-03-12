@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module ParseGrin (parseGrin) where
+module ParseGrin (parseGrin, parseDef) where
 
 import Data.Void
 import Control.Applicative (empty)
@@ -112,3 +112,6 @@ grinModule = Program <$> some def <* sc <* eof
 
 parseGrin :: String -> String -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename content
+
+parseDef :: String -> Exp
+parseDef = either (error . show) id . runParser def ""
