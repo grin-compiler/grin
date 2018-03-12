@@ -37,6 +37,7 @@ library
     Reducer.LLVM.JIT
     Test
     Gspec
+    Statistics
     Transformations.AssignStoreIDs
     Transformations.GenerateEval
     Transformations.BindNormalisation

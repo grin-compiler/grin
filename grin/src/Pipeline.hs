@@ -15,6 +15,7 @@ import Grin
 import TypeEnv
 import TypeCheck
 import Optimizations
+import qualified Statistics
 import Pretty()
 import Transformations.AssignStoreIDs
 import Transformations.GenerateEval
@@ -152,6 +153,7 @@ data Pipeline
   | SaveLLVM FilePath
   | SaveGrin FilePath
   | DebugTransformationH (Hidden (Exp -> Exp))
+  | Statistics
   deriving Show
 
 pattern PrintGrin :: (Doc -> Doc) -> Pipeline
@@ -206,6 +208,7 @@ pipelineStep p = do
     SaveGrin path   -> saveGrin path
     PrintAST        -> printAST
     DebugTransformation t -> debugTransformation t
+    Statistics      -> statistics
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   liftIO $ putStrLn $ unwords ["Pipeline:", show p, "has effect:", show eff]
@@ -315,6 +318,11 @@ debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do
   e <- use psExp
   liftIO . putStrLn . show $ pretty (t e)
+
+statistics :: PipelineM ()
+statistics = do
+  e <- use psExp
+  liftIO . print $ Statistics.statistics e
 
 check :: PipelineM ()
 check = do
