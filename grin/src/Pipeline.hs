@@ -77,6 +77,7 @@ data Transformation
   | DeadProcedureElimination
   | DeadVariableElimination
   | CommonSubExpressionElimination
+  | CaseCopyPropagation
   deriving (Enum, Eq, Ord, Show)
 
 transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
@@ -98,6 +99,7 @@ transformation typeEnv n = \case
   DeadProcedureElimination        -> deadProcedureElimination
   DeadVariableElimination         -> deadVariableElimination
   CommonSubExpressionElimination  -> commonSubExpressionElimination (fromJust typeEnv)
+  CaseCopyPropagation             -> caseCopyPropagation
 
 precondition :: Transformation -> [Check]
 precondition = \case
@@ -285,7 +287,7 @@ saveGrin fn = do
   n <- use psTransStep
   e <- use psExp
   outputDir <- view poOutputDir
-  let fname = (concat [fn,".", show n])
+  let fname = (concat [show n,".",fn])
   let content = show $ plain $ pretty e
   liftIO $ do
     createDirectoryIfMissing True outputDir
@@ -297,7 +299,7 @@ saveLLVM fname' = do
   n <- use psTransStep
   Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
-  let fname = o </> concat [fname',".",show n]
+  let fname = o </> concat [show n,".", fname']
       code = CGLLVM.codeGen typeEnv e
       llName = printf "%s.ll" fname
       sName = printf "%s.s" fname
