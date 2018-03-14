@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeApplications, OverloadedStrings, LambdaCase #-}
+{-# LANGUAGE OverloadedStrings, LambdaCase, QuasiQuotes #-}
 module Transformations.Simplifying.CaseSimplificationSpec where
 
 import Control.Monad
@@ -11,6 +11,7 @@ import Test
 import Check
 import Free
 import Grin
+import GrinTH
 import Assertions
 
 
@@ -31,28 +32,24 @@ be just basic values. The patterns will not contain (and bind) any variables.
 spec :: Spec
 spec = do
   it "Example from Figure 4.11" $ do
-    before <- buildExpM $
-      "l1" <=: store @Int 3       $
-      switch ("t" #: ["a1", "a2"])
-        [ ("Nil"  @: [],
-              unit @Int 3)
-        , ("Cons" @: ["x", "xs"],
-              Unit <=: store @Var "x"  $
-              Unit <=: store @Var "xs" $
-              unit @Int 5)
-        ]
-
-    after <- buildExpM $
-      "l1" <=: store @Int 3 $
-      switch "t"
-        [ (tag "Nil"  0,
-              unit @Int 3)
-        , (tag "Cons" 2,
-              Unit <=: store @Var "a1" $
-              Unit <=: store @Var "a2" $
-              unit @Int 5)
-        ]
-
+    let before =
+          [expr|
+            l1 <- store 3
+            case (t a1 a2) of
+              CNil -> pure 3
+              (CCons x xs) -> store x
+                              store xs
+                              pure 5
+          |]
+    let after =
+          [expr|
+            l1 <- store 3
+            case t of
+              CNil -> pure 3
+              CCons -> store a1
+                       store a2
+                       pure 5
+          |]
     caseSimplification before `sameAs` after
 
   forM_ programGenerators $ \(name, gen) -> do
@@ -60,7 +57,7 @@ spec = do
       it "Program size does not change" $ property $
         forAll gen programSizeDoesNotChange
 
-      it "Cases with tags as values have tags in their alternatives" $ property $
+      it "Cases with tas as values have tags in their alternatives" $ property $
         forAll gen effectedAlternativesHasOnlyTags
 
 varTagCover :: Exp -> Property -> Property
