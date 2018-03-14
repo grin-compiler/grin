@@ -1,5 +1,4 @@
-{-# LANGUAGE TypeApplications, OverloadedStrings, TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Transformations.Optimising.CaseCopyPropagationSpec where
 
 import Transformations.Optimising.CaseCopyPropagation

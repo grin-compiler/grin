@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeApplications, OverloadedStrings, LambdaCase #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, LambdaCase #-}
 module Transformations.Optimising.ConstantFoldingSpec where
 
 import Control.Monad
@@ -6,8 +6,8 @@ import Test.Hspec
 import Test.QuickCheck
 import Transformations.Optimising.ConstantFolding
 import Check
-import Free
 import Grin
+import GrinTH
 import Test
 import Assertions
 
@@ -16,51 +16,52 @@ spec :: Spec
 spec = do
   describe "constant folding" $ do
     it "inside bind" $ do
-      x <- buildExpM $
-        "x"  <=: store @Var "a"    $
-        "y"  <=: store @Var "b"    $
-        "u"  <=: unit  @Int 5      $
-        Unit <=: store @Var "u"    $
-        unit @Var "u"
-
-      e <- buildExpM $
-        "x"  <=: store @Var "a" $
-        "y"  <=: store @Var "b" $
-        Unit <=: store @Int 5   $
-        unit @Int 5
-      constantFolding x `sameAs` e
+      let before =
+            [expr|
+              x <- store a
+              y <- store b
+              u <- pure 5
+              store u
+              pure u
+            |]
+      let after =
+            [expr|
+              x <- store a
+              y <- store b
+              store 5
+              pure 5
+            |]
+      constantFolding before `sameAs` after
 
     it "last bind" $ do
-      x <- buildExpM $
-        "x" <=: store @Var "a" $
-        "y" <=: store @Var "b" $
-        "u" <=: unit  @Int 5   $
-        unit @Var "u"
-      e <- buildExpM $
-        "x" <=: store @Var "a" $
-        "y" <=: store @Var "b" $
-        unit @Int 5
-      constantFolding x `sameAs` e
+      let before =
+            [expr|
+              x <- store a
+              y <- store b
+              u <- pure 5
+              pure u
+            |]
+      let after =
+            [expr|
+              x <- store a
+              y <- store b
+              pure 5
+            |]
+      constantFolding before `sameAs` after
 
     it "unused variable" $ do
-      x <- buildExpM $
-        "x" <=: store @Int 3 $
-        "u" <=: unit  @Int 4 $
-        unit @Int 5
-      e <- buildExpM $
-        "x" <=: store @Int 3 $
-        unit @Int 5
-      constantFolding x `sameAs` e
-
-    it "only one statement" $ do
-      x <- buildExpM $
-        def "fun" ["a", "b"] $
-          "x" <=: unit @Int 3 $
-          unit @Var "x"
-      e <- buildExpM $
-        def "fun" ["a", "b"] $
-          unit @Int 3
-      constantFolding x `sameAs` e
+      let before =
+            [expr|
+              x <- store 3
+              u <- pure 4
+              pure 5
+            |]
+      let after =
+            [expr|
+              x <- store 3
+              pure 5
+            |]
+      constantFolding before `sameAs` after
 
   forM_ programGenerators $ \(name, gen) -> do
     describe name $ do
