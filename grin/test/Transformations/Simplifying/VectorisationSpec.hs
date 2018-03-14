@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeApplications, OverloadedStrings, LambdaCase #-}
+{-# LANGUAGE OverloadedStrings, LambdaCase, QuasiQuotes #-}
 module Transformations.Simplifying.VectorisationSpec where
 
 import AbstractInterpretation.AbstractRunGrin
@@ -8,8 +8,8 @@ import Transformations.Simplifying.Vectorisation (vectorisation)
 import Data.Monoid
 import Data.Map
 import Test.Hspec
-import Free hiding (V)
 import Grin
+import GrinTH
 import Assertions
 
 import qualified Data.Map as Map
@@ -23,7 +23,7 @@ spec = do
                 mempty
                 (Map.fromList
                   [ ("v", (Set.singleton
-                            (N (RTNode (tag "Cons" 2)
+                            (N (RTNode (Tag C "Cons")
                                 [ Set.singleton (BAS T_Int64)
                                 , Set.singleton (RTLoc 3)
                                 ]))))
@@ -34,18 +34,18 @@ spec = do
                   ])
                 mempty
 
-    before <- buildExpM $
-      "l0" <=: store @Int 0                     $
-      "v"  <=: unit @Val ("q" @: ["p1", "p2"])  $
-      "l1" <=: store @Var "v"                   $
-      unit @Int 1
-
-    after <- buildExpM $
-      "l0" <=: store @Int 0                                       $
-      ("v0" #: ["v1", "v2"]) <=: unit @Val ("q" @: ["p1", "p2"])  $
-      "l1" <=: store @Val ("v0" #: ["v1", "v2"])                  $
-      unit @Int 1
-
+    let before = [expr|
+            l0 <- store 0
+            v  <- pure (Cq p1 p2)
+            l1 <- store v
+            pure 1
+          |]
+    let after = [expr|
+            l0         <- store 0
+            (v0 v1 v2) <- pure (Cq p1 p2)
+            l1         <- store (v0 v1 v2)
+            pure 1
+          |]
     vectorisation hpt before `sameAs` after
 
 runTests :: IO ()
