@@ -1,11 +1,13 @@
-{-# LANGUAGE TypeApplications, OverloadedStrings #-}
+{-# LANGUAGE TypeApplications, OverloadedStrings, TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
 module Transformations.Optimising.CaseCopyPropagationSpec where
 
 import Transformations.Optimising.CaseCopyPropagation
 
 import Test.Hspec
-import Free
+import Free hiding (def)
 import Grin
+import GrinTH
 import Test
 import Assertions
 import ParseGrin
@@ -193,29 +195,31 @@ spec = do
 
   it "last expression is a case" $ do
 
-    let before = parseDef $ unlines
-          [ "sum l ="
-          , "  l2 <- eval l"
-          , "  case l2 of"
-          , "    (CNil) -> pure (CInt 0)"
-          , "    (CCons x xs) -> (CInt x') <- eval x"
-          , "                    (CInt s') <- sum xs"
-          , "                    ax' <- _prim_int_add x' s'"
-          , "                    pure (CInt ax')"
-          ]
+    let before =
+          [def|
+            sum l =
+              l2 <- eval l
+              case l2 of
+                (CNil) -> pure (CInt 0)
+                (CCons x xs) -> (CInt x') <- eval x
+                                (CInt s') <- sum xs
+                                ax' <- _prim_int_add x' s'
+                                pure (CInt ax')
+          |]
 
-    let after = parseDef $ unlines
-          [ "sum l ="
-          , "  l2 <- eval l"
-          , "  l2' <- do"
-          , "    case l2 of"
-          , "      (CNil) -> pure 0"
-          , "      (CCons x xs) -> (CInt x') <- eval x"
-          , "                      (CInt s') <- sum xs"
-          , "                      ax' <- _prim_int_add x' s'"
-          , "                      pure ax'"
-          , "  pure (CInt l2')"
-          ]
+    let after =
+          [def|
+            sum l =
+              l2 <- eval l
+              l2' <- do
+                case l2 of
+                  (CNil) -> pure 0
+                  (CCons x xs) -> (CInt x') <- eval x
+                                  (CInt s') <- sum xs
+                                  ax' <- _prim_int_add x' s'
+                                  pure ax'
+              pure (CInt l2')
+          |]
 
     caseCopyPropagation before `sameAs` after
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module ParseGrin (parseGrin, parseDef) where
+module ParseGrin (parseGrin, parseDef, parseExpr) where
 
 import Data.Void
 import Control.Applicative (empty)
@@ -115,3 +115,6 @@ parseGrin filename content = runParser grinModule filename content
 
 parseDef :: String -> Exp
 parseDef = either (error . show) id . runParser def ""
+
+parseExpr :: String -> Exp
+parseExpr = either (error . show) id . runParser (expr pos1) ""

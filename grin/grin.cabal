@@ -20,6 +20,7 @@ library
     Eval
     Free
     Grin
+    GrinTH
     TypeEnv
     TypeCheck
     Optimizations
@@ -114,7 +115,10 @@ library
     extra,
     logict,
     QuickCheck,
-    ghc
+    ghc,
+    neat-interpolation,
+    template-haskell
+
   default-language:    Haskell2010
 
 executable grin
