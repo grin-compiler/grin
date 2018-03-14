@@ -9,7 +9,6 @@ import Test.QuickCheck hiding (generate)
 import Test
 
 import Check
-import Free
 import Grin
 import GrinTH
 import Assertions
