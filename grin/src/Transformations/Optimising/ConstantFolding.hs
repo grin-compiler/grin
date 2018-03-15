@@ -3,7 +3,6 @@ module Transformations.Optimising.ConstantFolding where
 
 import Check
 import Grin
-import Free
 import Test
 import Test.Hspec
 import Test.QuickCheck

@@ -18,7 +18,6 @@ library
   exposed-modules:
     Check
     Eval
-    Free
     Grin
     GrinTH
     TypeEnv
@@ -164,7 +163,6 @@ test-suite grin-test
                      , Transformations.Simplifying.VectorisationSpec
                      , Transformations.Optimising.CaseCopyPropagationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
-                     , Transformations.SubstitutionSpec
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec

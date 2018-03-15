@@ -4,7 +4,6 @@ module Transformations.Simplifying.RightHoistFetch where
 import Data.Function
 import Data.Map (Map)
 import Debug.Trace (traceShowId, trace)
-import Free
 import Grin
 import PrimOps
 import Transformations.Rename

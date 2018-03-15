@@ -1,9 +1,9 @@
-{-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, DeriveFunctor, OverloadedStrings #-}
 module Transformations.Substitution where
 
 import Data.Map (Map)
-import Free
 import Grin
+import GrinTH
 import Test.Hspec
 
 import qualified Data.Map as Map
@@ -40,26 +40,3 @@ substitution substituitons = ana builder where
   subst (ValTag tag)                  = ValTag tag
   subst (VarTagNode name simpleVals)  = VarTagNode name (subst <$> simpleVals)
   subst other                         = other
-
-
-tests :: Spec
-tests = do
-  it "simple expressions" $ do
-    x <- buildExpM $
-      "x"  <=: store @Var "a"                             $
-      "y"  <=: app "_prim_int_add" ["a", i64 3, "a", i64 2, "a"] $
-      Unit <=: fetch "b" (Just 2)                         $
-      Unit <=: fetch "b" Nothing                          $
-      unit @Var "y"
-    e <- buildExpM $
-      "x"  <=: store @Int 10                                       $
-      "y"  <=: app "_prim_int_add" [i64 10, i64 3, i64 10, i64 2, i64 10] $
-      Unit <=: fetch "b" (Just 2)                                  $
-      Unit <=: fetch "b" Nothing                                   $
-      unit @Var "y"
-    -- 'a' should be replaced, 'b' should be left out
-    (substitution (Map.fromList [("a", i64 10), ("b", i64 20)]) x)
-      `shouldBe` e
-
-sRunTests :: IO ()
-sRunTests = hspec Transformations.Substitution.tests
