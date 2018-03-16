@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, EmptyCase, ViewPatterns #-}
-module Transformations.Optimising.CaseCopyPropagation where
+module Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation) where
 
 import Control.Arrow
 import Grin
@@ -8,6 +8,10 @@ import Data.Monoid hiding (Alt)
 import Debug.Trace
 import Data.Maybe
 import Data.List (find)
+import Lens.Micro.Platform hiding (zoom)
+import TypeEnv
+import qualified Data.Vector
+import qualified Data.Map as Map
 
 
 {-
@@ -31,8 +35,8 @@ type Step = ExpF ()
 type Path = [Step]
 
 data Info = Info
-  { returns :: [(Path, Maybe Tag)]
-  , cases   :: [(Path, Tag)]
+  { returns :: [(Path, Maybe (Tag, SimpleType))]
+  , cases   :: [(Path, (Tag, SimpleType))]
   }
   deriving Show
 
@@ -60,21 +64,28 @@ zoom :: Int -> Info -> Info
 zoom n (Info returns cases) = Info (map (first (drop n)) returns) (map (first (drop n)) cases)
 
 caseTagOnStep :: Step -> Info -> Maybe Tag
-caseTagOnStep s (Info returns cases) = fmap snd $ find (([s] ==) . fst) $ cases
+caseTagOnStep s (Info returns cases) = fmap (fst . snd) $ find (([s] ==) . fst) $ cases
 
 caseFocusOnStep :: Step -> Info -> Bool
 caseFocusOnStep s i = isJust $ caseTagOnStep s i
 
+typeOf :: TypeEnv -> Val -> SimpleType
+typeOf env = \case
+  (Lit l) -> typeOfLitST l
+  (Var v) -> case env ^. variable . at v of
+    Nothing -> error $ "Variable is not defined: " <> v
+    Just (T_SimpleType t) -> t
+  bad -> error $ show bad
 
-collectInfo :: Exp -> Info
-collectInfo = para convert where
+collectInfo :: TypeEnv -> Exp -> Info
+collectInfo env = para convert where
   convert :: ExpF (Exp, Info) -> Info
   convert e = addStep (toStep e) $ case e of
     EBindF (SBlock _, se) _ (_, r) -> se <> r
     EBindF _ _ (EBind _ _ _, r)    -> r
     EBindF _ _ (ECase _ _, r)      -> r
 
-    EBindF _ _ (SReturn (ConstTagNode tag@(Tag _ _) [v]), _) -> mempty { returns = [(mempty, Just tag)] } -- Good node
+    EBindF _ _ (SReturn (ConstTagNode tag@(Tag _ _) [v]), _) -> mempty { returns = [(mempty, Just (tag, typeOf env v))] } -- Good node
     EBindF _ _ (SReturn _, _)                                -> mempty { returns = [(mempty, Nothing)] }  -- Bad node
 
     ProgramF (mconcat . map snd -> info) -> info
@@ -82,9 +93,9 @@ collectInfo = para convert where
 
     ECaseF v ((mconcat . map snd) -> info) -> case info of
       Info returns cases -> case (allTheSame $ map snd returns) of
-        Just (Just tag) -> Info mempty (([], tag):cases) -- The case is the same return values
-        Just Nothing    -> Info mempty cases
-        Nothing         -> Info mempty cases
+        Just (Just x) -> Info mempty (([], x):cases) -- The case is the same return values
+        Just Nothing  -> Info mempty cases
+        Nothing       -> Info mempty cases
 
     AltF pat (ei, info) -> info
     SBlockF (ei, info)  -> info
@@ -93,14 +104,20 @@ collectInfo = para convert where
 
 -- * Build
 
+extendTypeEnv :: Info -> TypeEnv -> TypeEnv
+extendTypeEnv (Info returns cases) te = foldl addVar te cases where
+  addVar te0 (path, (tag, typ)) = case (last path) of
+    ECaseF v@(Var n) _ -> extend te0 $ newVar (n <> "'") (T_SimpleType typ)
+    bad                -> error $ show bad
+
 data BuilderState
   = Build Exp Info Bool
   | Skip  Int Exp Info Bool
 
-caseCopyPropagation :: Exp -> Exp
-caseCopyPropagation e = apo builder (Build e info False) where
+caseCopyPropagation :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+caseCopyPropagation (env, e) = (extendTypeEnv info env, apo builder (Build e info False)) where
 
-  info = collectInfo e
+  info = collectInfo env e
 
   builder :: BuilderState -> ExpF (Either Exp BuilderState)
 

@@ -14,7 +14,7 @@ import Lens.Micro.Platform
 
 import Reducer.LLVM.Base
 import Grin
-import TypeEnv
+import TypeEnv hiding (typeOfVal)
 import Pretty
 
 -- allows simple type singletons or locations

@@ -27,8 +27,8 @@ getVarNodeArity typeEnv@TypeEnv{..} name = case Map.lookup name _variable of
   Just (T_SimpleType _) -> Nothing
   Just (T_NodeSet ns)   -> Just $ maximum [1 + V.length args | args <- Map.elems ns]
 
-vectorisation :: TypeEnv -> Exp -> Exp
-vectorisation typeEnv expression = ana folder (Map.empty, expression)
+vectorisation :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+vectorisation (typeEnv, expression) = (typeEnv, ana folder (Map.empty, expression))
   where
     folder :: VectorisationAccumulator -> ExpF VectorisationAccumulator
     folder (nameStore, expression) =

@@ -6,6 +6,8 @@ import Data.Int
 import Data.Map (Map)
 import Data.Vector (Vector)
 import qualified Data.Map as Map
+import qualified Data.Vector as Vector (fromList)
+import Data.Monoid
 
 import Lens.Micro.Platform
 
@@ -33,6 +35,12 @@ data Type
                   }
   deriving (Eq, Ord, Show)
 
+int64_t :: Type
+int64_t = T_SimpleType T_Int64
+
+float_t :: Type
+float_t = T_SimpleType T_Float
+
 data TypeEnv
   = TypeEnv
   { _location :: Vector NodeSet
@@ -43,14 +51,43 @@ data TypeEnv
 
 concat <$> mapM makeLenses [''TypeEnv, ''Type, ''SimpleType]
 
+emptyTypeEnv :: TypeEnv
+emptyTypeEnv = TypeEnv mempty mempty mempty
+
+newVar :: Name -> Type -> Endo TypeEnv
+newVar n t = Endo (variable %~ (Map.insert n t))
+
+create :: Endo TypeEnv -> TypeEnv
+create (Endo c) = c emptyTypeEnv
+
+extend :: TypeEnv -> Endo TypeEnv -> TypeEnv
+extend t (Endo c) = c t
+
 variableType :: TypeEnv -> Name -> Type
 variableType TypeEnv{..} name = case Map.lookup name _variable of
   Nothing -> error $ printf "variable %s is missing from type environment" name
   Just t -> t
 
 typeOfLit :: Lit -> Type
-typeOfLit lit = T_SimpleType $ case lit of
+typeOfLit = T_SimpleType . typeOfLitST
+
+typeOfLitST :: Lit -> SimpleType
+typeOfLitST lit = case lit of
   LInt64{}  -> T_Int64
   LWord64{} -> T_Word64
   LFloat{}  -> T_Float
   LBool{}   -> T_Bool
+
+-- Type of literal like values
+typeOfVal :: Val -> Type
+typeOfVal = \case
+  ConstTagNode  tag simpleVals ->
+    T_NodeSet
+      $ Map.singleton tag
+      $ Vector.fromList
+      $ map ((\(T_SimpleType t) -> t) . typeOfVal) simpleVals
+
+  Unit    -> T_SimpleType T_Unit
+  Lit lit -> typeOfLit lit
+
+  bad -> error (show bad)

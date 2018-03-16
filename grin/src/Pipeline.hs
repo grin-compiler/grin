@@ -81,25 +81,28 @@ data Transformation
   | CaseCopyPropagation
   deriving (Enum, Eq, Ord, Show)
 
-transformation :: Maybe TypeEnv -> Int -> Transformation -> Exp -> Exp
-transformation typeEnv n = \case
-  CaseSimplification              -> caseSimplification
-  SplitFetch                      -> splitFetch
-  Vectorisation                   -> Vectorisation2.vectorisation (fromJust typeEnv)
-  RegisterIntroduction            -> registerIntroductionI n
-  BindNormalisation               -> bindNormalisation
-  RightHoistFetch                 -> RHF.rightHoistFetch
-  GenerateEval                    -> generateEval
-  ConstantFolding                 -> constantFolding
-  EvaluatedCaseElimination        -> evaluatedCaseElimination
-  TrivialCaseElimination          -> trivialCaseElimination
-  SparseCaseOptimisation          -> sparseCaseOptimisation (fromJust typeEnv)
-  UpdateElimination               -> updateElimination
-  CopyPropagation                 -> copyPropagation
-  ConstantPropagation             -> constantPropagation
-  DeadProcedureElimination        -> deadProcedureElimination
-  DeadVariableElimination         -> deadVariableElimination
-  CommonSubExpressionElimination  -> commonSubExpressionElimination (fromJust typeEnv)
+noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
+noTypeEnv f (t, e) = (t, f e)
+
+transformation :: Int -> Transformation -> (TypeEnv, Exp) -> (TypeEnv, Exp)
+transformation n = \case
+  CaseSimplification              -> noTypeEnv caseSimplification
+  SplitFetch                      -> noTypeEnv splitFetch
+  Vectorisation                   -> Vectorisation2.vectorisation
+  RegisterIntroduction            -> noTypeEnv $ registerIntroductionI n
+  BindNormalisation               -> noTypeEnv bindNormalisation
+  RightHoistFetch                 -> noTypeEnv RHF.rightHoistFetch
+  GenerateEval                    -> noTypeEnv generateEval
+  ConstantFolding                 -> noTypeEnv constantFolding
+  EvaluatedCaseElimination        -> noTypeEnv evaluatedCaseElimination
+  TrivialCaseElimination          -> noTypeEnv trivialCaseElimination
+  SparseCaseOptimisation          -> sparseCaseOptimisation
+  UpdateElimination               -> noTypeEnv updateElimination
+  CopyPropagation                 -> noTypeEnv copyPropagation
+  ConstantPropagation             -> noTypeEnv constantPropagation
+  DeadProcedureElimination        -> noTypeEnv deadProcedureElimination
+  DeadVariableElimination         -> noTypeEnv deadVariableElimination
+  CommonSubExpressionElimination  -> commonSubExpressionElimination
   CaseCopyPropagation             -> caseCopyPropagation
 
 precondition :: Transformation -> [Check]
@@ -256,9 +259,12 @@ postconditionCheck t = do
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  typeEnv     <- use psTypeEnv
+  (Just env0) <- use psTypeEnv
   n           <- use psTransStep
-  psExp       %= transformation typeEnv n t
+  exp0        <- use psExp
+  let (env1, exp1) = transformation n t (env0, exp0)
+  psTypeEnv .= Just env1
+  psExp     .= exp1
   psTransStep %= (+1)
   postconditionCheck t
 

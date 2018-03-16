@@ -6,8 +6,8 @@ import Data.Functor.Foldable as Foldable
 import Grin
 import TypeEnv
 
-sparseCaseOptimisation :: TypeEnv -> Exp -> Exp
-sparseCaseOptimisation typeEnv = ana builder where
+sparseCaseOptimisation :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+sparseCaseOptimisation (typeEnv, exp) = (typeEnv, ana builder exp) where
   builder :: Exp -> ExpF Exp
   builder = \case
     ECase val@(Var name) alts ->

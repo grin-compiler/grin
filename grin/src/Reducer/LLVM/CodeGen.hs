@@ -38,7 +38,7 @@ import qualified Data.ByteString.Char8 as BS
 
 import Grin
 import Pretty
-import TypeEnv hiding (Type)
+import TypeEnv hiding (Type, typeOfVal)
 import qualified TypeEnv
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
