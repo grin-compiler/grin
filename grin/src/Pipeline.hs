@@ -214,8 +214,9 @@ pipelineStep p = do
     Statistics      -> statistics
   after <- use psExp
   let eff = if before == after then None else ExpChanged
-  liftIO $ putStrLn $ unwords ["Pipeline:", show p, "has effect:", show eff]
-
+  case p of
+    T _ -> liftIO $ putStrLn $ unwords ["Pipeline:", show p, "has effect:", show eff]
+    _   -> return ()
   -- TODO: Test this only for development mode.
   return eff
 
