@@ -153,6 +153,7 @@ defaultPipeline = \case
       , SaveGrin "CaseCopyPropagation"
       , PrintGrin ondullblack
 
+{- TODO: Enable simplificaiton transformations in the pipeline.
       , T Vectorisation
       , SaveGrin "Vectorisation"
       , T BindNormalisation
@@ -179,6 +180,8 @@ defaultPipeline = \case
       , SaveGrin "RegisterIntroduction"
       , PrintGrin ondullblack
       , SaveLLVM "low-level-code"
+-}
+      , SaveLLVM "high-level-opt-code"
       , JITLLVM
       ]
       output
