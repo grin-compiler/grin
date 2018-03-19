@@ -35,13 +35,13 @@ spec = do
                 mempty
 
     let before = [expr|
-            l0 <- store 0
+            l0 <- store (CNone)
             v  <- pure (Cq p1 p2)
             l1 <- store v
             pure 1
           |]
     let after = [expr|
-            l0         <- store 0
+            l0         <- store (CNone)
             (v0 v1 v2) <- pure (Cq p1 p2)
             l1         <- store (v0 v1 v2)
             pure 1

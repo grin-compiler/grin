@@ -15,24 +15,6 @@ import Assertions
 spec :: Spec
 spec = do
   describe "constant folding" $ do
-    it "inside bind" $ do
-      let before =
-            [expr|
-              x <- store a
-              y <- store b
-              u <- pure 5
-              store u
-              pure u
-            |]
-      let after =
-            [expr|
-              x <- store a
-              y <- store b
-              store 5
-              pure 5
-            |]
-      constantFolding before `sameAs` after
-
     it "last bind" $ do
       let before =
             [expr|
@@ -52,13 +34,13 @@ spec = do
     it "unused variable" $ do
       let before =
             [expr|
-              x <- store 3
+              x <- store (CNone)
               u <- pure 4
               pure 5
             |]
       let after =
             [expr|
-              x <- store 3
+              x <- store (CNone)
               pure 5
             |]
       constantFolding before `sameAs` after

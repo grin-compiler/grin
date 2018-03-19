@@ -22,7 +22,7 @@ spec = do
           (newVar "y'" int64_t) <>
           (newVar "x'" int64_t)
     let before = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               case v of
                 (Ffoo a)  -> y' <- foo a
@@ -36,7 +36,7 @@ spec = do
     let teAfter = extend teBefore $
           newVar "v'" int64_t
     let after = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               v' <- do
                 case v of
@@ -57,7 +57,7 @@ spec = do
           (newVar "y'" int64_t) <>
           (newVar "x'" int64_t)
     let before = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               case v of
                 (Ffoo a)  -> y' <- foo a
@@ -68,7 +68,7 @@ spec = do
             pure m0
           |]
     let after = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               case v of
                 (Ffoo a)  -> y' <- foo a
@@ -89,7 +89,7 @@ spec = do
           (newVar "y1'" int64_t) <>
           (newVar "x1'" int64_t)
     let before = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               case v of
                 (Ffoo a)  -> y' <- foo a
@@ -110,7 +110,7 @@ spec = do
           newVar "v'" int64_t <>
           newVar "v1'" int64_t
     let after = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               v' <- do
                 case v of
@@ -142,7 +142,7 @@ spec = do
           newVar "z1'" float_t <>
           newVar "x1'" int64_t
     let before = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               case v of
                 (Ffoo a)  -> y' <- foo a
@@ -162,7 +162,7 @@ spec = do
     let teAfter = extend teBefore $
           newVar "v'" int64_t
     let after = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               v' <- do
                 case v of
@@ -192,7 +192,7 @@ spec = do
           newVar "z1'" int64_t <>
           newVar "x1'" int64_t
     let before = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               case v of
                 (Ffoo a)  -> y' <- foo a
@@ -212,7 +212,7 @@ spec = do
     let teAfter = extend teBefore $
           newVar "v1'" int64_t
     let after = [expr|
-            m0 <- store 3
+            m0 <- store (CNone)
             u  <- do
               case v of
                 (Ffoo a)  -> y' <- foo a

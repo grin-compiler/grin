@@ -1,10 +1,10 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, LambdaCase #-}
 
 module ParseGrin (parseGrin, parseDef, parseExpr) where
 
 import Data.Void
 import Control.Applicative (empty)
-import Control.Monad (void)
+import Control.Monad (void, mzero)
 import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
@@ -75,11 +75,17 @@ ifThenElse i = do
                    ]
 
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
-              SStore <$ kw "store" <*> value <|>
+              SStore <$ kw "store" <*> satisfyM nodeOrVar value <|>
               SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
-              SUpdate <$ kw "update" <*> var <*> value <|>
+              SUpdate <$ kw "update" <*> var <*> satisfyM nodeOrVar value <|>
               SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
               SApp <$> primNameOrDefName <*> some simpleValue
+  where
+    nodeOrVar = \case
+      ConstTagNode _ _ -> True
+      VarTagNode _ _   -> True
+      Var _            -> True
+      _                -> False
 
 primNameOrDefName = ('_':) <$ char '_' <*> var <|> var
 
@@ -106,6 +112,14 @@ literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
           (try $ LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u')) <|>
           LInt64 . fromIntegral <$> signedInteger <|>
           LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")
+
+satisfyM :: (a -> Bool) -> Parser a -> Parser a
+satisfyM pred parser = do
+  x <- parser
+  if pred x
+    then pure x
+    else mzero
+
 
 grinModule :: Parser Exp
 grinModule = Program <$> some def <* sc <* eof

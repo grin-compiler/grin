@@ -33,7 +33,7 @@ spec = do
   it "Example from Figure 4.11" $ do
     let before =
           [expr|
-            l1 <- store 3
+            l1 <- store (CNone)
             case (t a1 a2) of
               CNil -> pure 3
               (CCons x xs) -> store x
@@ -42,7 +42,7 @@ spec = do
           |]
     let after =
           [expr|
-            l1 <- store 3
+            l1 <- store (CNone)
             case t of
               CNil -> pure 3
               CCons -> store a1
