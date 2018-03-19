@@ -40,7 +40,7 @@ import Debug.Trace
 import Data.Text (pack)
 import Pretty
 import GrinTH
-import TypeEnv (TypeEnv)
+import TypeEnv (TypeEnv, emptyTypeEnv)
 import Test.Hspec
 import Control.Monad
 
@@ -49,6 +49,11 @@ type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
 
 testExprContext :: (((TypeEnv, Exp) -> (TypeEnv, Exp)) -> Spec) -> Spec
 testExprContext mkSpec = forM_ contexts $ \(label, ctx) -> describe (concat ["(", label, ")"]) $ mkSpec ctx
+
+testExprContextE :: ((Exp -> Exp) -> Spec) -> Spec
+testExprContextE mkSpec =
+  forM_ contexts $ \(label, ctx) ->
+    describe (concat ["(", label, ")"]) $ mkSpec (\e -> snd $ ctx (emptyTypeEnv, e))
 
 contexts :: [TestExpContext]
 contexts =
