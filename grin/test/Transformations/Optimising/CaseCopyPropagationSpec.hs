@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Transformations.Optimising.CaseCopyPropagationSpec where
 
 import Transformations.Optimising.CaseCopyPropagation
@@ -12,10 +12,8 @@ import ParseGrin
 import TypeEnv
 import Data.Monoid
 
-
 spec :: Spec
-spec = do
-
+spec = testExprContext $ \ctx -> do
   it "Example from Figure 4.26" $ do
     let teBefore = create $
           (newVar "z'" int64_t) <>
@@ -48,7 +46,7 @@ spec = do
               pure (CInt v')
             pure m0
           |]
-    caseCopyPropagation (teBefore, before) `sameAs` (teAfter, after)
+    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "One node has no Int tagged value" $ do
     let typeEnv = emptyTypeEnv
@@ -78,7 +76,7 @@ spec = do
                 (CInt x') -> pure (CInt x')
             pure m0
           |]
-    caseCopyPropagation (teBefore, before) `sameAs` (teBefore, after)
+    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
 
   it "Embedded good case" $ do
     let teBefore = create $
@@ -131,7 +129,7 @@ spec = do
               pure (CInt v')
             pure m0
           |]
-    caseCopyPropagation (teBefore, before) `sameAs` (teAfter, after)
+    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "Embedded bad case" $ do
     let teBefore = create $
@@ -181,7 +179,7 @@ spec = do
               pure (CInt v')
             pure m0
           |]
-    caseCopyPropagation (teBefore, before) `sameAs` (teAfter, after)
+    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "Leave the outher, transform the inner" $ do
     let teBefore = create $
@@ -231,14 +229,13 @@ spec = do
                              pure (CInt x')
             pure m0
           |]
-    caseCopyPropagation (teBefore, before) `sameAs` (teAfter, after)
+    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "last expression is a case" $ do
     let teBefore = create $
           newVar "ax'" int64_t
     let before =
-          [def|
-            sum l =
+          [expr|
               l2 <- eval l
               case l2 of
                 (CNil) -> pure (CInt 0)
@@ -250,8 +247,7 @@ spec = do
     let teAfter = extend teBefore $
           newVar "l2'" int64_t
     let after =
-          [def|
-            sum l =
+          [expr|
               l2 <- eval l
               l2' <- do
                 case l2 of
@@ -262,7 +258,7 @@ spec = do
                                   pure ax'
               pure (CInt l2')
           |]
-    caseCopyPropagation (teBefore, before) `sameAs` (teAfter, after)
+    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
 runTests :: IO ()
 runTests = hspec spec

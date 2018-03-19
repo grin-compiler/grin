@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
+{-# LANGUAGE QuasiQuotes, ViewPatterns #-}
 module Test where
 
 import Prelude hiding (GT)
@@ -36,6 +37,110 @@ import Data.Map (Map); import qualified Data.Map as Map
 import Data.List
 
 import Debug.Trace
+import Data.Text (pack)
+import Pretty
+import GrinTH
+import TypeEnv (TypeEnv)
+import Test.Hspec
+import Control.Monad
+
+
+type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
+
+testExprContext :: (((TypeEnv, Exp) -> (TypeEnv, Exp)) -> Spec) -> Spec
+testExprContext mkSpec = forM_ contexts $ \(label, ctx) -> describe (concat ["(", label, ")"]) $ mkSpec ctx
+
+contexts :: [TestExpContext]
+contexts =
+  [ emptyCtx
+  , firstBindR
+  , middleBindR
+  , lastBindR
+  , bindL
+  , lastBindL
+  , firstAlt
+  , middleAlt
+  , lastAlt
+  ]
+
+contexts_ :: [TestExpContext]
+contexts_ =
+  [ bindL
+  ]
+
+emptyCtx :: TestExpContext
+emptyCtx = ("empty", id)
+
+exprText = pack . show . PP
+
+firstBindR :: TestExpContext
+firstBindR = ("first bind right", second tr) where
+  tr (exprText -> e) = [expr|
+      $e
+      pure ()
+    |]
+
+middleBindR :: TestExpContext
+middleBindR = ("middle bind right", second tr) where
+  tr (exprText -> e) = [expr|
+      pure ()
+      $e
+      pure ()
+    |]
+
+lastBindR :: TestExpContext
+lastBindR = ("last bind right", second tr) where
+  tr (exprText -> e) = [expr|
+      pure ()
+      $e
+    |]
+
+bindL :: TestExpContext
+bindL = ("bind left", second tr) where
+  tr (exprText -> e) = [expr|
+      fb1 <- do
+        $e
+      pure ()
+    |]
+
+lastBindL :: TestExpContext
+lastBindL = ("last bind left", second tr) where
+  tr (exprText -> e) = [expr|
+      md1 <- do
+        pure ()
+        $e
+      pure ()
+    |]
+
+firstAlt :: TestExpContext
+firstAlt = ("first alt", second tr) where
+  tr (exprText -> e) = [expr|
+      case 1 of
+        1 -> pure ()
+             $e
+        2 -> pure ()
+        3 -> pure ()
+    |]
+
+middleAlt :: TestExpContext
+middleAlt = ("middle alt", second tr) where
+  tr (exprText -> e) = [expr|
+      case 1 of
+        1 -> pure ()
+        2 -> pure ()
+             $e
+        3 -> pure ()
+    |]
+
+lastAlt :: TestExpContext
+lastAlt = ("last alt", second tr) where
+  tr (exprText -> e) = [expr|
+      case 1 of
+        1 -> pure ()
+        2 -> pure ()
+        3 -> pure ()
+             $e
+    |]
 
 
 
