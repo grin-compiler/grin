@@ -58,8 +58,6 @@ testExprContextE mkSpec =
 contexts :: [TestExpContext]
 contexts =
   [ emptyCtx
-  , firstBindR
-  , middleBindR
   , lastBindR
   , bindL
   , lastBindL
@@ -68,9 +66,9 @@ contexts =
   , lastAlt
   ]
 
-contexts_ :: [TestExpContext]
-contexts_ =
-  [ bindL
+contexts1 :: [TestExpContext]
+contexts1 =
+  [ middleBindR
   ]
 
 emptyCtx :: TestExpContext
@@ -78,12 +76,21 @@ emptyCtx = ("empty", id)
 
 exprText = pack . show . PP
 
-firstBindR :: TestExpContext
-firstBindR = ("first bind right", second tr) where
+firstBindR1 :: TestExpContext
+firstBindR1 = ("first bind right", second tr) where
   tr (exprText -> e) = [expr|
       $e
       pure ()
     |]
+
+changeLast :: Exp -> Exp -> Exp
+changeLast e (EBind l p r) = EBind l p (changeLast e r)
+changeLast e r@(ECase{})   = EBind (SBlock r) (Var "cl") e
+changeLast e r             = EBind r (Var "cl") e
+
+firstBindR :: TestExpContext
+firstBindR = ("first bind right", second tr) where
+  tr e = changeLast (SReturn (Lit (LInt64 1))) e
 
 middleBindR :: TestExpContext
 middleBindR = ("middle bind right", second tr) where
@@ -99,6 +106,7 @@ lastBindR = ("last bind right", second tr) where
       pure ()
       $e
     |]
+
 
 bindL :: TestExpContext
 bindL = ("bind left", second tr) where
