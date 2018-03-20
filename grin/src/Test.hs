@@ -43,6 +43,7 @@ import GrinTH
 import TypeEnv (TypeEnv, emptyTypeEnv)
 import Test.Hspec
 import Control.Monad
+import Data.List
 
 
 type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
@@ -55,12 +56,46 @@ testExprContextE mkSpec =
   forM_ contexts $ \(label, ctx) ->
     describe (concat ["(", label, ")"]) $ mkSpec (\e -> snd $ ctx (emptyTypeEnv, e))
 
+stressTest
+  :: ((TypeEnv, Exp) -> (TypeEnv, Exp))
+  -> (TypeEnv, Exp)
+  -> (TypeEnv, Exp)
+  -> Spec
+stressTest f before after = it "Random context" $ forAllShrink (listOf1 arbitrary) shrink $ \ctx ->
+  let c = createExpr ctx
+  in (f (c before)) == (c after)
+
+data ExpContext
+  = EmptyCtx
+  | LastBindR
+  | BindL
+  | LastBindL
+  | FirstAlt
+  | MiddleAlt
+  | LastAlt
+  deriving (Eq, Show, Generic)
+
+instance Arbitrary ExpContext where arbitrary = genericArbitraryU
+
+createExpr :: [ExpContext] -> (TypeEnv, Exp) -> (TypeEnv, Exp)
+createExpr xs te = foldl' combine te (xs `zip` [0..]) where
+  combine te (ctx, n) =
+    (case ctx of
+      EmptyCtx   -> snd emptyCtx
+      LastBindR  -> snd lastBindR
+      BindL      -> snd $ bindL n
+      LastBindL  -> snd $ lastBindL n
+      FirstAlt   -> snd firstAlt
+      MiddleAlt  -> snd middleAlt
+      LastAlt    -> snd lastAlt)
+    $ te
+
 contexts :: [TestExpContext]
 contexts =
   [ emptyCtx
   , lastBindR
-  , bindL
-  , lastBindL
+  , bindL 0
+  , lastBindL 0
   , firstAlt
   , middleAlt
   , lastAlt
@@ -107,19 +142,18 @@ lastBindR = ("last bind right", second tr) where
       $e
     |]
 
-
-bindL :: TestExpContext
-bindL = ("bind left", second tr) where
+bindL :: Int -> TestExpContext
+bindL (pack . show -> n) = ("bind left", second tr) where
   tr (exprText -> e) = [expr|
-      fb1 <- do
+      fb$n <- do
         $e
       pure ()
     |]
 
-lastBindL :: TestExpContext
-lastBindL = ("last bind left", second tr) where
+lastBindL :: Int -> TestExpContext
+lastBindL (pack . show -> n) = ("last bind left", second tr) where
   tr (exprText -> e) = [expr|
-      md1 <- do
+      md$n <- do
         pure ()
         $e
       pure ()
