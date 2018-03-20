@@ -13,7 +13,6 @@ import TypeEnv
 import qualified Data.Vector
 import qualified Data.Map as Map
 
-
 {-
 When implementing the transformation we need to, for each case expression:
 1. Examine the return sites of all the alternatives
@@ -164,8 +163,7 @@ caseCopyPropagation (env, e) = (extendTypeEnv info env, apo builder (Build e inf
         i1 = zoom 1 i
         newVar = Var (n <> "'")
 
-    EBind lhs pat rhs | isSimpleExp lhs -> EBindF (Left lhs)   pat (stepIn rhs)
-    EBind lhs pat rhs                   -> EBindF (stepIn lhs) pat (stepIn rhs)
+    EBind lhs pat rhs -> EBindF (stepIn lhs) pat (stepIn rhs)
 
     ECase val alts
       | caseFocusOnStep step i -> ECaseF val (map stepInT alts)
