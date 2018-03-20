@@ -61,7 +61,7 @@ stressTest
   -> (TypeEnv, Exp)
   -> (TypeEnv, Exp)
   -> Spec
-stressTest f before after = it "Random context" $ forAllShrink (listOf1 arbitrary) shrink $ \ctx ->
+stressTest f before after = it "Stress test" $ forAllShrink (listOf1 arbitrary) shrink $ \ctx ->
   let c = createExpr ctx
   in (f (c before)) == (c after)
 
