@@ -163,6 +163,8 @@ test-suite grin-test
                      , Transformations.Simplifying.VectorisationSpec
                      , Transformations.Optimising.CaseCopyPropagationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
+                     , Transformations.Optimising.EvaluatedCaseEliminationSpec
+                     , Transformations.Optimising.TrivialCaseEliminationSpec
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec
