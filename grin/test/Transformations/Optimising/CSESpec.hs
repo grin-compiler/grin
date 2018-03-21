@@ -20,7 +20,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   testExprContext $ \ctx -> do
-    it "Figure 4.27" $ do
+    it "Figure 4.34" $ do
       let teBefore = create $
             (newVar "x'" int64_t)
 
