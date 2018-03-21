@@ -1,9 +1,18 @@
-module Sum where
+module SumSimpleBasic where
+
+data List a
+  = Nil
+  | Cons a (List a)
 
 hs_sum_pure :: IO ()
-hs_sum_pure = print $ sum 0 1 100000
+hs_sum_pure = print $ sum $ upto 1 100000
  where
-  sum :: Int -> Int -> Int -> Int
-  sum n29 n30 n31
-    | n30 > n31 = n29
-    | otherwise = sum (n29 + n30) (n30 + 1) n31
+  upto :: Int -> Int -> List Int
+  upto m n = if m > n
+              then Nil
+              else Cons m $ upto (m+1) n
+
+  sum :: List Int -> Int
+  sum l = case l of
+    Nil       -> 0
+    Cons n ns -> n + sum ns
