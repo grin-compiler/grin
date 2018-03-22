@@ -2,3 +2,5 @@ playground/* linguist-documentation
 papers/* linguist-documentation
 images/* linguist-documentation
 *.html linguist-documentation
+
+grin/grin/* linguist-documentation
