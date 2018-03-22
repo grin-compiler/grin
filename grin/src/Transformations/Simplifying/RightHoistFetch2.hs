@@ -124,7 +124,7 @@ concat <$> mapM makeLenses [''Build]
 emptyBuild = Build mempty mempty mempty mempty mempty
 
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e = trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ hylo skipUnit builder (emptyBuild, e)
+rightHoistFetch e = {-trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ -}hylo skipUnit builder (emptyBuild, e)
   where
     globalFetchMap = collectFetchVars e
 
