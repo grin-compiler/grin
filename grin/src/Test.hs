@@ -209,7 +209,6 @@ instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 instance Arbitrary G.Prog where arbitrary = genericArbitraryU
 instance Arbitrary G.Def where arbitrary = genericArbitraryU
 instance Arbitrary G.Exp where arbitrary = downScale genericArbitraryU
-instance Arbitrary G.SExp where arbitrary = genericArbitraryU
 instance Arbitrary G.Alt where arbitrary = genericArbitraryU
 instance Arbitrary Val where arbitrary = genericArbitraryU
 instance Arbitrary Lit where arbitrary = genericArbitraryU
@@ -218,6 +217,19 @@ instance Arbitrary G.Val where arbitrary = genericArbitraryU
 instance Arbitrary G.SimpleVal where arbitrary = genericArbitraryU
 instance Arbitrary G.ExtraVal where arbitrary = genericArbitraryU
 instance Arbitrary G.LPat where arbitrary = genericArbitraryU
+
+instance Arbitrary G.SExp where
+  arbitrary = genericArbitraryU `suchThat` validStoreOp
+    where
+      isNode = \case
+        G.ConstTagNode  _ _ -> True
+        G.VarTagNode    _ _ -> True
+        _                   -> False
+
+      validStoreOp = \case
+        G.SStore  val   -> isNode val
+        G.SUpdate _ val -> isNode val
+        _               -> True
 
 instance Arbitrary CPat where
   arbitrary = oneof
@@ -298,7 +310,7 @@ data Eff
 
 getSExpTypeInEff :: Eff -> Maybe Type
 getSExpTypeInEff = \case
-  NoEff         -> mzero
+  NoEff       -> mzero
   NewLoc    t -> pure (TLoc t)
   ReadLoc   t -> pure t
   UpdateLoc t -> pure TUnit
@@ -398,6 +410,9 @@ data Goal
 
 genProg :: Gen Exp
 genProg = genProgWith mzero
+
+sampleProg :: IO ()
+sampleProg = sample $ fmap PP $ genProg
 
 genProgWith :: GoalM G.Exp -> Gen Exp
 genProgWith gexp =
@@ -653,14 +668,17 @@ mscale :: (Int -> Int) -> GoalM a -> GoalM a
 mscale f = liftGenTr (scale f)
 
 gEffs :: GoalM [Eff]
-gEffs = moneof
-  [ pure []
-  , gen $ do
-      n <- choose (0, 3)
-      let noeffs = replicate n NoEff
-      rest <- listOf1 $ elements [NoEff, NewLoc TInt, ReadLoc TInt, UpdateLoc TInt]
-      pure $ noeffs ++ [NewLoc TInt] ++ rest
-  ]
+gEffs = do
+  adts <- Set.toList <$> definedAdts
+  moneof
+    [ pure []
+    , gen $ do
+        n <- choose (0, 3)
+        let noeffs = replicate n NoEff
+        adt <- elements adts
+        rest <- listOf1 $ elements [NoEff, NewLoc adt, ReadLoc adt, UpdateLoc adt]
+        pure $ noeffs ++ [NewLoc adt] ++ rest
+    ]
 
 -- TODO: Effects
 -- TODO: Always succedd with a trivial function
