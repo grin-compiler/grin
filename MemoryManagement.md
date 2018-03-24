@@ -5,3 +5,6 @@
 - instead always pass heap pointer as a function argument
   - each thread has own heap and heap pointer
   - save heap pointer to a global variable when calling foreign function
+
+## Compile time garbage collection
+[ASAP: As Static As Possible memory management](http://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-908.html)
