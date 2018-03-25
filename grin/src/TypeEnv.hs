@@ -41,6 +41,10 @@ int64_t = T_SimpleType T_Int64
 float_t :: Type
 float_t = T_SimpleType T_Float
 
+_T_NodeSet :: Traversal' Type NodeSet
+_T_NodeSet f (T_NodeSet ns) = T_NodeSet <$> f ns
+_T_NodeSet _ rest           = pure rest
+
 data TypeEnv
   = TypeEnv
   { _location :: Vector NodeSet
