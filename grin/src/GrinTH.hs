@@ -8,6 +8,12 @@ import qualified Data.Text as T
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 
+prog :: QuasiQuoter
+prog = text { quoteExp = applyParseProg . quoteExp text }
+
+applyParseProg:: Q Exp -> Q Exp
+applyParseProg q = appE [|P.parseProg|] $ appE [|T.unpack|] q
+
 def :: QuasiQuoter
 def = text { quoteExp = applyParseDef . quoteExp text }
 

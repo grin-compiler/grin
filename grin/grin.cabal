@@ -65,6 +65,7 @@ library
     Transformations.Optimising.Inlining
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.ConstantFolding
+    Transformations.Optimising.GeneralizedUnboxing
     AbstractInterpretation.AbstractRunGrin
     AbstractInterpretation.HPTResult
     AbstractInterpretation.HPTResultNew
@@ -169,6 +170,7 @@ test-suite grin-test
                      , Transformations.Optimising.SparseCaseOptimisationSpec
                      , Transformations.Optimising.UpdateEliminationSpec
                      , Transformations.Optimising.CSESpec
+                     , Transformations.Optimising.GeneralizedUnboxingSpec
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec
