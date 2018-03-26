@@ -81,7 +81,61 @@ spec = do
     functionsToUnbox (teBefore, before) `shouldBe` ["foo"]
 
   it "Tail calls and general unboxing" $ do
-    pendingWith "TODO: define test data"
+    let teBefore = emptyTypeEnv
+          { _function = Map.fromList
+              [ ("inside1", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("outside3", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ,(Tag C "Nat", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t]))
+              , ("outside4", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t]))
+              , ("outside2", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t]))
+              , ("outside1", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t]))
+              ]
+          }
+    let before = [prog|
+        inside1 a1 a2 a3 =
+          b1 <- prim_int_add a1 a2
+          b2 <- prim_int_add b1 a3
+          pure (CInt b2)
+
+        outside4 =
+          pure ()
+          outside3 1
+
+        outside3 p1 =
+          case p1 of
+            1 -> inside1 p1 p1 p1
+            2 -> outside2 p1
+
+        outside2 p1 =
+          pure ()
+          outside1 p1
+
+        outside1 p1 =
+          y <- prim_int_add p1 1
+          x <- pure (CNat y)
+          pure x
+      |]
+    functionsToUnbox (teBefore, before) `shouldBe` ["inside1", "outside2", "outside1"]
 
   it "Tail call function 1" $ do
     let fun = [def|

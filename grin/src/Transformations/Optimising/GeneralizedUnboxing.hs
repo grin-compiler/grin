@@ -40,8 +40,8 @@ tailCalls = cata collect where
 
 doesReturnAKnownProduct :: TypeEnv -> Name -> Bool
 doesReturnAKnownProduct te name =
-  te ^? function . at name . _Just . _1 . _T_NodeSet
-      & maybe False (const True)
+  te ^? function . at name . _Just . _1 . _T_NodeSet . to Map.size
+      & maybe False (==1)
 
 functionsToUnbox :: (TypeEnv, Exp) -> [Name]
 functionsToUnbox (te, Program defs) = result where
