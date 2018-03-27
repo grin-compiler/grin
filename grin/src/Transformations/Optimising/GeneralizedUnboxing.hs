@@ -17,13 +17,12 @@ import Debug.Trace
 
 
 generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-generalizedUnboxing = id
+generalizedUnboxing te@(typeEnv, exp) = (typeEnv, newExp) where
+  unboxFuns = functionsToUnbox te
+  -- TODO: Unify the CoAlgebras based of transformCall and transformReturn
+  newExp = transformCalls unboxFuns $ transformReturns unboxFuns exp
 
-{-
-Step 1: Find function to unbox
-Step 2: Transform function returns
-Step 3: Transform function calls
--}
+-- TODO: Support tagless nodes.
 
 tailCalls :: Exp -> Maybe [Name]
 tailCalls = cata collect where
@@ -38,11 +37,14 @@ tailCalls = cata collect where
     SAppF f _     -> Just [f]
     e -> Nothing
 
+-- TODO: Check if the number of node parameters is 1
 doesReturnAKnownProduct :: TypeEnv -> Name -> Bool
 doesReturnAKnownProduct te name =
   te ^? function . at name . _Just . _1 . _T_NodeSet . to Map.size
       & maybe False (==1)
 
+-- TODO: Remove the fix combinator, explore the function
+-- dependency graph and rewrite disqualify steps based on that.
 functionsToUnbox :: (TypeEnv, Exp) -> [Name]
 functionsToUnbox (te, Program defs) = result where
   funName (Def n _ _) = n
@@ -62,3 +64,60 @@ functionsToUnbox (te, Program defs) = result where
     if x0 == x1
       then x0
       else rec x1
+
+transformReturns :: [Name] -> Exp -> Exp
+transformReturns toUnbox = apo builder where
+  builder :: Exp -> ExpF (Either Exp Exp)
+  builder = \case
+    Def name params body
+      | name `elem` toUnbox -> DefF name params (Right body)
+      | otherwise           -> DefF name params (Left body)
+
+    -- Remove the tag from the value
+    EBind lhs pat (SReturn (ConstTagNode tag [val]))
+      -> EBindF (Left lhs) pat (Left (SReturn val))
+
+    -- Rewrite a node variable
+    -- TODO: Unique variable name
+    -- TODO: Extract the tag
+    EBind lhs pat (SReturn (Var v))
+      -> EBindF
+          (Left lhs)
+          pat
+          (Left (EBind
+            (SReturn (Var v))
+            (ConstTagNode (Tag C "Int") [(Var $ v ++ "'")])
+            (SReturn (Var $ v ++ "'"))))
+
+    -- Always skip the lhs of a bind.
+    EBind lhs pat rhs -> EBindF (Left lhs) pat (Right rhs)
+
+    rest -> Right <$> project rest
+
+transformCalls :: [Name] -> Exp -> Exp
+transformCalls toUnbox = ana builder where
+  builder :: Exp -> ExpF Exp
+  builder = \case
+    Def name params body
+      | name `elem` toUnbox -> DefF (name ++ "'") params body
+      | otherwise           -> DefF name params body
+
+    -- TODO: Unique name
+    -- TODO: Extract the tag
+    EBind lhs@(SApp name params) ctag@(ConstTagNode (Tag C tag) [Var x]) rhs
+      | name `elem` toUnbox ->
+          EBindF
+            (SBlock (EBind
+              (SApp (name ++ "'") params)
+              (Var $ x ++ "'")
+              (SReturn (ConstTagNode (Tag C "Int") [Var $ x ++ "'"]))
+              ))
+            ctag
+            rhs
+
+    -- Tailcalls do not need a transform
+    EBind lhs pat (SApp name params)
+      | name `elem` toUnbox ->
+          EBindF lhs pat (SApp (name ++ "'") params)
+
+    rest -> project rest

@@ -23,6 +23,16 @@ spec :: Spec
 spec = do
   it "Figure 4.21" $ do
     let teBefore = emptyTypeEnv
+          { _function = Map.fromList
+              [ ("test", (int64_t, Vector.fromList [int64_t]))
+              , ("foo", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("bar", (int64_t, Vector.fromList []))
+              ]
+          }
     let before = [prog|
         test n = prim_int_add n 1
 
@@ -47,8 +57,8 @@ spec = do
         bar =
           n <- test 1
           (CInt y') <- do
-            x' <- foo' a1 a2 a3
-            pure (CInt x')
+            y'' <- foo' a1 a2 a3
+            pure (CInt y'')
           test y'
       |]
     generalizedUnboxing (teBefore, before) `sameAs` (teBefore, after)
