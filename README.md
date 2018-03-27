@@ -50,7 +50,7 @@ Transformation | Schema
 [update elimination][148]                 <br><br> _source code:_ <br> [UpdateElimination.hs]         | [<img src="images/update-elimination.png"         width="500">][148]
 [copy propagation][129]                   <br><br> _source code:_ <br> [CopyPropagation.hs]           | [<img src="images/copy-propagation-left.png"      width="500"><img src="images/copy-propagation-right.png" width="500">][129]
 [late inlining][151]                      <br><br> _source code:_ <br> [Inlining.hs]                  | [<img src="images/late-inlining.png"              width="500">][151]
-[generalised unboxing][134]               <br><br> _source code:_ <br> __TODO__                       | [<img src="images/generalised-unboxing.png"       width="500"><img src="images/unboxing-of-function-return-values.png" width="500">][134]
+[generalised unboxing][134]               <br><br> _source code:_ <br> [GeneralizedUnboxing.hs]       | [<img src="images/generalised-unboxing.png"       width="500"><img src="images/unboxing-of-function-return-values.png" width="500">][134]
 [arity raising][160]                      <br><br> _source code:_ <br> __TODO__                       | [<img src="images/arity-raising.png"              width="500">][160]
 [case copy propagation][144]              <br><br> _source code:_ <br> [CaseCopyPropagation.hs]       | [<img src="images/case-copy-propagation.png"      width="500">][144]
 [case hoisting][153]                      <br><br> _source code:_ <br> __TODO__                       | [<img src="images/case-hoisting.png"              width="500">][153]
@@ -89,3 +89,4 @@ Transformation | Schema
 [SparseCaseOptimisation.hs]:    https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/SparseCaseOptimisation.hs
 [TrivialCaseElimination.hs]:    https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/TrivialCaseElimination.hs
 [UpdateElimination.hs]:         https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/UpdateElimination.hs
+[GeneralizedUnboxing.hs]:       https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/GeneralizedUnboxing.hs
