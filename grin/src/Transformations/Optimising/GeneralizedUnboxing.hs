@@ -8,6 +8,8 @@ import Data.Maybe
 import Data.List
 import Data.Function
 import Data.Functor.Foldable as Foldable
+import Data.Functor.Infix
+import qualified Data.Vector as Vector
 import Grin
 import TypeEnv
 import Pretty
@@ -20,7 +22,7 @@ generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 generalizedUnboxing te@(typeEnv, exp) = (typeEnv, newExp) where
   unboxFuns = functionsToUnbox te
   -- TODO: Unify the CoAlgebras based of transformCall and transformReturn
-  newExp = transformCalls unboxFuns $ transformReturns unboxFuns exp
+  newExp = transformCalls unboxFuns $ (,) typeEnv $ transformReturns unboxFuns (typeEnv, exp)
 
 -- TODO: Support tagless nodes.
 
@@ -37,11 +39,20 @@ tailCalls = cata collect where
     SAppF f _     -> Just [f]
     e -> Nothing
 
--- TODO: Check if the number of node parameters is 1
 doesReturnAKnownProduct :: TypeEnv -> Name -> Bool
-doesReturnAKnownProduct te name =
-  te ^? function . at name . _Just . _1 . _T_NodeSet . to Map.size
-      & maybe False (==1)
+doesReturnAKnownProduct = isJust <$$> returnsAUniqueTag
+
+returnsAUniqueTag :: TypeEnv -> Name -> Maybe Tag
+returnsAUniqueTag te name = do
+  (tag, vs) <- te ^? function . at name . _Just . _1 . _T_NodeSet . to Map.toList . to singleton . _Just
+  typ       <- singleton (Vector.toList vs)
+  pure tag
+
+singleton :: [a] -> Maybe a
+singleton = \case
+  []  -> Nothing
+  [a] -> Just a
+  _   -> Nothing
 
 -- TODO: Remove the fix combinator, explore the function
 -- dependency graph and rewrite disqualify steps based on that.
@@ -65,12 +76,12 @@ functionsToUnbox (te, Program defs) = result where
       then x0
       else rec x1
 
-transformReturns :: [Name] -> Exp -> Exp
-transformReturns toUnbox = apo builder where
-  builder :: Exp -> ExpF (Either Exp Exp)
-  builder = \case
+transformReturns :: [Name] -> (TypeEnv, Exp) -> Exp
+transformReturns toUnbox (te, exp) = apo builder (Nothing, exp) where
+  builder :: (Maybe Tag, Exp) -> ExpF (Either Exp (Maybe Tag, Exp))
+  builder (mtag, exp0) = case exp0 of
     Def name params body
-      | name `elem` toUnbox -> DefF name params (Right body)
+      | name `elem` toUnbox -> DefF name params (Right (returnsAUniqueTag te name, body))
       | otherwise           -> DefF name params (Left body)
 
     -- Remove the tag from the value
@@ -86,16 +97,18 @@ transformReturns toUnbox = apo builder where
           pat
           (Left (EBind
             (SReturn (Var v))
-            (ConstTagNode (Tag C "Int") [(Var $ v ++ "'")])
+            (ConstTagNode (fromJust mtag) [(Var $ v ++ "'")])
             (SReturn (Var $ v ++ "'"))))
+          -- fromJust works, as when we enter the processing of body of the
+          -- expression only happens with the provided tag.
 
     -- Always skip the lhs of a bind.
-    EBind lhs pat rhs -> EBindF (Left lhs) pat (Right rhs)
+    EBind lhs pat rhs -> EBindF (Left lhs) pat (Right (mtag, rhs))
 
-    rest -> Right <$> project rest
+    rest -> Right . (,) mtag <$> project rest
 
-transformCalls :: [Name] -> Exp -> Exp
-transformCalls toUnbox = ana builder where
+transformCalls :: [Name] -> (TypeEnv, Exp) -> Exp
+transformCalls toUnbox (typeEnv, exp) = ana builder exp where
   builder :: Exp -> ExpF Exp
   builder = \case
     Def name params body
@@ -103,17 +116,29 @@ transformCalls toUnbox = ana builder where
       | otherwise           -> DefF name params body
 
     -- TODO: Unique name
-    -- TODO: Extract the tag
     EBind lhs@(SApp name params) ctag@(ConstTagNode (Tag C tag) [Var x]) rhs
       | name `elem` toUnbox ->
           EBindF
             (SBlock (EBind
               (SApp (name ++ "'") params)
               (Var $ x ++ "'")
-              (SReturn (ConstTagNode (Tag C "Int") [Var $ x ++ "'"]))
+              (SReturn (ConstTagNode (Tag C tag) [Var $ x ++ "'"]))
               ))
             ctag
             rhs
+
+    -- TODO: Unique name
+    EBind lhs@(SApp name params) (Var x) rhs
+      | name `elem` toUnbox ->
+          EBindF
+            (SBlock (EBind
+              (SApp (name ++ "'") params)
+              (Var $ x ++ "'")
+              (SReturn (ConstTagNode (fromJust $ returnsAUniqueTag typeEnv name) $ [Var $ x ++ "'"]))
+              ))
+            (Var x)
+            rhs
+
 
     -- Tailcalls do not need a transform
     EBind lhs pat (SApp name params)

@@ -21,11 +21,26 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  it "Figure 4.21" $ do
+  it "Figure 4.21 (extended)" $ do
     let teBefore = emptyTypeEnv
           { _function = Map.fromList
               [ ("test", (int64_t, Vector.fromList [int64_t]))
               , ("foo", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo3", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo4", (T_NodeSet
                   (Map.fromList
                     [(Tag C "Int", Vector.fromList [T_Int64])
                     ])
@@ -41,6 +56,20 @@ spec = do
           b2 <- prim_int_add b1 a3
           pure (CInt b2)
 
+        foo2 a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          foo c1 c1 a3
+
+        foo3 a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          -- In this case the vectorisation did not happen.
+          c2 <- foo c1 c1 a3
+          pure c2
+
+        foo4 a1 =
+          v <- pure (CInt a1)
+          pure v
+
         bar =
           n <- test 1
           (CInt y') <- foo a1 a2 a3
@@ -53,6 +82,23 @@ spec = do
           b1 <- prim_int_add a1 a2
           b2 <- prim_int_add b1 a3
           pure b2
+
+        foo2' a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          foo' c1 c1 a3
+
+        foo3' a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          c2 <- do
+            c2' <- foo' c1 c1 a3
+            pure (CInt c2')
+          (CInt c2') <- pure c2
+          pure c2'
+
+        foo4' a1 =
+          v <- pure (CInt a1)
+          (CInt v') <- pure v
+          pure v'
 
         bar =
           n <- test 1
