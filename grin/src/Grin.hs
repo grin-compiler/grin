@@ -114,6 +114,7 @@ data CPat
   = NodePat Tag [Name]  -- HIGH level GRIN
   | LitPat  Lit         -- HIGH level GRIN
   | TagPat  Tag
+  | DefaultPat
   deriving (Generic, NFData, Eq, Show, Ord)
 
 isBasicCPat :: CPat -> Bool
