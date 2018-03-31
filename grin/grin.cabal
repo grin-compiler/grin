@@ -75,6 +75,7 @@ library
     AbstractInterpretation.CodeGen
     AbstractInterpretation.Reduce
     Frontend.FromSTG
+    Frontend.Idris.CodegenGrin
     VarGen
     Pipeline
     Assertions
@@ -115,6 +116,7 @@ library
     logict,
     QuickCheck,
     ghc,
+    idris,
     neat-interpolation,
     template-haskell
 
@@ -199,3 +201,38 @@ executable hpt
 source-repository head
   type:     git
   location: https://github.com/andorp/grin
+
+executable idris-grin
+  main-is:        IdrisGrin.hs
+  hs-source-dirs: app
+
+  build-depends:  idris
+                , base
+                , containers
+                , directory
+                , filepath
+                , haskeline >= 0.7
+                , mtl
+                , transformers
+                , grin
+
+  if os(linux)
+     cpp-options:   -DLINUX
+     build-depends: unix < 2.8
+  if os(freebsd)
+     cpp-options:   -DFREEBSD
+     build-depends: unix < 2.8
+  if os(dragonfly)
+     cpp-options:   -DDRAGONFLY
+     build-depends: unix < 2.8
+  if os(darwin)
+     cpp-options:   -DMACOSX
+     build-depends: unix < 2.8
+  if os(windows)
+     cpp-options:   -DWINDOWS
+     build-depends: Win32 < 2.4
+
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+
+
