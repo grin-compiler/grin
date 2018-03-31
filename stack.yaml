@@ -7,7 +7,6 @@ packages:
 - 'grin'
 
 extra-deps:
-  - megaparsec-6.4.0
   - monad-gen-0.3.0.1
   - llvm-hs-pretty-0.2.0.0
   - functor-infix-0.0.5
