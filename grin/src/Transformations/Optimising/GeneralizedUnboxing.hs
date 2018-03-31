@@ -16,7 +16,6 @@ import TypeEnv
 import Pretty
 import Control.Applicative
 import Lens.Micro.Platform
-import Debug.Trace
 import Transformations.Util (anaM, apoM)
 import Control.Monad.Writer
 import Control.Arrow
@@ -83,7 +82,7 @@ functionsToUnbox (te, Program defs) = result where
       else rec x1
 
 updateTypeEnv :: [Name] -> TypeEnv -> TypeEnv
-updateTypeEnv funs te = traceShowId $ te & function %~ unboxFun
+updateTypeEnv funs te = te & function %~ unboxFun
   where
     unboxFun = Map.fromList . map changeFun . Map.toList
     changeFun (n, ts@(ret, params)) =
