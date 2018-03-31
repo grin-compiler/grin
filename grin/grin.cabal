@@ -202,7 +202,7 @@ source-repository head
   type:     git
   location: https://github.com/andorp/grin
 
-executable idris-grin
+executable idris-codegen-grin
   main-is:        IdrisGrin.hs
   hs-source-dirs: app
 
