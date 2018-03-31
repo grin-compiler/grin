@@ -31,7 +31,7 @@ before_install:
 
 install:
   - stack update
-  - stack --no-terminal --install-ghc test --only-dependencies
+  - travis_wait 120 stack --no-terminal --install-ghc test --only-dependencies
   - stack build --coverage
   - stack install
 
