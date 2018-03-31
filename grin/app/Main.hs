@@ -40,6 +40,7 @@ transformOpts =
   <|> flg DeadVariableElimination "dve" "Dead Variable Elimination"
   <|> flg CommonSubExpressionElimination "cse" "Common Sub-Expression Elimination"
   <|> flg CaseCopyPropagation "ccp" "Case Copy Propagation"
+  <|> flg GeneralizedUnboxing "gub" "GeneralizedUnboxing"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -152,6 +153,13 @@ defaultPipeline = \case
       , T BindNormalisation
       , SaveGrin "CaseCopyPropagation"
       , PrintGrin ondullblack
+
+      , T GeneralizedUnboxing
+      , SaveGrin "GeneralizedUnboxing"
+      , T BindNormalisation
+      , SaveGrin "GeneralizedUnboxing"
+      , PrintGrin ondullblack
+
 
 {- TODO: Enable simplificaiton transformations in the pipeline.
       , T Vectorisation

@@ -10,6 +10,7 @@ module Optimizations
   , deadVariableElimination
   , commonSubExpressionElimination
   , caseCopyPropagation
+  , generalizedUnboxing
   ) where
 
 import Transformations.Optimising.ConstantFolding (constantFolding)
@@ -23,3 +24,4 @@ import Transformations.Optimising.DeadProcedureElimination (deadProcedureElimina
 import Transformations.Optimising.DeadVariableElimination (deadVariableElimination)
 import Transformations.Optimising.CSE (commonSubExpressionElimination)
 import Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation)
+import Transformations.Optimising.GeneralizedUnboxing (generalizedUnboxing)

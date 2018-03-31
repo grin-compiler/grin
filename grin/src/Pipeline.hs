@@ -79,6 +79,7 @@ data Transformation
   | DeadVariableElimination
   | CommonSubExpressionElimination
   | CaseCopyPropagation
+  | GeneralizedUnboxing
   deriving (Enum, Eq, Ord, Show)
 
 noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
@@ -104,32 +105,14 @@ transformation n = \case
   DeadVariableElimination         -> noTypeEnv deadVariableElimination
   CommonSubExpressionElimination  -> commonSubExpressionElimination
   CaseCopyPropagation             -> caseCopyPropagation
+  GeneralizedUnboxing             -> generalizedUnboxing
 
+-- TODO
 precondition :: Transformation -> [Check]
-precondition = \case
-  CaseSimplification -> []
-  SplitFetch -> []
-  Vectorisation -> []
-  RegisterIntroduction -> []
-  BindNormalisation -> []
-  RightHoistFetch -> []
-  GenerateEval -> []
-  ConstantFolding -> []
-  _ -> []
-
+precondition _ = []
 
 postcondition :: Transformation -> [Check]
-postcondition = \case
-  CaseSimplification -> []
-  SplitFetch -> []
-  Vectorisation -> []
-  RegisterIntroduction -> []
-  BindNormalisation -> []
-  RightHoistFetch -> []
-  GenerateEval -> []
-  ConstantFolding -> []
-  _ -> []
-
+postcondition _ = []
 
 newtype Hidden a = H a
 

@@ -75,6 +75,21 @@ spec = do
           (CInt y') <- foo a1 a2 a3
           test y'
       |]
+    let teAfter = emptyTypeEnv
+          { _function = Map.fromList
+              [ ("test", (int64_t, Vector.fromList [int64_t]))
+              , ("foo'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo3'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo4'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("bar", (int64_t, Vector.fromList []))
+              ]
+          , _variable = Map.fromList
+              [ ("c2'", int64_t)
+              , ("v'", int64_t)
+              , ("y''", int64_t)
+              ]
+          }
     let after = [prog|
         test n = prim_int_add n 1
 
@@ -107,7 +122,7 @@ spec = do
             pure (CInt y'')
           test y'
       |]
-    generalizedUnboxing (teBefore, before) `sameAs` (teBefore, after)
+    generalizedUnboxing (teBefore, before) `sameAs` (teAfter, after)
 
   it "Step 1 for Figure 4.21" $ do
     let teBefore = emptyTypeEnv
