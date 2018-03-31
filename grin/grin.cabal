@@ -89,7 +89,6 @@ library
     pretty-show,
     vector,
     deepseq,
-    unbound,
     recursion-schemes,
     ansi-wl-pprint,
     monad-gen,

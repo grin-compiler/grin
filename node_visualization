@@ -35,3 +35,6 @@ https://www.quora.com/What-is-best-for-graph-rendering-sigma-js-or-d3-js-Why
 current choice:
   plotly (based on d3)
   d3-node-editor
+  OR
+  https://github.com/projectstorm/react-diagrams
+

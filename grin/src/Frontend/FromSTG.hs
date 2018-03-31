@@ -54,7 +54,7 @@ visitArg = \case
 visitRhs :: Id -> StgRhs -> CG ()
 visitRhs id rhs = case rhs of
   StgRhsCon _ dataCon args -> pure () -- TODO
-  StgRhsClosure _ _ freeVars _ _ args body -> do
+  StgRhsClosure _ _ freeVars _ args body -> do
     {-
       TODO:
         - add def to globals with the right argumentum list
@@ -75,12 +75,12 @@ visitExpr :: StgExpr -> CG ()
 visitExpr = \case
   StgApp id args                  -> SApp <$> genName id <*> mapM visitArg args >>= emit
   StgOpApp op args _ty            -> SApp <$> genOpName op <*> mapM visitArg args >>= emit
-  StgConApp dataCon args          -> ConstTagNode <$> genTag dataCon <*> mapM visitArg args >>= emit . SReturn
+  StgConApp dataCon args _ty      -> ConstTagNode <$> genTag dataCon <*> mapM visitArg args >>= emit . SReturn
   StgLit literal                  -> SReturn . Lit <$> convertLit literal >>= emit
   StgTick _ expr                  -> visitExpr expr
   StgLet binding expr             -> visitBinding binding >> visitExpr expr -- TODO: generate local or global bind
-  StgLetNoEscape _ _ binding expr -> visitBinding binding >> visitExpr expr -- TODO: generate local or global bind
-  StgCase expr _ _ result _ _ alts  -> undefined -- TODO: construct case expression
+  StgLetNoEscape binding expr     -> visitBinding binding >> visitExpr expr -- TODO: generate local or global bind
+  StgCase expr result _ alts      -> undefined -- TODO: construct case expression
   expr -> error . printf "unsupported expr %s" <$> pprM expr
 
 genOpName :: StgOp -> CG String
