@@ -11,6 +11,7 @@ module Optimizations
   , commonSubExpressionElimination
   , caseCopyPropagation
   , generalizedUnboxing
+  , arityRaising
   ) where
 
 import Transformations.Optimising.ConstantFolding (constantFolding)
@@ -25,3 +26,4 @@ import Transformations.Optimising.DeadVariableElimination (deadVariableEliminati
 import Transformations.Optimising.CSE (commonSubExpressionElimination)
 import Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation)
 import Transformations.Optimising.GeneralizedUnboxing (generalizedUnboxing)
+import Transformations.Optimising.ArityRaising (arityRaising)

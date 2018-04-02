@@ -41,9 +41,23 @@ int64_t = T_SimpleType T_Int64
 float_t :: Type
 float_t = T_SimpleType T_Float
 
+location_t :: [Int] -> Type
+location_t = T_SimpleType . T_Location
+
+-- * Prism
+
 _T_NodeSet :: Traversal' Type NodeSet
 _T_NodeSet f (T_NodeSet ns) = T_NodeSet <$> f ns
 _T_NodeSet _ rest           = pure rest
+
+_T_SimpleType :: Traversal' Type SimpleType
+_T_SimpleType f (T_SimpleType s) = T_SimpleType <$> f s
+_T_SimpleType _ rest             = pure rest
+
+_T_Location :: Traversal' SimpleType [Int]
+_T_Location f (T_Location ls) = T_Location <$> f ls
+_T_Location _ rest            = pure rest
+
 
 data TypeEnv
   = TypeEnv

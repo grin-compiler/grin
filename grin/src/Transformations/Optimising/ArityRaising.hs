@@ -12,6 +12,10 @@ import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Grin
 import TypeEnv
+import Debug.Trace
+import Lens.Micro.Platform
+import qualified Data.Vector as Vector
+import Control.Monad
 
 
 {-
@@ -23,9 +27,52 @@ import TypeEnv
   - examine uses of function parameters inside all callees
   - do the actual transformation
 -}
-arityRaising :: Exp -> Exp
-arityRaising = id
+arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+arityRaising (te, exp) = (te, exp)
 
+{-
+Step 1: Examine the function parameter types
+Step 2: Examine the callees
+Step 3: Transform
+-}
+
+-- Return the functions that has node set parameters with unique names
+examineTheParameters :: (TypeEnv, Exp) -> Map Name [(Name, NodeSet)]
+examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
+  where
+    funs :: Map Name [(Name, Type)]
+    funs = Map.intersectionWith combine (_function te) funParamNames
+    combine (_tr, pt) params = params `zip` (Vector.toList pt)
+
+    funParamNames = flip cata e $ \case
+      ProgramF defs      -> mconcat defs
+      DefF name params _ -> Map.singleton name params
+      _                  -> mempty
+
+    candidate :: [(Name, Type)] -> [(Name, NodeSet)]
+    candidate = mapMaybe $ \(name, typ) -> (,) name <$>
+      typ ^? _T_SimpleType
+           . _T_Location
+           . to (sameNodeOnLocations te)
+           . _Just
+
+sameNodeOnLocations :: TypeEnv -> [Int] -> Maybe NodeSet
+sameNodeOnLocations te is = join $ allSame $ map (oneNodeOnLocation te) is
+
+oneNodeOnLocation :: TypeEnv -> Int -> Maybe NodeSet
+oneNodeOnLocation te idx = case (Map.size ns) of
+  1 -> Just ns
+  _ -> Nothing
+  where
+    ns = (_location te) Vector.! idx
+
+allSame :: (Eq a) => [a] -> Maybe a
+allSame []     = Nothing
+allSame [a]    = Just a
+allSame (a:as) = if all (a==) as then Just a else Nothing
+
+
+{-
 candidate :: TypeEnv -> Exp -> Set Name
 candidate typeEnv@TypeEnv{..} = cata folder where
 
@@ -47,3 +94,4 @@ candidate typeEnv@TypeEnv{..} = cata folder where
   -- HINT: all location have the same single tag
   singleTagLoc :: [Int] -> Bool
   singleTagLoc (loc:locs) = Map.size (_location V.! loc) == 1 && all (==loc) locs
+-}

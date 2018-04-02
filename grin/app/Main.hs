@@ -41,6 +41,7 @@ transformOpts =
   <|> flg CommonSubExpressionElimination "cse" "Common Sub-Expression Elimination"
   <|> flg CaseCopyPropagation "ccp" "Case Copy Propagation"
   <|> flg GeneralizedUnboxing "gub" "GeneralizedUnboxing"
+  <|> flg ArityRaising "ar" "Arity Raising"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
@@ -160,6 +161,11 @@ defaultPipeline = \case
       , SaveGrin "GeneralizedUnboxing"
       , PrintGrin ondullblack
 
+      , T ArityRaising
+      , SaveGrin "ArityRaising"
+      , T BindNormalisation
+      , SaveGrin "ArityRaising"
+      , PrintGrin ondullblack
 
 {- TODO: Enable simplificaiton transformations in the pipeline.
       , T Vectorisation

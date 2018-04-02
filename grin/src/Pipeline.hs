@@ -80,6 +80,7 @@ data Transformation
   | CommonSubExpressionElimination
   | CaseCopyPropagation
   | GeneralizedUnboxing
+  | ArityRaising
   deriving (Enum, Eq, Ord, Show)
 
 noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
@@ -106,6 +107,7 @@ transformation n = \case
   CommonSubExpressionElimination  -> commonSubExpressionElimination
   CaseCopyPropagation             -> caseCopyPropagation
   GeneralizedUnboxing             -> generalizedUnboxing
+  ArityRaising                    -> arityRaising
 
 -- TODO
 precondition :: Transformation -> [Check]
