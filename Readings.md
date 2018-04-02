@@ -8,6 +8,10 @@ http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html
 - [Dive into GHC: Intermediate Forms](http://www.stephendiehl.com/posts/ghc_02.html)
 - [Dive into GHC: Targeting Core](http://www.stephendiehl.com/posts/ghc_03.html)
 
+# LLVM-HS
+
+- [Calling External Functions from JIT-compiled LLVM Modules using llvm-hs](https://purelyfunctional.org/posts/2018-04-02-llvm-hs-jit-external-function.html)
+
 # Recursion schemes
 
 Resources for learning and using recursion schemes.
