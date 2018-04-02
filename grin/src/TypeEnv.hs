@@ -38,6 +38,9 @@ data Type
 int64_t :: Type
 int64_t = T_SimpleType T_Int64
 
+bool_t :: Type
+bool_t = T_SimpleType T_Bool
+
 float_t :: Type
 float_t = T_SimpleType T_Float
 

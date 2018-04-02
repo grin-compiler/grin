@@ -27,6 +27,7 @@ spec = do
               [ ("non", (int64_t, Vector.fromList [int64_t]))
               , ("one", (int64_t, Vector.fromList [location_t [0]]))
               , ("two", (int64_t, Vector.fromList [location_t [0], int64_t, location_t [1]]))
+              , ("bad", (int64_t, Vector.fromList [bool_t, location_t [0, 1]]))
               ]
           , _location = Vector.fromList
               [ (Map.fromList
@@ -50,6 +51,15 @@ spec = do
           (CInt i)   <- fetch pi
           (CFloat f) <- fetch pf
           pure i
+
+        bad i p =
+          case i of
+            #True -> (CInt x) <- fetch p
+                     y <- prim_int_add x 1
+                     pure y
+            #False -> (CFloat x) <- fetch p
+                      y <- round x
+                      pure x
       |]
     examineTheParameters (teBefore, before)
     `shouldBe`
