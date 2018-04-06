@@ -160,8 +160,8 @@ sum opt optimising transformations:
   done - common sub-expression elimination
   done - late inlining
   skip - inline calls to eval
+  done - unboxing of return values
 
-  - unboxing of return values
   - arity raising
 
   done - vectorisation + case simplification (skip)
@@ -177,16 +177,16 @@ optimising transformations:
   done - dead variable elimination
   done - common sub-expression elimination
   done - late inlining
+  done - case copy propagation
+  done - generalised unboxing
 
  complex:
-  - generalised unboxing
   - arity raising
 
 ============================
 
  remaining (medium):
   - dead parameter elimination
-  - case copy propagation
   - case hoisting
   - whnf update elimination ; requires sharing analysis
 
