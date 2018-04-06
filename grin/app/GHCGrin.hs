@@ -36,7 +36,7 @@ cg_main :: Opts -> IO ()
 cg_main opts = runGhc (Just libdir) $ do
   env <- getSession
   dflags <- getSessionDynFlags
-  setSessionDynFlags $ dflags { hscTarget = HscInterpreted }
+  setSessionDynFlags $ dflags { hscTarget = HscInterpreted, ghcLink = NoLink }
 
   targets <- forM (inputs opts) $ \input -> guessTarget input Nothing
   setTargets targets
@@ -54,8 +54,8 @@ cg_main opts = runGhc (Just libdir) $ do
   -- Transform Core into STG
   let stg = coreToStg dflags (mg_module core) prep
 
-  --liftIO $ putStrLn $ showGhc (stg :: [StgBinding])
   -- TODO: convert to grin
+  grin <- liftIO $ codegenGrin dflags stg
   pure ()
 
 main :: IO ()

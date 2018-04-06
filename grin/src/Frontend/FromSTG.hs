@@ -1,12 +1,17 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
-module Frontend.FromSTG where
+{-# LANGUAGE LambdaCase, TupleSections, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
+module Frontend.FromSTG (codegenGrin) where
 
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Control.Monad
+import Control.Monad.State
 import Text.Printf
 
 -- GHC
+import CoreSyn (AltCon(..))
 import StgSyn
 import Id
-import Name as GHC
+import qualified Name as GHC
 import DynFlags
 import Outputable
 import Literal
@@ -15,27 +20,23 @@ import DataCon
 -- Grin
 import Grin
 
-import Control.Monad as M
-import Control.Monad.State
-
-type CG = State Env
+type CG = StateT Env IO
 
 data Env
   = Env
   { dflags  :: DynFlags
+  , defs    :: Map Name Def
   }
 
-getDFlags :: CG DynFlags
-getDFlags = gets dflags
-
 genName :: Id -> CG String
-genName = undefined
+genName id = pprM id
 
 pprM :: Outputable a => a -> CG String
 pprM a = flip showPpr a <$> gets dflags
 
-emit = undefined
+emit _ = pure () -- TODO
 
+-- done
 convertLit :: Literal -> CG Lit
 convertLit = \case
   MachInt     i -> pure $ LInt64 $ fromIntegral i
@@ -46,15 +47,27 @@ convertLit = \case
   MachDouble  f -> pure $ LFloat $ realToFrac f
   lit -> error . printf "unsupported literal %s" <$> pprM lit
 
-visitArg :: StgArg -> CG Val
-visitArg = \case
+-- done
+visitArg' :: StgArg -> CG Val
+visitArg' = \case
   StgVarArg id  -> Var <$> genName id
   StgLitArg lit -> Lit <$> convertLit lit
 
+-- done
+visitArg a = do
+  v <- visitArg' a
+  liftIO $ print v
+  pure v
+
 visitRhs :: Id -> StgRhs -> CG ()
 visitRhs id rhs = case rhs of
-  StgRhsCon _ dataCon args -> pure () -- TODO
+  StgRhsCon _ dataCon args -> do
+    name <- genName id
+    liftIO $ putStrLn $ printf " * def (data) name: %s" name
+    pure () -- TODO
   StgRhsClosure _ _ freeVars _ args body -> do
+    name <- genName id
+    liftIO $ putStrLn $ printf " * def (fun) name: %s" name
     {-
       TODO:
         - add def to globals with the right argumentum list
@@ -62,25 +75,61 @@ visitRhs id rhs = case rhs of
     -}
     visitExpr body
     pure ()
+
+{-
+  | Def         Name [Name] Exp
+  -- Exp
+  | EBind       SimpleExp LPat Exp
+  | SBlock      Exp
+  | ECase       Val [Alt]
+  -- Simple Exp
+  | SApp        Name [SimpleVal]
+  | SReturn     Val
+  | SStore      Val
+  -- Alt
+  | Alt CPat Exp
+
+  -- only in eval
+  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
+  | SUpdate     Name Val
+
+-}
+
 {-
   TODO:
-    - add default case alternative support for grin
+    - introduce def
+    - build bind sequence
 -}
+
+visitTopBinding :: StgTopBinding -> CG ()
+visitTopBinding = \case
+  StgTopLifted    binding       -> visitBinding binding
+  StgTopStringLit id byteString -> error "unsupported: StgTopStringLit"
+
 visitBinding :: StgBinding -> CG ()
 visitBinding = \case
   StgNonRec id stgRhs -> visitRhs id stgRhs
   StgRec bindings     -> mapM_ (uncurry visitRhs) bindings
 
-visitExpr :: StgExpr -> CG ()
+visitExpr :: StgExpr -> CG Exp
 visitExpr = \case
-  StgApp id args                  -> SApp <$> genName id <*> mapM visitArg args >>= emit
-  StgOpApp op args _ty            -> SApp <$> genOpName op <*> mapM visitArg args >>= emit
-  StgConApp dataCon args _ty      -> ConstTagNode <$> genTag dataCon <*> mapM visitArg args >>= emit . SReturn
-  StgLit literal                  -> SReturn . Lit <$> convertLit literal >>= emit
-  StgTick _ expr                  -> visitExpr expr
+  -- app
+  StgApp id args                  -> SApp <$> genName id <*> mapM visitArg args
+  StgOpApp op args _ty            -> SApp <$> genOpName op <*> mapM visitArg args
+  --StgConApp dataCon args _ty      -> ConstTagNode <$> genTag dataCon <*> mapM visitArg args >>= fmap SReturn
+  -- return lit
+  StgLit literal                  -> SReturn . Lit <$> convertLit literal
+  -- bypass
+  StgTick _tickish expr           -> visitExpr expr
+  -- ???
   StgLet binding expr             -> visitBinding binding >> visitExpr expr -- TODO: generate local or global bind
   StgLetNoEscape binding expr     -> visitBinding binding >> visitExpr expr -- TODO: generate local or global bind
-  StgCase expr result _ alts      -> undefined -- TODO: construct case expression
+  -- case + bind
+  StgCase expr resultId _ty alts  -> do
+    -- visitExpr expr >> mapM_ visitAlt alts  -- TODO: construct case expression
+    n <- genName resultId
+    liftIO (putStrLn $ "StgCase result: " ++ n)
+    visitExpr expr
   expr -> error . printf "unsupported expr %s" <$> pprM expr
 
 genOpName :: StgOp -> CG String
@@ -89,37 +138,61 @@ genOpName = \case
   StgPrimCallOp op  -> pprM op -- TODO
   StgFCallOp op _   -> pprM op -- TODO
 
-genTag :: DataCon -> CG Tag
-genTag dataCon = Tag C <$> pprM dataCon
-
 {-
--- If you edit this type, you may need to update the GHC formalism
--- See Note [GHC Formalism] in coreSyn/CoreLint.hs
-data AltCon
-  = DataAlt DataCon   --  ^ A plain data constructor: @case e of { Foo x -> ... }@.
-                      -- Invariant: the 'DataCon' is always from a @data@ type, and never from a @newtype@
-
-  | LitAlt  Literal   -- ^ A literal: @case e of { 1 -> ... }@
-                      -- Invariant: always an *unlifted* literal
-                      -- See Note [Literal alternatives]
-
-  | DEFAULT           -- ^ Trivial alternative: @case e of { _ -> ... }@
-   deriving (Eq, Ord, Data, Typeable)
-
-type GenStgAlt bndr occ
-  = (AltCon,            -- alts: data constructor,
-     [bndr],            -- constructor's parameters,
-     [Bool],            -- "use mask", same length as
-                        -- parameters; a True in a
-                        -- param's position if it is
-                        -- used in the ...
-     GenStgExpr bndr occ)       -- ...right-hand side.
-
 data DataCon
   = MkData {
         dcName    :: Name,      -- This is the name of the *source data con*
                                 -- (see "Note [Data Constructor Naming]" above)
         dcUnique :: Unique,     -- Cached from Name
         dcTag    :: ConTag,     -- ^ Tag, used for ordering 'DataCon's
+-}
+genTag :: DataCon -> CG Tag
+genTag dataCon = Tag C <$> pprM dataCon
 
+visitAlt :: StgAlt -> CG Alt
+visitAlt (altCon, argIds, body) = do
+  cpat <- case altCon of
+    DataAlt dataCon -> NodePat <$> genTag dataCon <*> mapM genName argIds
+    LitAlt  lit     -> LitPat <$> convertLit lit
+    DEFAULT         -> pure DefaultPat
+  Alt cpat <$> visitExpr body
+
+
+{-
+  top binding / binding / rhs
+    expr
+      arg / lit / alt
+
+  method:
+    - lambda lift STG
+    - compile to grin according boquist phd
+-}
+
+codegenGrin :: DynFlags -> [StgTopBinding] -> IO Program
+codegenGrin dflags stg = do
+  let ppTopBinding :: StgTopBinding -> IO ()
+      ppTopBinding = \case
+        StgTopLifted    binding       -> putStrLn "StgTopLifted" >> ppBinding binding >> putStr "\n-----\n\n"
+        StgTopStringLit id byteString -> error "unsupported: StgTopStringLit"
+
+      ppBinding :: StgBinding -> IO ()
+      ppBinding = \case
+        StgNonRec id stgRhs -> putStrLn "StgNonRec" >> ppRhs id stgRhs
+        StgRec bindings     -> putStrLn "StgRec" >> mapM_ (uncurry ppRhs) bindings
+
+      ppRhs :: Id -> StgRhs -> IO ()
+      ppRhs id rhs = putStrLn ("RHS " ++ showPpr dflags id) >> putStrLn (showPpr dflags rhs) >> putStr "\n"
+
+  mapM_ ppTopBinding stg
+
+  execStateT (mapM visitTopBinding stg) (Env dflags mempty)
+  pure $ Program []
+
+
+
+{-
+  TODO:
+    - generate top level functions
+    - apply free variables when calling functions
+    - handle lazyness
 -}
