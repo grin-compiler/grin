@@ -16,6 +16,9 @@ import Debug.Trace
 import Lens.Micro.Platform
 import qualified Data.Vector as Vector
 import Control.Monad
+import Data.Monoid
+import Data.Functor.Infix
+import Data.List
 
 
 {-
@@ -55,6 +58,39 @@ examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
            . _T_Location
            . to (sameNodeOnLocations te)
            . _Just
+
+nonEmpty :: [a] -> Maybe [a]
+nonEmpty [] = Nothing
+nonEmpty xs = Just xs
+
+-- Keep the parameters that are part of an invariant calls,
+-- or an argument to a fetch.
+examineCallees :: Map Name [(Name, NodeSet)] -> (TypeEnv, Exp) -> Map Name [(Name, NodeSet)]
+examineCallees funParams (te, exp) =
+    Map.mapMaybe (nonEmpty . (filter ((`Set.notMember` others) . fst))) funParams
+  where
+    others = cata collect exp
+
+    vars :: Val -> Set Name
+    vars = Set.fromList . \case
+      Var n             -> [n]
+      ConstTagNode _ vs -> vs ^.. each . _Var
+      VarTagNode n vs   -> n : (vs ^.. each . _Var)
+      _                 -> []
+
+    collect :: ExpF (Set Name) -> Set Name
+    collect = \case
+      ProgramF  defs             -> mconcat defs
+      DefF      name params body -> body
+      SBlockF   body             -> body
+      EBindF    lhs _ rhs        -> lhs <> rhs
+      ECaseF    val as           -> mconcat as
+      AltF cpat body             -> body
+
+      SReturnF  val      -> vars val
+      SStoreF   val      -> vars val
+      SUpdateF  name val -> Set.insert name (vars val)
+      _ -> mempty
 
 sameNodeOnLocations :: TypeEnv -> [Int] -> Maybe NodeSet
 sameNodeOnLocations te is = join $ allSame $ map (oneNodeOnLocation te) is

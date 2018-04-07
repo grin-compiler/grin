@@ -13,6 +13,9 @@ import Data.Int
 import Data.Word
 import Data.Text (Text)
 import Data.List (isPrefixOf)
+import Lens.Micro.Platform
+import Data.Maybe
+
 
 type Name = String
 
@@ -98,10 +101,19 @@ instance FoldNames Val where
     Loc int                 -> mempty
     Undefined               -> mempty
 
+match :: Traversal' a b -> a -> Bool
+match t x = isJust $ x ^? t
+
 isLit :: Val -> Bool
-isLit = \case
-  Lit l -> True
-  _     -> False
+isLit = match _Lit
+
+_Lit :: Traversal' Val Lit
+_Lit f (Lit l) = Lit <$> f l
+_Lit _ rest    = pure rest
+
+_Var :: Traversal' Val Name
+_Var f (Var name) = Var <$> f name
+_Var _ rest       = pure rest
 
 data Lit
   = LInt64  Int64
