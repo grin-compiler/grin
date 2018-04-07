@@ -9,6 +9,6 @@ trivialCaseElimination :: Exp -> Exp
 trivialCaseElimination = ana builder where
   builder :: Exp -> ExpF Exp
   builder = \case
-    ECase val [Alt Default body] -> body
-    ECase val [Alt cpat body]    -> EBindF (SReturn val) (cpatToLPat cpat) body
+    ECase val [Alt DefaultPat body] -> EBindF (SReturn Unit) Unit              body
+    ECase val [Alt cpat body]       -> EBindF (SReturn val)  (cpatToLPat cpat) body
     exp -> project exp
