@@ -93,7 +93,9 @@ spec = do
     let teBefore = emptyTypeEnv
           { _function =
               fun_t "foo"  [int64_t, location_t [0]] int64_t <>
-              fun_t "bar1" [int64_t] int64_t
+              fun_t "bar" [int64_t] int64_t <>
+              fun_t "foo2" [location_t [0], int64_t, location_t [0]] int64_t <>
+              fun_t "bar2" [int64_t] int64_t
           , _location = Vector.fromList
               [ cnode_t "Bar" [T_Int64, T_Int64]
               ]
@@ -104,10 +106,24 @@ spec = do
           (CBar r1 s1) <- fetch y1
           prim_int_add r1 s1
 
-        bar1 x2 =
+        bar x2 =
           z2 <- prim_int_add x2 1
           y2 <- store (CBar 1 z2)
           foo 1 y2
+
+        foo2 x3 y3 z3 =
+          w3 <- prim_int_add y3 1
+          (CBar w1 w2) <- fetch x3
+          (CBar w3 w4) <- fetch z3
+          w5 <- prim_int_add w1 w2
+          w6 <- prim_int_add w3 w4
+          prim_int_add w5 w6
+
+        bar2 x4 =
+          z4 <- prim_int_add x4 1
+          y4 <- store (CBar 1 z4)
+          w4 <- store (CBar 2 z4)
+          foo2 y4 1 w4
       |]
     let teAfter = teBefore
     let after = [prog|
@@ -116,11 +132,28 @@ spec = do
           (CBar r1 s1) <- pure (CBar y11 y12)
           prim_int_add r1 s1
 
-        bar1 x2 =
+        bar x2 =
           z2 <- prim_int_add x2 1
           y2 <- store (CBar 1 z2)
           do
             (CBar y21 y22) <- fetch y2
             foo 1 y21 y22
+
+        foo2 x31 x32 y3 z31 z32 =
+          w3 <- prim_int_add y3 1
+          (CBar w1 w2) <- pure (CBar x31 x32)
+          (CBar w3 w4) <- pure (CBar z31 z32)
+          w5 <- prim_int_add w1 w2
+          w6 <- prim_int_add w3 w4
+          prim_int_add w5 w6
+
+        bar2 x4 =
+          z4 <- prim_int_add x4 1
+          y4 <- store (CBar 1 z4)
+          w4 <- store (CBar 2 z4)
+          do
+            (CBar y41 y42) <- fetch y4
+            (CBar w41 w42) <- fetch w4
+            foo2 y41 y42 1 w41 w42
       |]
     (teAfter, after) `sameAs` arityRaising (teBefore, before)
