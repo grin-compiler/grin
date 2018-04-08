@@ -67,7 +67,9 @@ visitRhs id rhs = case rhs of
     pure () -- TODO
   StgRhsClosure _ _ freeVars _ args body -> do
     name <- genName id
-    liftIO $ putStrLn $ printf " * def (fun) name: %s" name
+    freeVars_ <- mapM genName freeVars
+    args_ <- mapM genName args
+    liftIO $ putStrLn $ printf " * def (fun) name: %s free vars: %s args: %s" name (show freeVars_) (show args_)
     {-
       TODO:
         - add def to globals with the right argumentum list
