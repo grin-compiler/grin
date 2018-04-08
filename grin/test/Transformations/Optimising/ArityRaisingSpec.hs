@@ -63,19 +63,10 @@ spec = do
       |]
     examineTheParameters (teBefore, before) `shouldBe`
       (Map.fromList
-        [ ("one", [ ("pi1",
-                      (Map.fromList
-                        [(Tag C "Int", Vector.fromList [T_Int64])
-                        ]))] )
-        ,  ("two", [ ("pi2",
-                      (Map.fromList
-                        [(Tag C "Int", Vector.fromList [T_Int64])
-                        ]))
-                   , ("pf2",
-                      (Map.fromList
-                        [(Tag C "Float", Vector.fromList [T_Float])
-                        ]))
-                   ])
+        [ ("one", [ ("pi1", (Tag C "Int", Vector.fromList [T_Int64]))] )
+        , ("two", [ ("pi2", (Tag C "Int", Vector.fromList [T_Int64]))
+                  , ("pf2", (Tag C "Float", Vector.fromList [T_Float]))
+                  ])
         ])
 
   it "Step 2" $ do
@@ -97,3 +88,39 @@ spec = do
       |]
     let paramMap = examineTheParameters (teBefore, before)
     examineCallees paramMap (teBefore, before) `shouldBe` mempty
+
+  it "Full transformation" $ do
+    let teBefore = emptyTypeEnv
+          { _function =
+              fun_t "foo"  [int64_t, location_t [0]] int64_t <>
+              fun_t "bar1" [int64_t] int64_t
+          , _location = Vector.fromList
+              [ cnode_t "Bar" [T_Int64, T_Int64]
+              ]
+          }
+    let before = [prog|
+        foo x1 y1 =
+          z1 <- prim_int_add x1 1
+          (CBar r1 s1) <- fetch y1
+          prim_int_add r1 s1
+
+        bar1 x2 =
+          z2 <- prim_int_add x2 1
+          y2 <- store (CBar 1 z2)
+          foo 1 y2
+      |]
+    let teAfter = teBefore
+    let after = [prog|
+        foo x1 y11 y12 =
+          z1 <- prim_int_add x1 1
+          (CBar r1 s1) <- pure (CBar y11 y12)
+          prim_int_add r1 s1
+
+        bar1 x2 =
+          z2 <- prim_int_add x2 1
+          y2 <- store (CBar 1 z2)
+          do
+            (CBar y21 y22) <- fetch y2
+            foo 1 y21 y22
+      |]
+    (teAfter, after) `sameAs` arityRaising (teBefore, before)

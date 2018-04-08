@@ -47,6 +47,12 @@ float_t = T_SimpleType T_Float
 location_t :: [Int] -> Type
 location_t = T_SimpleType . T_Location
 
+fun_t :: Name -> [Type] -> Type -> Map Name (Type, Vector Type)
+fun_t name params ret = Map.singleton name (ret, Vector.fromList params)
+
+cnode_t :: Name -> [SimpleType] -> NodeSet
+cnode_t name params = Map.singleton (Tag C name) (Vector.fromList params)
+
 -- * Prism
 
 _T_NodeSet :: Traversal' Type NodeSet
