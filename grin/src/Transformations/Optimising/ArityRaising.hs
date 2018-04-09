@@ -20,21 +20,35 @@ import Control.Monad
 import Data.Monoid hiding (Alt)
 import Data.Functor.Infix
 import Data.List as List
+import Control.Monad.State
+import Transformations.Util (apoM)
 
 
-changeParams :: [(Name, Int)] -> [Name] -> [Name]
-changeParams tagParams = concatMap $ \name ->
-  maybe [name] (newParams name) $ List.lookup name tagParams
+type VarM a = State TypeEnv a
 
-newParams :: Name -> Int -> [Name]
-newParams name n = map ((name <>) . show) [1 .. n]
+runVarM :: TypeEnv -> VarM a -> (TypeEnv, a)
+runVarM te = (\(f,s) -> (s,f)) . flip runState te
+
+changeParams :: [(Name, [SimpleType])] -> [Name] -> VarM [Name]
+changeParams tagParams names = concat <$> mapM
+  (\name -> maybe (pure [name]) (newParams name) $ List.lookup name tagParams)
+  names
+
+newParams :: Name -> [SimpleType] -> VarM [Name]
+newParams name types = forM (types `zip` [1 ..]) $ \(t, i) -> do
+  let name' = name <> show i
+  variable %= Map.insert name' (T_SimpleType t)
+  pure name'
+
+infixl 4 <@>
+(<@>) :: (Applicative f) => f (a -> b) -> a -> f b
+f <@> x = f <*> (pure x)
 
 -- TODO: Change TypeEnv
--- - Remove transformed parameters
--- - Add new parameters
+-- - Remove transformed parameters, from TypeEnv
 -- TODO: Create unique names
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-arityRaising (te, exp) = (te, apo build (Nothing, exp))
+arityRaising (te, exp) = runVarM te (apoM builder (Nothing, exp))
   where
     candidates :: Map Name [(Name, (Tag, Vector SimpleType))]
     candidates = flip examineCallees (te,exp) $ examineTheParameters (te, exp)
@@ -45,37 +59,42 @@ arityRaising (te, exp) = (te, apo build (Nothing, exp))
     nodeParamMap :: Map Name (Tag, Vector SimpleType)
     nodeParamMap = Map.fromList $ concat $ Map.elems candidates
 
-    build :: (Maybe Name, Exp) -> ExpF (Either Exp (Maybe Name, Exp))
-    build (fun, exp0) = case exp0 of
-      Def name params body -> case (fmap (second (Vector.length . snd))) <$> Map.lookup name candidates of
-        Nothing        -> DefF name params (Right (Just name, body))
-        Just tagParams -> DefF name (changeParams tagParams params) (Right (Just name, body))
+    builder :: (Maybe Name, Exp) -> VarM (ExpF (Either Exp (Maybe Name, Exp)))
+    builder (fun, exp0) = case exp0 of
+      Def name params body -> case Map.lookup name candidates of
+        Nothing        -> pure $ DefF name params (Right (Just name, body))
+        Just tagParams -> DefF name <$> (changeParams (map (second (Vector.toList . snd)) tagParams) params) <@> (Right (Just name, body))
 
       SApp name params -> case (Map.lookup name candidates) of
-        Nothing -> SAppF name params
-        Just ps ->
+        Nothing -> pure $ SAppF name params
+        Just ps -> do
           let params' = (fromJust $ Map.lookup name canditateOriginalParams) `zip` params
-          in SBlockF $ Left $
-              foldr (\(pname, (tag, ptypes)) rest ->
+
+          appNode <- (SApp name . concat) <$> mapM
+                  (\(oname, actVal) -> case actVal of
+                      Lit l -> pure [Lit l]
+                      Var v -> case Map.lookup oname nodeParamMap of
+                        Nothing       -> pure [Var v]
+                        Just (_t, ts) -> (Var <$$> newParams v (Vector.toList ts)))
+                  params'
+
+          (SBlockF . Left) <$>
+              foldM (\rest (pname, (tag, ptypes)) -> do
                 -- pname is in the list, and node values can be passed to a function only in form of variables.
                 let localPName = (\(Var name) -> name) $ fromJust $ List.lookup pname params'
-                in EBind
-                    (SFetch localPName)
-                    (ConstTagNode tag (Var <$> newParams localPName (Vector.length ptypes))) rest)
-                (SApp name (concatMap
-                  (\(oname, actVal) -> case actVal of
-                      Lit l -> [Lit l]
-                      Var v -> case Map.lookup oname nodeParamMap of
-                        Nothing       -> [Var v]
-                        Just (_t, ts) -> (Var <$> newParams v (Vector.length ts)))
-                  params'))
-                ps
+                EBind
+                  (SFetch localPName) <$>
+                  (ConstTagNode tag <$> (Var <$$> newParams localPName (Vector.toList ptypes))) <@>
+                  rest)
+                appNode
+                (reverse ps)
+
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
-        Nothing        -> SFetchIF name pos
-        Just (tag, ps) -> SReturnF $ ConstTagNode tag (Var <$> newParams name (Vector.length ps))
+        Nothing        -> pure $ SFetchIF name pos
+        Just (tag, ps) -> (SReturnF . ConstTagNode tag) <$> (Var <$$> newParams name (Vector.toList ps))
 
-      rest -> fmap (Right . (,) fun) $ project rest
+      rest -> pure $ fmap (Right . (,) fun) $ project rest
 
 definedFunctions :: Exp -> Map Name [Name]
 definedFunctions = cata $ \case
@@ -83,11 +102,6 @@ definedFunctions = cata $ \case
   DefF name params _ -> Map.singleton name params
   _                  -> mempty
 
-{-
-Step 1: Examine the function parameter types
-Step 2: Examine the callees
-Step 3: Transform
--}
 
 -- Return the functions that has node set parameters with unique names
 examineTheParameters :: (TypeEnv, Exp) -> Map Name [(Name, (Tag, Vector SimpleType))]

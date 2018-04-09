@@ -126,6 +126,21 @@ spec = do
           foo2 y4 1 w4
       |]
     let teAfter = teBefore
+          { _variable = Map.fromList
+              [ ("y11", int64_t)
+              , ("y12", int64_t)
+              , ("y21", int64_t)
+              , ("y22", int64_t)
+              , ("x31", int64_t)
+              , ("x32", int64_t)
+              , ("z31", int64_t)
+              , ("z32", int64_t)
+              , ("y41", int64_t)
+              , ("y42", int64_t)
+              , ("w41", int64_t)
+              , ("w42", int64_t)
+              ]
+          }
     let after = [prog|
         foo x1 y11 y12 =
           z1 <- prim_int_add x1 1
