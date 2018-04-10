@@ -86,6 +86,7 @@ instance Pretty CPat where
     NodePat tag vars  -> parens $ hsep (pretty tag : map text vars)
     TagPat  tag       -> pretty tag
     LitPat  lit       -> pretty lit
+    DefaultPat        -> keyword "#default"
 
 instance Pretty TagType where
   pretty = green . \case
