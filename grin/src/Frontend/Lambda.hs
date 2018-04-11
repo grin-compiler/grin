@@ -23,7 +23,7 @@ data Exp
   | App         Name [Atom]
   | Case        Atom [Alt]
   | Let         [(Name, Exp)] Exp -- lazy let
-  | LetS        Name Exp Exp      -- strict let
+  | LetS        [(Name, Exp)] Exp -- strict let
   | Con         Tag [Atom]
   -- Atom
   | Var         Name

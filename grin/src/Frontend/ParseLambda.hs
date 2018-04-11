@@ -66,19 +66,14 @@ letin letToken = do
     kw letToken
     pure (L.IndentSome Nothing (pure . (i,)) (L.indentLevel >>= varBind))
   L.indentGuard sc EQ i
-  kw "in"
-  j <- L.indentGuard sc GT i
-  body <- expr j
+  body <- expr i
   pure (l, body)
-
-makeLetS :: ([(Name,Exp)], Exp) -> Exp
-makeLetS (l, body0) = foldr (\(name,value) body -> LetS name value body) body0 l
 
 expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
   Case <$ kw "case" <*> atom <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
-  makeLetS <$> letin "letS" <|>
-  uncurry Let <$> letin "let" <|>
+  uncurry LetS <$> letin "letS" <|>
+  uncurry Let  <$> letin "let"  <|>
   App <$> primNameOrDefName <*> some atom <|>
   parens (Con <$> tag <*> many atom) <|>
   atom
