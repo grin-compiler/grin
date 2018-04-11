@@ -74,6 +74,8 @@ library
     AbstractInterpretation.IR
     AbstractInterpretation.CodeGen
     AbstractInterpretation.Reduce
+    Frontend.Lambda
+    Frontend.ParseLambda
     Frontend.FromSTG
     Frontend.Idris.CodegenGrin
     VarGen
