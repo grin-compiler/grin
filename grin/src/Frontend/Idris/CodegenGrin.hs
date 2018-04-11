@@ -31,12 +31,22 @@ program :: [(Idris.Name, SDecl)] -> Exp
 program defs = Program $ map (function . snd) defs
 
 function :: SDecl -> Exp
-function (SFun fname params _int body) = Def (name fname) (map name params) (sexp (name fname) body)
+function (SFun fname params _int body) =
+  Def
+    (name fname)
+    (map (\(p, i) -> (name fname) ++ show i) (params `zip` [0..]))
+    (sexp (name fname) body)
+
+loc :: Name -> LVar -> Name
+loc fname (Idris.Loc i) = fname ++ show i
 
 sexp :: Name -> SExp -> Exp
 sexp fname = \case
-  SLet lvar0 sexp1 sexp2 ->
-    EBind (sexp fname sexp2) (Var (lvar fname lvar0)) (sexp fname sexp1)
+
+  SLet loc0@(Idris.Loc i) v sc ->
+    EBind (SBlock (sexp fname v)) (Var (loc fname loc0)) (sexp fname sc)
+
+  SLet lvar0 sexp1 sexp2 -> error "sexp: SLet with non local should not happen."
 
   Idris.SApp bool nm lvars  -> Grin.SApp (name nm) (map (Var . lvar fname) lvars)
   Idris.SUpdate lvar0 sexp0 -> Grin.SUpdate (lvar fname lvar0) (val fname sexp0)
@@ -50,12 +60,14 @@ sexp fname = \case
 
   scon@(SCon maybeLVar int name lvars) -> SReturn $ val fname scon
   sconst@(SConst cnst) -> SReturn $ val fname sconst
-  SV lvar0 -> SReturn (Var $ lvar fname lvar0)
+
+  SV lvar0@(Idris.Loc i)  -> SReturn (Var $ loc fname lvar0)
+  SV lvar0@(Idris.Glob n) -> traceShow "Global call" $ Grin.SApp (lvar fname lvar0) []
 
   -- Keep DExps for describing foreign things, because they get
   -- translated differently
   SForeign fdesc1 fdesc2 fdescLVars -> undefined
-  SNothing -> SReturn Unit -- erased value, will never be inspected  -> undefined
+  SNothing -> traceShow "Erased value" $ SReturn Unit -- erased value, will never be inspected  -> undefined
   SError string -> undefined
 
 alt :: Name -> SAlt -> Exp
@@ -80,25 +92,25 @@ primFn f ps = case f of
   LSHL intTy -> undefined
   LLSHR intTy -> undefined
   LASHR intTy -> undefined
-  LEq arityTy -> undefined
+  LEq arityTy -> Grin.SApp "prim_leq" ps
   LLt intTy -> undefined
   LLe intTy -> undefined
   LGt intTy -> undefined
   LGe intTy -> undefined
-  LSLt arityTy -> undefined
+  LSLt arityTy -> Grin.SApp "prim_slt" ps
   LSLe arityTy -> undefined
   LSGt arityTy -> undefined
   LSGe arityTy -> undefined
   LSExt intTy1 intTy2 -> undefined
   LZExt intTy1 intTy2 -> undefined
   LTrunc intTy1 intTy2 -> undefined
-  LStrConcat -> undefined
+  LStrConcat -> Grin.SApp "prim_str_concat" ps
   LStrLt -> undefined
-  LStrEq -> undefined
+  LStrEq -> Grin.SApp "prim_str_eq" ps
   LStrLen -> undefined
   LIntFloat intTy -> undefined
   LFloatInt intTy -> undefined
-  LIntStr intTy -> undefined
+  LIntStr intTy -> Grin.SApp "prim_int_str" ps
   LStrInt intTy -> undefined
   LFloatStr -> undefined
   LStrFloat -> undefined
@@ -118,9 +130,9 @@ primFn f ps = case f of
   LFFloor -> undefined
   LFCeil -> undefined
   LFNegate -> undefined
-  LStrHead -> undefined
-  LStrTail -> undefined
-  LStrCons -> undefined
+  LStrHead -> Grin.SApp "prin_str_head" ps
+  LStrTail -> Grin.SApp "prim_str_tail" ps
+  LStrCons -> Grin.SApp "prim_str_cons" ps
   LStrIndex -> undefined
   LStrRev -> undefined
   LStrSubstr -> undefined
@@ -158,10 +170,10 @@ name = \case
 specialName :: Idris.SpecialName -> Name
 specialName = \case
   Idris.WhereN int nm1 nm2 -> concat ["where_", show int, "_", name nm1, "_", name nm2]
-  Idris.WithN int nm -> undefined
-  Idris.ImplementationN nm texts -> undefined
+  Idris.WithN int nm -> concat ["with_", show int, "_", name nm]
+  Idris.ImplementationN nm texts -> concat $ ["impl_", name nm, "_"] ++ (intersperse "_" $ map Text.unpack texts)
   Idris.ParentN nm text -> undefined
-  Idris.MethodN nm -> undefined
+  Idris.MethodN nm -> concat ["method_", name nm]
   Idris.CaseN fc nm -> concat ["case_", name nm] -- fc is source location
   Idris.ImplementationCtorN nm -> undefined
   Idris.MetaN nm1 nm2 -> undefined
@@ -172,7 +184,7 @@ literal = \case
   Idris.I int -> LInt64 (fromIntegral int)
   Idris.BI integer -> LInt64 (fromIntegral integer)
   Idris.Fl double -> traceShow ("TODO: literal sould implement Double " ++ show double) $ LFloat (realToFrac double)
-  Idris.Ch char -> undefined
+  Idris.Ch char -> traceShow ("TODO: literal should implement Char" ++ show char) $ LInt64 (fromIntegral $ fromEnum char)
   Idris.Str string -> traceShow ("TODO: literal should implement String " ++ string) $ LInt64 0
   Idris.B8 word8 -> undefined
   Idris.B16 word16 -> undefined
