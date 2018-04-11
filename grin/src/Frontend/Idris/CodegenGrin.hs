@@ -18,6 +18,13 @@ import Control.Monad
 import Debug.Trace
 
 
+{-
+TODO:
+ * Single static assignement
+ * Implement appropiate primitive ops
+ * Optimization transformation that removed empty defaults, like pure ()
+-}
+
 codegenGrin :: CodeGenerator
 codegenGrin CodegenInfo{..} = do
   forM_ simpleDecls $ \(name, sdecl) -> do
@@ -67,8 +74,8 @@ sexp fname = \case
   -- Keep DExps for describing foreign things, because they get
   -- translated differently
   SForeign fdesc1 fdesc2 fdescLVars -> undefined
-  SNothing -> traceShow "Erased value" $ SReturn Unit -- erased value, will never be inspected  -> undefined
-  SError string -> undefined
+  SNothing -> traceShow "Erased value" $ SReturn Unit
+  SError string -> traceShow ("Error with:" ++ string) $ Grin.SApp "prim_error" []
 
 alt :: Name -> SAlt -> Exp
 alt fname = \case
