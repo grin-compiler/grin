@@ -8,7 +8,6 @@ import Control.Monad (void, mzero)
 import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
-import Text.Show.Pretty (pPrint)
 import qualified Data.Set as Set
 import Grin
 
