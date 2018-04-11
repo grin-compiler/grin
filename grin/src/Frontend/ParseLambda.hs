@@ -11,7 +11,7 @@ import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
 import Frontend.Lambda
 
-keywords = Set.fromList ["case","of","let","letS","in", "#True", "#False", "_"]
+keywords = Set.fromList ["case","of","let","letS", "#True", "#False", "_"]
 
 type Parser = Parsec Void String
 
@@ -57,23 +57,13 @@ def :: Parser Def
 def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (L.indentGuard sc GT pos1 >>= expr)
 
 varBind :: Pos -> Parser (Name, Exp)
-varBind i = (,) <$> var <* op "=" <*> (L.indentGuard sc GT i >>= expr)
-
-letin :: String -> Parser ([(Name,Exp)], Exp)
-letin letToken = do
-  (i,l) <- L.indentBlock sc $ do
-    i <- L.indentLevel
-    kw letToken
-    pure (L.IndentSome Nothing (pure . (i,)) (L.indentLevel >>= varBind))
-  L.indentGuard sc EQ i
-  body <- expr i
-  pure (l, body)
+varBind i = (,) <$> try (L.indentGuard sc EQ i *> var) <* op "=" <*> (L.indentGuard sc GT i >>= expr)
 
 expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
   Case <$ kw "case" <*> atom <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
-  uncurry LetS <$> letin "letS" <|>
-  uncurry Let  <$> letin "let"  <|>
+  Let  <$ kw "let"  <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
+  LetS <$ kw "letS" <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
   App <$> primNameOrDefName <*> some atom <|>
   parens (Con <$> tag <*> many atom) <|>
   atom
