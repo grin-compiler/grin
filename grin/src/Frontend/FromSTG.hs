@@ -18,7 +18,7 @@ import Literal
 import DataCon
 
 -- Grin
-import Grin
+import Frontend.Lambda
 
 type CG = StateT Env IO
 
@@ -48,9 +48,12 @@ convertLit = \case
   lit -> error . printf "unsupported literal %s" <$> pprM lit
 
 -- done
-visitArg' :: StgArg -> CG Val
+visitArg' :: StgArg -> CG Atom
 visitArg' = \case
-  StgVarArg id  -> Var <$> genName id
+  StgVarArg id  -> do
+    name <- genName id
+    liftIO $ putStrLn $ printf "%s\t\t arity: %s call-arity: %s" name (show $ idArity id) (show $ idCallArity id)
+    pure $ Var name
   StgLitArg lit -> Lit <$> convertLit lit
 
 -- done
@@ -63,13 +66,13 @@ visitRhs :: Id -> StgRhs -> CG ()
 visitRhs id rhs = case rhs of
   StgRhsCon _ dataCon args -> do
     name <- genName id
-    liftIO $ putStrLn $ printf " * def (data) name: %s" name
+    liftIO $ putStrLn $ printf " * def (data) name: %s arity: %s call-arity: %s" name (show $ idArity id) (show $ idCallArity id)
     pure () -- TODO
   StgRhsClosure _ _ freeVars _ args body -> do
     name <- genName id
     freeVars_ <- mapM genName freeVars
     args_ <- mapM genName args
-    liftIO $ putStrLn $ printf " * def (fun) name: %s free vars: %s args: %s" name (show freeVars_) (show args_)
+    liftIO $ putStrLn $ printf " * def (fun) name: %s free vars: %s args: %s arity: %s call-arity: %s" name (show freeVars_) (show args_) (show $ idArity id) (show $ idCallArity id)
     {-
       TODO:
         - add def to globals with the right argumentum list
@@ -78,30 +81,6 @@ visitRhs id rhs = case rhs of
     visitExpr body
     pure ()
 
-{-
-  | Def         Name [Name] Exp
-  -- Exp
-  | EBind       SimpleExp LPat Exp
-  | SBlock      Exp
-  | ECase       Val [Alt]
-  -- Simple Exp
-  | SApp        Name [SimpleVal]
-  | SReturn     Val
-  | SStore      Val
-  -- Alt
-  | Alt CPat Exp
-
-  -- only in eval
-  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
-  | SUpdate     Name Val
-
--}
-
-{-
-  TODO:
-    - introduce def
-    - build bind sequence
--}
 
 visitTopBinding :: StgTopBinding -> CG ()
 visitTopBinding = \case
@@ -116,11 +95,11 @@ visitBinding = \case
 visitExpr :: StgExpr -> CG Exp
 visitExpr = \case
   -- app
-  StgApp id args                  -> SApp <$> genName id <*> mapM visitArg args
-  StgOpApp op args _ty            -> SApp <$> genOpName op <*> mapM visitArg args
+  StgApp id args                  -> App <$> genName id <*> mapM visitArg args
+  StgOpApp op args _ty            -> App <$> genOpName op <*> mapM visitArg args
   --StgConApp dataCon args _ty      -> ConstTagNode <$> genTag dataCon <*> mapM visitArg args >>= fmap SReturn
   -- return lit
-  StgLit literal                  -> SReturn . Lit <$> convertLit literal
+  StgLit literal                  -> Lit <$> convertLit literal
   -- bypass
   StgTick _tickish expr           -> visitExpr expr
   -- ???
@@ -149,7 +128,7 @@ data DataCon
         dcTag    :: ConTag,     -- ^ Tag, used for ordering 'DataCon's
 -}
 genTag :: DataCon -> CG Tag
-genTag dataCon = Tag C <$> pprM dataCon
+genTag dataCon = pprM dataCon
 
 visitAlt :: StgAlt -> CG Alt
 visitAlt (altCon, argIds, body) = do
@@ -189,12 +168,3 @@ codegenGrin dflags stg = do
 
   execStateT (mapM visitTopBinding stg) (Env dflags mempty)
   pure $ Program []
-
-
-
-{-
-  TODO:
-    - generate top level functions
-    - apply free variables when calling functions
-    - handle lazyness
--}
