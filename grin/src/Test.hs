@@ -19,7 +19,7 @@ import Data.Bifunctor
 import Data.Functor.Infix
 import Data.Functor.Foldable
 import Data.List ((\\))
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, maybeToList)
 import Data.Semigroup
 import qualified Data.Text as Text
 import GHC.Generics
@@ -236,6 +236,7 @@ instance Arbitrary CPat where
     [ NodePat <$> arbitrary <*> (G.unName <$$> listOf1 arbitrary)
     , TagPat  <$> arbitrary
     , LitPat  <$> arbitrary
+    , pure DefaultPat
     ]
 
 instance Arbitrary Tag where
@@ -756,7 +757,8 @@ gCase eff t = tryout
   , do t'   <- tryout [simpleType, definedAdt]
        val  <- gValue t'
        alts <- gAlts eff (Just val) t' t
-       pure $ G.ECase val $ NonEmpty alts
+       mDefAlt <- moneof [pure Nothing, (Just . G.Alt DefaultPat <$> (solve (Exp eff t)))]
+       pure $ G.ECase val $ NonEmpty (alts ++ maybeToList mDefAlt)
   ]
 
 -- TODO: Effects
