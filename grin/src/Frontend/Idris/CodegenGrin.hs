@@ -220,6 +220,8 @@ pipelineOpts = PipelineOpts
 idrisPipeLine :: [Pipeline]
 idrisPipeLine =
   [ SaveGrin "FromIdris"
+  , HPT CompileHPT
+--  , HPT PrintHPT
   , PrintGrin ondullblack
   , T CaseSimplification
   , T SplitFetch
