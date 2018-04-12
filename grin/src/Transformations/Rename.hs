@@ -45,3 +45,4 @@ renameNames substituitons = ana builder where
     NodePat tag names -> NodePat (substTag tag) (substName <$> names)
     TagPat  tag       -> TagPat  (substTag tag)
     LitPat  lit       -> LitPat  lit
+    DefaultPat        -> DefaultPat

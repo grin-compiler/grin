@@ -125,8 +125,8 @@ data Lit
 data CPat
   = NodePat Tag [Name]  -- HIGH level GRIN
   | LitPat  Lit         -- HIGH level GRIN
+  | DefaultPat          -- HIGH level GRIN
   | TagPat  Tag
-  | DefaultPat
   deriving (Generic, NFData, Eq, Show, Ord)
 
 isBasicCPat :: CPat -> Bool
@@ -138,8 +138,9 @@ isBasicCPat = \case
 instance FoldNames CPat where
   foldNames f = \case
     NodePat _ names -> mconcat (map f names)
-    TagPat _ -> mempty
-    LitPat _ -> mempty
+    TagPat _    -> mempty
+    LitPat _    -> mempty
+    DefaultPat  -> mempty
 
 data TagType = C | F | P
   deriving (Generic, NFData, Eq, Ord, Show)

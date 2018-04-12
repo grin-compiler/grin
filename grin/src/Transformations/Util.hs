@@ -48,6 +48,7 @@ mapNamesCPat f = \case
   NodePat tag args  -> NodePat tag (map f args)
   LitPat  lit       -> LitPat lit
   TagPat  tag       -> TagPat tag
+  DefaultPat        -> DefaultPat
 
 mapNamesVal :: (Name -> Name) -> Val -> Val
 mapNamesVal f = \case
@@ -93,6 +94,7 @@ cpatToLPat = \case
   NodePat tag args  -> ConstTagNode tag (map Var args)
   LitPat  lit       -> Lit lit
   TagPat  tag       -> ValTag tag
+  DefaultPat        -> Unit
 
 -- monadic recursion schemes
 --  see: https://jtobin.io/monadic-recursion-schemes

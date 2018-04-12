@@ -91,6 +91,7 @@ primNameOrDefName = ('_':) <$ char '_' <*> var <|> var
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 
 altPat = parens (NodePat <$> tag <*> many var) <|>
+         DefaultPat <$ kw "#default" <|>
          TagPat <$> tag <|>
          LitPat <$> literal
 
