@@ -59,7 +59,7 @@ instance Pretty Exp where
       SUpdateF name val       -> keywordR "update" <+> text name <+> pretty val
       SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
-      AltF cpat exp     -> pretty cpat <+> text "->" <+> align (pretty exp)
+      AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
 
 instance Pretty Val where
   pretty = \case
