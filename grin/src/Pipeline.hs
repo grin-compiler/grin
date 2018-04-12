@@ -3,7 +3,7 @@ module Pipeline where
 
 import Control.Monad
 import Data.List (intersperse)
-import Data.Maybe (maybe, fromJust)
+import Data.Maybe (maybe, fromJust, fromMaybe)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
@@ -55,6 +55,8 @@ import Lens.Micro.Mtl
 import Data.Set
 import System.FilePath
 import Control.DeepSeq
+import Debug.Trace
+
 
 
 type RenameVariablesMap = Map String String
@@ -245,9 +247,9 @@ postconditionCheck t = do
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
-  (Just env0) <- use psTypeEnv
-  n           <- use psTransStep
-  exp0        <- use psExp
+  env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
+  n    <- use psTransStep
+  exp0 <- use psExp
   let (env1, exp1) = transformation n t (env0, exp0)
   psTypeEnv .= Just env1
   psExp     .= exp1

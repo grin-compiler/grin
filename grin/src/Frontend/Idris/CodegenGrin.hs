@@ -17,6 +17,9 @@ import Control.Exception
 import Control.Monad
 import Debug.Trace
 import Transformations.SingleStaticAssignment
+import Transformations.BindNormalisation
+import Pipeline
+import Text.PrettyPrint.ANSI.Leijen (ondullblack)
 
 
 {-
@@ -31,11 +34,16 @@ codegenGrin CodegenInfo{..} = do
     print name
     putStrLn $ ppShow sdecl
     putStr "\n"
-  print =<< (try @SomeException . printGrin $ program simpleDecls)
+  let idrisGrin = program simpleDecls
+  pipeline pipelineOpts idrisGrin idrisPipeLine
   putStrLn ""
 
 program :: [(Idris.Name, SDecl)] -> Exp
-program defs = singleStaticAssignment $ Program $ map (function . snd) defs
+program defs =
+  singleStaticAssignment $
+  bindNormalisation $
+  singleStaticAssignment $
+  Program $ map (function . snd) defs
 
 function :: SDecl -> Exp
 function (SFun fname params _int body) =
@@ -203,3 +211,25 @@ literal = \case
   Idris.TheWorld -> undefined
   Idris.VoidType -> undefined
   Idris.Forgot -> undefined
+
+pipelineOpts :: PipelineOpts
+pipelineOpts = PipelineOpts
+  { _poOutputDir = "./idris/"
+  }
+
+idrisPipeLine :: [Pipeline]
+idrisPipeLine =
+  [ SaveGrin "FromIdris"
+  , PrintGrin ondullblack
+  , T CaseSimplification
+  , T SplitFetch
+  , T RightHoistFetch
+  , T ConstantFolding
+  , T EvaluatedCaseElimination
+  , T TrivialCaseElimination
+  , T UpdateElimination
+  , T CopyPropagation
+--  , T ConstantPropagation: cpatToLPat fails
+--  , T DeadProcedureElimination: grinMain
+  , SaveGrin "After"
+  ]
