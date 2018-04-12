@@ -6,6 +6,7 @@ module AbstractInterpretation.CodeGen
 import Data.Word
 import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Control.Monad.State
 import Data.Functor.Foldable as Foldable
 
@@ -214,7 +215,7 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
           _ -> error $ "unsupported lpat " ++ show lpat
       rightExp
 
-    ECaseF val alts -> do
+    ECaseF val alts_ -> do
       valReg <- codeGenVal val
       caseResultReg <- newReg
       {-
@@ -222,8 +223,8 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
           - create scope monadic combinator to handle scopes
           - set scrutinee value to the case alternative pattern value in the alternative scope
       -}
-      forM_ alts $ \alt -> do
-        (A cpat altM) <- alt
+      alts <- sequence alts_
+      forM_ alts $ \(A cpat altM) -> do
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
@@ -253,6 +254,20 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
             altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
             ----------- END
             emit $ IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
+          DefaultPat -> do
+            ----------- BEGIN ; FIXME
+            -- save instructions, clear, join altM, read instructions, swap saved instructions back
+            instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
+            altRes <- altM -- FIXME: move after pattern variable binding
+            case altRes of
+              Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
+              R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
+            altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
+            ----------- END
+            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
+            let types = Set.fromList [litToSimpleType lit | A (LitPat lit) _ <- alts]
+            emit $ IR.If {condition = IR.HasMoreThan tags types, srcReg = valReg, instructions = altInstructions}
+
           _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
       pure $ R caseResultReg
 
