@@ -1,8 +1,8 @@
 upto m n =
-  let cmp = _prim_int_gt m n
+  let cmp = int_gt m n
   case cmp of
-    #True   -> (Nil)
-    #False  -> let succ = _prim_int_add m 1
+    (True)  -> (Nil)
+    (False) -> let succ = int_add m 1
                    tail = upto succ n
                (Cons m tail)
 
@@ -10,9 +10,30 @@ sum l =
   case l of
     (Nil)       -> 0
     (Cons n ns) -> let s = sum ns
-                   _prim_int_add n s
+                   int_add n s
 
 main =
   let l = upto 1 100000
       s = sum l
-  _prim_int_print s
+  int_print s
+
+-- lazy boxed int built-in operations
+
+int_add a b =
+  case a of
+    (Int x) -> case b of
+      (Int y) -> let z = _prim_int_add x y
+                 (Int z)
+
+int_gt a b =
+  case a of
+    (Int x) -> case b of
+      (Int y) -> let cmp = _prim_int_gt x y
+                 case cmp of
+                  #True   -> (True)
+                  #False  -> (False)
+
+int_print a =
+  case a of
+    (Int x) -> letS res = _prim_int_print x
+               (Unit)
