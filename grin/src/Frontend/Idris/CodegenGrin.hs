@@ -26,6 +26,7 @@ import Text.PrettyPrint.ANSI.Leijen (ondullblack)
 TODO:
  * Implement appropiate primitive ops
  * Optimization transformation that removed empty defaults, like pure ()
+ * Implement String primitives
 -}
 
 codegenGrin :: CodeGenerator
@@ -87,7 +88,10 @@ sexp fname = \case
 
 alt :: Name -> SAlt -> Exp
 alt fname = \case
-  SConCase int0 int1 nm names sexp0 -> Alt (NodePat (Tag C (name nm)) (map name names)) (sexp fname sexp0)
+  SConCase startIdx t nm names sexp0 ->
+    Alt (NodePat (Tag C (name nm)) (map (\(i,_n) -> fname ++ show i) ([startIdx ..] `zip` names)))
+        (sexp fname sexp0)
+
   SConstCase cnst sexp0 -> Alt (LitPat (literal cnst)) (sexp fname sexp0)
   SDefaultCase sexp0    -> Alt DefaultPat (sexp fname sexp0)
 
@@ -172,27 +176,8 @@ lvar fname = \case
   Idris.Loc loc -> fname ++ show loc
   Glob nm       -> name nm
 
--- | Names are hierarchies of strings, describing scope (so no danger of
--- duplicate names, but need to be careful on lookup).
 name :: Idris.Name -> Name
-name = \case
-  Idris.UN text -> "un_" ++ Text.unpack text
-  Idris.NS nm namespace -> "ns_" ++ name nm ++ (concat $ intersperse "_" $ map Text.unpack namespace)
-  Idris.MN int text -> concat ["mn_", show int, "_", Text.unpack text]
-  Idris.SN sn -> "sn_" ++ specialName sn
-  Idris.SymRef int -> "symref_" ++ show int
-
-specialName :: Idris.SpecialName -> Name
-specialName = \case
-  Idris.WhereN int nm1 nm2 -> concat ["where_", show int, "_", name nm1, "_", name nm2]
-  Idris.WithN int nm -> concat ["with_", show int, "_", name nm]
-  Idris.ImplementationN nm texts -> concat $ ["impl_", name nm, "_"] ++ (intersperse "_" $ map Text.unpack texts)
-  Idris.ParentN nm text -> undefined
-  Idris.MethodN nm -> concat ["method_", name nm]
-  Idris.CaseN fc nm -> concat ["case_", name nm] -- fc is source location
-  Idris.ImplementationCtorN nm -> undefined
-  Idris.MetaN nm1 nm2 -> undefined
-  voidElim -> traceShow ("specialName got a value for void eliminator: " ++ show voidElim) $ "void_eliminator"
+name n = "idr_" ++ (Idris.showCG n)
 
 literal :: Idris.Const -> Lit
 literal = \case
@@ -220,9 +205,11 @@ pipelineOpts = PipelineOpts
 idrisPipeLine :: [Pipeline]
 idrisPipeLine =
   [ SaveGrin "FromIdris"
-  , HPT CompileHPT
---  , HPT PrintHPT
   , PrintGrin ondullblack
+  , HPT CompileHPT
+  , HPT PrintHPT
+  , HPT RunHPTPure
+  , HPT PrintHPTResult
   , T CaseSimplification
   , T SplitFetch
   , T RightHoistFetch
