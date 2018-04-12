@@ -41,6 +41,7 @@ library
     Transformations.AssignStoreIDs
     Transformations.GenerateEval
     Transformations.BindNormalisation
+    Transformations.SingleStaticAssignment
     Transformations.Rename
     Transformations.Substitution
     Transformations.Playground

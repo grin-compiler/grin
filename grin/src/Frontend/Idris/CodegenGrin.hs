@@ -16,11 +16,11 @@ import Pretty
 import Control.Exception
 import Control.Monad
 import Debug.Trace
+import Transformations.SingleStaticAssignment
 
 
 {-
 TODO:
- * Single static assignement
  * Implement appropiate primitive ops
  * Optimization transformation that removed empty defaults, like pure ()
 -}
@@ -35,7 +35,7 @@ codegenGrin CodegenInfo{..} = do
   putStrLn ""
 
 program :: [(Idris.Name, SDecl)] -> Exp
-program defs = Program $ map (function . snd) defs
+program defs = singleStaticAssignment $ Program $ map (function . snd) defs
 
 function :: SDecl -> Exp
 function (SFun fname params _int body) =
