@@ -41,7 +41,6 @@ codegenGrin CodegenInfo{..} = do
 
 program :: [(Idris.Name, SDecl)] -> Exp
 program defs =
-  singleStaticAssignment $
   bindNormalisation $
   singleStaticAssignment $
   Program $ map (function . snd) defs
@@ -220,5 +219,12 @@ idrisPipeLine =
   , T CopyPropagation
 --  , T ConstantPropagation: cpatToLPat fails
 --  , T DeadProcedureElimination: grinMain
+--  , T SparseCaseOptimisation: Illegal type {}
+  , T EvaluatedCaseElimination
+  , T ConstantPropagation
+--  , T CommonSubExpressionElimination: Illegal type {}
+  , T CaseCopyPropagation
+--  , T GeneralizedUnboxing: Illegal type: {}
+--  , T ArityRaising: Illegal type: {}
   , SaveGrin "After"
   ]
