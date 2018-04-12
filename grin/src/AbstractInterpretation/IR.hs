@@ -6,6 +6,7 @@ import Data.Word
 
 import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
+import Data.Set (Set)
 
 import qualified Grin
 import Grin (Name)
@@ -23,6 +24,7 @@ type SimpleType = Int32
 data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
+  | HasMoreThan       (Set Tag) (Set SimpleType)
   deriving Show
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error on compile time ; the analyis will not be restrictive ; there will not be runtime checks

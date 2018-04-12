@@ -76,6 +76,10 @@ evalInstruction = \case
       SimpleTypeExists ty -> do
         typeSet <- use $ register.ix (regIndex srcReg).simpleType
         pure $ Set.member ty typeSet
+      HasMoreThan tags types -> do
+        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
+        typeSet <- use $ register.ix (regIndex srcReg).simpleType
+        pure $ Set.isProperSubsetOf types typeSet || Set.isProperSubsetOf tags (Map.keysSet tagMap)
     when satisfy $ mapM_ evalInstruction instructions
 
   Project {..} -> do
