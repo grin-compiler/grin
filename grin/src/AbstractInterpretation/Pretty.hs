@@ -84,8 +84,9 @@ prettySelector mirm (NodeItem tag idx) = prettyTag mirm tag <> brackets (pretty 
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
-    NodeTypeExists a    -> prettyTag mirm a
-    SimpleTypeExists a  -> prettySimpleType a <> text "#" <> (integer $ fromIntegral a)
+    NodeTypeExists tag  -> prettyTag mirm tag
+    SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty)
+    HasMoreThan tags    -> text "has more than" <+> list (map (prettyTag mirm) $ Set.toList tags)
 
 prettyConstant :: Maybe IRMap -> Constant -> Doc
 prettyConstant mirm = \case

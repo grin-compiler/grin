@@ -24,7 +24,7 @@ type SimpleType = Int32
 data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
-  | HasMoreThan       (Set Tag) (Set SimpleType)
+  | HasMoreThan       (Set Tag)
   deriving Show
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error on compile time ; the analyis will not be restrictive ; there will not be runtime checks

@@ -265,8 +265,7 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
             altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
             ----------- END
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
-            let types = Set.fromList [litToSimpleType lit | A (LitPat lit) _ <- alts]
-            emit $ IR.If {condition = IR.HasMoreThan tags types, srcReg = valReg, instructions = altInstructions}
+            emit $ IR.If {condition = IR.HasMoreThan tags, srcReg = valReg, instructions = altInstructions}
 
           _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
       pure $ R caseResultReg
