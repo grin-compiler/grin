@@ -21,6 +21,9 @@ spec = do
             p3 <- do
               p3 <- prim_int_add 1 2
               prim_int_add p3 2
+            p3 <- do
+              p3 <- prim_int_add 1 2
+              prim_int_add p3 2
             prim_int_add p3 3
           prim_int_add p3 4
       |]
@@ -30,7 +33,10 @@ spec = do
             p3_1 <- do
               p3_2 <- prim_int_add 1 2
               prim_int_add p3_2 2
-            prim_int_add p3_1 3
+            p3_2 <- do
+              p3_3 <- prim_int_add 1 2
+              prim_int_add p3_3 2
+            prim_int_add p3_2 3
           prim_int_add p3 4
       |]
     (singleStaticAssignment before) `sameAs` after

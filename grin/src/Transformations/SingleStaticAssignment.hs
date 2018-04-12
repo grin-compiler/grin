@@ -12,7 +12,8 @@ import GrinTH
 import Test.Hspec
 import Assertions
 
-
+-- Simple implementation for single-static-assignment. It can reuse
+-- the same name if it occurs in different blocks. See the test case
 singleStaticAssignment :: Exp -> Exp
 singleStaticAssignment e = ana build (mempty, mempty, e) where
   build :: (Set.Set Name, Map.Map Name Int, Exp) -> ExpF (Set.Set Name, Map.Map Name Int, Exp)
