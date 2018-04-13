@@ -43,7 +43,13 @@ program :: [(Idris.Name, SDecl)] -> Exp
 program defs =
   bindNormalisation $
   singleStaticAssignment $
+  renameMain $
   Program $ map (function . snd) defs
+
+renameMain :: Exp -> Exp
+renameMain (Program defs) = Program $ map newMain defs where
+  newMain (Def "idr_{runMain_0}" [] body) = Def "grinMain" [] body
+  newMain rest = rest
 
 function :: SDecl -> Exp
 function (SFun fname params _int body) =
@@ -209,6 +215,7 @@ pipelineOpts = PipelineOpts
 idrisPipeLine :: [Pipeline]
 idrisPipeLine =
   [ SaveGrin "FromIdris"
+  , T DeadProcedureElimination
   , PrintGrin ondullblack
   , HPT CompileHPT
   , HPT PrintHPT
@@ -223,7 +230,6 @@ idrisPipeLine =
   , T UpdateElimination
   , T CopyPropagation
 --  , T ConstantPropagation: cpatToLPat fails
---  , T DeadProcedureElimination: grinMain
 --  , T SparseCaseOptimisation: Illegal type {}
   , T EvaluatedCaseElimination
   , T ConstantPropagation
