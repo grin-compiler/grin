@@ -3,6 +3,7 @@ module Frontend.Idris.CodegenGrin(codegenGrin) where
 
 import Control.Monad
 import Text.Show.Pretty hiding (Name)
+import Text.Printf
 
 import IRTS.CodegenCommon
 import IRTS.Simplified as Idris
@@ -102,6 +103,7 @@ alt fname = \case
 
 primFn :: Idris.PrimFn -> [SimpleVal] -> Exp
 primFn f ps = case f of
+  {-
   LPlus arityTy -> undefined
   LMinus arityTy -> undefined
   LTimes arityTy -> undefined
@@ -112,18 +114,22 @@ primFn f ps = case f of
   LAnd intTy -> undefined
   LOr intTy -> undefined
   LXOr intTy -> undefined
-  LCompl intTy -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 1)] ++ ps -- TODO: Fix complementer
+  LCompl intTy -> undefined
   LSHL intTy -> undefined
   LLSHR intTy -> undefined
   LASHR intTy -> undefined
+  -}
   LEq (Idris.ATInt intTy) -> Grin.SApp "_prim_int_eq" ps
   LEq Idris.ATFloat       -> Grin.SApp "_prim_float_eq" ps
+  {-
   LLt intTy -> undefined
   LLe intTy -> undefined
   LGt intTy -> undefined
   LGe intTy -> undefined
+  -}
   LSLt (Idris.ATInt intTy) -> Grin.SApp "_prim_int_lt" ps
   LSLt Idris.ATFloat       -> Grin.SApp "_prim_float_lt" ps
+  {-
   LSLe arityTy -> undefined
   LSGt arityTy -> undefined
   LSGe arityTy -> undefined
@@ -163,7 +169,13 @@ primFn f ps = case f of
   LStrRev -> undefined
   LStrSubstr -> undefined
   LReadStr -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 4)] ++ ps -- TODO: Fix String
-  LWriteStr -> Grin.SApp "_prim_int_add" ps -- TODO: Fix String
+  -}
+  LWriteStr -> Grin.SApp "_prim_int_print" ps -- TODO: Fix String
+  LExternal name | show name == "prim__asPtr" -> Grin.SApp "prim__asPtr" ps
+  LExternal name | show name == "prim__eqManagedPtr" -> Grin.SApp "prim__eqManagedPtr" ps
+  LExternal name | show name == "prim__eqPtr" -> Grin.SApp "prim__eqPtr" ps
+  LExternal name -> Grin.SApp (show name) ps
+  {-
   LSystemInfo -> undefined
   LFork -> undefined
   LPar -> undefined -- evaluate argument anywhere, possibly on another -- core or another machine. 'id' is a valid implementation
@@ -173,6 +185,8 @@ primFn f ps = case f of
     _   -> Grin.SApp "_prim_int_add" $ (take 2 ps)  -- TODO: Fix String
   LCrash -> undefined
   LNoOp -> undefined
+  -}
+  x -> error $ printf "unsupported primitive operation %s" (show x)
 
 val :: Name -> SExp -> Val
 val fname = \case
@@ -195,7 +209,8 @@ literal = \case
   Idris.BI integer -> LInt64 (fromIntegral integer)
   Idris.Fl double -> traceShow ("TODO: literal sould implement Double " ++ show double) $ LFloat (realToFrac double)
   Idris.Ch char -> traceShow ("TODO: literal should implement Char" ++ show char) $ LInt64 (fromIntegral $ fromEnum char)
-  Idris.Str string -> traceShow ("TODO: literal should implement String " ++ string) $ LInt64 0
+  Idris.Str string -> traceShow ("TODO: literal should implement String " ++ string) $ LInt64 1234
+{-
   Idris.B8 word8 -> undefined
   Idris.B16 word16 -> undefined
   Idris.B32 word32 -> undefined
@@ -206,6 +221,8 @@ literal = \case
   Idris.TheWorld -> undefined
   Idris.VoidType -> undefined
   Idris.Forgot -> undefined
+-}
+  x -> error $ printf "unsupported literal %s" (show x)
 
 pipelineOpts :: PipelineOpts
 pipelineOpts = PipelineOpts
@@ -238,4 +255,5 @@ idrisPipeLine =
 --  , T GeneralizedUnboxing: Illegal type: {}
 --  , T ArityRaising: Illegal type: {}
   , SaveGrin "After"
+  , PrintGrin ondullblack
   ]
