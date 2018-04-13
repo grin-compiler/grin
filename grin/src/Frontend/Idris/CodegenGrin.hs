@@ -106,29 +106,31 @@ primFn f ps = case f of
   LAnd intTy -> undefined
   LOr intTy -> undefined
   LXOr intTy -> undefined
-  LCompl intTy -> Grin.SApp "prim_comp" ps
+  LCompl intTy -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 1)] ++ ps -- TODO: Fix complementer
   LSHL intTy -> undefined
   LLSHR intTy -> undefined
   LASHR intTy -> undefined
-  LEq arityTy -> Grin.SApp "prim_leq" ps
+  LEq (Idris.ATInt intTy) -> Grin.SApp "_prim_int_eq" ps
+  LEq Idris.ATFloat       -> Grin.SApp "_prim_float_eq" ps
   LLt intTy -> undefined
   LLe intTy -> undefined
   LGt intTy -> undefined
   LGe intTy -> undefined
-  LSLt arityTy -> Grin.SApp "prim_slt" ps
+  LSLt (Idris.ATInt intTy) -> Grin.SApp "_prim_int_lt" ps
+  LSLt Idris.ATFloat       -> Grin.SApp "_prim_float_lt" ps
   LSLe arityTy -> undefined
   LSGt arityTy -> undefined
   LSGe arityTy -> undefined
   LSExt intTy1 intTy2 -> undefined
   LZExt intTy1 intTy2 -> undefined
   LTrunc intTy1 intTy2 -> undefined
-  LStrConcat -> Grin.SApp "prim_str_concat" ps
+  LStrConcat -> Grin.SApp "_prim_int_add" ps -- TODO: Fix String
   LStrLt -> undefined
-  LStrEq -> Grin.SApp "prim_str_eq" ps
+  LStrEq -> Grin.SApp "_prim_int_eq" ps -- TODO: Fix String
   LStrLen -> undefined
   LIntFloat intTy -> undefined
   LFloatInt intTy -> undefined
-  LIntStr intTy -> Grin.SApp "prim_int_str" ps
+  LIntStr intTy -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 2)] ++ ps -- TODO: Fix String
   LStrInt intTy -> undefined
   LFloatStr -> undefined
   LStrFloat -> undefined
@@ -148,18 +150,21 @@ primFn f ps = case f of
   LFFloor -> undefined
   LFCeil -> undefined
   LFNegate -> undefined
-  LStrHead -> Grin.SApp "prin_str_head" ps
-  LStrTail -> Grin.SApp "prim_str_tail" ps
-  LStrCons -> Grin.SApp "prim_str_cons" ps
+  LStrHead -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 2)] ++ ps -- TODO: Fix String
+  LStrTail -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 3)] ++ ps -- TODO: Fix String
+  LStrCons -> Grin.SApp "_prim_int_add" ps -- TODO: Fix String
   LStrIndex -> undefined
   LStrRev -> undefined
   LStrSubstr -> undefined
-  LReadStr -> Grin.SApp "prim_read_str" ps
-  LWriteStr -> Grin.SApp "prim_write_str" ps
+  LReadStr -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 4)] ++ ps -- TODO: Fix String
+  LWriteStr -> Grin.SApp "_prim_int_add" ps -- TODO: Fix String
   LSystemInfo -> undefined
   LFork -> undefined
   LPar -> undefined -- evaluate argument anywhere, possibly on another -- core or another machine. 'id' is a valid implementation
-  LExternal nm -> Grin.SApp ("prim_ext_" ++ name nm) ps
+  LExternal nm -> case ps of
+    []  -> SReturn Unit
+    [p] -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 5), p]
+    _   -> Grin.SApp "_prim_int_add" $ (take 2 ps)  -- TODO: Fix String
   LCrash -> undefined
   LNoOp -> undefined
 
