@@ -2,6 +2,8 @@
 module Transformations.Optimising.SparseCaseOptimisation where
 
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Functor.Foldable as Foldable
 import Grin
 import TypeEnv
@@ -14,18 +16,22 @@ sparseCaseOptimisation (typeEnv, exp) = (typeEnv, ana builder exp) where
       ECaseF val
         [ alt
         | alt@(Alt cpat body) <- alts
-        , possible varType cpat
-        ] where varType = variableType typeEnv name
+        , possible varType allPatTags cpat
+        ] where varType     = variableType typeEnv name :: Type
+                allPatTags  = Set.fromList [tag | Alt (NodePat tag _) _ <- alts]
 
     exp -> project exp
 
-  possible :: Type -> CPat -> Bool
-  possible (T_NodeSet nodeSet) cpat = case cpat of
+  possible :: Type -> Set Tag -> CPat -> Bool
+  possible (T_NodeSet nodeSet) allPatTags cpat = case cpat of
     NodePat tag _args -> Map.member tag nodeSet
+    -- HINT: the default case is redundant if normal cases fully cover the domain
+    DefaultPat -> Set.isProperSubsetOf allPatTags (Map.keysSet nodeSet)
     _ -> False
 
-  possible ty@T_SimpleType{} cpat = case cpat of
+  possible ty@T_SimpleType{} _ cpat = case cpat of
     LitPat lit -> ty == typeOfLit lit
+    DefaultPat -> True -- HINT: the value domain is unknown, it is not possible to prove if it overlaps or it is fully covered
     _ -> False
 
-  possible _ _ = True -- bypass everything else
+  possible _ _ _ = True -- bypass everything else
