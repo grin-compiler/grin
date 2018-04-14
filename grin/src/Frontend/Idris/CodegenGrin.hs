@@ -76,7 +76,7 @@ sexp fname = \case
   SCase caseType lvar0 salts -> ECase (Var $ lvar fname lvar0) (map (alt fname) salts)
   SChkCase lvar0 salts       -> ECase (Var $ lvar fname lvar0) (map (alt fname) salts)
 
-  SProj lvar0 int -> SFetchI (lvar fname lvar0) (Just int)
+  --SProj lvar0 int -> SFetchI (lvar fname lvar0) (Just int)
 
   SOp f lvars -> primFn f (map (Var . lvar fname) lvars)
 
@@ -88,9 +88,11 @@ sexp fname = \case
 
   -- Keep DExps for describing foreign things, because they get
   -- translated differently
-  SForeign fdesc1 fdesc2 fdescLVars -> undefined
+  --SForeign fdesc1 fdesc2 fdescLVars -> undefined
+  SForeign _ (FStr "_prim_int_print") [(_,arg)] -> Grin.SApp "_prim_int_print" [Var . lvar fname $ arg]
   SNothing -> traceShow "Erased value" $ SReturn Unit
-  SError string -> traceShow ("Error with:" ++ string) $ Grin.SApp "prim_error" []
+  --SError string -> traceShow ("Error with:" ++ string) $ Grin.SApp "prim_error" []
+  e -> error $ printf "unsupported %s" (show e)
 
 alt :: Name -> SAlt -> Exp
 alt fname = \case
@@ -169,11 +171,9 @@ primFn f ps = case f of
   LStrRev -> undefined
   LStrSubstr -> undefined
   LReadStr -> Grin.SApp "_prim_int_add" $ [Lit (LInt64 4)] ++ ps -- TODO: Fix String
-  -}
-  LWriteStr -> Grin.SApp "_prim_int_print" ps -- TODO: Fix String
-  LExternal name | show name == "prim__asPtr" -> Grin.SApp "prim__asPtr" ps
-  LExternal name | show name == "prim__eqManagedPtr" -> Grin.SApp "prim__eqManagedPtr" ps
-  LExternal name | show name == "prim__eqPtr" -> Grin.SApp "prim__eqPtr" ps
+
+  LWriteStr -> Grin.SApp "_prim_write_str" ps -- TODO: Fix String
+-}
   LExternal name -> Grin.SApp (show name) ps
   {-
   LSystemInfo -> undefined
@@ -207,9 +207,11 @@ literal :: Idris.Const -> Lit
 literal = \case
   Idris.I int -> LInt64 (fromIntegral int)
   Idris.BI integer -> LInt64 (fromIntegral integer)
+  {-
   Idris.Fl double -> traceShow ("TODO: literal sould implement Double " ++ show double) $ LFloat (realToFrac double)
   Idris.Ch char -> traceShow ("TODO: literal should implement Char" ++ show char) $ LInt64 (fromIntegral $ fromEnum char)
   Idris.Str string -> traceShow ("TODO: literal should implement String " ++ string) $ LInt64 1234
+  -}
 {-
   Idris.B8 word8 -> undefined
   Idris.B16 word16 -> undefined
@@ -246,7 +248,7 @@ idrisPipeLine =
   , T TrivialCaseElimination
   , T UpdateElimination
   , T CopyPropagation
---  , T ConstantPropagation: cpatToLPat fails
+  , T ConstantPropagation
 --  , T SparseCaseOptimisation: Illegal type {}
   , T EvaluatedCaseElimination
   , T ConstantPropagation
@@ -256,4 +258,6 @@ idrisPipeLine =
 --  , T ArityRaising: Illegal type: {}
   , SaveGrin "After"
   , PrintGrin ondullblack
+  , SaveLLVM "high-level-opt-code"
+  , JITLLVM
   ]
