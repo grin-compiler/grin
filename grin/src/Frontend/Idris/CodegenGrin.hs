@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, TypeApplications #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Frontend.Idris.CodegenGrin(codegenGrin) where
 
 import Control.Monad
@@ -22,6 +23,7 @@ import Transformations.BindNormalisation
 import Pipeline
 import Text.PrettyPrint.ANSI.Leijen (ondullblack)
 
+import GrinTH
 
 {-
 TODO:
@@ -40,12 +42,28 @@ codegenGrin CodegenInfo{..} = do
   pipeline pipelineOpts idrisGrin idrisPipeLine
   putStrLn ""
 
+idrisPrimOps = [prog|
+
+  idris_int_eq a0 b0 =
+    res0 <- _prim_int_eq a0 b0
+    case res0 of
+      #False  -> pure 0
+      #True   -> pure 1
+
+  idris_int_lt a1 b1 =
+    res1 <- _prim_int_lt a1 b1
+    case res1 of
+      #False  -> pure 0
+      #True   -> pure 1
+|]
+
 program :: [(Idris.Name, SDecl)] -> Exp
 program defs =
   bindNormalisation $
   singleStaticAssignment $
   renameMain $
-  Program $ map (function . snd) defs
+  Program $ primOps ++ map (function . snd) defs
+ where Program primOps = idrisPrimOps
 
 renameMain :: Exp -> Exp
 renameMain (Program defs) = Program $ map newMain defs where
@@ -105,10 +123,10 @@ alt fname = \case
 
 primFn :: Idris.PrimFn -> [SimpleVal] -> Exp
 primFn f ps = case f of
+  LPlus   (Idris.ATInt intTy) -> Grin.SApp "_prim_int_add" ps
+  LMinus  (Idris.ATInt intTy) -> Grin.SApp "_prim_int_sub" ps
+  LTimes  (Idris.ATInt intTy) -> Grin.SApp "_prim_int_mul" ps
   {-
-  LPlus arithTy -> undefined
-  LMinus arithTy -> undefined
-  LTimes arithTy -> undefined
   LUDiv intTy -> undefined
   LSDiv arithTy -> undefined
   LURem intTy -> undefined
@@ -121,16 +139,16 @@ primFn f ps = case f of
   LLSHR intTy -> undefined
   LASHR intTy -> undefined
   -}
-  LEq (Idris.ATInt intTy) -> Grin.SApp "_prim_int_eq" ps
-  LEq Idris.ATFloat       -> Grin.SApp "_prim_float_eq" ps
+  LEq (Idris.ATInt intTy) -> Grin.SApp "idris_int_eq" ps
+  --LEq Idris.ATFloat       -> Grin.SApp "_prim_float_eq" ps
   {-
   LLt intTy -> undefined
   LLe intTy -> undefined
   LGt intTy -> undefined
   LGe intTy -> undefined
   -}
-  LSLt (Idris.ATInt intTy) -> Grin.SApp "_prim_int_lt" ps
-  LSLt Idris.ATFloat       -> Grin.SApp "_prim_float_lt" ps
+  LSLt (Idris.ATInt intTy) -> Grin.SApp "idris_int_lt" ps
+  --LSLt Idris.ATFloat       -> Grin.SApp "_prim_float_lt" ps
   {-
   LSLe arithTy -> undefined
   LSGt arithTy -> undefined
