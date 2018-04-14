@@ -5,7 +5,7 @@ grinMain =
 sum n29 n30 n31 =
   b2 <- _prim_int_gt n30 n31
   case b2 of
-    #True -> pure n29
     #False -> n18 <- _prim_int_add n30 1
               n28 <- _prim_int_add n29 n30
               sum n28 n18 n31
+    #default -> pure n29
