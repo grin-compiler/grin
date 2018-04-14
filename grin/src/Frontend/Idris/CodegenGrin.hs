@@ -106,13 +106,13 @@ alt fname = \case
 primFn :: Idris.PrimFn -> [SimpleVal] -> Exp
 primFn f ps = case f of
   {-
-  LPlus arityTy -> undefined
-  LMinus arityTy -> undefined
-  LTimes arityTy -> undefined
+  LPlus arithTy -> undefined
+  LMinus arithTy -> undefined
+  LTimes arithTy -> undefined
   LUDiv intTy -> undefined
-  LSDiv arityTy -> undefined
+  LSDiv arithTy -> undefined
   LURem intTy -> undefined
-  LSRem arityTy -> undefined
+  LSRem arithTy -> undefined
   LAnd intTy -> undefined
   LOr intTy -> undefined
   LXOr intTy -> undefined
@@ -132,9 +132,9 @@ primFn f ps = case f of
   LSLt (Idris.ATInt intTy) -> Grin.SApp "_prim_int_lt" ps
   LSLt Idris.ATFloat       -> Grin.SApp "_prim_float_lt" ps
   {-
-  LSLe arityTy -> undefined
-  LSGt arityTy -> undefined
-  LSGe arityTy -> undefined
+  LSLe arithTy -> undefined
+  LSGt arithTy -> undefined
+  LSGe arithTy -> undefined
   LSExt intTy1 intTy2 -> undefined
   LZExt intTy1 intTy2 -> undefined
   LTrunc intTy1 intTy2 -> undefined
@@ -150,7 +150,7 @@ primFn f ps = case f of
   LStrFloat -> undefined
   LChInt intTy -> undefined
   LIntCh intTy -> undefined
-  LBitCast arityTy1 arityTy2 -> undefined -- Only for values of equal width
+  LBitCast arithTy1 arithTy2 -> undefined -- Only for values of equal width
   LFExp -> undefined
   LFLog -> undefined
   LFSin -> undefined
