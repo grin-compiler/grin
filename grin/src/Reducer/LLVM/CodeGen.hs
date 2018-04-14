@@ -17,7 +17,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import Data.List (unzip4)
+import qualified Data.List as List
 
 import LLVM.AST hiding (callingConvention, functionAttributes)
 import LLVM.AST.Type as LLVM
@@ -105,6 +105,7 @@ getCPatConstant = \case
   TagPat  tag       -> getTagId tag
   LitPat  lit       -> pure $ codeGenLit lit
   NodePat tag args  -> getTagId tag
+  DefaultPat        -> pure C.TokenNone
 
 getCPatName :: CPat -> String
 getCPatName = \case
@@ -115,6 +116,7 @@ getCPatName = \case
     LBool v   -> "bool_" ++ show v
     LFloat v  -> error "pattern match on float is not supported"
   NodePat tag _ -> tagName tag
+  DefaultPat  -> "default"
  where
   tagName (Tag c name) = printf "%s%s" (show c) name
 
@@ -233,7 +235,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
               forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
                 let indices = [1 + tuStructIndex, tuArrayIndex]
                 emit [(mkName argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
-
+          DefaultPat -> pure ()
           _ -> error "not implemented"
 
     DefF name args (_,body) -> do
@@ -365,7 +367,14 @@ codeGenCase opVal alts bindingGen = do
   -- save heap pointer operand
   heapPointer <- gets _envHeapPointer
 
-  (altDests, altValues, altCGTypes, altHeapPointers) <- fmap unzip4 . forM alts $ \(Alt cpat _, altBody) -> do
+  let isDefault = \case
+        (Alt DefaultPat _, _) -> True
+        _ -> False
+      (defaultAlts, normalAlts) = List.partition isDefault alts
+  when (length defaultAlts > 1) $ fail "multiple default patterns"
+  let orderedAlts = defaultAlts ++ normalAlts
+
+  (altDests, altValues, altCGTypes, altHeapPointers) <- fmap List.unzip4 . forM orderedAlts $ \(Alt cpat _, altBody) -> do
     altCPatVal <- getCPatConstant cpat
     altEntryBlock <- uniqueName ("switch." ++ getCPatName cpat)
     activeBlock altEntryBlock
@@ -397,10 +406,13 @@ codeGenCase opVal alts bindingGen = do
     pure (convertedAltOp, lastAltBlock)
 
   activeBlock curBlockName
+  let (defaultDest, normalAltDests) = if null defaultAlts
+        then (mkName "error_block", altDests)
+        else (snd $ head altDests, tail altDests)
   closeBlock $ Switch
         { operand0'   = opVal
-        , defaultDest = mkName "error_block" -- QUESTION: do we want to catch this error?
-        , dests       = altDests
+        , defaultDest = defaultDest -- QUESTION: do we want to catch this error?
+        , dests       = normalAltDests
         , metadata'   = []
         }
 
@@ -429,7 +441,7 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
   -- save heap pointer operand
   heapPointer <- gets _envHeapPointer
 
-  (altDests, altValues, altCGTypes, altHeapPointers) <- fmap unzip4 . forM possibleNodes $ \(tag, items) -> do
+  (altDests, altValues, altCGTypes, altHeapPointers) <- fmap List.unzip4 . forM possibleNodes $ \(tag, items) -> do
     let cpat = TagPat tag
     altEntryBlock <- uniqueName ("tag.switch." ++ getCPatName cpat)
     altCPatVal <- getCPatConstant cpat
