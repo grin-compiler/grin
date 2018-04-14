@@ -44,15 +44,15 @@ codegenGrin CodegenInfo{..} = do
 
 idrisPrimOps = [prog|
 
-  idris_int_eq a0 b0 =
-    res0 <- _prim_int_eq a0 b0
-    case res0 of
+  idris_int_eq idris_int_eq0 idris_int_eq1 =
+    idris_int_eq2 <- _prim_int_eq idris_int_eq0 idris_int_eq1
+    case idris_int_eq2 of
       #False  -> pure 0
       #True   -> pure 1
 
-  idris_int_lt a1 b1 =
-    res1 <- _prim_int_lt a1 b1
-    case res1 of
+  idris_int_lt idris_int_lt0 idris_int_lt1 =
+    idris_int_lt2 <- _prim_int_lt idris_int_lt0 idris_int_lt1
+    case idris_int_lt2 of
       #False  -> pure 0
       #True   -> pure 1
 |]
@@ -104,8 +104,6 @@ sexp fname = \case
   SV lvar0@(Idris.Loc i)  -> SReturn (Var $ loc fname lvar0)
   SV lvar0@(Idris.Glob n) -> traceShow "Global call" $ Grin.SApp (lvar fname lvar0) []
 
-  -- Keep DExps for describing foreign things, because they get
-  -- translated differently
   --SForeign fdesc1 fdesc2 fdescLVars -> undefined
   SForeign _ (FStr "_prim_int_print") [(_,arg)] -> Grin.SApp "_prim_int_print" [Var . lvar fname $ arg]
   SNothing -> traceShow "Erased value" $ SReturn Unit
@@ -267,13 +265,13 @@ idrisPipeLine =
   , T UpdateElimination
   , T CopyPropagation
   , T ConstantPropagation
---  , T SparseCaseOptimisation: Illegal type {}
+  , T SparseCaseOptimisation
   , T EvaluatedCaseElimination
   , T ConstantPropagation
---  , T CommonSubExpressionElimination: Illegal type {}
+  , T CommonSubExpressionElimination
   , T CaseCopyPropagation
---  , T GeneralizedUnboxing: Illegal type: {}
---  , T ArityRaising: Illegal type: {}
+  , T GeneralizedUnboxing
+  , T ArityRaising
   , SaveGrin "After"
   , PrintGrin ondullblack
   , SaveLLVM "high-level-opt-code"

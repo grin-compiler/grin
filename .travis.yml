@@ -38,5 +38,5 @@ install:
 script:
   - mkdir output
   - stack exec grin -- grin/grin/sum_simple.grin
-  - stack exec idris -- hello.idr --codegen grin -o hello.grin
+  - stack exec idris -- frontend-test/idris/Hello.idr -i frontend-test/idris --codegen grin -o hello.grin
   - stack --no-terminal test --coverage
