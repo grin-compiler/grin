@@ -43,7 +43,6 @@ codegenGrin CodegenInfo{..} = do
   putStrLn ""
 
 idrisPrimOps = [prog|
-
   idris_int_eq idris_int_eq0 idris_int_eq1 =
     idris_int_eq2 <- _prim_int_eq idris_int_eq0 idris_int_eq1
     case idris_int_eq2 of
@@ -55,6 +54,24 @@ idrisPrimOps = [prog|
     case idris_int_lt2 of
       #False  -> pure 0
       #True   -> pure 1
+
+  idris_int_le idris_int_le0 idris_int_le1 =
+    idris_int_le2 <- _prim_int_le idris_int_le0 idris_int_le1
+    case idris_int_le2 of
+      #False -> pure 0
+      #True  -> pure 1
+
+  idris_int_gt idris_int_gt0 idris_int_gt1 =
+    idris_int_gt2 <- _prim_int_gt idris_int_gt0 idris_int_gt1
+    case idris_int_gt2 of
+      #False  -> pure 0
+      #True   -> pure 1
+
+  idris_int_ge idris_int_ge0 idris_int_ge1 =
+    idris_int_ge2 <- _prim_int_ge idris_int_ge0 idris_int_ge1
+    case idris_int_ge2 of
+      #False -> pure 0
+      #True  -> pure 1
 |]
 
 program :: [(Idris.Name, SDecl)] -> Exp
@@ -107,7 +124,7 @@ sexp fname = \case
   --SForeign fdesc1 fdesc2 fdescLVars -> undefined
   SForeign _ (FStr "_prim_int_print") [(_,arg)] -> Grin.SApp "_prim_int_print" [Var . lvar fname $ arg]
   SNothing -> traceShow "Erased value" $ SReturn Unit
-  --SError string -> traceShow ("Error with:" ++ string) $ Grin.SApp "prim_error" []
+  -- SError string -> traceShow ("Error with:" ++ string) $ Grin.SApp "prim_error" []
   e -> error $ printf "unsupported %s" (show e)
 
 alt :: Name -> SAlt -> Exp
@@ -124,9 +141,9 @@ primFn f ps = case f of
   LPlus   (Idris.ATInt intTy) -> Grin.SApp "_prim_int_add" ps
   LMinus  (Idris.ATInt intTy) -> Grin.SApp "_prim_int_sub" ps
   LTimes  (Idris.ATInt intTy) -> Grin.SApp "_prim_int_mul" ps
+  LSDiv   (Idris.ATInt intTy) -> Grin.SApp "_prim_int_div" ps
   {-
   LUDiv intTy -> undefined
-  LSDiv arithTy -> undefined
   LURem intTy -> undefined
   LSRem arithTy -> undefined
   LAnd intTy -> undefined
@@ -139,18 +156,18 @@ primFn f ps = case f of
   -}
   LEq (Idris.ATInt intTy) -> Grin.SApp "idris_int_eq" ps
   --LEq Idris.ATFloat       -> Grin.SApp "_prim_float_eq" ps
-  {-
-  LLt intTy -> undefined
-  LLe intTy -> undefined
-  LGt intTy -> undefined
-  LGe intTy -> undefined
-  -}
+
   LSLt (Idris.ATInt intTy) -> Grin.SApp "idris_int_lt" ps
+  LSLe (Idris.ATInt intTy) -> Grin.SApp "idris_int_le" ps
+  LSGt (Idris.ATInt intTy) -> Grin.SApp "idris_int_gt" ps
+  LSGe (Idris.ATInt intTy) -> Grin.SApp "idris_int_ge" ps
+{-
+  LLt intTy -> Grin.SApp "_prim_int_lt" ps
+  LLe intTy -> Grin.SApp "_prim_int_le" ps
+  LGt intTy -> Grin.SApp "_prim_int_gt" ps
+  LGe intTy -> Grin.SApp "_prim_int_ge" ps
+
   --LSLt Idris.ATFloat       -> Grin.SApp "_prim_float_lt" ps
-  {-
-  LSLe arithTy -> undefined
-  LSGt arithTy -> undefined
-  LSGe arithTy -> undefined
   LSExt intTy1 intTy2 -> undefined
   LZExt intTy1 intTy2 -> undefined
   LTrunc intTy1 intTy2 -> undefined
@@ -224,6 +241,7 @@ literal = \case
   Idris.I int -> LInt64 (fromIntegral int)
   Idris.BI integer -> LInt64 (fromIntegral integer)
   {-
+  Idris.B64 word64 -> LWord64 word64
   Idris.Fl double -> traceShow ("TODO: literal sould implement Double " ++ show double) $ LFloat (realToFrac double)
   Idris.Ch char -> traceShow ("TODO: literal should implement Char" ++ show char) $ LInt64 (fromIntegral $ fromEnum char)
   Idris.Str string -> traceShow ("TODO: literal should implement String " ++ string) $ LInt64 1234
