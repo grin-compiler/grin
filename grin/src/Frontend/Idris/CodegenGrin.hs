@@ -44,34 +44,73 @@ codegenGrin CodegenInfo{..} = do
 
 idrisPrimOps = [prog|
   idris_int_eq idris_int_eq0 idris_int_eq1 =
-    idris_int_eq2 <- _prim_int_eq idris_int_eq0 idris_int_eq1
+    (CGrInt idris_int_eq0_1) <- pure idris_int_eq0
+    (CGrInt idris_int_eq1_1) <- pure idris_int_eq1
+    idris_int_eq2 <- _prim_int_eq idris_int_eq0_1 idris_int_eq1_1
     case idris_int_eq2 of
-      #False  -> pure 0
-      #True   -> pure 1
+      #False  -> pure (CGrInt 0)
+      #True   -> pure (CGrInt 1)
 
   idris_int_lt idris_int_lt0 idris_int_lt1 =
-    idris_int_lt2 <- _prim_int_lt idris_int_lt0 idris_int_lt1
+    (CGrInt idris_int_lt0_1) <- pure idris_int_lt0
+    (CGrInt idris_int_lt1_1) <- pure idris_int_lt1
+    idris_int_lt2 <- _prim_int_lt idris_int_lt0_1 idris_int_lt1_1
     case idris_int_lt2 of
-      #False  -> pure 0
-      #True   -> pure 1
+      #False  -> pure (CGrInt 0)
+      #True   -> pure (CGrInt 1)
 
   idris_int_le idris_int_le0 idris_int_le1 =
-    idris_int_le2 <- _prim_int_le idris_int_le0 idris_int_le1
+    (CGrInt idris_int_le0_1) <- pure idris_int_le0
+    (CGrInt idris_int_le1_1) <- pure idris_int_le1
+    idris_int_le2 <- _prim_int_le idris_int_le0_1 idris_int_le1_1
     case idris_int_le2 of
-      #False -> pure 0
-      #True  -> pure 1
+      #False -> pure (CGrInt 0)
+      #True  -> pure (CGrInt 1)
 
   idris_int_gt idris_int_gt0 idris_int_gt1 =
-    idris_int_gt2 <- _prim_int_gt idris_int_gt0 idris_int_gt1
+    (CGrInt idris_int_gt0_1) <- pure idris_int_gt0
+    (CGrInt idris_int_gt1_1) <- pure idris_int_gt1
+    idris_int_gt2 <- _prim_int_gt idris_int_gt0_1 idris_int_gt1_1
     case idris_int_gt2 of
-      #False  -> pure 0
-      #True   -> pure 1
+      #False  -> pure (CGrInt 0)
+      #True   -> pure (CGrInt 1)
 
   idris_int_ge idris_int_ge0 idris_int_ge1 =
-    idris_int_ge2 <- _prim_int_ge idris_int_ge0 idris_int_ge1
+    (CGrInt idris_int_ge0_1) <- pure idris_int_ge0
+    (CGrInt idris_int_ge1_1) <- pure idris_int_ge1
+    idris_int_ge2 <- _prim_int_ge idris_int_ge0_1 idris_int_ge1_1
     case idris_int_ge2 of
-      #False -> pure 0
-      #True  -> pure 1
+      #False -> pure (CGrInt 0)
+      #True  -> pure (CGrInt 1)
+
+  idris_int_print idris_int_print0 =
+    (CGrInt idris_int_print0_1) <- pure idris_int_print0
+    idris_int_print2 <- _prim_int_print idris_int_print0_1
+    pure (CGrInt idris_int_print2)
+
+  idris_int_add idris_int_add0 idris_int_add1 =
+    (CGrInt idris_int_add0_1) <- pure idris_int_add0
+    (CGrInt idris_int_add1_1) <- pure idris_int_add1
+    idris_int_add2 <- _prim_int_add idris_int_add0_1 idris_int_add1_1
+    pure (CGrInt idris_int_add2)
+
+  idris_int_sub idris_int_sub0 idris_int_sub1 =
+    (CGrInt idris_int_sub0_1) <- pure idris_int_sub0
+    (CGrInt idris_int_sub1_1) <- pure idris_int_sub1
+    idris_int_sub2 <- _prim_int_sub idris_int_sub0_1 idris_int_sub1_1
+    pure (CGrInt idris_int_sub2)
+
+  idris_int_mul idris_int_mul0 idris_int_mul1 =
+    (CGrInt idris_int_mul0_1) <- pure idris_int_mul0
+    (CGrInt idris_int_mul1_1) <- pure idris_int_mul1
+    idris_int_mul2 <- _prim_int_mul idris_int_mul0_1 idris_int_mul1_1
+    pure (CGrInt idris_int_mul2)
+
+  idris_int_div idris_int_div0 idris_int_div1 =
+    (CGrInt idris_int_div0_1) <- pure idris_int_div0
+    (CGrInt idris_int_div1_1) <- pure idris_int_div1
+    idris_int_div2 <- _prim_int_div idris_int_div0_1 idris_int_div1_1
+    pure (CGrInt idris_int_div2)
 |]
 
 program :: [(Idris.Name, SDecl)] -> Exp
@@ -105,11 +144,11 @@ sexp fname = \case
 
   SLet lvar0 sexp1 sexp2 -> error "sexp: SLet with non local should not happen."
 
-  Idris.SApp bool nm lvars  -> Grin.SApp (name nm) (map (Var . lvar fname) lvars)
-  Idris.SUpdate lvar0 sexp0 -> Grin.SUpdate (lvar fname lvar0) (val fname sexp0)
+  Idris.SApp bool nm lvars -> Grin.SApp (name nm) (map (Var . lvar fname) lvars)
+  Idris.SUpdate loc0 sexp0 -> sexp fname sexp0
 
-  SCase caseType lvar0 salts -> ECase (Var $ lvar fname lvar0) (map (alt fname) salts)
-  SChkCase lvar0 salts       -> ECase (Var $ lvar fname lvar0) (map (alt fname) salts)
+  SCase caseType lvar0 salts -> ECase (Var $ lvar fname lvar0) (alts fname salts)
+  SChkCase lvar0 salts       -> ECase (Var $ lvar fname lvar0) (alts fname salts)
 
   --SProj lvar0 int -> SFetchI (lvar fname lvar0) (Just int)
 
@@ -122,26 +161,44 @@ sexp fname = \case
   SV lvar0@(Idris.Glob n) -> traceShow "Global call" $ Grin.SApp (lvar fname lvar0) []
 
   --SForeign fdesc1 fdesc2 fdescLVars -> undefined
-  SForeign _ (FStr "_prim_int_print") [(_,arg)] -> Grin.SApp "_prim_int_print" [Var . lvar fname $ arg]
+  SForeign _ (FStr "idris_int_print") [(_,arg)] -> Grin.SApp "idris_int_print" [Var . lvar fname $ arg]
   SNothing -> traceShow "Erased value" $ SReturn Unit
   -- SError string -> traceShow ("Error with:" ++ string) $ Grin.SApp "prim_error" []
   e -> error $ printf "unsupported %s" (show e)
 
-alt :: Name -> SAlt -> Exp
-alt fname = \case
+alts :: Name -> [SAlt] -> [Exp]
+alts fname alts =
+  (map (alt fname (map (defaultAlt fname) defs)) rest) ++
+  (map (defaultAlt fname) defs)
+  where
+    -- There should be only one default
+    (defs, rest) = partition isDefault alts
+    isDefault (SDefaultCase _) = True
+    isDefault _                = False
+
+defaultAlt :: Name -> SAlt -> Exp
+defaultAlt fname (SDefaultCase sexp0) = Alt DefaultPat (sexp fname sexp0)
+
+alt :: Name -> [Exp] -> SAlt -> Exp
+alt fname defs = \case
   SConCase startIdx t nm names sexp0 ->
     Alt (NodePat (Tag C (name nm)) (map (\(i,_n) -> fname ++ show i) ([startIdx ..] `zip` names)))
         (sexp fname sexp0)
 
-  SConstCase cnst sexp0 -> Alt (LitPat (literal cnst)) (sexp fname sexp0)
+  SConstCase cnst sexp0 ->
+    let (ConstTagNode tag [Lit lit]) = literal cnst
+        cpatVar = fname ++ "_cpat_" ++ (map (\case { ' ' -> '_'; c -> c}) (show lit))
+    in Alt (NodePat tag [cpatVar]) $ ECase (Var cpatVar) $
+        [ Alt (LitPat lit) (sexp fname sexp0) ] ++
+        defs
   SDefaultCase sexp0    -> Alt DefaultPat (sexp fname sexp0)
 
 primFn :: Idris.PrimFn -> [SimpleVal] -> Exp
 primFn f ps = case f of
-  LPlus   (Idris.ATInt intTy) -> Grin.SApp "_prim_int_add" ps
-  LMinus  (Idris.ATInt intTy) -> Grin.SApp "_prim_int_sub" ps
-  LTimes  (Idris.ATInt intTy) -> Grin.SApp "_prim_int_mul" ps
-  LSDiv   (Idris.ATInt intTy) -> Grin.SApp "_prim_int_div" ps
+  LPlus   (Idris.ATInt intTy) -> Grin.SApp "idris_int_add" ps
+  LMinus  (Idris.ATInt intTy) -> Grin.SApp "idris_int_sub" ps
+  LTimes  (Idris.ATInt intTy) -> Grin.SApp "idris_int_mul" ps
+  LSDiv   (Idris.ATInt intTy) -> Grin.SApp "idris_int_div" ps
   {-
   LUDiv intTy -> undefined
   LURem intTy -> undefined
@@ -224,9 +281,9 @@ primFn f ps = case f of
 val :: Name -> SExp -> Val
 val fname = \case
   SV lvar0 -> Var $ lvar fname lvar0
-  SConst c -> Lit $ literal c
+  SConst c -> literal c
   SCon _ int nm lvars -> ConstTagNode (Tag C (name nm)) (map (Var . lvar fname) lvars)
-  rest -> error $ show rest
+  rest -> error $ "unsupported val:" ++ show rest
 
 lvar :: Name -> LVar -> Name
 lvar fname = \case
@@ -236,10 +293,11 @@ lvar fname = \case
 name :: Idris.Name -> Name
 name n = "idr_" ++ (Idris.showCG n)
 
-literal :: Idris.Const -> Lit
+-- Creates Nodes with Literals
+literal :: Idris.Const -> Val
 literal = \case
-  Idris.I int -> LInt64 (fromIntegral int)
-  Idris.BI integer -> LInt64 (fromIntegral integer)
+  Idris.I int      -> ConstTagNode (Tag C "GrInt") [Lit $ LInt64 (fromIntegral int)]
+  Idris.BI integer -> ConstTagNode (Tag C "GrInt") [Lit $ LInt64 (fromIntegral integer)]
   {-
   Idris.B64 word64 -> LWord64 word64
   Idris.Fl double -> traceShow ("TODO: literal sould implement Double " ++ show double) $ LFloat (realToFrac double)
@@ -274,6 +332,7 @@ idrisPipeLine =
   , HPT PrintHPT
   , HPT RunHPTPure
   , HPT PrintHPTResult
+{-
   , T CaseSimplification
   , T SplitFetch
   , T RightHoistFetch
@@ -283,15 +342,16 @@ idrisPipeLine =
   , T UpdateElimination
   , T CopyPropagation
   , T ConstantPropagation
-  , T SparseCaseOptimisation
+--  , T SparseCaseOptimisation -- has an issue
   , T EvaluatedCaseElimination
   , T ConstantPropagation
   , T CommonSubExpressionElimination
   , T CaseCopyPropagation
-  , T GeneralizedUnboxing
+--  , T GeneralizedUnboxing -- has an issue
   , T ArityRaising
   , SaveGrin "After"
   , PrintGrin ondullblack
+-}
   , SaveLLVM "high-level-opt-code"
   , JITLLVM
   ]
