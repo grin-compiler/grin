@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 {-# LANGUAGE Strict #-}
 module Reducer.ST (reduceFun) where
 
@@ -114,16 +114,21 @@ pprint exp = trace (f exp) exp where
 evalExp :: Env -> Exp -> GrinS s Val
 evalExp env exp = case {-pprint-} exp of
   EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
-  ECase v alts -> case evalVal env v of
-    ConstTagNode t l ->
-                   let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
-                       go a [] [] = a
-                       go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                       go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
-                   in  evalExp (go env vars l) exp
-    ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
-    Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
-    x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
+  ECase v alts ->
+    let defaultAlts = [exp | Alt DefaultPat exp <- alts]
+        defaultAlt  = if Prelude.length defaultAlts > 1
+                        then error "multiple default case alternative"
+                        else Prelude.take 1 defaultAlts
+    in case evalVal env v of
+      ConstTagNode t l ->
+                     let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
+                         go a [] [] = a
+                         go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
+                         go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
+                     in  evalExp (go env vars l) exp
+      ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
+      Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
+      x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
   exp -> evalSimpleExp env exp
 
 evalSimpleExp :: Env -> SimpleExp -> GrinS s Val

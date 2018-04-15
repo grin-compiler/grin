@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 module Reducer.Pure (reduceFun) where
 
 import Text.Printf
@@ -106,16 +106,21 @@ evalSimpleExp env = \case
 evalExp :: Env -> Exp -> GrinM Val
 evalExp env = \case
   EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
-  ECase v alts -> case evalVal env v of
-    ConstTagNode t l ->
-                   let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ error (printf "evalExp - missing Case Node alternative for: %s" (prettyDebug t))
-                       go a [] [] = a
-                       go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                       go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
-                   in  evalExp (go env vars l) exp
-    ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
-    Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
-    x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
+  ECase v alts ->
+    let defaultAlts = [exp | Alt DefaultPat exp <- alts]
+        defaultAlt  = if length defaultAlts > 1
+                        then error "multiple default case alternative"
+                        else take 1 defaultAlts
+    in case evalVal env v of
+      ConstTagNode t l ->
+                     let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error (printf "evalExp - missing Case Node alternative for: %s" (prettyDebug t))
+                         go a [] [] = a
+                         go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
+                         go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
+                     in  evalExp (go env vars l) exp
+      ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
+      Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
+      x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp env exp
 
 reduceFun :: Program -> Name -> Val
