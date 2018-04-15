@@ -9,6 +9,8 @@ import qualified Text.Megaparsec as M
 import Frontend.Lambda
 import Frontend.ParseLambda
 import Frontend.PrettyLambda
+import Frontend.CodeGen
+import Pretty
 
 data Opts
   = Opts
@@ -33,6 +35,8 @@ cg_main opts = do
     content <- readFile fname
     let program = either (error . M.parseErrorPretty' content) id $ parseLambda fname content
     printLambda program
+    let grin = codegenGrin program
+    printGrin grin
 
 main :: IO ()
 main = do opts <- getOpts

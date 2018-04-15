@@ -78,6 +78,7 @@ library
     Frontend.Lambda
     Frontend.ParseLambda
     Frontend.PrettyLambda
+    Frontend.CodeGen
     Frontend.FromSTG
     Frontend.Idris.CodegenGrin
     VarGen

@@ -62,8 +62,8 @@ varBind i = (,) <$> try (L.indentGuard sc EQ i *> var) <* op "=" <*> (L.indentGu
 expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
   Case <$ kw "case" <*> atom <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
-  Let  <$ kw "let"  <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
   LetS <$ kw "letS" <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
+  Let  <$ kw "let"  <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
   App <$> primNameOrDefName <*> some atom <|>
   parens (Con <$> tag <*> many atom) <|>
   atom

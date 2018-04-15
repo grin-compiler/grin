@@ -22,16 +22,16 @@ main =
 int_add a b =
   case a of
     (Int x) -> case b of
-      (Int y) -> let z = _prim_int_add x y
-                 (Int z)
+                (Int y) -> let z = _prim_int_add x y
+                           (Int z)
 
 int_gt a b =
   case a of
     (Int x) -> case b of
-      (Int y) -> let cmp = _prim_int_gt x y
-                 case cmp of
-                  #True   -> (True)
-                  #False  -> (False)
+                (Int y) -> let cmp = _prim_int_gt x y
+                           case cmp of
+                            #True   -> (True)
+                            #False  -> (False)
 
 int_print a =
   case a of
