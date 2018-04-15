@@ -24,7 +24,7 @@ spec = do
               l1 <- store (CNone)
               case t of
                 CNil -> l3 <- store (CNone)
-                        unit 2
+                        pure 2
                 CCons -> l4 <- store (CNone)
                          l5 <- store a1
                          l6 <- store a2
