@@ -24,7 +24,7 @@ data Exp
   | Case        Atom [Alt]
   | Let         [(Name, Exp)] Exp -- lazy let
   | LetS        [(Name, Exp)] Exp -- strict let
-  | Con         Tag [Atom]
+  | Con         Name [Atom]
   -- Atom
   | Var         Name
   | Lit         Lit
@@ -40,12 +40,10 @@ data Lit
   deriving (Eq, Ord, Show)
 
 data Pat
-  = NodePat Tag [Name]
+  = NodePat Name [Name]
   | LitPat  Lit
   | DefaultPat
   deriving (Eq, Show, Ord)
-
-type Tag = Name
 
 -- TODO: do we need lambda?
 

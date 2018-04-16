@@ -127,7 +127,7 @@ data DataCon
         dcUnique :: Unique,     -- Cached from Name
         dcTag    :: ConTag,     -- ^ Tag, used for ordering 'DataCon's
 -}
-genTag :: DataCon -> CG Tag
+genTag :: DataCon -> CG Name
 genTag dataCon = pprM dataCon
 
 visitAlt :: StgAlt -> CG Alt
