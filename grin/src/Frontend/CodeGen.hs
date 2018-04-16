@@ -13,7 +13,10 @@ import qualified Grin as G
 
 type CG = State ()
 
-arity :: Name -> Int
+uniq :: Name -> CG Name
+uniq name = undefined
+
+arity :: Name -> Maybe Int
 arity = undefined
 
 genLit :: Lit -> G.Lit
@@ -39,18 +42,31 @@ genAtom = \case
 genC :: Exp -> CG G.Exp
 genC = \case
   App name args | argCount <- length args
-                , ar <- arity name -> case argCount `compare` ar of
+                , Just ar <- arity name -> case argCount `compare` ar of
     EQ  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F name) $ map genAtom args
-    LT  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F $ name ++ show (ar - argCount)) $ map genAtom args
+    LT  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.P $ name ++ show (ar - argCount)) $ map genAtom args
   x -> error $ show x
+
+apChain :: G.Exp -> [Atom] -> CG G.Exp
+apChain exp args = foldr ap (pure exp) args where -- TODO: fix the order
+  ap arg leftExp = do
+    argWhnf <- uniq "arg"
+    G.EBind <$> leftExp <*> pure (G.Var argWhnf) <*> pure (G.SApp "apply" [G.Var argWhnf, genAtom arg])
 
 -- strict context ; evaluates to WHNF
 genE :: Exp -> CG G.Exp
 genE = \case
   App name args | argCount <- length args
-                , ar <- arity name -> case argCount `compare` ar of
+                , Just ar <- arity name -> case argCount `compare` ar of
     EQ  -> pure $ G.SApp name $ map genAtom args
-    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag G.F $ name ++ show (ar - argCount)) $ map genAtom args
+    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag G.P $ name ++ show (ar - argCount)) $ map genAtom args
+    GT  -> let (funArgs, extraArgs) = splitAt ar args
+           in apChain (G.SApp name $ map genAtom funArgs) extraArgs
+  -- HINT: unknown function ; generate apply chain
+  App name args | argCount <- length args
+                , Nothing <- arity name
+        -- apply chain
+        -> apChain (G.SApp "eval" [G.Var name]) args
   Var name -> pure $ G.SApp "eval" [G.Var name]
   x -> error $ show x
 
@@ -68,6 +84,15 @@ genR = \case
 
   x -> error $ show x
 
+{-
+  TODO:
+    done - unknown function: apply chain
+    done - over application
+    - rewrite as Grin anamorphism
+    - generate eval function
+    - generate apply function
+    - letrec and circular data structures
+-}
 
 {-
   App   C E
