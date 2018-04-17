@@ -1,10 +1,11 @@
 module Reducer.PrimOps (evalPrimOp) where
 
+import Debug.Trace
 import Grin
 import Data.Map.Strict as Map
 
 -- primitive functions
-primIntPrint [Lit (LInt64 a)] = pure $ Lit $ LInt64 $ a
+primIntPrint [Lit (LInt64 a)] = trace (show a) $ pure $ Lit $ LInt64 $ a
 primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
 evalPrimOp name args = case name of
