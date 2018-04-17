@@ -371,5 +371,6 @@ idrisPipeLine =
   , PrintGrin ondullblack
   , SaveLLVM "high-level-opt-code"
 -}
+  , PureEval
   , JITLLVM
   ]
