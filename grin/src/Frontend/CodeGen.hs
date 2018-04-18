@@ -52,6 +52,8 @@ genC e = get >>= \arityMap -> case e of
                 , Just ar <- arity arityMap name -> case argCount `compare` ar of
     EQ  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F name) $ map genAtom args
     LT  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.P $ name ++ show (ar - argCount)) $ map genAtom args
+
+  Con name args -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.C name) $ map genAtom args
   x -> error $ printf "unsupported C: %s" $ show x
 
 -- strict context ; evaluates to WHNF
@@ -148,5 +150,5 @@ codegenGrin exp = evalState (genR exp) (buildArityMap exp)
 
 -- HINT: arity map for lambda
 buildArityMap :: Program -> Map Name Int
-buildArityMap (Program defs) = Map.fromList [(name, length args) | Def name args _ <- defs]
+buildArityMap (Program defs) = Map.fromList $ [(name, length args) | Def name args _ <- defs] ++ [("_prim_int_add", 2), ("_prim_int_gt", 2), ("_prim_int_print", 1)]
 buildArityMap _ = error "invalid expression, program expected"
