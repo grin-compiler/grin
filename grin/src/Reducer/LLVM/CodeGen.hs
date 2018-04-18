@@ -255,12 +255,14 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       clearDefState
       activeBlock (mkName $ name ++ ".entry")
       (cgTy,result) <- body >>= getOperand (printf "%s_result" name)
+      heapPointer <- gets _envHeapPointer
       (llvmRetType, llvmRetValue) <- if name == "grinMain"
-        then pure (locationLLVMType, undef locationLLVMType) -- TODO: pass back the "grinMain" return value
+        then do
+          heap_end <- codeGenBitCast "heap_end" heapPointer locationLLVMType
+          pure (locationLLVMType, heap_end) -- TODO: pass back the "grinMain" return value
         else do
           let wrappedRetType = withHeapPointer $ cgLLVMType cgTy
           -- return the heap pointer + function result
-          heapPointer <- gets _envHeapPointer
           wrappedResult0 <- codeGenLocalVar (printf "%s_wrapped_result" name) wrappedRetType $ AST.InsertValue
             { aggregate = undef wrappedRetType
             , element   = heapPointer
