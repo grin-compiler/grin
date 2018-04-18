@@ -255,26 +255,31 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       clearDefState
       activeBlock (mkName $ name ++ ".entry")
       (cgTy,result) <- body >>= getOperand (printf "%s_result" name)
-      let wrappedRetType = withHeapPointer $ cgLLVMType cgTy
-      -- return the heap pointer + function result
-      heapPointer <- gets _envHeapPointer
-      wrappedResult0 <- codeGenLocalVar (printf "%s_wrapped_result" name) wrappedRetType $ AST.InsertValue
-        { aggregate = undef wrappedRetType
-        , element   = heapPointer
-        , indices'  = [0]
-        , metadata  = []
-        }
-      wrappedResult1 <- codeGenLocalVar (printf "%s_wrapped_result" name) wrappedRetType $ AST.InsertValue
-        { aggregate = wrappedResult0
-        , element   = result
-        , indices'  = [1]
-        , metadata  = []
-        }
+      (llvmRetType, llvmRetValue) <- if name == "grinMain"
+        then pure (locationLLVMType, undef locationLLVMType)
+        else do
+          let wrappedRetType = withHeapPointer $ cgLLVMType cgTy
+          -- return the heap pointer + function result
+          heapPointer <- gets _envHeapPointer
+          wrappedResult0 <- codeGenLocalVar (printf "%s_wrapped_result" name) wrappedRetType $ AST.InsertValue
+            { aggregate = undef wrappedRetType
+            , element   = heapPointer
+            , indices'  = [0]
+            , metadata  = []
+            }
+          wrappedResult1 <- codeGenLocalVar (printf "%s_wrapped_result" name) wrappedRetType $ AST.InsertValue
+            { aggregate = wrappedResult0
+            , element   = result
+            , indices'  = [1]
+            , metadata  = []
+            }
+          pure (wrappedRetType, wrappedResult1)
 
       closeBlock $ Ret
-        { returnOperand = Just wrappedResult1
+        { returnOperand = Just llvmRetValue
         , metadata'     = []
         }
+
       errorBlock
       blockInstructions <- Map.delete (mkName "") <$> gets _envBlockInstructions
       unless (Map.null blockInstructions) $ error $ printf "unclosed blocks in %s\n  %s" name (show blockInstructions)
@@ -284,7 +289,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
             , parameters  = (heapPointerParameter : [Parameter (cgLLVMType argType) (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
-            , returnType  = wrappedRetType -- includes the heap pointer
+            , returnType  = llvmRetType -- includes the heap pointer
             , basicBlocks = Map.elems blocks
             , callingConvention = CC.C
             , functionAttributes = [Right $ FA.StringAttribute "no-jump-tables" "true"]
