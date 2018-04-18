@@ -1,3 +1,7 @@
-llc-5.0 -relocation-model=pic -filetype=obj 1.high-level-code.ll
-gcc test.c 1.high-level-code.o -s
-./a.out
+llc-5.0 -O3 -relocation-model=pic -filetype=obj 1.high-level-code.ll
+gcc -O3 test.c 1.high-level-code.o -s -o slow
+./slow
+
+llc-5.0 -O3 -relocation-model=pic -filetype=obj 13.high-level-opt-code.ll
+gcc -O3 test.c 13.high-level-opt-code.o -s -o opt
+./opt
