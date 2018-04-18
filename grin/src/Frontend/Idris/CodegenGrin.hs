@@ -350,9 +350,8 @@ idrisPipeLine =
   , HPT RunHPTPure
   , HPT PrintHPTResult
   , SaveLLVM "high-level-code"
-{-
   , T CaseSimplification
-  , T SplitFetch
+--  , T SplitFetch -- has an issue
   , T RightHoistFetch
   , T ConstantFolding
   , T EvaluatedCaseElimination
@@ -366,11 +365,11 @@ idrisPipeLine =
   , T CommonSubExpressionElimination
   , T CaseCopyPropagation
 --  , T GeneralizedUnboxing -- has an issue
-  , T ArityRaising
+--  , T ArityRaising -- has an issue
+--  , T DeadVariableElimination -- has an issue: removed effectful code, like print_int
   , SaveGrin "After"
   , PrintGrin ondullblack
   , SaveLLVM "high-level-opt-code"
--}
   , PureEval
   , JITLLVM
   ]
