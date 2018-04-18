@@ -256,7 +256,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       activeBlock (mkName $ name ++ ".entry")
       (cgTy,result) <- body >>= getOperand (printf "%s_result" name)
       (llvmRetType, llvmRetValue) <- if name == "grinMain"
-        then pure (locationLLVMType, undef locationLLVMType)
+        then pure (locationLLVMType, undef locationLLVMType) -- TODO: pass back the "grinMain" return value
         else do
           let wrappedRetType = withHeapPointer $ cgLLVMType cgTy
           -- return the heap pointer + function result

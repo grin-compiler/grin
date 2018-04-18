@@ -67,6 +67,7 @@ eagerJit amod mainName =
                 heapPointer <- callocBytes grinHeapSize :: IO (Ptr Int8)
                 -- run function
                 result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn)) heapPointer
+                -- TODO: read back the result and build the haskell value represenation
                 -- free GRIN heap
                 free heapPointer
                 return $ Unit
