@@ -2,18 +2,21 @@ upto m n =
   let cmp = int_gt m n
   case cmp of
     (True)  -> (Nil)
-    (False) -> let succ = int_add m 1
+    (False) -> let box1 = (Int 1)
+                   succ = int_add m box1
                    tail = upto succ n
                (Cons m tail)
 
 sum l =
   case l of
-    (Nil)       -> 0
+    (Nil)       -> (Int 0)
     (Cons n ns) -> let s = sum ns
                    int_add n s
 
 main =
-  let l = upto 1 100000
+  let box1 = (Int 1)
+      box2 = (Int 100000)
+      l = upto box1 box2
       s = sum l
   int_print s
 
@@ -22,16 +25,17 @@ main =
 int_add a b =
   case a of
     (Int x) -> case b of
-                (Int y) -> let z = _prim_int_add x y
+                (Int y) -> letS z = _prim_int_add x y
                            (Int z)
 
 int_gt a b =
   case a of
     (Int x) -> case b of
-                (Int y) -> let cmp = _prim_int_gt x y
+                (Int y) -> letS cmp = _prim_int_gt x y
                            case cmp of
                             #True   -> (True)
                             #False  -> (False)
+
 
 int_print a =
   case a of
