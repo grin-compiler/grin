@@ -1,0 +1,3 @@
+llc-5.0 -relocation-model=pic -filetype=obj 1.high-level-code.ll
+gcc test.c 1.high-level-code.o -s
+./a.out
