@@ -85,8 +85,8 @@ idrisPrimOps = [prog|
 
   idris_int_print idris_int_print0 =
     (CGrInt idris_int_print0_1) <- fetch idris_int_print0
-    idris_int_print2 <- _prim_int_print idris_int_print0_1
-    pure (CGrInt idris_int_print2)
+    _prim_int_print idris_int_print0_1
+    pure (CUnit)
 
   idris_int_add idris_int_add0 idris_int_add1 =
     (CGrInt idris_int_add0_1) <- fetch idris_int_add0
@@ -340,6 +340,49 @@ pipelineOpts = PipelineOpts
   { _poOutputDir = "./idris/"
   }
 
+simplifyingPipeline :: [Pipeline]
+simplifyingPipeline =
+  [ T CaseSimplification
+--  , T SplitFetch -- has an issue
+  , T RightHoistFetch
+  ]
+
+optimisingPipeline :: [Pipeline]
+optimisingPipeline = concat $ replicate 10
+  [ T CaseCopyPropagation
+  , T CommonSubExpressionElimination
+  , T ConstantPropagation
+  , T CopyPropagation
+  , T EvaluatedCaseElimination
+  , T TrivialCaseElimination
+  , T UpdateElimination
+--  , T ArityRaising -- has an issue ; always trigger -> unfolds the same expression multiple times
+--  , T GeneralizedUnboxing -- has an issue ; mixes up simple type and node types
+--  , T SparseCaseOptimisation -- has an issue ; workaround ; llvm codegen validator should be smarter
+
+--  , T Inlining -- integrate to the pipeline
+
+  , T BindNormalisation
+  , T DeadProcedureElimination
+--  , T DeadVariableElimination -- has an issue: removed effectful code, like print_int ; idris-grin codegen should treat unboxed units as grin unit value
+  , T BindNormalisation
+  ]
+
+miscPipeline :: [Pipeline]
+miscPipeline =
+  [ T ConstantFolding
+  ]
+
+
+codegenPipeline :: [Pipeline]
+codegenPipeline =
+  [ PrintGrin ondullblack
+  , SaveGrin "high-level-opt-code.grin"
+  , SaveLLVM "high-level-opt-code"
+  , PureEval
+  , JITLLVM
+  ]
+
 idrisPipeLine :: [Pipeline]
 idrisPipeLine =
   [ SaveGrin "FromIdris"
@@ -350,26 +393,5 @@ idrisPipeLine =
   , HPT RunHPTPure
   , HPT PrintHPTResult
   , SaveLLVM "high-level-code"
-  , T CaseSimplification
---  , T SplitFetch -- has an issue
-  , T RightHoistFetch
-  , T ConstantFolding
-  , T EvaluatedCaseElimination
-  , T TrivialCaseElimination
-  , T UpdateElimination
-  , T CopyPropagation
-  , T ConstantPropagation
---  , T SparseCaseOptimisation -- has an issue
-  , T EvaluatedCaseElimination
-  , T ConstantPropagation
-  , T CommonSubExpressionElimination
-  , T CaseCopyPropagation
---  , T GeneralizedUnboxing -- has an issue
---  , T ArityRaising -- has an issue
---  , T DeadVariableElimination -- has an issue: removed effectful code, like print_int
-  , SaveGrin "After"
-  , PrintGrin ondullblack
-  , SaveLLVM "high-level-opt-code"
-  , PureEval
-  , JITLLVM
-  ]
+  , SaveGrin "high-level-code.grin"
+  ] ++ optimisingPipeline ++ codegenPipeline
