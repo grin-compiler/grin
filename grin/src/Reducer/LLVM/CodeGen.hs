@@ -287,6 +287,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       unless (Map.null blockInstructions) $ error $ printf "unclosed blocks in %s\n  %s" name (show blockInstructions)
       blocks <- gets _envBasicBlocks
       (retType, argTypes) <- getFunctionType name
+      -- TODO: improve this check
       when (retType /= cgTy) $ error $ printf "return type mismatch for %s\n  retTy: %s\n  cgTy: %s\n" name (show retType) (show cgTy)
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
@@ -317,7 +318,9 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         }
       -- switch on possible tags
       TypeEnv{..} <- gets _envTypeEnv
-      let T_SimpleType (T_Location locs) = Map.findWithDefault undefined name _variable
+      let locs          = case Map.lookup name _variable of
+            Just (T_SimpleType (T_Location l)) -> l
+            x -> error $ printf "variable %s can not be fetched, %s is not a location type" name (show $ pretty x)
           nodeSet       = mconcat [_location V.! loc | loc <- locs]
           resultCGType  = toCGType $ T_NodeSet nodeSet
           resultTU      = cgTaggedUnion resultCGType
