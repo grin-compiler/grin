@@ -161,8 +161,7 @@ sum opt optimising transformations:
   done - late inlining
   skip - inline calls to eval
   done - unboxing of return values
-
-  - arity raising
+  done - arity raising
 
   done - vectorisation + case simplification (skip)
 
@@ -181,7 +180,7 @@ optimising transformations:
   done - generalised unboxing
 
  complex:
-  - arity raising
+  done - arity raising
 
 ============================
 
