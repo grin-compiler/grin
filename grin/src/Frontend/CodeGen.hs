@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
 module Frontend.CodeGen (codegenGrin) where
 
 import Text.Printf
@@ -10,15 +10,24 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Frontend.Lambda
+import Frontend.PrimOps
 import qualified Grin as G
+import Transformations.Optimising.DeadProcedureElimination
+import Transformations.GenerateEval
 
-type CG = State (Map Name Int) -- TODO
+data Env
+  = Env
+  { _counter  :: Int
+  , _arityMap :: Map Name Int
+  }
+
+type CG = State Env
 
 uniq :: Name -> CG Name
-uniq name = pure name -- TODO
+uniq name = state (\env@Env{..} -> (printf "%s.%d" name _counter, env {_counter = succ _counter}))
 
 arity :: Map Name Int -> Name -> Maybe Int
-arity = flip Map.lookup -- TODO
+arity = flip Map.lookup
 
 genLit :: Lit -> G.Lit
 genLit = \case
@@ -47,7 +56,7 @@ apChain exp args = foldr ap (pure exp) args where -- TODO: fix the order
 
 -- lazy context ; constructs suspended computations
 genC :: Exp -> CG G.Exp
-genC e = get >>= \arityMap -> case e of
+genC e = gets _arityMap >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Just ar <- arity arityMap name -> case argCount `compare` ar of
     EQ  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F name) $ map genAtom args
@@ -58,7 +67,7 @@ genC e = get >>= \arityMap -> case e of
 
 -- strict context ; evaluates to WHNF
 genE :: Exp -> CG G.Exp
-genE e = get >>= \arityMap -> case e of
+genE e = gets _arityMap >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Just ar <- arity arityMap name -> case argCount `compare` ar of
     EQ  -> pure $ G.SApp name $ map genAtom args
@@ -69,20 +78,23 @@ genE e = get >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Nothing <- arity arityMap name
         -- apply chain
-        -> apChain (G.SApp "eval" [G.Var name]) args
-  Var name -> pure $ G.SApp "eval" [G.Var name] -- TODO: handle functions
+        -> apChain (G.SApp "eval1" [G.Var name]) args
+  -- TODO: track if var is in WHNF already
+  Var name -> pure $ G.SApp "eval2" [G.Var name] -- TODO: handle functions
   x -> error $ printf "unsupported E: %s" $ show x
 
 -- strict and return context (evaluates to WHNF) ; R is similar to E
 genR :: Exp -> CG G.Exp
-genR e = get >>= \arityMap -> case e of
+genR e = gets _arityMap >>= \arityMap -> case e of
   -- TODO: build var name <--> location name map for suspended computations
   Let  binds exp -> foldr (\(name, e) rightExp -> G.EBind <$> genC e <*> pure (G.Var name {-TODO-}) <*> rightExp) (genR exp) binds
   LetS binds exp -> foldr (\(name, e) rightExp -> G.EBind <$> genE e <*> pure (G.Var name) <*> rightExp) (genR exp) binds
 
   Con name args -> pure $ G.SReturn $ G.ConstTagNode (G.Tag G.C name) $ map genAtom args
 
-  Case exp alts -> G.EBind <$> genE exp <*> pure (genAtom exp) <*> (G.ECase (genAtom exp) <$> mapM genR alts)
+  Case exp alts -> do
+    whnf <- uniq "value"
+    G.EBind <$> genE exp <*> pure (G.Var whnf) <*> (G.ECase (G.Var whnf) <$> mapM genR alts) -- TODO: handle name mapping for var name -> whnf value name
   Alt pat exp -> G.Alt (genCPat pat) <$> genR exp
 
   Program defs      -> G.Program <$> mapM genR defs
@@ -99,7 +111,7 @@ genR e = get >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Nothing <- arity arityMap name
         -- apply chain
-        -> apChain (G.SApp "eval" [G.Var name]) args
+        -> apChain (G.SApp "eval3" [G.Var name]) args
 
   x -> error $ printf "unsupported R: %s" $ show x
 
@@ -107,48 +119,26 @@ genR e = get >>= \arityMap -> case e of
   TODO:
     done - unknown function: apply chain
     done - over application
+    - generate pointer names for suspended computations
     - generate eval function
     - generate apply function
     - letrec and circular data structures
-    - primop
+    done - primop
     - fill R, E, C
     - rewrite as Grin anamorphism
     - higher order sample
     - circular data sample
 -}
 
-{-
-  App   C E
-  Case  R
-  Let   R
-  LetS  R
-  Con   R
-  Var   E
-  Lit
-  Alt   R
--}
-
 codegenGrin :: Program -> G.Program
-codegenGrin exp = evalState (genR exp) (buildArityMap exp)
-
-{-
-  = Program     [Def]
-  -- Binding
-  | Def         Name [Name] Exp
-  -- Exp
-  | App         Name [Atom]
-  | Case        Atom [Alt]
-  | Let         [(Name, Exp)] Exp -- lazy let
-  | LetS        [(Name, Exp)] Exp -- strict let
-  | Con         Tag [Atom]
-  -- Atom
-  | Var         Name
-  | Lit         Lit
-  -- Alt
-  | Alt         Pat Exp
--}
+codegenGrin exp = generateEval . G.Program $ prog ++ primOps where
+  G.Program prog    = evalState (genR exp) (Env 0 $ buildArityMap exp)
+  G.Program primOps = lambdaPrimOps
 
 -- HINT: arity map for lambda
 buildArityMap :: Program -> Map Name Int
-buildArityMap (Program defs) = Map.fromList $ [(name, length args) | Def name args _ <- defs] ++ [("_prim_int_add", 2), ("_prim_int_gt", 2), ("_prim_int_print", 1)]
+buildArityMap (Program defs) =
+  Map.fromList $
+    [(name, length args) | Def name args _ <- defs] ++
+    [(name, length args) | let G.Program ops = lambdaPrimOps, G.Def name args _ <- ops]
 buildArityMap _ = error "invalid expression, program expected"

@@ -34,10 +34,10 @@ cg_main opts = do
   forM_ (inputs opts) $ \fname -> do
     content <- readFile fname
     let program = either (error . M.parseErrorPretty' content) id $ parseLambda fname content
-    putStrLn " * Lambda"
+    putStrLn "\n* Lambda"
     printLambda program
     let grin = codegenGrin program
-    putStrLn " * Grin"
+    putStrLn "\n* Grin"
     printGrin grin
 
 main :: IO ()
