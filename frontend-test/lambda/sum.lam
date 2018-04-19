@@ -13,31 +13,9 @@ sum l =
     (Cons n ns) -> let s = sum ns
                    int_add n s
 
-main =
+grinMain =
   let box1 = (Int 1)
       box2 = (Int 100000)
       l = upto box1 box2
       s = sum l
   int_print s
-
--- lazy boxed int built-in operations
-
-int_add a b =
-  case a of
-    (Int x) -> case b of
-                (Int y) -> letS z = _prim_int_add x y
-                           (Int z)
-
-int_gt a b =
-  case a of
-    (Int x) -> case b of
-                (Int y) -> letS cmp = _prim_int_gt x y
-                           case cmp of
-                            #True   -> (True)
-                            #False  -> (False)
-
-
-int_print a =
-  case a of
-    (Int x) -> letS res = _prim_int_print x
-               (Unit)
