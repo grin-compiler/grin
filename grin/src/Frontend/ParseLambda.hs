@@ -11,7 +11,7 @@ import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
 import Frontend.Lambda
 
-keywords = Set.fromList ["case","of","let","letS", "#True", "#False", "_"]
+keywords = Set.fromList ["case","of","let","letrec","letS", "#True", "#False", "_"]
 
 type Parser = Parsec Void String
 
@@ -61,11 +61,12 @@ varBind i = (,) <$> try (L.indentGuard sc EQ i *> var) <* op "=" <*> (L.indentGu
 
 expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
-  Case <$ kw "case" <*> atom <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
-  LetS <$ kw "letS" <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
-  Let  <$ kw "let"  <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
-  App <$> primNameOrDefName <*> some atom <|>
+  Case <$ kw "case"     <*> atom <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
+  LetS <$ kw "letS"     <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
+  LetRec <$ kw "letrec" <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
+  Let  <$ kw "let"      <*> (L.indentGuard sc GT i >>= some . varBind) <*> expr i <|>
   parens (Con <$> tag <*> many atom) <|>
+  try (App <$> primNameOrDefName <*> some atom) <|>
   atom
 
 atom :: Parser Atom

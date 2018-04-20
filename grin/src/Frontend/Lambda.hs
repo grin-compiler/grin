@@ -23,6 +23,7 @@ data Exp
   | App         Name [Atom]
   | Case        Atom [Alt]
   | Let         [(Name, Exp)] Exp -- lazy let
+  | LetRec      [(Name, Exp)] Exp -- lazy let with mutually recursive bindings
   | LetS        [(Name, Exp)] Exp -- strict let
   | Con         Name [Atom]
   -- Atom

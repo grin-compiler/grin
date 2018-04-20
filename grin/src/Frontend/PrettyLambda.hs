@@ -28,8 +28,9 @@ instance Pretty Exp where
       -- Exp
       AppF name args      -> hsep (((if isPrimName name then dullyellow else cyan) $ text name) : map pretty args)
       CaseF atom alts     -> keyword "case" <+> pretty atom <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
-      LetF binds exp      -> keyword "let"  <+> align (vsep (map prettyBind binds)) <$$> pretty exp
-      LetSF binds exp     -> keyword "letS" <+> align (vsep (map prettyBind binds)) <$$> pretty exp
+      LetF binds exp      -> keyword "let"    <+> align (vsep (map prettyBind binds)) <$$> pretty exp
+      LetRecF binds exp   -> keyword "letrec" <+> align (vsep (map prettyBind binds)) <$$> pretty exp
+      LetSF binds exp     -> keyword "letS"   <+> align (vsep (map prettyBind binds)) <$$> pretty exp
       ConF tag args       -> parens $ hsep (text tag : map pretty args)
       -- Atom
       VarF name           -> text name
