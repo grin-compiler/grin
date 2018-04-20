@@ -19,8 +19,8 @@
 - [x] no garbage collector
 - [x] support for builtin types and primops
 - [x] single module (no module system)
-- [ ] GRIN type system
-- [ ] typed transformations
+- [x] GRIN type system
+- [x] typed transformations
 - [x] compiled HPT
 
 ## documentation
