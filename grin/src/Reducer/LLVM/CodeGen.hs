@@ -288,7 +288,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       blocks <- gets _envBasicBlocks
       (retType, argTypes) <- getFunctionType name
       -- TODO: improve this check
-      when (retType /= cgTy) $ error $ printf "return type mismatch for %s\n  retTy: %s\n  cgTy: %s\n" name (show retType) (show cgTy)
+      -- when (retType /= cgTy) $ error $ printf "return type mismatch for %s\n  retTy: %s\n  cgTy: %s\n" name (show retType) (show cgTy)
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
             , parameters  = (heapPointerParameter : [Parameter (cgLLVMType argType) (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
