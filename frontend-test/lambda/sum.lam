@@ -15,7 +15,7 @@ sum l =
 
 grinMain =
   let box1 = (Int 1)
-      box2 = (Int 100000)
+      box2 = (Int 10)
       l = upto box1 box2
       s = sum l
   int_print s
