@@ -15,8 +15,8 @@ deadline: May 6
   - name scopes (module, function)
   - liberal name support (like in llvm, i.e. %"any characer 1234 {}!@#$%} -"
 - context aware logging framework (for errors and debugging)
-- mass manager ; run passes until the fixpoint is reached
-- `allocate` memory operation to grin ; required by circular data structures
+- pass manager ; run passes until the fixpoint is reached
+- add `allocate` memory operation to grin ; required by circular data structures
 - grin syntax for type signatures
 - grin syntax to declare primops with their type signature
 - grin validator pass
