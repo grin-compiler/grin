@@ -61,7 +61,9 @@ genC e = gets _arityMap >>= \arityMap -> case e of
                 , Just ar <- arity arityMap name -> case argCount `compare` ar of
     EQ  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F name) $ map genAtom args
     LT  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.P $ name ++ show (ar - argCount)) $ map genAtom args
-
+  -- TODO: use ap for suspended application
+  App name [arg] | Nothing <- arity arityMap name -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F "ap") [G.Var name, genAtom arg]
+  --App name args | Nothing <- arity arityMap name -> -- ap store chain
   Con name args -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.C name) $ map genAtom args
   x -> error $ printf "unsupported C: %s" $ show x
 
@@ -78,9 +80,9 @@ genE e = gets _arityMap >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Nothing <- arity arityMap name
         -- apply chain
-        -> apChain (G.SApp "eval1" [G.Var name]) args
+        -> apChain (G.SApp "eval" [G.Var name]) args
   -- TODO: track if var is in WHNF already
-  Var name -> pure $ G.SApp "eval2" [G.Var name] -- TODO: handle functions
+  Var name -> pure $ G.SApp "eval" [G.Var name] -- TODO: handle functions
   x -> error $ printf "unsupported E: %s" $ show x
 
 -- strict and return context (evaluates to WHNF) ; R is similar to E
@@ -111,7 +113,7 @@ genR e = gets _arityMap >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Nothing <- arity arityMap name
         -- apply chain
-        -> apChain (G.SApp "eval3" [G.Var name]) args
+        -> apChain (G.SApp "eval" [G.Var name]) args
 
   x -> error $ printf "unsupported R: %s" $ show x
 
@@ -120,13 +122,13 @@ genR e = gets _arityMap >>= \arityMap -> case e of
     done - unknown function: apply chain
     done - over application
     - generate pointer names for suspended computations
-    - generate eval function
-    - generate apply function
+    done - generate eval function
+    done - generate apply function
     - letrec and circular data structures
     done - primop
     - fill R, E, C
     - rewrite as Grin anamorphism
-    - higher order sample
+    done - higher order sample
     - circular data sample
 -}
 
