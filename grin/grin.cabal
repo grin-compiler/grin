@@ -207,7 +207,7 @@ executable hpt
 
 source-repository head
   type:     git
-  location: https://github.com/andorp/grin
+  location: https://github.com/grin-tech/grin
 
 executable lambda-grin
   hs-source-dirs:      app

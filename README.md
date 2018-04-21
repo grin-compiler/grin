@@ -1,19 +1,19 @@
 # GRIN
 
-[![Build Status](https://travis-ci.org/andorp/grin.svg?branch=master)](https://travis-ci.org/andorp/grin)
+[![Build Status](https://travis-ci.org/grin-tech/grin.svg?branch=master)](https://travis-ci.org/grin-tech/grin)
 
 The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction.
 For an overview read
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/The GRIN Project.pdf">
+<a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/The GRIN Project.pdf">
 The GRIN Project
 </a> article. To grasp the details take your time and read Urban Boquist's PhD thesis on
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf">
+<a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf">
 Code Optimisation Techniques for Lazy Functional Languages
 </a>.  
-Also check the performance [benchmark](https://rawgit.com/andorp/grin/master/grin/grin-benchmark.html).
+Also check the performance [benchmark](https://rawgit.com/grin-tech/grin/master/grin/grin-benchmark.html).
 
-<a href="http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=41">
-<img src="https://raw.githubusercontent.com/andorp/grin/master/images/grin-syntax.png" width="500" >
+<a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=41">
+<img src="https://raw.githubusercontent.com/grin-tech/grin/master/images/grin-syntax.png" width="500" >
 </a>
 
 ## Simplifying Transformations
@@ -27,17 +27,17 @@ Transformation | Schema
 [register introduction][126]        <br><br> _source code:_ <br> [RegisterIntroduction.hs] | [<img src="images/register-introduction.png" width="500">][126]
 
 
-[113]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=113
-[116]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=116
-[118]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=118
-[123]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=123
-[126]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=126
+[113]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=113
+[116]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=116
+[118]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=118
+[123]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=123
+[126]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=126
 
-[Vectorisation2.hs]:        https://github.com/andorp/grin/blob/master/grin/src/Transformations/Simplifying/Vectorisation2.hs
-[CaseSimplification.hs]:    https://github.com/andorp/grin/blob/master/grin/src/Transformations/Simplifying/CaseSimplification.hs
-[SplitFetch.hs]:            https://github.com/andorp/grin/blob/master/grin/src/Transformations/Simplifying/SplitFetch.hs
-[RightHoistFetch2.hs]:      https://github.com/andorp/grin/blob/master/grin/src/Transformations/Simplifying/RightHoistFetch2.hs
-[RegisterIntroduction.hs]:  https://github.com/andorp/grin/blob/master/grin/src/Transformations/Simplifying/RegisterIntroduction.hs
+[Vectorisation2.hs]:        https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Simplifying/Vectorisation2.hs
+[CaseSimplification.hs]:    https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Simplifying/CaseSimplification.hs
+[SplitFetch.hs]:            https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Simplifying/SplitFetch.hs
+[RightHoistFetch2.hs]:      https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Simplifying/RightHoistFetch2.hs
+[RegisterIntroduction.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Simplifying/RegisterIntroduction.hs
 
 
 ## Optimising Transformations
@@ -61,33 +61,33 @@ Transformation | Schema
 [dead variable elimination][170]          <br><br> _source code:_ <br> [DeadVariableElimination.hs]   | 
 [dead parameter elimination][171]         <br><br> _source code:_ <br> __TODO__                       | 
 
-[129]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=129
-[134]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=134
-[141]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=141
-[142]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=142
-[143]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=143
-[144]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=144
-[148]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=148
-[149]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=149
-[151]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=151
-[153]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=153
-[159]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=159
-[160]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=160
-[164]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=164
-[169]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=169
-[170]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=170
-[171]: http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/boquist.pdf#page=171
+[129]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=129
+[134]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=134
+[141]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=141
+[142]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=142
+[143]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=143
+[144]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=144
+[148]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=148
+[149]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=149
+[151]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=151
+[153]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=153
+[159]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=159
+[160]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=160
+[164]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=164
+[169]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=169
+[170]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=170
+[171]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=171
 
-[ArityRaising.hs]:              https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/ArityRaising.hs
-[ConstantPropagation.hs]:       https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/ConstantPropagation.hs
-[CopyPropagation.hs]:           https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/CopyPropagation.hs
-[CaseCopyPropagation.hs]:       https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/CaseCopyPropagation.hs
-[CSE.hs]:                       https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/CSE.hs
-[DeadProcedureElimination.hs]:  https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/DeadProcedureElimination.hs
-[DeadVariableElimination.hs]:   https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/DeadVariableElimination.hs
-[EvaluatedCaseElimination.hs]:  https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/EvaluatedCaseElimination.hs
-[Inlining.hs]:                  https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/Inlining.hs
-[SparseCaseOptimisation.hs]:    https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/SparseCaseOptimisation.hs
-[TrivialCaseElimination.hs]:    https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/TrivialCaseElimination.hs
-[UpdateElimination.hs]:         https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/UpdateElimination.hs
-[GeneralizedUnboxing.hs]:       https://github.com/andorp/grin/blob/master/grin/src/Transformations/Optimising/GeneralizedUnboxing.hs
+[ArityRaising.hs]:              https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/ArityRaising.hs
+[ConstantPropagation.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/ConstantPropagation.hs
+[CopyPropagation.hs]:           https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CopyPropagation.hs
+[CaseCopyPropagation.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CaseCopyPropagation.hs
+[CSE.hs]:                       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CSE.hs
+[DeadProcedureElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadProcedureElimination.hs
+[DeadVariableElimination.hs]:   https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadVariableElimination.hs
+[EvaluatedCaseElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/EvaluatedCaseElimination.hs
+[Inlining.hs]:                  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/Inlining.hs
+[SparseCaseOptimisation.hs]:    https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/SparseCaseOptimisation.hs
+[TrivialCaseElimination.hs]:    https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/TrivialCaseElimination.hs
+[UpdateElimination.hs]:         https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/UpdateElimination.hs
+[GeneralizedUnboxing.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/GeneralizedUnboxing.hs

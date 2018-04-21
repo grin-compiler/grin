@@ -9,4 +9,4 @@
 ## Compile time garbage collection
 [ASAP: As Static As Possible memory management](http://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-908.html)
 
-related: [Dead data elimination](http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/MoL-2010-19.text.pdf#page=55) in [A modern back-end for a dependently typed language](http://nbviewer.jupyter.org/github/andorp/grin/blob/master/papers/MoL-2010-19.text.pdf)
+related: [Dead data elimination](http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/MoL-2010-19.text.pdf#page=55) in [A modern back-end for a dependently typed language](http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/MoL-2010-19.text.pdf)
