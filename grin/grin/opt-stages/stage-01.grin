@@ -1,0 +1,74 @@
+-- page 303
+{-
+  after:
+    - eval inline
+    - update elimination based on sharing analysis
+-}
+grinMain =
+  p1 <- store (CInt 0)
+  p2 <- store (CInt 1)
+  p3 <- store (CInt 1000)
+  p4 <- store (Fupto p2 p3)
+  p5 <- store (Fsum p1 p4)
+  v2 <- fetch p5
+  v3 <- do
+    case v2 of
+      (Fsum p15 p16) ->
+        sum p15 p16
+  (CInt n1') <- pure v3
+  _prim_int_print n1'
+
+upto p6 p7 =
+  v4 <- fetch p6
+  v5 <- do
+    case v4 of
+      (CInt a8') ->
+        pure (CInt a8')
+  (CInt n2') <- pure v5
+  v6 <- fetch p7
+  v7 <- do
+    case v6 of
+      (CInt a9') ->
+        pure (CInt a9')
+  (CInt n3') <- pure v7
+  b1' <- _prim_int_gt n2' n3'
+  case b1' of
+   #True ->
+     pure (CNil)
+   #False ->
+     n4' <- _prim_int_add n2' 1
+     p8 <- store (CInt n4')
+     p9 <- store (Fupto p8 p7)
+     pure (CCons p6 p9)
+
+sum p10 p11 =
+  v8 <- fetch p11
+  v9 <- do
+    case v8 of
+      (Fupto p17 p18) ->
+        upto p17 p18
+  v10 <- pure v9
+  case v10 of
+    (CNil) ->
+      v11 <- fetch p10
+      v12 <- do
+        case v11 of
+          (CInt n10') ->
+            pure (CInt n10')
+      pure v12
+    (CCons p12 p13) ->
+      v13 <- fetch p10
+      v15 <- do
+        case v13 of
+          (CInt n11') ->
+            pure (CInt n11')
+      (CInt n5') <- pure v15
+      v16 <- fetch p12
+      v17 <- do
+        case v16 of
+          (CInt n12') ->
+            pure (CInt n12')
+      (CInt n6') <- pure v17
+      n7' <- _prim_int_add n5' n6'
+      p14 <- store (CInt n7')
+      sum p14 p13

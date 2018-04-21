@@ -1,0 +1,31 @@
+-- page 312 ; bottom
+{-
+  after:
+    - arity raising
+-}
+
+grinMain =
+  p1 <- store (CInt 0)
+  p2 <- store (CInt 1)
+  p3 <- store (CInt 1000)
+  p4 <- store (Fupto p2 p3)
+  n13' <- sum 0 p2 p3
+  _prim_int_print n13'
+
+sum n29' p29 p30 =
+  (Fupto p17 p18) <- pure (Fupto p29 p30)
+  (CInt n16') <- fetch p17
+  (CInt n17') <- fetch p18
+  b2' <- _prim_int_gt n16' n17'
+  case b2' of
+    #True ->
+      (CInt n20') <- pure (CInt n29')
+      pure n20'
+    #False ->
+      n18' <- _prim_int_add n16' 1
+      p21 <- store (CInt n18')
+      p22 <- store (Fupto p21 p18)
+      (CInt n26') <- pure (CInt n29')
+      n28' <- _prim_int_add n26' n16'
+      p28 <- store (CInt n28')
+      sum n28' p21 p18

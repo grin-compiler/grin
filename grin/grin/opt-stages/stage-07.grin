@@ -1,0 +1,37 @@
+-- page 311
+{-
+  after:
+    - constant propagation
+    - copy propagation
+-}
+
+grinMain =
+  p1 <- store (CInt 0)
+  p2 <- store (CInt 1)
+  p3 <- store (CInt 1000)
+  p4 <- store (Fupto p2 p3)
+  p5 <- store (Fsum p1 p4)
+  (Fsum p15 p16) <- fetch p5
+  n13' <- sum p15 p16
+  _prim_int_print n13'
+
+sum p10 p11 =
+  (Fupto p17 p18) <- fetch p11
+  (CInt n16') <- fetch p17
+  (CInt n17') <- fetch p18
+  b2' <- _prim_int_gt n16' n17'
+  case b2' of
+    #True ->
+      p24 <- pure ()
+      p23 <- pure ()
+      (CInt n20') <- fetch p10
+      pure n20'
+    #False ->
+      n18' <- _prim_int_add n16' 1
+      p21 <- store (CInt n18')
+      p22 <- store (Fupto p21 p18)
+      (CInt n26') <- fetch p10
+      (CInt n27') <- fetch p17
+      n28' <- _prim_int_add n26' n27'
+      p28 <- store (CInt n28')
+      sum p28 p22

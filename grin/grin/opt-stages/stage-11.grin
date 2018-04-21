@@ -1,0 +1,24 @@
+-- page 314 ; top
+{-
+  after:
+    - arity raising
+-}
+
+grinMain =
+  p2 <- store (CInt 1)
+  p3 <- store (CInt 1000)
+  n13' <- sum 0 1 1000
+  _prim_int_print n13'
+
+sum n29' n30' n31' =
+  (CInt n16') <- pure (CInt n30')
+  (CInt n17') <- pure (CInt n31')
+  b2' <- _prim_int_gt n16' n17'
+  case b2' of
+    #True ->
+      pure n29'
+    #False ->
+      n18' <- _prim_int_add n16' 1
+      p21 <- store (CInt n18')
+      n28' <- _prim_int_add n29' n16'
+      sum n28' n18' n31'

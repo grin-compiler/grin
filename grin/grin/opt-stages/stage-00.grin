@@ -1,0 +1,53 @@
+-- page 302
+{-
+  after:
+    - frontend grin codegen
+-}
+
+grinMain =
+  p1 <- store (CInt 0)
+  p2 <- store (CInt 1)
+  p3 <- store (CInt 1000)
+  p4 <- store (Fupto p2 p3)
+  p5 <- store (Fsum p1 p4)
+  (CInt n1') <- eval p5
+  _prim_int_print n1'
+
+upto p6 p7 =
+  (CInt n2') <- eval p6
+  (CInt n3') <- eval p7
+  b1' <- _prim_int_gt n2' n3'
+  case b1' of
+   #True ->
+     pure (CNil)
+   #False ->
+     n4' <- _prim_int_add n2' 1
+     p8 <- store (CInt n4')
+     p9 <- store (Fupto p8 p7)
+     pure (CCons p6 p9)
+
+sum p10 p11 =
+  v1 <- eval p11
+  case v1 of
+    (CNil) ->
+      eval p10
+    (CCons p12 p13) ->
+      (CInt n5') <- eval p10
+      (CInt n6') <- eval p12
+      n7' <- _prim_int_add n5' n6'
+      p14 <- store (CInt n7')
+      sum p14 p13
+
+eval e_p1 =
+  e_v1 <- fetch e_p1
+  case e_v1 of
+    #default ->
+      pure e_v1
+    (Fupto e_p2 e_p3) ->
+      e_v2 <- upto e_p2 e_p3
+      update e_p1 e_v2
+      pure e_v2
+    (Fsum e_p4 e_p5) ->
+      e_v3 <- sum e_p4 e_p5
+      update e_p1 e_v3
+      pure e_v3
