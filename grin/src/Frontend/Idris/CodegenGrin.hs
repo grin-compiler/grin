@@ -348,7 +348,10 @@ simplifyingPipeline =
   ]
 
 optimisingPipeline :: [Pipeline]
-optimisingPipeline = concat $ replicate 10
+optimisingPipeline = [ T ArityRaising ]
+
+optimisingPipeline' :: [Pipeline]
+optimisingPipeline' = concat $ replicate 10
   [ T CaseCopyPropagation
   , T CommonSubExpressionElimination
   , T ConstantPropagation
@@ -378,9 +381,9 @@ codegenPipeline :: [Pipeline]
 codegenPipeline =
   [ PrintGrin ondullblack
   , SaveGrin "high-level-opt-code.grin"
-  , SaveLLVM "high-level-opt-code"
   , PureEval
-  , JITLLVM
+--  , SaveLLVM "high-level-opt-code"
+--  , JITLLVM
   ]
 
 idrisPipeLine :: [Pipeline]
@@ -392,6 +395,6 @@ idrisPipeLine =
   , HPT PrintHPT
   , HPT RunHPTPure
   , HPT PrintHPTResult
-  , SaveLLVM "high-level-code"
+--  , SaveLLVM "high-level-code"
   , SaveGrin "high-level-code.grin"
   ] ++ optimisingPipeline ++ codegenPipeline

@@ -35,6 +35,9 @@ data Type
                   }
   deriving (Eq, Ord, Show)
 
+unit_t :: Type
+unit_t = T_SimpleType T_Unit
+
 int64_t :: Type
 int64_t = T_SimpleType T_Int64
 

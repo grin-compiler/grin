@@ -47,6 +47,8 @@ f <@> x = f <*> (pure x)
 -- TODO: Change TypeEnv
 -- - Remove transformed parameters, from TypeEnv
 -- TODO: Create unique names
+-- TODO: Improve: Also check the caller sites of the selected funcions: It should be a store on the parmeters, used
+-- by the candidates.
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 arityRaising (te, exp) = runVarM te (apoM builder (Nothing, exp))
   where
@@ -155,12 +157,17 @@ examineCallees funParams (te, exp) =
 sameNodeOnLocations :: TypeEnv -> [Int] -> Maybe (Tag, Vector SimpleType)
 sameNodeOnLocations te is = join $ allSame $ map (oneNodeOnLocation te) is
 
+-- | NonEmpty tags
 oneNodeOnLocation :: TypeEnv -> Int -> Maybe (Tag, Vector SimpleType)
 oneNodeOnLocation te idx = case (Map.size ns) of
-  1 -> Just $ head $ Map.toList ns
+  1 -> listToMaybe $ mapMaybe checkNonEmptyTag $ Map.toList ns
   _ -> Nothing
   where
     ns = (_location te) Vector.! idx
+    checkNonEmptyTag :: (Tag, Vector SimpleType) -> Maybe (Tag, Vector SimpleType)
+    checkNonEmptyTag tv@(t, vs)
+      | Vector.null vs = Nothing
+      | otherwise      = Just tv
 
 allSame :: (Eq a) => [a] -> Maybe a
 allSame []     = Nothing

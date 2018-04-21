@@ -172,3 +172,34 @@ spec = do
             foo2 y41 y42 1 w41 w42
       |]
     (teAfter, after) `sameAs` arityRaising (teBefore, before)
+
+  it "Zero arguments" $ do
+    let teBefore = emptyTypeEnv
+          { _function =
+              fun_t "empty_node_fn" [location_t [0]] int64_t <>
+              fun_t "use_empty_node" [location_t [0]] unit_t
+          , _location = Vector.fromList
+              [ cnode_t "Void" []
+              ]
+          }
+    let before = [prog|
+        empty_node_fn pv0 =
+          (CVoid) <- fetch pv0
+          pure 0
+
+        use_empty_node pv1 =
+          i1 <- empty_node_fn pv1
+          prim_print_int i1
+      |]
+    let teAfter = teBefore
+    let after = [prog|
+        empty_node_fn pv0 =
+          (CVoid) <- fetch pv0
+          pure 0
+
+        use_empty_node pv1 =
+          i1 <- empty_node_fn pv1
+          prim_print_int i1
+      |]
+    arityRaising (teBefore, before) `sameAs` (teAfter, after)
+
