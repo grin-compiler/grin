@@ -13,8 +13,10 @@ method: compiled abstract interpretation
 - tag:            count of distinct tags
 
 ## articles
--  https://en.wikipedia.org/wiki/Data-flow_analysis
--  https://en.wikipedia.org/wiki/Abstract_interpretation
+- [Abstracting Abstract Machines by David Van Horn and Matthew Might](https://vimeo.com/16539100) (video)
+- [Systematic abstraction of abstract machines](http://matt.might.net/papers/vanhorn2012abstract.pdf)
+- https://en.wikipedia.org/wiki/Data-flow_analysis
+- https://en.wikipedia.org/wiki/Abstract_interpretation
 
 ### search for: abstract compilation
 -  http://www.iro.umontreal.ca/~feeley/papers/BoucherFeeleyCC96.pdf ; Abstract compilation: A new implementation paradigm for static analysis
