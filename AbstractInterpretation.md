@@ -15,6 +15,7 @@ method: compiled abstract interpretation
 ## articles
 - [Abstracting Abstract Machines by David Van Horn and Matthew Might](https://vimeo.com/16539100) (video)
 - [Systematic abstraction of abstract machines](http://matt.might.net/papers/vanhorn2012abstract.pdf)
+- [Abstracting Definitional Interpreters](https://arxiv.org/pdf/1707.04755.pdf)
 - https://en.wikipedia.org/wiki/Data-flow_analysis
 - https://en.wikipedia.org/wiki/Abstract_interpretation
 
