@@ -2,15 +2,18 @@
 
 http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html
 
-# GHC core getting started
+# GHC
+### Core getting started
 
 - [Dive into GHC: Pipeline](http://www.stephendiehl.com/posts/ghc_01.html)
 - [Dive into GHC: Intermediate Forms](http://www.stephendiehl.com/posts/ghc_02.html)
 - [Dive into GHC: Targeting Core](http://www.stephendiehl.com/posts/ghc_03.html)
 
-# GHC internals
+### Internals
 
-- [GHC(STG,Cmm,asm) illustrated for hardware persons](http://takenobu-hs.github.io/downloads/haskell_ghc_illustrated.pdf)
+- [GHC (STG,Cmm,asm) illustrated for hardware persons](http://takenobu-hs.github.io/downloads/haskell_ghc_illustrated.pdf)
+- [GHC Simplifier: Compilation by transformation for non-strict functional languages](https://www.microsoft.com/en-us/research/publication/compilation-transformation-non-strict-functional-languages)
+
 
 # LLVM-HS
 
