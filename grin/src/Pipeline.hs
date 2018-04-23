@@ -189,7 +189,7 @@ pipelineStep p = do
       CompileHPT      -> compileHPT
       PrintHPT        -> printHPT
       RunHPTPure      -> runHPTPure
-      PrintHPTResult  -> pure () -- FIX
+      PrintHPTResult  -> printHPTResult
     T t             -> transformationM t
     PrintGrin d     -> printGrinM d
     PureEval        -> pureEval
@@ -223,13 +223,17 @@ printHPT = do
         putStrLn $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
   maybe (pure ()) (liftIO . printHPT) hptProgram
 
+printHPTResult :: PipelineM ()
+printHPTResult = do
+  Just result <- use psHPTResult
+  liftIO $ putStrLn . show . pretty $ result
+
 runHPTPure :: PipelineM ()
 runHPTPure = do
   Just hptProgram <- use psHPTProgram
   let hptResult = HPT.evalHPT hptProgram
       result = HPT.toHPTResult hptProgram hptResult
   psHPTResult .= Just result
-  liftIO $ putStrLn . show . pretty $ result
   psTypeEnv .= Just (typeEnvFromHPTResult result)
 
 preconditionCheck :: Transformation -> PipelineM ()
