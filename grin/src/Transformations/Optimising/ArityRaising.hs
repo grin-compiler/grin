@@ -53,7 +53,7 @@ arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 arityRaising (te, exp) = runVarM te (apoM builder (Nothing, exp))
   where
     candidates :: Map Name [(Name, (Tag, Vector SimpleType))]
-    candidates = flip examineCallees (te,exp) $ examineTheParameters (te, exp)
+    candidates = flip examineCallees (te,exp) $ flip examineCallers exp $ examineTheParameters (te, exp)
 
     canditateOriginalParams :: Map Name [Name]
     canditateOriginalParams = Map.intersectionWith (\ps _ -> ps) (definedFunctions exp) candidates
@@ -67,6 +67,9 @@ arityRaising (te, exp) = runVarM te (apoM builder (Nothing, exp))
         Nothing        -> pure $ DefF name params (Right (Just name, body))
         Just tagParams -> DefF name <$> (changeParams (map (second (Vector.toList . snd)) tagParams) params) <@> (Right (Just name, body))
 
+      SApp name params -> pure $ SAppF name params
+
+{-
       SApp name params -> case (Map.lookup name candidates) of
         Nothing -> pure $ SAppF name params
         Just ps -> do
@@ -90,7 +93,7 @@ arityRaising (te, exp) = runVarM te (apoM builder (Nothing, exp))
                   rest)
                 appNode
                 (reverse ps)
-
+-}
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
         Nothing        -> pure $ SFetchIF name pos
@@ -125,6 +128,51 @@ examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
            . to (sameNodeOnLocations te)
            . _Just
 
+-- MonoidMap
+newtype MMap k m = MMap { unMMap :: Map k m }
+  deriving Show
+
+instance (Ord k, Monoid m) => Monoid (MMap k m) where
+  mempty = MMap mempty
+  mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
+
+-- | Restrict candidate set, where parameters of a function call are fetched.
+examineCallers :: Map Name [(Name, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, (Tag, Vector SimpleType))]
+examineCallers candidates e = Map.difference candidates $ (\(_,_,exclude,_) -> Map.fromSet (const ()) (traceShowId exclude)) $ para collect e where
+  -- Function calls in body: ParamName -> [FunName]
+  -- Name of parameters to be checked
+  -- Name of functions to be excluded
+  -- Name of parameters not bound to a fetch
+  collect :: ExpF (Exp, (MMap Name [Name], Set Name, Set Name, Set Name)) -> (MMap Name [Name], Set Name, Set Name, Set Name)
+  collect = dAlg show $ \e -> case e of
+    ProgramF defs -> mconcat $ map snd defs
+
+    DefF name params (_, (MMap calls, callsParam, _, nonFetched)) ->
+      ( mempty
+      , mempty
+      , Set.fromList $ concatMap (\p -> fromMaybe [] $ Map.lookup p calls) $ nonFetched `Set.difference` callsParam
+      , mempty
+      )
+
+    SBlockF (_, body) -> body
+    ECaseF _ alts     -> mconcat $ map snd alts
+    EBindF (SFetchI _ _, lhs) _ (_, rhs) -> rhs
+    EBindF (_, lhs) pat (_, rhs)      -> mconcat [lhs, rhs, (mempty, mempty, mempty, vars pat)]
+
+    AltF cpat (_, body) -> body <> (mempty, mempty, mempty, cpatVars cpat)
+    SAppF name params ->
+      ( MMap $ Map.fromSet (const [name]) $ Set.unions $ (vars <$> params)
+      , Set.unions (vars <$> params)
+      , mempty
+      , mempty
+      )
+
+    SReturnF  val -> (mempty, mempty, mempty, vars val)
+    SStoreF   val -> (mempty, mempty, mempty, vars val)
+    SUpdateF  name val -> (mempty, mempty, mempty, vars val)
+
+    _ -> mempty
+
 -- Keep the parameters that are part of an invariant calls,
 -- or an argument to a fetch.
 examineCallees :: Map Name [(Name, (Tag, Vector SimpleType))] -> (TypeEnv, Exp) -> Map Name [(Name, (Tag, Vector SimpleType))]
@@ -132,13 +180,6 @@ examineCallees funParams (te, exp) =
     Map.mapMaybe (nonEmpty . (filter ((`Set.notMember` others) . fst))) funParams
   where
     others = cata collect exp
-
-    vars :: Val -> Set Name
-    vars = Set.fromList . \case
-      Var n             -> [n]
-      ConstTagNode _ vs -> vs ^.. each . _Var
-      VarTagNode n vs   -> n : (vs ^.. each . _Var)
-      _                 -> []
 
     collect :: ExpF (Set Name) -> Set Name
     collect = \case
@@ -153,6 +194,18 @@ examineCallees funParams (te, exp) =
       SStoreF   val      -> vars val
       SUpdateF  name val -> Set.insert name (vars val)
       _ -> mempty
+
+vars :: Val -> Set Name
+vars = Set.fromList . \case
+  Var n             -> [n]
+  ConstTagNode _ vs -> vs ^.. each . _Var
+  VarTagNode n vs   -> n : (vs ^.. each . _Var)
+  _                 -> []
+
+cpatVars :: CPat -> Set Name
+cpatVars = Set.fromList . \case
+  NodePat _ names -> names
+  _               -> mempty
 
 sameNodeOnLocations :: TypeEnv -> [Int] -> Maybe (Tag, Vector SimpleType)
 sameNodeOnLocations te is = join $ allSame $ map (oneNodeOnLocation te) is
