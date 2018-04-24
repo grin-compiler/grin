@@ -11,8 +11,14 @@ import Transformations.Util
 
 type Env = (Map Name Name, Map Val Val)
 
+{-
+  NOTE:
+    Do not propagate literal values because literals are not used for optimisations. (GRIN is not a supercompiler)
+    Only propagates variables. It does not cause performance penalty, LLVM will optimise the code further.
+-}
+
 copyPropagation :: Exp -> Exp
-copyPropagation e = hylo skipUnit builder (mempty, e) where
+copyPropagation e = hylo folder builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env@(nameEnv, valEnv), exp) = let e = substVals valEnv . substVarRefExp nameEnv $ exp in case e of
@@ -40,3 +46,10 @@ copyPropagation e = hylo skipUnit builder (mempty, e) where
 
     -- bypass otherwise
     _ -> Nothing
+
+  folder :: ExpF Exp -> Exp
+  folder = \case
+    EBindF (SReturn Unit) Unit rightExp -> rightExp
+    EBindF (SReturn (ConstTagNode valTag valArgs)) (ConstTagNode lpatTag lpatArgs) rightExp ->
+      foldr (\(val, lpat) exp -> EBind (SReturn val) lpat exp) rightExp (zip valArgs lpatArgs)
+    exp -> embed exp
