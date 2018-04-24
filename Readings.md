@@ -46,6 +46,8 @@ Limits of recusrion schemes? Maybe a hylo can help to implement the list filter?
 
 ## Cheat Sheet
 
+http://b-studios.de/blog/2016/02/21/the-hitchhikers-guide-to-morphisms/
+
 ### Recursion schemes
 
 <img src="images/recursion-schemes-cheat-sheet.svg" style="max-width: 100%; max-height: 100vh; height: auto;">
