@@ -87,6 +87,9 @@ emptyTypeEnv = TypeEnv mempty mempty mempty
 newVar :: Name -> Type -> Endo TypeEnv
 newVar n t = Endo (variable %~ (Map.insert n t))
 
+newFun :: Name -> Type -> [Type] -> Endo TypeEnv
+newFun n t a = Endo (function %~ (Map.insert n (t, Vector.fromList a)))
+
 create :: Endo TypeEnv -> TypeEnv
 create (Endo c) = c emptyTypeEnv
 
