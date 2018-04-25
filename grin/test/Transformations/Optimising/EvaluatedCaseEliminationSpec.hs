@@ -30,3 +30,14 @@ spec = do
           pure v
         |]
       evaluatedCaseElimination (ctx before) `sameAs` (ctx after)
+
+    it "default case" $ do
+      let before = [expr|
+          case v of
+            (CLeft l)   -> pure v
+            #default    -> pure v
+        |]
+      let after = [expr|
+          pure v
+        |]
+      evaluatedCaseElimination (ctx before) `sameAs` (ctx after)
