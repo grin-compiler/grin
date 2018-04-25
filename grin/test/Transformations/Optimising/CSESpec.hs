@@ -103,6 +103,19 @@ spec = do
         |]
       commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
 
+    let te = emptyTypeEnv
+    it "fetch - update" $ do
+      let before = [expr|
+          v <- fetch p
+          update p v
+          pure 1
+        |]
+      let after = [expr|
+          v <- fetch p
+          pure 1
+        |]
+      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+
     it "constant" $ do
       let before = [expr|
           v1 <- pure (CInt 0)

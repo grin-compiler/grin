@@ -17,4 +17,7 @@ updateElimination = ana builder where
     exp -> project exp
 {-
   QUESTION: can this be subsumed by CSE which understands fetch/store/update?
+  ANSWER:   yes, CSE subsumes update elimination
+
+  TODO: delete this transformation
 -}
