@@ -26,13 +26,15 @@ spec = do
       uniqueValues
 
   it "withGADTs generate unique tags as constructors" $ do
+    pending
+    -- NOTE: commented out due type error
     {-
     property $ forAll
       (do n <- abs <$> arbitrary
           runGoalUnsafe $ withADTs n getADTs)
       (uniqueValues . concatMap tagNames . Set.toList)
     -}
-    pending
+
   it "genProg does not generate big programs" $ property $
     forAll genProg $ \p -> label (show $ programSize p) $
       monadicIO $ do

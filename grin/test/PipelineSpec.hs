@@ -18,6 +18,8 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   it "Exploratory testing on random program and random pipeline" $ do
+    pending
+    -- NOTE: commented out due type error
     {-
     property $
       forAll (PP <$> genProg) $ \(PP original) ->
@@ -32,8 +34,6 @@ spec = do
         transformedValue <- run $ pure $ evalProgram PureReducer transformed
         run (transformedValue `shouldBe` originalValue)
     -}
-    pending
-
 genPipeline :: Gen [Pipeline]
 genPipeline = do
   ([PrintGrin id, HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)

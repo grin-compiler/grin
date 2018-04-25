@@ -32,8 +32,8 @@ spec = do
               l2 <- store (CNone)
               pure 5
             |]
-      --splitFetch (ctx before) `sameAs` (ctx after)
       pending
+      splitFetch (ctx before) `sameAs` (ctx after)
 
     it "Example from Figure 4.14" $ do
       let before = [expr|
@@ -48,8 +48,8 @@ spec = do
               l2 <- store (CNone)
               pure 5
             |]
-      --splitFetch (ctx before) `sameAs` (ctx after)
       pending
+      splitFetch (ctx before) `sameAs` (ctx after)
 
     it "Example from Figure 4.15" $ do
       -- TODO Include hpt-result with t \elem { CPair }
@@ -67,18 +67,19 @@ spec = do
               l2 <- store (CNone)
               pure 5
             |]
-      --splitFetch (ctx before) `sameAs` (ctx after)
       pending
+      splitFetch (ctx before) `sameAs` (ctx after)
 
   forM_ programGenerators $ \(name, gen) -> do
     describe name $ do
       it "transformation has effect" $ do
-        {-
+        pending
+    -- NOTE: commented out due type error
+    {-
         property $ forAll gen $ \before ->
           let after = splitFetch before
           in changed before after True
-        -}
-        pending
+    -}
 
 runTests :: IO ()
 runTests = hspec spec

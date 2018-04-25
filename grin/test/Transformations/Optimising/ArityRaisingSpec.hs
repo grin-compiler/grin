@@ -171,8 +171,8 @@ spec = do
             (CBar w41 w42) <- fetch w4
             foo2 y41 y42 1 w41 w42
       |]
-    --(teAfter, after) `sameAs` arityRaising (teBefore, before)
     pending
+    (teAfter, after) `sameAs` arityRaising (teBefore, before)
 
   it "Zero arguments" $ do
     let teBefore = emptyTypeEnv

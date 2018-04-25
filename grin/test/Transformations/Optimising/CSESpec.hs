@@ -50,8 +50,8 @@ spec = do
           (CInt b') <- pure (r' z')
           fun 3 4
         |]
-      --commonSubExpressionElimination (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
       pending
+      commonSubExpressionElimination (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
 
     let te = emptyTypeEnv
     it "store - fetch" $ do

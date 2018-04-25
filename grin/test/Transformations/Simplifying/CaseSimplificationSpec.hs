@@ -50,18 +50,23 @@ spec = do
                          store a2
                          pure 5
             |]
-      --caseSimplification (ctx before) `sameAs` (ctx after)
       pending
+      caseSimplification (ctx before) `sameAs` (ctx after)
 
   forM_ programGenerators $ \(name, gen) -> do
     describe name $ do
       it "Program size does not change" $ do
-        --property $ forAll gen programSizeDoesNotChange
         pending
-
+    -- NOTE: commented out due type error
+    {-
+        property $ forAll gen programSizeDoesNotChange
+    -}
       it "Cases with tas as values have tags in their alternatives" $ do
-        --property $ forAll gen effectedAlternativesHasOnlyTags
         pending
+    -- NOTE: commented out due type error
+    {-
+        property $ forAll gen effectedAlternativesHasOnlyTags
+    -}
 
 varTagCover :: Exp -> Property -> Property
 varTagCover exp =
