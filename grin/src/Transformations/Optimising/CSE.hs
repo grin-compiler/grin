@@ -17,7 +17,7 @@ type Env = (Map SimpleExp SimpleExp)
 -- TODO: track if function parameters with location type can be updated in the called function to improve CSE
 
 commonSubExpressionElimination :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-commonSubExpressionElimination (typeEnv, e) = (typeEnv, ana builder (mempty, e)) where
+commonSubExpressionElimination (typeEnv, e) = (typeEnv, hylo skipUnit builder (mempty, e)) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, exp) = case exp of
@@ -31,7 +31,10 @@ commonSubExpressionElimination (typeEnv, e) = (typeEnv, ana builder (mempty, e))
         SReturn{} -> extEnv
         SFetch{}  -> extEnv
         _         -> env
-      extEnv = Map.insertWith const leftExp (SReturn lpat) env
+      extEnv = Map.insertWith (\new old -> new) leftExp (SReturn lpat) env
+    SUpdate name val | Just (SReturn fetchedVal) <- Map.lookup (SFetch name) env
+                     , fetchedVal == val
+                     -> SReturnF Unit
     _ -> (env,) <$> project (subst env exp)
 
   isLocation :: Name -> Bool
