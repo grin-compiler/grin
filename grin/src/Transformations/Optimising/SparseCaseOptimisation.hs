@@ -26,7 +26,7 @@ sparseCaseOptimisation (typeEnv, exp) = (typeEnv, ana builder exp) where
   possible (T_NodeSet nodeSet) allPatTags cpat = case cpat of
     NodePat tag _args -> Map.member tag nodeSet
     -- HINT: the default case is redundant if normal cases fully cover the domain
-    DefaultPat -> Set.isProperSubsetOf allPatTags (Map.keysSet nodeSet)
+    DefaultPat -> 0 < Set.size (Set.difference (Map.keysSet nodeSet) allPatTags)
     _ -> False
 
   possible ty@T_SimpleType{} _ cpat = case cpat of
