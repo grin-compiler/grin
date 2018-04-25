@@ -31,3 +31,16 @@ spec = do
             fun a1 a2 a3
         |]
       trivialCaseElimination (ctx before) `sameAs` (ctx after)
+
+    it "bypass" $ do
+      let before = [expr|
+          case v of
+            (Ffun1 a1 a2 a3) -> fun1 a1 a2 a3
+            (Ffun2 b1 b2 b3) -> fun2 b1 b2 b3
+        |]
+      let after = [expr|
+          case v of
+            (Ffun1 a1 a2 a3) -> fun1 a1 a2 a3
+            (Ffun2 b1 b2 b3) -> fun2 b1 b2 b3
+        |]
+      trivialCaseElimination (ctx before) `sameAs` (ctx after)
