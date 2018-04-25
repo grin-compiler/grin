@@ -17,18 +17,22 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  it "Exploratory testing on random program and random pipeline" $ property $
-    forAll (PP <$> genProg) $ \(PP original) ->
---    forAllShrink genPipeline shrinkPipeline $ \ppln ->
-    forAll genPipeline $ \ppln ->
-    monadicIO $ do
-      (pipelineInfo, transformed) <- run $ pipeline defaultOpts original ppln
-      pre $ any ((==ExpChanged) . snd) pipelineInfo
-      traceShowM pipelineInfo
-      pre $ transformed /= original
-      originalValue    <- run $ pure $ evalProgram PureReducer original
-      transformedValue <- run $ pure $ evalProgram PureReducer transformed
-      run (transformedValue `shouldBe` originalValue)
+  it "Exploratory testing on random program and random pipeline" $ do
+    {-
+    property $
+      forAll (PP <$> genProg) $ \(PP original) ->
+  --    forAllShrink genPipeline shrinkPipeline $ \ppln ->
+      forAll genPipeline $ \ppln ->
+      monadicIO $ do
+        (pipelineInfo, transformed) <- run $ pipeline defaultOpts original ppln
+        pre $ any ((==ExpChanged) . snd) pipelineInfo
+        traceShowM pipelineInfo
+        pre $ transformed /= original
+        originalValue    <- run $ pure $ evalProgram PureReducer original
+        transformedValue <- run $ pure $ evalProgram PureReducer transformed
+        run (transformedValue `shouldBe` originalValue)
+    -}
+    pending
 
 genPipeline :: Gen [Pipeline]
 genPipeline = do

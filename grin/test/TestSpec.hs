@@ -25,12 +25,14 @@ spec = do
           runGoalUnsafe $ newNames n)
       uniqueValues
 
-  it "withGADTs generate unique tags as constructors" $ property $
-    forAll
+  it "withGADTs generate unique tags as constructors" $ do
+    {-
+    property $ forAll
       (do n <- abs <$> arbitrary
           runGoalUnsafe $ withADTs n getADTs)
       (uniqueValues . concatMap tagNames . Set.toList)
-
+    -}
+    pending
   it "genProg does not generate big programs" $ property $
     forAll genProg $ \p -> label (show $ programSize p) $
       monadicIO $ do

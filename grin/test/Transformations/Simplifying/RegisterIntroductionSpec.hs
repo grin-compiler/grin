@@ -41,15 +41,18 @@ spec = do
               l2 <- store (CNone)
               pure 2
             |]
-      registerIntroduction 0 (ctx before) `sameAs` (ctx after)
+      --registerIntroduction 0 (ctx before) `sameAs` (ctx after)
+      pending
 
   forM_ programGenerators $ \(name, gen) -> do
     describe name $ do
-      it "transformation has effect" $ property $
-        forAll gen $ \before ->
+      it "transformation has effect" $ do
+        {-
+        property $ forAll gen $ \before ->
           let after = registerIntroduction 0 before
           in changed before after True
-
+        -}
+        pending
 
 runTests :: IO ()
 runTests = hspec spec
