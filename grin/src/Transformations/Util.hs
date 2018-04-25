@@ -57,6 +57,12 @@ mapNamesVal f = \case
   Var name              -> Var $ f name
   val                   -> val
 
+mapValVal :: (Val -> Val) -> Val -> Val
+mapValVal f val = case f val of
+  ConstTagNode tag vals -> ConstTagNode tag (map (mapValVal f) vals)
+  VarTagNode name vals  -> VarTagNode name (map (mapValVal f) vals)
+  val                   -> val
+
 mapValsExp :: (Val -> Val) -> Exp -> Exp
 mapValsExp f = \case
   ECase val alts    -> ECase (f val) alts
@@ -87,7 +93,7 @@ substVarRefExp env = mapVarRefExp (subst env)
 
 -- val substitution (non recursive)
 substVals :: Map Val Val -> Exp -> Exp
-substVals env = mapValsExp (subst env)
+substVals env = mapValsExp (mapValVal $ subst env)
 
 cpatToLPat :: CPat -> LPat
 cpatToLPat = \case
