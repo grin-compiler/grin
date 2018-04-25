@@ -26,7 +26,8 @@ spec = do
             (Ffun a1 a2 a3) -> fun a1 a2 a3
         |]
       let after = [expr|
-          (Ffun a1 a2 a3) <- pure v
-          fun a1 a2 a3
+          do
+            (Ffun a1 a2 a3) <- pure v
+            fun a1 a2 a3
         |]
       trivialCaseElimination (ctx before) `sameAs` (ctx after)
