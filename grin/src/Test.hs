@@ -115,7 +115,7 @@ firstBindR1 :: TestExpContext
 firstBindR1 = ("first bind right", second tr) where
   tr (exprText -> e) = [expr|
       $e
-      pure ()
+      pure 0
     |]
 
 changeLast :: Exp -> Exp -> Exp
@@ -130,15 +130,15 @@ firstBindR = ("first bind right", second tr) where
 middleBindR :: TestExpContext
 middleBindR = ("middle bind right", second tr) where
   tr (exprText -> e) = [expr|
-      pure ()
+      0 <- pure 0
       $e
-      pure ()
+      pure 0
     |]
 
 lastBindR :: TestExpContext
 lastBindR = ("last bind right", second tr) where
   tr (exprText -> e) = [expr|
-      pure ()
+      0 <- pure 0
       $e
     |]
 
@@ -147,45 +147,45 @@ bindL (pack . show -> n) = ("bind left", second tr) where
   tr (exprText -> e) = [expr|
       fb$n <- do
         $e
-      pure ()
+      pure 0
     |]
 
 lastBindL :: Int -> TestExpContext
 lastBindL (pack . show -> n) = ("last bind left", second tr) where
   tr (exprText -> e) = [expr|
       md$n <- do
-        pure ()
+        0 <- pure 0
         $e
-      pure ()
+      pure 0
     |]
 
 firstAlt :: TestExpContext
 firstAlt = ("first alt", second tr) where
   tr (exprText -> e) = [expr|
       case 1 of
-        1 -> pure ()
+        1 -> 0 <- pure 0
              $e
-        2 -> pure ()
-        3 -> pure ()
+        2 -> pure 0
+        3 -> pure 0
     |]
 
 middleAlt :: TestExpContext
 middleAlt = ("middle alt", second tr) where
   tr (exprText -> e) = [expr|
       case 1 of
-        1 -> pure ()
-        2 -> pure ()
+        1 -> pure 0
+        2 -> pure 0
              $e
-        3 -> pure ()
+        3 -> pure 0
     |]
 
 lastAlt :: TestExpContext
 lastAlt = ("last alt", second tr) where
   tr (exprText -> e) = [expr|
       case 1 of
-        1 -> pure ()
-        2 -> pure ()
-        3 -> pure ()
+        1 -> pure 0
+        2 -> pure 0
+        3 -> pure 0
              $e
     |]
 
