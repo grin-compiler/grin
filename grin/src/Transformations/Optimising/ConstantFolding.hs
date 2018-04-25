@@ -22,6 +22,7 @@ constantFolding = ana builder where
   builder :: Exp -> ExpF Exp
   builder = \case
     EBind (SReturn v) (Var n) rest | isConstant v ->
+      -- FIXME: the current implementation has quadratic complexity because substitution is a traversal also
       project $ substitution (Map.singleton n v) rest
 
     rest ->
