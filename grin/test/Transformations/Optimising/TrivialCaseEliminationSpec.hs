@@ -36,11 +36,22 @@ spec = do
       let before = [expr|
           case v of
             (Ffun1 a1 a2 a3) -> fun1 a1 a2 a3
-            (Ffun2 b1 b2 b3) -> fun2 b1 b2 b3
+            #default -> pure 2
         |]
       let after = [expr|
           case v of
             (Ffun1 a1 a2 a3) -> fun1 a1 a2 a3
-            (Ffun2 b1 b2 b3) -> fun2 b1 b2 b3
+            #default -> pure 2
+        |]
+      trivialCaseElimination (ctx before) `sameAs` (ctx after)
+
+    it "default alternative" $ do
+      let before = [expr|
+          case v of
+            #default -> pure 2
+        |]
+      let after = [expr|
+          do
+            pure 2
         |]
       trivialCaseElimination (ctx before) `sameAs` (ctx after)
