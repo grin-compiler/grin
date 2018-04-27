@@ -179,6 +179,8 @@ test-suite grin-test
                      , Transformations.Optimising.CSESpec
                      , Transformations.Optimising.GeneralizedUnboxingSpec
                      , Transformations.Optimising.ArityRaisingSpec
+                     , Transformations.SingleStaticAssignmentSpec
+                     , Transformations.BindNormalisationSpec
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec
