@@ -57,7 +57,6 @@ def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (
 
 expr i = L.indentGuard sc EQ i >>
   try ((\pat e b -> EBind e pat b) <$> (try (value <* op "<-") <|> pure Unit) <*> simpleExp i <*> expr i ) <|>
-  ECase <$ kw "case" <*> value <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
   ifThenElse i <|>
   simpleExp i
 
@@ -74,6 +73,7 @@ ifThenElse i = do
                    ]
 
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
+              ECase <$ kw "case" <*> value <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
               SStore <$ kw "store" <*> satisfyM nodeOrVar value <|>
               SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
               SUpdate <$ kw "update" <*> var <*> satisfyM nodeOrVar value <|>
