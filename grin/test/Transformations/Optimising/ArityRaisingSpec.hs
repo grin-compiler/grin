@@ -8,7 +8,6 @@ import Grin
 import GrinTH
 import Test hiding (newVar)
 import Assertions
-import ParseGrin
 import TypeEnv
 import Data.Monoid
 import Control.Arrow

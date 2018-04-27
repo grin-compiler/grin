@@ -4,14 +4,9 @@ module Transformations.Optimising.TrivialCaseEliminationSpec where
 import Transformations.Optimising.TrivialCaseElimination
 
 import Test.Hspec
-import Grin
 import GrinTH
 import Test hiding (newVar)
 import Assertions
-import ParseGrin
-import TypeEnv
-import Data.Monoid
-import Control.Arrow
 
 
 runTests :: IO ()
