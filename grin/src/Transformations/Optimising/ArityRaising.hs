@@ -71,7 +71,6 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
       EBindF (_, lhs) _ (_, rhs) -> lhs <> rhs
       _ -> mempty
 
-    -- The name in the current scope: TODO: Remove
     -- The substituition that contains a Node or a list of new invariant parameters
     builder :: ([(Name, Either Val [Name])], Exp) -> VarM (ExpF (Either Exp ([(Name, Either Val [Name])], Exp)))
     builder (substs0, exp0) = case exp0 of
