@@ -1,0 +1,51 @@
+{-
+  run:
+    stack exec -- grin -p --compile-hpt --run-hpt-pure --ar -p arity-raising-bug-02.grin
+-}
+
+-----------------------------------------------
+-- test source code
+-----------------------------------------------
+
+grinMain =
+  p1 <- store (CInt 1)
+  p4 <- store (Fupto p1)
+  n13' <- sum p1 p4
+  _prim_int_print n13'
+
+sum p10 p11 =
+  (Fupto p6) <- fetch p11
+  (CInt n2') <- fetch p6
+  b1' <- _prim_int_gt n2' 0
+  case b1' of
+    #True ->
+      pure 1
+    #False ->
+      p8 <- store (CInt n2')
+      p9 <- store (Fupto p8)
+      sum p10 p9
+
+-----------------------------------------------
+-- NOTES
+-----------------------------------------------
+{-
+  wrong result:
+
+grinMain =
+  p1 <- store (CInt 1)
+  p4 <- store (Fupto p1)
+  n13' <- sum 1 p1
+  _prim_int_print n13'
+
+sum p101 p11 =
+  (Fupto p6) <- fetch p11 -- NOTE: the second argument must be 'Fupto' node
+  (CInt n2') <- fetch p6
+  b1' <- _prim_int_gt n2' 0
+  case b1' of
+    #True ->
+      pure 1
+    #False ->
+      p8 <- store (CInt n2')
+      p9 <- store (Fupto p8)
+      sum p101 p8 -- ERROR: passes 'CInt' node as second argument
+-}
