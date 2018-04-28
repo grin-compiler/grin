@@ -285,3 +285,9 @@ isConstant = cata $ \case
   LitF lit                  -> True
   _                         -> False
 
+hasConstant :: Val -> Bool
+hasConstant = cata $ \case
+  ValTagF{} -> True
+  UnitF     -> True
+  LitF{}    -> True
+  v         -> or v
