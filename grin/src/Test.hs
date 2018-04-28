@@ -115,7 +115,7 @@ firstBindR1 :: TestExpContext
 firstBindR1 = ("first bind right", second tr) where
   tr (exprText -> e) = [expr|
       $e
-      pure 0
+      _prim_int_print 1
     |]
 
 changeLast :: Exp -> Exp -> Exp
@@ -130,15 +130,15 @@ firstBindR = ("first bind right", second tr) where
 middleBindR :: TestExpContext
 middleBindR = ("middle bind right", second tr) where
   tr (exprText -> e) = [expr|
-      0 <- pure 0
+      _prim_int_print 42
       $e
-      pure 0
+      _prim_int_print 1
     |]
 
 lastBindR :: TestExpContext
 lastBindR = ("last bind right", second tr) where
   tr (exprText -> e) = [expr|
-      0 <- pure 0
+      _prim_int_print 42
       $e
     |]
 
@@ -147,45 +147,45 @@ bindL (pack . show -> n) = ("bind left", second tr) where
   tr (exprText -> e) = [expr|
       fb$n <- do
         $e
-      pure 0
+      _prim_int_print 1
     |]
 
 lastBindL :: Int -> TestExpContext
 lastBindL (pack . show -> n) = ("last bind left", second tr) where
   tr (exprText -> e) = [expr|
       md$n <- do
-        0 <- pure 0
+        _prim_int_print 42
         $e
-      pure 0
+      _prim_int_print 1
     |]
 
 firstAlt :: TestExpContext
 firstAlt = ("first alt", second tr) where
   tr (exprText -> e) = [expr|
       case 1 of
-        1 -> 0 <- pure 0
+        1 -> _prim_int_print 42
              $e
-        2 -> pure 0
-        3 -> pure 0
+        2 -> _prim_int_print 1
+        3 -> _prim_int_print 1
     |]
 
 middleAlt :: TestExpContext
 middleAlt = ("middle alt", second tr) where
   tr (exprText -> e) = [expr|
       case 1 of
-        1 -> pure 0
-        2 -> pure 0
+        1 -> _prim_int_print 1
+        2 -> _prim_int_print 1
              $e
-        3 -> pure 0
+        3 -> _prim_int_print 1
     |]
 
 lastAlt :: TestExpContext
 lastAlt = ("last alt", second tr) where
   tr (exprText -> e) = [expr|
       case 1 of
-        1 -> pure 0
-        2 -> pure 0
-        3 -> pure 0
+        1 -> _prim_int_print 1
+        2 -> _prim_int_print 1
+        3 -> _prim_int_print 1
              $e
     |]
 
