@@ -29,9 +29,9 @@ type VarM a = State TypeEnv a
 runVarM :: TypeEnv -> VarM a -> (TypeEnv, a)
 runVarM te = (\(f,s) -> (s,f)) . flip runState te
 
-changeParams :: [(Name, [SimpleType])] -> [Name] -> VarM [Name]
-changeParams tagParams names = concat <$> mapM
-  (\name -> maybe (pure [name]) (newParams name) $ List.lookup name tagParams)
+changeParams :: [(Name, [SimpleType])] -> [Name] -> VarM [(Name, [Name])]
+changeParams tagParams names = mapM
+  (\name -> maybe (pure (name, [name])) (fmap ((,) name) . newParams name) $ List.lookup name tagParams)
   names
 
 newParams :: Name -> [SimpleType] -> VarM [Name]
@@ -50,7 +50,7 @@ f <@> x = f <*> (pure x)
 -- TODO: Improve: Also check the caller sites of the selected funcions: It should be a store on the parmeters, used
 -- by the candidates.
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-arityRaising (te, exp) = runVarM te (apoM builder (Nothing, exp))
+arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
   where
     candidates :: Map Name [(Name, (Tag, Vector SimpleType))]
     candidates = flip examineCallees (te,exp) $ flip examineCallers exp $ examineTheParameters (te, exp)
@@ -61,52 +61,50 @@ arityRaising (te, exp) = runVarM te (apoM builder (Nothing, exp))
     nodeParamMap :: Map Name (Tag, Vector SimpleType)
     nodeParamMap = Map.fromList $ concat $ Map.elems candidates
 
-    builder :: (Maybe Name, Exp) -> VarM (ExpF (Either Exp (Maybe Name, Exp)))
-    builder (fun, exp0) = case exp0 of
-      Def name params body -> case Map.lookup name candidates of
-        Nothing        -> pure $ DefF name params (Right (Just name, body))
-        Just tagParams -> DefF name <$> (changeParams (map (second (Vector.toList . snd)) tagParams) params) <@> (Right (Just name, body))
+    -- Set of stores in the function body.
+    collectStores :: Exp -> [(Name, Val)]
+    collectStores = para $ \case
+      SBlockF (_, body)  -> body
+      AltF _ (_, body)   -> body
+      ECaseF _ alts -> mconcat $ map snd alts
+      EBindF (SStore node, _) (Var v) (_, rhs) -> [(v,node)] <> rhs
+      EBindF (_, lhs) _ (_, rhs) -> lhs <> rhs
+      _ -> mempty
 
-      SApp name params -> pure $ SAppF name params
+    -- The name in the current scope: TODO: Remove
+    -- The substituition that contains a Node or a list of new invariant parameters
+    builder :: ([(Name, Either Val [Name])], Exp) -> VarM (ExpF (Either Exp ([(Name, Either Val [Name])], Exp)))
+    builder (substs0, exp0) = case exp0 of
+      Def name params0 body ->
+        let substs1 = map (second Left) $ collectStores body
+        in case Map.lookup name candidates of
+            Nothing        -> pure $ DefF name params0 (Right (substs1, body))
+            Just tagParams -> do
+              oldToNewParams <- changeParams (map (second (Vector.toList . snd)) tagParams) params0
+              let params1 = concatMap snd oldToNewParams
+              let substs2 = substs1 ++ map (second Right) oldToNewParams
+              pure $ DefF name params1 (Right (substs2, body))
 
-{-
-      SApp name params -> case (Map.lookup name candidates) of
-        Nothing -> pure $ SAppF name params
-        Just ps -> do
-          let params' = (fromJust $ Map.lookup name canditateOriginalParams) `zip` params
-
-          appNode <- (SApp name . concat) <$> mapM
-                  (\(oname, actVal) -> case actVal of
-                      Lit l -> pure [Lit l]
-                      Var v -> case Map.lookup oname nodeParamMap of
-                        Nothing       -> pure [Var v]
-                        Just (_t, ts) -> (Var <$$> newParams v (Vector.toList ts)))
-                  params'
-
-          (SBlockF . Left) <$>
-              foldM (\rest (pname, (tag, ptypes)) -> do
-                -- pname is in the list, and node values can be passed to a function only in form of variables.
-                let localPName = (\(Var name) -> name) $ fromJust $ List.lookup pname params'
-                EBind
-                  (SFetch localPName) <$>
-                  (ConstTagNode tag <$> (Var <$$> newParams localPName (Vector.toList ptypes))) <@>
-                  rest)
-                appNode
-                (reverse ps)
--}
+      SApp name params -> pure $ case (Map.lookup name candidates) of
+        Nothing -> SAppF name params
+        Just _  -> SAppF name $ flip concatMap params $ \case
+          Lit l -> [Lit l]
+          Var v -> case List.lookup v substs0 of
+            Nothing -> [Var v]
+            Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
+            Just (Right names) -> map Var names
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
         Nothing        -> pure $ SFetchIF name pos
         Just (tag, ps) -> (SReturnF . ConstTagNode tag) <$> (Var <$$> newParams name (Vector.toList ps))
 
-      rest -> pure $ fmap (Right . (,) fun) $ project rest
+      rest -> pure $ fmap (Right . (,) substs0) $ project rest
 
 definedFunctions :: Exp -> Map Name [Name]
 definedFunctions = cata $ \case
   ProgramF defs      -> mconcat defs
   DefF name params _ -> Map.singleton name params
   _                  -> mempty
-
 
 -- Return the functions that has node set parameters with unique names
 examineTheParameters :: (TypeEnv, Exp) -> Map Name [(Name, (Tag, Vector SimpleType))]
@@ -138,13 +136,13 @@ instance (Ord k, Monoid m) => Monoid (MMap k m) where
 
 -- | Restrict candidate set, where parameters of a function call are fetched.
 examineCallers :: Map Name [(Name, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, (Tag, Vector SimpleType))]
-examineCallers candidates e = Map.difference candidates $ (\(_,_,exclude,_) -> Map.fromSet (const ()) (traceShowId exclude)) $ para collect e where
+examineCallers candidates e = Map.difference candidates $ (\(_,_,exclude,_) -> Map.fromSet (const ()) exclude) $ para collect e where
   -- Function calls in body: ParamName -> [FunName]
   -- Name of parameters to be checked
   -- Name of functions to be excluded
   -- Name of parameters not bound to a fetch
   collect :: ExpF (Exp, (MMap Name [Name], Set Name, Set Name, Set Name)) -> (MMap Name [Name], Set Name, Set Name, Set Name)
-  collect = dAlg show $ \e -> case e of
+  collect = \case
     ProgramF defs -> mconcat $ map snd defs
 
     DefF name params (_, (MMap calls, callsParam, _, nonFetched)) ->
@@ -184,16 +182,21 @@ examineCallees funParams (te, exp) =
     collect :: ExpF (Set Name) -> Set Name
     collect = \case
       ProgramF  defs             -> mconcat defs
-      DefF      name params body -> body
+
+      DefF name params body
+        | Map.member name funParams -> body
+        | otherwise                 -> mempty
+
       SBlockF   body             -> body
       EBindF    lhs _ rhs        -> lhs <> rhs
-      ECaseF    val as           -> mconcat as
+      ECaseF    val as           -> vars val <> mconcat as
       AltF cpat body             -> body
 
       SReturnF  val      -> vars val
       SStoreF   val      -> vars val
       SUpdateF  name val -> Set.insert name (vars val)
-      _ -> mempty
+
+      _ -> mempty -- Update and SApp parameters don't need to be crossed out
 
 vars :: Val -> Set Name
 vars = Set.fromList . \case
