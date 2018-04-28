@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
 module Transformations.Optimising.ConstantFolding where
 
 import Text.Printf
@@ -18,8 +18,9 @@ testing.
 -}
 type Env = (Map Name Name, Map Val Val)
 
+-- IDEA: fold everything
 constantFolding :: Exp -> Exp
-constantFolding e = hylo skipUnit builder (mempty, e) where
+constantFolding e = hylo folder builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env@(nameEnv, valEnv), exp) = let e = substVals valEnv . substVarRefExp nameEnv $ exp in case e of
@@ -29,14 +30,21 @@ constantFolding e = hylo skipUnit builder (mempty, e) where
     _ -> (env,) <$> project e
 
   unify :: Env -> LPat -> Val -> Maybe Env
-  unify env@(nameEnv, valEnv) lpat val = case (lpat, val) of
+  unify env@(nameEnv, valEnv) lpat (subst valEnv -> val) = case (lpat, val) of
     (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs) ->
       if lpatTag /= valTag
         then error $ printf "mismatching tags, lpat: %s val: %s" (show $ pretty lpatTag) (show $ pretty valTag)
         else mconcat $ zipWith (unify env) lpatArgs valArgs
 
-    (Var lpatVar, Var valVar) -> Just (Map.singleton lpatVar $ subst nameEnv valVar, mempty)  -- update name env
-    (Var{}, _) -> Just (mempty, Map.singleton lpat $ subst valEnv val)                        -- update val env
+    (Var lpatVar, Var valVar) -> Just (Map.singleton lpatVar valVar, Map.singleton lpat val)  -- update val + name env
+    (Var{}, _) -> Just (mempty, Map.singleton lpat val)                                       -- update val env
 
-    -- bypass otherwise
+    -- bypass otherwise ; keep the original binding
     _ -> Nothing
+
+  folder :: ExpF Exp -> Exp
+  folder = \case
+    EBindF (SReturn Unit) Unit rightExp -> rightExp
+    EBindF (SReturn (ConstTagNode valTag valArgs)) (ConstTagNode lpatTag lpatArgs) rightExp ->
+      foldr (\(val, lpat) exp -> EBind (SReturn val) lpat exp) rightExp (zip valArgs lpatArgs)
+    exp -> embed exp
