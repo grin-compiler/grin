@@ -49,6 +49,7 @@ f <@> x = f <*> (pure x)
 -- TODO: Create unique names
 -- TODO: Improve: Also check the caller sites of the selected funcions: It should be a store on the parmeters, used
 -- by the candidates.
+-- TODO: Store the parameter index which need to be transformed, and only substiutate those.
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
   where
@@ -67,7 +68,7 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
       SBlockF (_, body)  -> body
       AltF _ (_, body)   -> body
       ECaseF _ alts -> mconcat $ map snd alts
-      EBindF (SStore node, _) (Var v) (_, rhs) -> [(v,node)] <> rhs
+      EBindF (SStore node@(ConstTagNode (Tag C _) _), _) (Var v) (_, rhs) -> [(v,node)] <> rhs
       EBindF (_, lhs) _ (_, rhs) -> lhs <> rhs
       _ -> mempty
 
@@ -123,6 +124,9 @@ examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
       typ ^? _T_SimpleType
            . _T_Location
            . to (sameNodeOnLocations te)
+           . to (\case
+                  ctag@(Just (Tag C _, _)) -> ctag
+                  _                        -> Nothing)
            . _Just
 
 -- MonoidMap
