@@ -49,18 +49,17 @@ f <@> x = f <*> (pure x)
 -- TODO: Create unique names
 -- TODO: Improve: Also check the caller sites of the selected funcions: It should be a store on the parmeters, used
 -- by the candidates.
--- TODO: Store the parameter index which need to be transformed, and only substiutate those.
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
   where
-    candidates :: Map Name [(Name, (Tag, Vector SimpleType))]
+    candidates :: Map Name [(Name, Int, (Tag, Vector SimpleType))]
     candidates = flip examineCallees (te,exp) $ flip examineCallers exp $ examineTheParameters (te, exp)
 
     canditateOriginalParams :: Map Name [Name]
     canditateOriginalParams = Map.intersectionWith (\ps _ -> ps) (definedFunctions exp) candidates
 
     nodeParamMap :: Map Name (Tag, Vector SimpleType)
-    nodeParamMap = Map.fromList $ concat $ Map.elems candidates
+    nodeParamMap = Map.fromList $ map (\(n, _i, ts) -> (n, ts)) $ concat $ Map.elems candidates
 
     -- Set of stores in the function body.
     collectStores :: Exp -> [(Name, Val)]
@@ -68,7 +67,7 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
       SBlockF (_, body)  -> body
       AltF _ (_, body)   -> body
       ECaseF _ alts -> mconcat $ map snd alts
-      EBindF (SStore node@(ConstTagNode (Tag C _) _), _) (Var v) (_, rhs) -> [(v,node)] <> rhs
+      EBindF (SStore node, _) (Var v) (_, rhs) -> [(v,node)] <> rhs
       EBindF (_, lhs) _ (_, rhs) -> lhs <> rhs
       _ -> mempty
 
@@ -80,19 +79,21 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
         in case Map.lookup name candidates of
             Nothing        -> pure $ DefF name params0 (Right (substs1, body))
             Just tagParams -> do
-              oldToNewParams <- changeParams (map (second (Vector.toList . snd)) tagParams) params0
+              oldToNewParams <- changeParams (map (\(n, i, (t, ts)) -> (n, Vector.toList ts)) tagParams) params0
               let params1 = concatMap snd oldToNewParams
               let substs2 = substs1 ++ map (second Right) oldToNewParams
               pure $ DefF name params1 (Right (substs2, body))
 
       SApp name params -> pure $ case (Map.lookup name candidates) of
         Nothing -> SAppF name params
-        Just _  -> SAppF name $ flip concatMap params $ \case
-          Lit l -> [Lit l]
-          Var v -> case List.lookup v substs0 of
+        Just parametersToChange -> SAppF name $ flip concatMap ([1..] `zip` params) $ \case
+          (_, Lit l) -> [Lit l]
+          (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
             Nothing -> [Var v]
-            Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
-            Just (Right names) -> map Var names
+            Just _  -> case List.lookup v substs0 of
+              Nothing -> [Var v]
+              Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
+              Just (Right names) -> map Var names
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
         Nothing        -> pure $ SFetchIF name pos
@@ -107,7 +108,7 @@ definedFunctions = cata $ \case
   _                  -> mempty
 
 -- Return the functions that has node set parameters with unique names
-examineTheParameters :: (TypeEnv, Exp) -> Map Name [(Name, (Tag, Vector SimpleType))]
+examineTheParameters :: (TypeEnv, Exp) -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
 examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
   where
     funs :: Map Name [(Name, Type)]
@@ -119,14 +120,11 @@ examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
       DefF name params _ -> Map.singleton name params
       _                  -> mempty
 
-    candidate :: [(Name, Type)] -> [(Name, (Tag, Vector SimpleType))]
-    candidate = mapMaybe $ \(name, typ) -> (,) name <$>
+    candidate :: [(Name, Type)] -> [(Name, Int, (Tag, Vector SimpleType))]
+    candidate ns = flip mapMaybe (ns `zip` [1..]) $ \((name, typ), idx) -> (,,) name idx <$>
       typ ^? _T_SimpleType
            . _T_Location
            . to (sameNodeOnLocations te)
-           . to (\case
-                  ctag@(Just (Tag C _, _)) -> ctag
-                  _                        -> Nothing)
            . _Just
 
 -- MonoidMap
@@ -138,9 +136,9 @@ instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
 -- | Restrict candidate set, where parameters of a function call are fetched.
-examineCallers :: Map Name [(Name, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, (Tag, Vector SimpleType))]
+examineCallers :: Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
 examineCallers candidates e = Map.difference candidates $ (\(_,_,exclude,_) -> Map.fromSet (const ()) exclude) $ para collect e where
-  -- Function calls in body: ParamName -> [FunName]
+  -- Function calls in body: VarName -> [FunName]
   -- Name of parameters to be checked
   -- Name of functions to be excluded
   -- Name of parameters not bound to a fetch
@@ -176,9 +174,9 @@ examineCallers candidates e = Map.difference candidates $ (\(_,_,exclude,_) -> M
 
 -- Keep the parameters that are part of an invariant calls,
 -- or an argument to a fetch.
-examineCallees :: Map Name [(Name, (Tag, Vector SimpleType))] -> (TypeEnv, Exp) -> Map Name [(Name, (Tag, Vector SimpleType))]
+examineCallees :: Map Name [(Name, Int, (Tag, Vector SimpleType))] -> (TypeEnv, Exp) -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
 examineCallees funParams (te, exp) =
-    Map.mapMaybe (nonEmpty . (filter ((`Set.notMember` others) . fst))) funParams
+    Map.mapMaybe (nonEmpty . (filter ((`Set.notMember` others) . view _1))) funParams
   where
     others = cata collect exp
 

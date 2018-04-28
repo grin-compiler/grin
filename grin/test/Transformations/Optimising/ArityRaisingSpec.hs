@@ -62,9 +62,9 @@ spec = do
       |]
     examineTheParameters (teBefore, before) `shouldBe`
       (Map.fromList
-        [ ("one", [ ("pi1", (Tag C "Int", Vector.fromList [T_Int64]))] )
-        , ("two", [ ("pi2", (Tag C "Int", Vector.fromList [T_Int64]))
-                  , ("pf2", (Tag C "Float", Vector.fromList [T_Float]))
+        [ ("one", [ ("pi1", 1, (Tag C "Int", Vector.fromList [T_Int64]))] )
+        , ("two", [ ("pi2", 1, (Tag C "Int", Vector.fromList [T_Int64]))
+                  , ("pf2", 3, (Tag C "Float", Vector.fromList [T_Float]))
                   ])
         ])
 
