@@ -1,0 +1,10 @@
+SIMPLE="2.simple"
+OPT="11.opt"
+
+llc-5.0 -O3 -relocation-model=pic -filetype=obj ${SIMPLE}.ll
+gcc -O3 test.c ${SIMPLE}.o -s -o slow
+./slow
+
+llc-5.0 -O3 -relocation-model=pic -filetype=obj ${OPT}.ll
+gcc -O3 test.c ${OPT}.o -s -o opt
+./opt
