@@ -136,6 +136,7 @@ data HPTStep
 data Pipeline
   = HPT HPTStep
   | T Transformation
+  | Pass [Pipeline]
   | PrintGrinH (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
@@ -191,6 +192,7 @@ pipelineStep p = do
       RunHPTPure      -> runHPTPure
       PrintHPTResult  -> printHPTResult
     T t             -> transformationM t
+    Pass pass       -> mapM_ pipelineStep pass
     PrintGrin d     -> printGrinM d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
