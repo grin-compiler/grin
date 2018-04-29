@@ -53,7 +53,10 @@ arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
   where
     candidates :: Map Name [(Name, Int, (Tag, Vector SimpleType))]
-    candidates = flip examineCallees (te,exp) $ flip examineCallers exp $ examineTheParameters (te, exp)
+    candidates =
+      flip examineCallees (te,exp) $
+      flip examineCallers exp $
+      examineTheParameters (te, exp)
 
     canditateOriginalParams :: Map Name [Name]
     canditateOriginalParams = Map.intersectionWith (\ps _ -> ps) (definedFunctions exp) candidates
@@ -212,7 +215,20 @@ cpatVars = Set.fromList . \case
   _               -> mempty
 
 sameNodeOnLocations :: TypeEnv -> [Int] -> Maybe (Tag, Vector SimpleType)
-sameNodeOnLocations te is = join $ allSame $ map (oneNodeOnLocation te) is
+sameNodeOnLocations te is =
+  fmap (second (Vector.map unLEST)) $
+  join $
+  allSame $
+  map (fmap (second (Vector.map LEST))) $
+  map (oneNodeOnLocation te) is
+
+-- Ignore the location differences.
+newtype LocEqSimpleType = LEST { unLEST :: SimpleType }
+  deriving Show
+
+instance Eq LocEqSimpleType where
+  (LEST (T_Location _)) == (LEST (T_Location _)) = True
+  (LEST a)              == (LEST b)              = a == b
 
 -- | NonEmpty tags
 oneNodeOnLocation :: TypeEnv -> Int -> Maybe (Tag, Vector SimpleType)
