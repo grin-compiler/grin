@@ -19,7 +19,6 @@ import Lens.Micro.Platform
 import Transformations.Util (anaM, apoM)
 import Control.Monad.Writer
 import Control.Arrow
-import Debug.Trace
 
 
 generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)

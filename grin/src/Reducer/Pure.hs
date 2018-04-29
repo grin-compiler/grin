@@ -15,7 +15,6 @@ import Text.Printf
 import Reducer.PrimOps
 import Grin
 import Pretty
-import Debug.Trace
 
 prettyDebug :: Pretty a => a -> String
 prettyDebug = show . plain . pretty
@@ -70,7 +69,7 @@ evalVal env = \case
   x -> error $ printf "evalVal: %s" (prettyDebug x)
 
 evalSimpleExp :: Env -> SimpleExp -> GrinM Val
-evalSimpleExp env e = traceShow e $ case e of
+evalSimpleExp env = \case
   SApp n a -> do
               let args = map (evalVal env) a
                   go a [] [] = a
