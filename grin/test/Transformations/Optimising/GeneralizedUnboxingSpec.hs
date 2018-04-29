@@ -104,13 +104,15 @@ spec = do
           c2 <- do
             c2' <- foo' c1 c1 a3
             pure (CInt c2')
-          (CInt c2') <- pure c2
-          pure c2'
+          do
+            (CInt c2') <- pure c2
+            pure c2'
 
         foo4' a1 =
           v <- pure (CInt a1)
-          (CInt v') <- pure v
-          pure v'
+          do
+            (CInt v') <- pure v
+            pure v'
 
         bar =
           n <- test 1
@@ -118,6 +120,61 @@ spec = do
             y'' <- foo' a1 a2 a3
             pure (CInt y'')
           test y'
+      |]
+    generalizedUnboxing (teBefore, before) `sameAs` (teAfter, after)
+
+  it "Return values are in cases" $ do
+    let teBefore = emptyTypeEnv
+          { _function =
+              fun_t "int_eq"
+                [ T_NodeSet $ cnode_t "Int" [T_Int64]
+                , T_NodeSet $ cnode_t "Int" [T_Int64]
+                ]
+                (T_NodeSet $ cnode_t "Int" [T_Int64])
+          , _variable = Map.fromList
+              [ ("eq0", T_NodeSet $ cnode_t "Int" [T_Int64])
+              , ("eq1", T_NodeSet $ cnode_t "Int" [T_Int64])
+              , ("eq0_1", int64_t)
+              , ("eq1_1", int64_t)
+              , ("eq2", bool_t)
+              ]
+          }
+    let before = [prog|
+        int_eq eq0 eq1 =
+          (CInt eq0_1) <- fetch eq0
+          (CInt eq1_1) <- fetch eq1
+          eq2 <- _prim_int_eq eq0_1 eq1_1
+          case eq2 of
+            #False ->
+              pure (CInt 0)
+            #True ->
+              pure (CInt 1)
+      |]
+    let teAfter = emptyTypeEnv
+          { _function =
+              fun_t "int_eq'"
+                [ T_NodeSet $ cnode_t "Int" [T_Int64]
+                , T_NodeSet $ cnode_t "Int" [T_Int64]
+                ]
+                int64_t
+          , _variable = Map.fromList
+              [ ("eq0", T_NodeSet $ cnode_t "Int" [T_Int64])
+              , ("eq1", T_NodeSet $ cnode_t "Int" [T_Int64])
+              , ("eq0_1", int64_t)
+              , ("eq1_1", int64_t)
+              , ("eq2", bool_t)
+              ]
+          }
+    let after = [prog|
+        int_eq' eq0 eq1 =
+          (CInt eq0_1) <- fetch eq0
+          (CInt eq1_1) <- fetch eq1
+          eq2 <- _prim_int_eq eq0_1 eq1_1
+          case eq2 of
+            #False ->
+              pure 0
+            #True ->
+              pure 1
       |]
     generalizedUnboxing (teBefore, before) `sameAs` (teAfter, after)
 

@@ -348,7 +348,7 @@ simplifyingPipeline =
   ]
 
 optimisingPipeline :: [Pipeline]
-optimisingPipeline = [ T ArityRaising ]
+optimisingPipeline = [ T GeneralizedUnboxing ]
 
 optimisingPipeline' :: [Pipeline]
 optimisingPipeline' = concat $ replicate 10

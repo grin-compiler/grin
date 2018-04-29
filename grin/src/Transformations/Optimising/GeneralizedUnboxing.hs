@@ -19,6 +19,7 @@ import Lens.Micro.Platform
 import Transformations.Util (anaM, apoM)
 import Control.Monad.Writer
 import Control.Arrow
+import Debug.Trace
 
 
 generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)
@@ -113,28 +114,24 @@ transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) wh
       | name `elem` toUnbox -> pure $ DefF name params (Right (returnsAUniqueTag te name, body))
       | otherwise           -> pure $ DefF name params (Left body)
 
+    -- Always skip the lhs of a bind.
+    EBind lhs pat rhs -> pure $ EBindF (Left lhs) pat (Right (mTagType, rhs))
+
     -- Remove the tag from the value
-    EBind lhs pat (SReturn (ConstTagNode tag [val]))
-      -> pure $ EBindF (Left lhs) pat (Left (SReturn val))
+    SReturn (ConstTagNode tag [val]) -> pure $ SReturnF val
 
     -- Rewrite a node variable
     -- TODO: Unique variable name
-    EBind lhs pat (SReturn (Var v))
+    SReturn (Var v)
       -- fromJust works, as when we enter the processing of body of the
       -- expression only happens with the provided tag.
       -> do let Just (tag, typ) = mTagType
                 v' = v ++ "'"
             tell [(v', typ)]
-            pure $ EBindF
-              (Left lhs)
-              pat
-              (Left (EBind
+            pure $ (SBlockF (Left (EBind
                 (SReturn (Var v))
                 (ConstTagNode tag [Var v'])
-                (SReturn (Var v'))))
-
-    -- Always skip the lhs of a bind.
-    EBind lhs pat rhs -> pure $ EBindF (Left lhs) pat (Right (mTagType, rhs))
+                (SReturn (Var v')))))
 
     rest -> pure (Right . (,) mTagType <$> project rest)
 
