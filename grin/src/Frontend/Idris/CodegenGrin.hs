@@ -359,8 +359,8 @@ optimisingPipeline' = concat $ replicate 10
   , T EvaluatedCaseElimination
   , T TrivialCaseElimination
   , T UpdateElimination
---  , T ArityRaising -- has an issue ; always trigger -> unfolds the same expression multiple times
---  , T GeneralizedUnboxing -- has an issue ; mixes up simple type and node types
+  , T ArityRaising
+  , T GeneralizedUnboxing
 --  , T SparseCaseOptimisation -- has an issue ; workaround ; llvm codegen validator should be smarter
 
 --  , T Inlining -- integrate to the pipeline
