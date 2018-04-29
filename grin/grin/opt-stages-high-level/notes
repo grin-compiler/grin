@@ -1,0 +1,65 @@
+pipeline
+  00:
+    - frontend grin codegen
+  01:
+    - eval inline
+    - update elimination based on sharing analysis
+  02:
+    - evaluated case elimination
+    - trivial case elimination
+  03:
+    - unboxing return values
+    - copy propagation
+  after: NO!
+    - vectorisation
+    - case simplification
+  05:
+    - late inlining (upto)
+    - bind normalisation
+  06:
+    - case hoising
+    - dead code elimination (upto)
+  07:
+    - constant propagation
+    - copy propagation
+  08:
+    - common sub-expression elimination
+    - dead code elimination (variable)
+    - copy propagation
+    - dead code elimination (variable)
+  09:
+    - arity raising
+  10:
+    - dead code elimination (variable)
+    - copy propagation
+  11:
+    - arity raising
+  12:
+    - copy propagation
+    - dead code elimination (variable)
+
+NOTE:
+  from 06 the current system should do
+
+round A:
+  - arity raising
+
+  - case hoising
+      to be implemented
+
+  - copy propagation
+  - common sub-expression elimination
+  - constant propagation
+  - dead code elimination (upto)
+  - dead code elimination (variable)
+  - bind normalisation
+
+round B:
+  - evaluated case elimination
+  - trivial case elimination
+  - eval inline
+  - late inlining (upto)
+  - unboxing return values
+  - update elimination based on sharing analysis
+  - vectorisation
+  - case simplification
