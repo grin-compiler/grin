@@ -1,8 +1,9 @@
-stack exec -- grin -p \
-  --bn --cnp --compile-hpt --run-hpt-pure \
+stack exec -- grin -o . -p \
+  --bn --cnp --hpt \
   --cse --cfl --dve \
   --ar --cfl --dve \
-  --compile-hpt --run-hpt-pure \
+  --hpt \
   --ar --cfl --dve \
-  --compile-hpt --run-hpt-pure -p --llvm \
+  --hpt -p --llvm \
+  --save-llvm opt \
   stage-06.grin
