@@ -52,7 +52,7 @@ instance Pretty Computer where
 
 instance Pretty R.SimpleType where
   pretty = \case
-    R.T_Location l  -> cyan . int . succ $ fromIntegral l
+    R.T_Location l  -> cyan . int $ fromIntegral l
     ty              -> red $ text $ show ty
 
 prettyHPTNode :: (Tag, Vector (Set R.SimpleType)) -> Doc
