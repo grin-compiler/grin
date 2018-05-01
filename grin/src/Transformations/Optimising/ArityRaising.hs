@@ -96,6 +96,7 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
             Just _  -> case List.lookup v substs0 of
               Nothing -> [Var v]
               Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
+              Just (Left (Var v)) -> [Var v]
               Just (Right names) -> map Var names
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
