@@ -1,0 +1,155 @@
+{-
+  run
+    stack exec -- grin -p -t --print-hpt-result --ar -p --eval arity-raising-bug-05.grin
+
+  error
+    grin: evalSimpleExp - Fetch expected location, got: (CGrInt 10) idrisinteq0
+    CallStack (from HasCallStack):
+    error, called at src/Reducer/Pure.hs:92:20 in grin-0.1.0.0-2YiERcZHbZSCVXzEvhRRjS:Reducer.Pureerror:
+-}
+
+idrisinteq idrisinteq0 idrisinteq1 =
+  (CGrInt idrisinteq01) <- fetch idrisinteq0
+  (CGrInt idrisinteq11) <- fetch idrisinteq1
+  idrisinteq2 <- _prim_int_eq idrisinteq01 idrisinteq11
+  case idrisinteq2 of
+    #False ->
+      pure (CGrInt 0)
+    #True ->
+      pure (CGrInt 1)
+
+idrisintlt idrisintlt0 idrisintlt1 =
+  (CGrInt idrisintlt01) <- fetch idrisintlt0
+  (CGrInt idrisintlt11) <- fetch idrisintlt1
+  idrisintlt2 <- _prim_int_lt idrisintlt01 idrisintlt11
+  case idrisintlt2 of
+    #False ->
+      pure (CGrInt 0)
+    #True ->
+      pure (CGrInt 1)
+
+idrisintprint idrisintprint0 =
+  (CGrInt idrisintprint01) <- fetch idrisintprint0
+  _prim_int_print idrisintprint01
+  pure (CUnit)
+
+idrisintadd idrisintadd0 idrisintadd1 =
+  (CGrInt idrisintadd01) <- fetch idrisintadd0
+  (CGrInt idrisintadd11) <- fetch idrisintadd1
+  idrisintadd2 <- _prim_int_add idrisintadd01 idrisintadd11
+  pure (CGrInt idrisintadd2)
+
+idrisintsub idrisintsub0 idrisintsub1 =
+  (CGrInt idrisintsub01) <- fetch idrisintsub0
+  (CGrInt idrisintsub11) <- fetch idrisintsub1
+  idrisintsub2 <- _prim_int_sub idrisintsub01 idrisintsub11
+  pure (CGrInt idrisintsub2)
+
+idrMainfn idrMainfn0 =
+  idrMainfn1val1 <- pure (CGrInt 0)
+  idrMainfn1 <- store idrMainfn1val1
+  idrMainfn1val <- idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare0 idrMainfn0 idrMainfn1
+  idrMainfn12 <- store idrMainfn1val
+  idrMainfn1val3 <- fetch idrMainfn12
+  case idrMainfn1val3 of
+    (CidrPreludeInterfacesGT) ->
+      idrMainfn2val5 <- pure (CGrInt 1)
+      idrMainfn2 <- store idrMainfn2val5
+      idrMainfn2val4 <- idrisintsub idrMainfn0 idrMainfn2
+      idrMainfn26 <- store idrMainfn2val4
+      idrMainfn2val <- idrMainfn idrMainfn26
+      idrMainfn27 <- store idrMainfn2val
+      idrisintadd idrMainfn0 idrMainfn27
+    #default ->
+      pure (CGrInt 0)
+
+idrGrinFFIintprint idrGrinFFIintprint0 idrGrinFFIintprint1 =
+  idrisintprint idrGrinFFIintprint0
+
+idrMainlazyfn idrMainlazyfn0 =
+  pure (CidrPMainlazyfn00 idrMainlazyfn0)
+
+idrMainmain idrMainmain0 =
+  idrMainmain1val12 <- pure (CGrInt 10)
+  idrMainmain1 <- store idrMainmain1val12
+  idrMainmain1val11 <- idrMainfn idrMainmain1
+  idrMainmain113 <- store idrMainmain1val11
+  idrMainmain1val10 <- idrMainfn idrMainmain113
+  idrMainmain114 <- store idrMainmain1val10
+  idrMainmain1val <- idrGrinFFIintprint idrMainmain114 idrMainmain0
+  idrMainmain115 <- store idrMainmain1val
+  idrMainmain2val20 <- pure (CGrInt 10)
+  idrMainmain2 <- store idrMainmain2val20
+  idrMainmain2val19 <- idrMainlazyfn idrMainmain2
+  idrMainmain221 <- store idrMainmain2val19
+  idrMainmain2val18 <- idrEVAL0 idrMainmain221
+  idrMainmain222 <- store idrMainmain2val18
+  idrMainmain2val17 <- idrMainlazyfn idrMainmain222
+  idrMainmain223 <- store idrMainmain2val17
+  idrMainmain2val16 <- idrEVAL0 idrMainmain223
+  idrMainmain224 <- store idrMainmain2val16
+  idrMainmain2val <- idrGrinFFIintprint idrMainmain224 idrMainmain0
+  idrMainmain225 <- store idrMainmain2val
+  pure (CidrMkUnit)
+
+idrEVAL0 idrEVAL00 =
+  idrEVAL00val <- fetch idrEVAL00
+  case idrEVAL00val of
+    (CidrPMainlazyfn00 idrEVAL01) ->
+      idrEVAL00val26 <- idrMainlazyfn0 idrEVAL01
+      update idrEVAL00 idrEVAL00val26
+      pure idrEVAL00val26
+    #default ->
+      fetch idrEVAL00
+
+idrMainlazyfn0 idrMainlazyfn00 =
+  idrMainlazyfn01val27 <- pure (CGrInt 0)
+  idrMainlazyfn01 <- store idrMainlazyfn01val27
+  idrMainlazyfn01val <- idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare0 idrMainlazyfn00 idrMainlazyfn01
+  idrMainlazyfn0128 <- store idrMainlazyfn01val
+  idrMainlazyfn01val29 <- fetch idrMainlazyfn0128
+  case idrMainlazyfn01val29 of
+    (CidrPreludeInterfacesGT) ->
+      idrMainlazyfn02val32 <- pure (CGrInt 1)
+      idrMainlazyfn02 <- store idrMainlazyfn02val32
+      idrMainlazyfn02val31 <- idrisintsub idrMainlazyfn00 idrMainlazyfn02
+      idrMainlazyfn0233 <- store idrMainlazyfn02val31
+      idrMainlazyfn02val30 <- idrMainlazyfn idrMainlazyfn0233
+      idrMainlazyfn0234 <- store idrMainlazyfn02val30
+      idrMainlazyfn02val <- idrEVAL0 idrMainlazyfn0234
+      idrMainlazyfn0235 <- store idrMainlazyfn02val
+      idrisintadd idrMainlazyfn00 idrMainlazyfn0235
+    #default ->
+      pure (CGrInt 0)
+
+grinMain =
+  idrrunMain00val36 <- pure (CidrTheWorld)
+  idrrunMain00 <- store idrrunMain00val36
+  idrrunMain00val <- idrMainmain idrrunMain00
+  idrrunMain0037 <- store idrrunMain00val
+  idrEVAL0 idrrunMain0037
+
+idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare0 idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare00 idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare01 =
+  idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare02val <- idrisinteq idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare00 idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare01
+  idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare02 <- store idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare02val
+  idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare02val38 <- fetch idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare02
+  case idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare02val38 of
+    (CGrInt idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare0cpatLInt640) ->
+      case idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare0cpatLInt640 of
+        0 ->
+          idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare03val <- idrisintlt idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare00 idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare01
+          idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare03 <- store idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare03val
+          idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare03val39 <- fetch idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare03
+          case idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare03val39 of
+            (CGrInt idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare0cpatLInt640) ->
+              case idrPreludeInterfacesPreludeInterfacesPreludeInterfacesOrdIntcompare0cpatLInt640 of
+                0 ->
+                  pure (CidrPreludeInterfacesGT)
+                #default ->
+                  pure (CidrPreludeInterfacesLT)
+            #default ->
+              pure (CidrPreludeInterfacesLT)
+        #default ->
+          pure (CidrPreludeInterfacesEQ)
+    #default ->
+      pure (CidrPreludeInterfacesEQ)
