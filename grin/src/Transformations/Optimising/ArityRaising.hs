@@ -92,7 +92,9 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
         Just parametersToChange -> SAppF name $ flip concatMap ([1..] `zip` params) $ \case
           (_, Lit l) -> [Lit l]
           (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
-            Nothing -> [Var v]
+            Nothing -> case List.lookup v substs0 of
+              Nothing             -> [Var v]
+              Just (Right [name]) -> [Var name]
             Just _  -> case List.lookup v substs0 of
               Nothing -> [Var v]
               Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
