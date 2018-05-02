@@ -1,6 +1,6 @@
 {-
   run:
-    stack exec -- grin -p -t --print-hpt-result --ar -p arity-raising-bug-04.grin
+    stack exec -- grin -p -t --print-hpt-result --ar -p -t --llvm arity-raising-bug-04.grin
 -}
 
 -----------------------------------------------
