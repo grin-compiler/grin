@@ -141,42 +141,47 @@ instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
--- | Restrict candidate set, where parameters of a function call are fetched.
+-- | Examine the function calls in the body.
 examineCallers :: Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
-examineCallers candidates e = Map.difference candidates $ (\(_,_,exclude,_) -> Map.fromSet (const ()) exclude) $ para collect e where
-  -- Function calls in body: VarName -> [FunName]
-  -- Name of parameters to be checked
-  -- Name of functions to be excluded
-  -- Name of parameters not bound to a fetch
-  collect :: ExpF (Exp, (MMap Name [Name], Set Name, Set Name, Set Name)) -> (MMap Name [Name], Set Name, Set Name, Set Name)
-  collect = \case
-    ProgramF defs -> mconcat $ map snd defs
+examineCallers candidates e =
+    Map.difference candidates $
+    (\(_,_,exclude,_) -> Map.fromSet (const ()) exclude) $
+    para collect e
+  where
+    -- Function calls in body: VarName -> [FunName]
+    -- Name of parameters to be checked
+    -- Name of functions to be excluded
+    -- Name of parameters not bound to a store
+    collect :: ExpF (Exp, (MMap Name [Name], Set Name, Set Name, Set Name)) -> (MMap Name [Name], Set Name, Set Name, Set Name)
+    collect = \case
+      ProgramF defs -> mconcat $ map snd defs
 
-    DefF name params (_, (MMap calls, callsParam, _, nonFetched)) ->
-      ( mempty
-      , mempty
-      , Set.fromList $ concatMap (\p -> fromMaybe [] $ Map.lookup p calls) $ nonFetched `Set.difference` callsParam
-      , mempty
-      )
+      DefF name params (_, (MMap calls, callsParam, _, nonStored)) ->
+        let recFunParams = fromMaybe [] (view _1 <$$> Map.lookup name candidates)
+            params0 = Set.fromList $ params \\ recFunParams
+        in ( mempty
+           , mempty
+           , (\e -> traceShow ("Call", e) e) $
+             Set.fromList $
+             concatMap (\p -> fromMaybe [] $ Map.lookup p calls) $
+             (nonStored `Set.union` params0) `Set.intersection` callsParam -- Call parameters should be stored.
+           , mempty
+           )
 
-    SBlockF (_, body) -> body
-    ECaseF _ alts     -> mconcat $ map snd alts
-    EBindF (SFetchI _ _, lhs) _ (_, rhs) -> rhs
-    EBindF (_, lhs) pat (_, rhs)      -> mconcat [lhs, rhs, (mempty, mempty, mempty, vars pat)]
+      SBlockF (_, body) -> body
+      ECaseF _ alts     -> mconcat $ map snd alts
+      EBindF (SStore (ConstTagNode _ _), lhs) (Var _) (_, rhs) -> rhs
+      EBindF (_, lhs) pat (_, rhs)      -> mconcat [lhs, rhs, (mempty, mempty, mempty, vars pat)]
 
-    AltF cpat (_, body) -> body <> (mempty, mempty, mempty, cpatVars cpat)
-    SAppF name params ->
-      ( MMap $ Map.fromSet (const [name]) $ Set.unions $ (vars <$> params)
-      , Set.unions (vars <$> params)
-      , mempty
-      , mempty
-      )
+      AltF cpat (_, body) -> body <> (mempty, mempty, mempty, cpatVars cpat)
+      SAppF name params ->
+        ( MMap $ Map.fromSet (const [name]) $ Set.unions $ (vars <$> params)
+        , Set.unions (vars <$> params)
+        , mempty
+        , mempty
+        )
 
-    SReturnF  val -> (mempty, mempty, mempty, vars val)
-    SStoreF   val -> (mempty, mempty, mempty, vars val)
-    SUpdateF  name val -> (mempty, mempty, mempty, vars val)
-
-    _ -> mempty
+      _ -> mempty
 
 -- Keep the parameters that are part of an invariant calls,
 -- or an argument to a fetch.
@@ -253,3 +258,11 @@ allSame (a:as) = if all (a==) as then Just a else Nothing
 nonEmpty :: [a] -> Maybe [a]
 nonEmpty [] = Nothing
 nonEmpty xs = Just xs
+
+{-
+Action: Y/N
+Parameter type: simpletype, node, location with one tag, location with multiple tag, multipletags
+Number of parameters: zero, one, more
+Callee: parameters are fetched, parameters are not fetched
+Callers: parameters are stored, parameters are not stored
+-}
