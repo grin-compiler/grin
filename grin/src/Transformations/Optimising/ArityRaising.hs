@@ -161,8 +161,7 @@ examineCallers candidates e =
             params0 = Set.fromList $ params \\ recFunParams
         in ( mempty
            , mempty
-           , (\e -> traceShow ("Call", e) e) $
-             Set.fromList $
+           , Set.fromList $
              concatMap (\p -> fromMaybe [] $ Map.lookup p calls) $
              (nonStored `Set.union` params0) `Set.intersection` callsParam -- Call parameters should be stored.
            , mempty
