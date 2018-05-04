@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, BangPatterns #-}
 module Reducer.Pure (reduceFun) where
 
 import Text.Printf
@@ -31,7 +31,7 @@ emptyStore = StoreMap mempty 0
 -- models cpu registers
 type Env = Map Name Val
 type Prog = Map Name Def
-type GrinM = ReaderT Prog (State StoreMap)
+type GrinM = ReaderT Prog (StateT StoreMap IO)
 
 bindPatMany :: Env -> [Val] -> [LPat] -> Env
 bindPatMany env [] [] = env
@@ -40,7 +40,7 @@ bindPatMany env [] (lpat : lpats) = bindPatMany (bindPat env Undefined lpat) [] 
 bindPatMany _ vals lpats = error $ printf "bindPatMany - pattern mismatch: %s %s" (prettyDebug vals) (prettyDebug lpats)
 
 bindPat :: Env -> Val -> LPat -> Env
-bindPat env val lpat = case lpat of
+bindPat env !val lpat = case lpat of
   Var n -> Map.insert n val env
   ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
   VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
@@ -123,8 +123,8 @@ evalExp env = \case
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp env exp
 
-reduceFun :: Program -> Name -> Val
-reduceFun (Program l) n = evalState (runReaderT (evalExp mempty e) m) emptyStore where
+reduceFun :: Program -> Name -> IO Val
+reduceFun (Program l) n = evalStateT (runReaderT (evalExp mempty e) m) emptyStore where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
   e = case Map.lookup n m of
         Nothing -> error $ printf "missing function: %s" n

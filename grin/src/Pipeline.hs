@@ -265,7 +265,7 @@ transformationM t = do
 pureEval :: PipelineM ()
 pureEval = do
   e <- use psExp
-  liftIO . print . pretty $ evalProgram PureReducer e
+  liftIO (print =<< pretty <$> evalProgram PureReducer e)
 
 printGrinM :: (Doc -> Doc) -> PipelineM ()
 printGrinM color = do

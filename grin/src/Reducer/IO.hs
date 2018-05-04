@@ -1,6 +1,6 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, BangPatterns #-}
 {-# LANGUAGE Strict #-}
-module Reducer.ST (reduceFun) where
+module Reducer.IO (reduceFun) where
 
 import Debug.Trace
 
@@ -12,52 +12,51 @@ import Control.Monad.State
 import Control.Monad.Reader
 
 import Data.Vector.Mutable as Vector
-import Data.STRef.Strict
-import Control.Monad.ST
+import Data.IORef
 import Control.Monad.RWS.Strict hiding (Alt)
 
 import Reducer.PrimOps
 import Grin
 
 -- models computer memory
-data STStore s = STStore {
-    sVector :: STVector s Val
-  , sLast   :: STRef s Int
+data IOStore = IOStore {
+    sVector :: IOVector Val
+  , sLast   :: IORef Int
   }
 
-emptyStore1 :: ST s (STStore s)
-emptyStore1 = STStore <$> new (10 * 1024 * 1024) <*> newSTRef 0
+emptyStore1 :: IO IOStore
+emptyStore1 = IOStore <$> new (10 * 1024 * 1024) <*> newIORef 0
 
 -- models cpu registers
 type Env = Map Name Val
 type Prog = Map Name Def
-type GrinS s a = RWST Prog () (STStore s) (ST s) a
+type GrinS a = RWST Prog () IOStore IO a
 
-getProg :: GrinS s Prog
+getProg :: GrinS Prog
 getProg = reader id
 
-getStore :: GrinS s (STStore s)
+getStore :: GrinS IOStore
 getStore = get
 
 -- TODO: Resize
-insertStore :: Val -> GrinS s Int
+insertStore :: Val -> GrinS Int
 insertStore x = do
-  (STStore v l) <- getStore
+  (IOStore v l) <- getStore
   lift $ do
-    n <- readSTRef l
+    n <- readIORef l
     Vector.write v n x
-    writeSTRef l (n + 1)
+    writeIORef l (n + 1)
     pure n
 
-lookupStore :: Int -> GrinS s Val
+lookupStore :: Int -> GrinS Val
 lookupStore n = do
-  (STStore v _) <- getStore
+  (IOStore v _) <- getStore
   lift $ do
     Vector.read v n
 
-updateStore :: Int -> Val -> GrinS s ()
+updateStore :: Int -> Val -> GrinS ()
 updateStore n x = do
-  (STStore v _) <- getStore
+  (IOStore v _) <- getStore
   lift $ do
     Vector.write v n x
 
@@ -68,7 +67,7 @@ bindPatMany env [] (lpat : lpats) = bindPatMany (bindPat env Undefined lpat) [] 
 bindPatMany _ vals lpats = error $ "bindPatMany - pattern mismatch: " ++ show (vals, lpats)
 
 bindPat :: Env -> Val -> LPat -> Env
-bindPat env val lpat = case lpat of
+bindPat env !val lpat = case lpat of
   Var n -> case val of
               ValTag{}  -> Map.insert n val env
               Unit      -> Map.insert n val env
@@ -111,7 +110,7 @@ pprint exp = trace (f exp) exp where
     a -> show a
 
 
-evalExp :: Env -> Exp -> GrinS s Val
+evalExp :: Env -> Exp -> GrinS Val
 evalExp env exp = case {-pprint-} exp of
   EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
   ECase v alts ->
@@ -131,7 +130,7 @@ evalExp env exp = case {-pprint-} exp of
       x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
   exp -> evalSimpleExp env exp
 
-evalSimpleExp :: Env -> SimpleExp -> GrinS s Val
+evalSimpleExp :: Env -> SimpleExp -> GrinS Val
 evalSimpleExp env = \case
   SApp n a -> do
               let args = map (evalVal env) a
@@ -161,8 +160,8 @@ evalSimpleExp env = \case
   SBlock a -> evalExp env a
   x -> error $ "evalSimpleExp: " ++ show x
 
-reduceFun :: Program -> Name -> Val
-reduceFun (Program l) n = runST $ do
+reduceFun :: Program -> Name -> IO Val
+reduceFun (Program l) n = do
   store <- emptyStore1
   (val, _, _) <- runRWST (evalExp mempty e) m store
   return val

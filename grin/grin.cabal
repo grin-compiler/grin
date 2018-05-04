@@ -28,7 +28,7 @@ library
     ParseGrin
     Reducer.PrimOps
     Reducer.Pure
-    Reducer.ST
+    Reducer.IO
     Reducer.LLVM.Base
     Reducer.LLVM.InferType
     Reducer.LLVM.TypeGen
