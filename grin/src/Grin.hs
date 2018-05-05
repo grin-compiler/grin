@@ -15,7 +15,13 @@ import Data.Text (Text)
 import Data.List (isPrefixOf)
 import Lens.Micro.Platform
 import Data.Maybe
+import qualified Data.ByteString.Short as B
 
+data Name2
+  = Name        B.ShortByteString
+  | DerivedName B.ShortByteString Int
+  | NewName     Name2 Int -- Block scope with shadowing support
+  deriving (Ord, Eq, Show)
 
 type Name = String
 
