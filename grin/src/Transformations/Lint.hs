@@ -12,7 +12,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Grin
-import TypeEnv
+import TypeEnv hiding (typeOfVal)
 import Transformations.Util
 
 {-
@@ -37,22 +37,6 @@ import Transformations.Util
 
 type Error = String
 
-{-
-  = Program     [Def]
-  | Def         Name [Name] Exp
-  -- Exp
-  | EBind       SimpleExp LPat Exp
-  | ECase       Val [Alt]
-  -- Simple Exp
-  | SApp        Name [SimpleVal]
-  | SReturn     Val
-  | SStore      Val
-  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
-  | SUpdate     Name Val
-  | SBlock      Exp
-  -- Alt
-  | Alt CPat Exp
--}
 
 data SyntaxCtx
   = ProgramCtx
@@ -101,6 +85,15 @@ check exp m = do
   nextId
   pure (idx CCTC.:< exp)
 
+isSimpleVal :: Val -> Bool
+isSimpleVal = \case
+  Lit{} -> True
+  Var{} -> True
+  _ -> False
+{-
+checkVal val :: Val -> Check ()
+checkVal _ = pure ()
+-}
 lint :: TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
 lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) emptyEnv where
   builder :: (SyntaxCtx, Exp) -> Lint (CCTC.CofreeF ExpF Int (SyntaxCtx, Exp))
@@ -119,16 +112,19 @@ lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) em
       checkSyntax ExpCtx
 
     -- Simple Exp
-    SApp{} -> check ((ctx,) <$> project e) $ do
+    SApp name args -> check ((ctx,) <$> project e) $ do
       checkSyntax SimpleExpCtx
+      unless (all isSimpleVal args) $ tell ["simple val expected"]
     SReturn{} -> check ((ctx,) <$> project e) $ do
       checkSyntax SimpleExpCtx
     SStore{} -> check ((ctx,) <$> project e) $ do
       checkSyntax SimpleExpCtx
     SFetchI{} -> check ((ctx,) <$> project e) $ do
       checkSyntax SimpleExpCtx
-    SUpdate{} -> check ((ctx,) <$> project e) $ do
+    SUpdate name val -> check ((ctx,) <$> project e) $ do
       checkSyntax SimpleExpCtx
+      --isNode val
+      --isNodePtr name val
     SBlock{} -> check ((ExpCtx,) <$> project e) $ do
       checkSyntax SimpleExpCtx
 
@@ -142,3 +138,20 @@ lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) em
         | expCtx == ctx = pure ()
         | expCtx == SimpleExpCtx && ctx == ExpCtx = pure ()
         | otherwise = tell ["Syntax error - expected " ++ showCtx ctx]
+
+{-
+  = Program     [Def]
+  | Def         Name [Name] Exp
+  -- Exp
+  | EBind       SimpleExp LPat Exp
+  | ECase       Val [Alt]
+  -- Simple Exp
+  | SApp        Name [SimpleVal]
+  | SReturn     Val
+  | SStore      Val
+  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
+  | SUpdate     Name Val
+  | SBlock      Exp
+  -- Alt
+  | Alt CPat Exp
+-}
