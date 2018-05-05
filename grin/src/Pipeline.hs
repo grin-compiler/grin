@@ -22,6 +22,7 @@ import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
 import Transformations.Simplifying.Vectorisation
 import Transformations.BindNormalisation
+import qualified Transformations.Lint as Lint
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Simplifying.RightHoistFetch
@@ -146,6 +147,7 @@ data Pipeline
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
   | PrintTypeEnv
+  | Lint
   deriving Show
 
 pattern PrintGrin :: (Doc -> Doc) -> Pipeline
@@ -203,6 +205,7 @@ pipelineStep p = do
     PrintTypeEnv    -> printTypeEnv
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
+    Lint            -> lintGrin
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
@@ -330,6 +333,14 @@ statistics :: PipelineM ()
 statistics = do
   e <- use psExp
   liftIO . print $ Statistics.statistics e
+
+lintGrin :: PipelineM ()
+lintGrin = do
+  exp <- use psExp
+  Just typeEnv <- use psTypeEnv
+  let lintExp@(_, errorMap) = Lint.lint typeEnv exp
+  when (Map.size errorMap > 0) $ do
+    liftIO . putStrLn . show $ Lint.prettyLintExp lintExp
 
 check :: PipelineM ()
 check = do
