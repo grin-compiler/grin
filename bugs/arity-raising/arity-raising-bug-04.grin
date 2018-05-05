@@ -14,19 +14,32 @@ sub p1 p2 =
   n3 <- _prim_int_sub n1 n2
   pure (CGrInt n3)
 
-grinMain =
-  p3 <- store (CGrInt 10)
+test t1 =
+  p3 <- store (CGrInt t1)
   p4 <- store (CGrInt 1)
   v2 <- sub p3 p4
   p5 <- store v2
   sub p3 p5
 
+grinMain =
+  (CInt m) <- test 10
+  _prim_int_print m
+
 -----------------------------------------------
 -- NOTES
 -----------------------------------------------
-{-
-  wrong result:
-    arity raising crashes:
-    grin: src/Transformations/Optimising/ArityRaising.hs:(96,24)-(99,49): Non-exhaustive patterns in case
--}
 
+{-
+stack exec -- grin -p -t --print-hpt-result --gub --bn --cp -t --ar --cp --dve -p --eval ./bugs/arity-raising/arity-raising-bug-04.grin
+
+sub' p11 p21 =
+  _prim_int_sub p11 p21
+
+test' t =
+  v2' <- sub' 10 1
+  sub' 10 v2'
+
+grinMain =
+  m' <- test' 10
+  _prim_int_print m'
+-}

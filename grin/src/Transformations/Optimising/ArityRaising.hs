@@ -29,26 +29,15 @@ type VarM a = State TypeEnv a
 runVarM :: TypeEnv -> VarM a -> (TypeEnv, a)
 runVarM te = (\(f,s) -> (s,f)) . flip runState te
 
-changeParams :: [(Name, [SimpleType])] -> [Name] -> VarM [(Name, [Name])]
-changeParams tagParams names = mapM
-  (\name -> maybe (pure (name, [name])) (fmap ((,) name) . newParams name) $ List.lookup name tagParams)
+changeParams :: [(Name, [SimpleType])] -> [(Name, Type)] -> [(Name, [(Name, Type)])]
+changeParams tagParams names = map
+  (\(name, t) -> maybe (name, [(name, t)]) (((,) name) . newParams name) $ List.lookup name tagParams)
   names
 
-newParams :: Name -> [SimpleType] -> VarM [Name]
-newParams name types = forM (types `zip` [1 ..]) $ \(t, i) -> do
-  let name' = name <> show i
-  variable %= Map.insert name' (T_SimpleType t)
-  pure name'
+newParams :: Name -> [SimpleType] -> [(Name, Type)]
+newParams name types = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> show i, T_SimpleType t)
 
-infixl 4 <@>
-(<@>) :: (Applicative f) => f (a -> b) -> a -> f b
-f <@> x = f <*> (pure x)
-
--- TODO: Change TypeEnv
--- - Remove transformed parameters, from TypeEnv
 -- TODO: Create unique names
--- TODO: Improve: Also check the caller sites of the selected funcions: It should be a store on the parmeters, used
--- by the candidates.
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
   where
@@ -57,9 +46,6 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
       flip examineCallees (te,exp) $
       flip examineCallers exp $
       examineTheParameters (te, exp)
-
-    canditateOriginalParams :: Map Name [Name]
-    canditateOriginalParams = Map.intersectionWith (\ps _ -> ps) (definedFunctions exp) candidates
 
     nodeParamMap :: Map Name (Tag, Vector SimpleType)
     nodeParamMap = Map.fromList $ map (\(n, _i, ts) -> (n, ts)) $ concat $ Map.elems candidates
@@ -82,10 +68,18 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
         in case Map.lookup name candidates of
             Nothing        -> pure $ DefF name params0 (Right (substs1, body))
             Just tagParams -> do
-              oldToNewParams <- changeParams (map (\(n, i, (t, ts)) -> (n, Vector.toList ts)) tagParams) params0
+              (Just (t, paramsTypes0)) <- use (function . at name)
+              let oldToNewParams = changeParams
+                    (map (\(n, i, (t, ts)) -> (n, Vector.toList ts)) tagParams)
+                    (params0 `zip` (Vector.toList paramsTypes0))
+              forM oldToNewParams $ \(old, news) -> do
+                variable . at old .= Nothing
+                forM news $ \(newName, newType) -> (variable . at newName) .= Just newType
               let params1 = concatMap snd oldToNewParams
-              let substs2 = substs1 ++ map (second Right) oldToNewParams
-              pure $ DefF name params1 (Right (substs2, body))
+                  (paramNames, paramTypes) = unzip params1
+              let substs2 = substs1 ++ map (second (Right . map fst)) oldToNewParams
+              function . at name %= fmap (second (const (Vector.fromList paramTypes)))
+              pure $ DefF name paramNames (Right (substs2, body))
 
       SApp name params -> pure $ case (Map.lookup name candidates) of
         Nothing -> SAppF name params
@@ -103,15 +97,13 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
         Nothing        -> pure $ SFetchIF name pos
-        Just (tag, ps) -> (SReturnF . ConstTagNode tag) <$> (Var <$$> newParams name (Vector.toList ps))
+        Just (tag, ps) -> do
+          let params = newParams name (Vector.toList ps)
+          forM params $ \(newName, newType) ->
+            variable . at newName .= Just newType
+          pure $ SReturnF $ ConstTagNode tag $ ((Var . fst) <$> params)
 
       rest -> pure $ fmap (Right . (,) substs0) $ project rest
-
-definedFunctions :: Exp -> Map Name [Name]
-definedFunctions = cata $ \case
-  ProgramF defs      -> mconcat defs
-  DefF name params _ -> Map.singleton name params
-  _                  -> mempty
 
 -- Return the functions that has node set parameters with unique names
 examineTheParameters :: (TypeEnv, Exp) -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
@@ -141,6 +133,7 @@ instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
+-- TODO: Only exclude parameters not whole functions
 -- | Examine the function calls in the body.
 examineCallers :: Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
 examineCallers candidates e =
@@ -172,7 +165,7 @@ examineCallers candidates e =
       EBindF (SStore (ConstTagNode _ _), lhs) (Var _) (_, rhs) -> rhs
       EBindF (_, lhs) pat (_, rhs)      -> mconcat [lhs, rhs, (mempty, mempty, mempty, vars pat)]
 
-      AltF cpat (_, body) -> body <> (mempty, mempty, mempty, cpatVars cpat)
+      AltF (NodePat _ names) (_, body) -> body <> (mempty, mempty, mempty, Set.fromList names)
       SAppF name params ->
         ( MMap $ Map.fromSet (const [name]) $ Set.unions $ (vars <$> params)
         , Set.unions (vars <$> params)
@@ -216,11 +209,6 @@ vars = Set.fromList . \case
   VarTagNode n vs   -> n : (vs ^.. each . _Var)
   _                 -> []
 
-cpatVars :: CPat -> Set Name
-cpatVars = Set.fromList . \case
-  NodePat _ names -> names
-  _               -> mempty
-
 sameNodeOnLocations :: TypeEnv -> [Int] -> Maybe (Tag, Vector SimpleType)
 sameNodeOnLocations te is =
   fmap (second (Vector.map unLEST)) $
@@ -257,11 +245,3 @@ allSame (a:as) = if all (a==) as then Just a else Nothing
 nonEmpty :: [a] -> Maybe [a]
 nonEmpty [] = Nothing
 nonEmpty xs = Just xs
-
-{-
-Action: Y/N
-Parameter type: simpletype, node, location with one tag, location with multiple tag, multipletags
-Number of parameters: zero, one, more
-Callee: parameters are fetched, parameters are not fetched
-Callers: parameters are stored, parameters are not stored
--}

@@ -128,17 +128,18 @@ spec = do
           { _variable = Map.fromList
               [ ("y11", int64_t)
               , ("y12", int64_t)
-              , ("y21", int64_t)
-              , ("y22", int64_t)
               , ("x31", int64_t)
               , ("x32", int64_t)
               , ("z31", int64_t)
               , ("z32", int64_t)
-              , ("y41", int64_t)
-              , ("y42", int64_t)
-              , ("w41", int64_t)
-              , ("w42", int64_t)
+              , ("x1", int64_t)
+              , ("y3", int64_t)
               ]
+          , _function =
+              fun_t "foo" [int64_t, int64_t, int64_t] int64_t <>
+              fun_t "bar" [int64_t] int64_t <>
+              fun_t "foo2" [int64_t, int64_t, int64_t, int64_t, int64_t] int64_t <>
+              fun_t "bar2" [int64_t] int64_t
           }
     let after = [prog|
         foo x1 y11 y12 =
@@ -149,9 +150,7 @@ spec = do
         bar x2 =
           z2 <- prim_int_add x2 1
           y2 <- store (CBar 1 z2)
-          do
-            (CBar y21 y22) <- fetch y2
-            foo 1 y21 y22
+          foo 1 1 z2
 
         foo2 x31 x32 y3 z31 z32 =
           w3 <- prim_int_add y3 1
@@ -165,13 +164,9 @@ spec = do
           z4 <- prim_int_add x4 1
           y4 <- store (CBar 1 z4)
           w4 <- store (CBar 2 z4)
-          do
-            (CBar y41 y42) <- fetch y4
-            (CBar w41 w42) <- fetch w4
-            foo2 y41 y42 1 w41 w42
+          foo2 1 z4 1 2 z4
       |]
-    pending
-    (teAfter, after) `sameAs` arityRaising (teBefore, before)
+    (arityRaising (teBefore, before)) `sameAs` (teAfter, after)
 
   it "Zero arguments" $ do
     let teBefore = emptyTypeEnv
