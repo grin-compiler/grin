@@ -13,6 +13,7 @@ import qualified Data.Map as Map
 
 import Grin
 import TypeEnv
+import Transformations.Util
 
 {-
   - AST shape (syntax)
@@ -69,123 +70,75 @@ showCtx = \case
   SimpleExpCtx  -> "SimpleExp"
   AltCtx        -> "Alt"
 
-lint :: TypeEnv -> Exp -> Cofree ExpF [Error]
-lint typeEnv exp = ana builder (ProgramCtx, exp) where
-  builder :: (SyntaxCtx, Exp) -> CCTC.CofreeF ExpF [Error] (SyntaxCtx, Exp)
-  builder (ctx, e) = case e of
-    Program{} -> ann ((DefCtx,) <$> project e) $ do
-      checkSyntax ProgramCtx
-      -- check multiple definitions
-
-    Def{} -> ann ((ExpCtx,) <$> project e) $ do
-      checkSyntax DefCtx
-
-    -- Exp
-    EBind leftExp lpat rightExp -> ann (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
-      checkSyntax ExpCtx
-    ECase{} -> ann ((AltCtx,) <$> project e) $ do
-      checkSyntax ExpCtx
-
-    -- Simple Exp
-    SApp{} -> ann ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SReturn{} -> ann ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SStore{} -> ann ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SFetchI{} -> ann ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SUpdate{} -> ann ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SBlock{} -> ann ((ExpCtx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-
-    -- Alt
-    Alt{} -> ann ((ExpCtx,) <$> project e) $ do
-      checkSyntax AltCtx
-
-    where
-      checkSyntax :: SyntaxCtx -> Writer [Error] ()
-      checkSyntax expCtx
-        | expCtx == ctx = pure ()
-        | expCtx == SimpleExpCtx && ctx == ExpCtx = pure ()
-        | otherwise = tell ["Syntax error - expected " ++ showCtx ctx]
-
-ann exp m = execWriter m CCTC.:< exp
-
-----------
-
 data Env
   = Env
   { envNextId     :: Int
-  , envSyntaxCtx  :: SyntaxCtx
   , envVars       :: Map Name Int -- exp id
   , envErrors     :: Map Int [Error]
   }
 
 emptyEnv = Env
   { envNextId     = 0
-  , envSyntaxCtx  = ProgramCtx
   , envVars       = mempty
   , envErrors     = mempty
   }
 
-type Lint = State Env
+type Lint   = State Env
+type Check  = WriterT [Error] Lint
 
-gen :: Lint Int
-gen = state $ \env@Env{..} -> (envNextId, env {envNextId = succ envNextId})
+expId :: Lint Int
+expId = gets envNextId
 
-checkSyntax = undefined
-setSyntax = undefined
+nextId :: Lint ()
+nextId = modify' $ \env@Env{..} -> env {envNextId = succ envNextId}
 
-lint2 :: Exp -> (Cofree ExpF Int, Map Int [Error])
-lint2 exp = fmap envErrors $ runState (cata folder exp) emptyEnv where
-  folder e = do
-    expId <- gen
-    (expId :<) <$> case e of
-      ProgramF defsM -> do
-        checkSyntax ProgramCtx
-        ProgramF <$> sequence [setSyntax DefCtx >> d | d <- defsM]
+check :: ExpF (SyntaxCtx, Exp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (SyntaxCtx, Exp))
+check exp m = do
+  idx <- expId
+  errors <- execWriterT m
+  unless (null errors) $ do
+    modify' $ \env@Env{..} -> env {envErrors = Map.insert idx errors envErrors}
+  nextId
+  pure (idx CCTC.:< exp)
 
-      DefF name args bodyM -> do
-        checkSyntax DefCtx
-        DefF name args <$> (setSyntax ExpCtx >> bodyM)
+lint :: TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
+lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) emptyEnv where
+  builder :: (SyntaxCtx, Exp) -> Lint (CCTC.CofreeF ExpF Int (SyntaxCtx, Exp))
+  builder (ctx, e) = case e of
+    Program{} -> check ((DefCtx,) <$> project e) $ do
+      checkSyntax ProgramCtx
+      -- check multiple definitions
 
-      -- Exp
-      EBindF leftExpM lpat rightExpM -> do
-        checkSyntax ExpCtx
-        EBindF <$> (setSyntax SimpleExpCtx >> leftExpM) <*> pure lpat <*> (setSyntax ExpCtx >> rightExpM)
+    Def{} -> check ((ExpCtx,) <$> project e) $ do
+      checkSyntax DefCtx
 
-      -- Case: Simple Exp + Alt
-      ECaseF val altsM -> do
-        checkSyntax SimpleExpCtx
-        ECaseF val <$> sequence [setSyntax AltCtx >> a | a <- altsM]
+    -- Exp
+    EBind leftExp lpat rightExp -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
+      checkSyntax ExpCtx
+    ECase{} -> check ((AltCtx,) <$> project e) $ do
+      checkSyntax ExpCtx
 
-      AltF cpat expM -> do
-        checkSyntax AltCtx
-        AltF cpat <$> (setSyntax ExpCtx >> expM)
+    -- Simple Exp
+    SApp{} -> check ((ctx,) <$> project e) $ do
+      checkSyntax SimpleExpCtx
+    SReturn{} -> check ((ctx,) <$> project e) $ do
+      checkSyntax SimpleExpCtx
+    SStore{} -> check ((ctx,) <$> project e) $ do
+      checkSyntax SimpleExpCtx
+    SFetchI{} -> check ((ctx,) <$> project e) $ do
+      checkSyntax SimpleExpCtx
+    SUpdate{} -> check ((ctx,) <$> project e) $ do
+      checkSyntax SimpleExpCtx
+    SBlock{} -> check ((ExpCtx,) <$> project e) $ do
+      checkSyntax SimpleExpCtx
 
-      -- Simple Exp
-      SAppF name args -> do
-        checkSyntax SimpleExpCtx
-        pure $ SAppF name args
+    -- Alt
+    Alt{} -> check ((ExpCtx,) <$> project e) $ do
+      checkSyntax AltCtx
 
-      SReturnF val -> do
-        checkSyntax SimpleExpCtx
-        pure $ SReturnF val
-
-      SStoreF val -> do
-        checkSyntax SimpleExpCtx
-        pure $ SStoreF val
-
-      SFetchIF name idx -> do
-        checkSyntax SimpleExpCtx
-        pure $ SFetchIF name idx
-
-      SUpdateF name val -> do
-        checkSyntax SimpleExpCtx
-        pure $ SUpdateF name val
-
-      SBlockF expM -> do
-        checkSyntax SimpleExpCtx
-        SBlockF <$> (setSyntax ExpCtx >> expM)
+    where
+      checkSyntax :: SyntaxCtx -> Check ()
+      checkSyntax expCtx
+        | expCtx == ctx = pure ()
+        | expCtx == SimpleExpCtx && ctx == ExpCtx = pure ()
+        | otherwise = tell ["Syntax error - expected " ++ showCtx ctx]
