@@ -17,6 +17,8 @@ import Grin
 import TypeEnv hiding (typeOfVal)
 import Pretty
 
+-- TODO: replace this module with a more generic one that could be used by other components also
+
 -- allows simple type singletons or locations
 validateNodeItem :: Type -> CG ()
 validateNodeItem ts@T_NodeSet{} = error $ printf "illegal node item type %s" (show $ pretty ts)
