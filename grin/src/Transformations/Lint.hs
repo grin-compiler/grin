@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
-module Transformations.Lint (lint, prettyLintExp) where
+module Transformations.Lint (lint, Error) where
 
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
@@ -10,13 +10,10 @@ import qualified Control.Comonad.Trans.Cofree as CCTC
 
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Text.PrettyPrint.ANSI.Leijen (Doc)
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import Grin
 import TypeEnv hiding (typeOfVal)
 import Transformations.Util
-import Pretty
 
 {-
   - AST shape (syntax)
@@ -158,6 +155,3 @@ lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) em
   -- Alt
   | Alt CPat Exp
 -}
-
-prettyLintExp :: (Cofree ExpF Int, Map Int [Error]) -> Doc
-prettyLintExp _ = PP.text "error"

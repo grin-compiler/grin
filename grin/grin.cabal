@@ -24,6 +24,7 @@ library
     TypeCheck
     Optimizations
     Pretty
+    PrettyLint
     PrimOps
     ParseGrin
     Reducer.PrimOps

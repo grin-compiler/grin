@@ -23,6 +23,7 @@ import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
 import Transformations.Simplifying.Vectorisation
 import Transformations.BindNormalisation
 import qualified Transformations.Lint as Lint
+import PrettyLint
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Simplifying.RightHoistFetch
@@ -339,8 +340,8 @@ lintGrin = do
   exp <- use psExp
   Just typeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint typeEnv exp
-  when (Map.size errorMap > 0) $ do
-    liftIO . putStrLn . show $ Lint.prettyLintExp lintExp
+  when (Map.size errorMap > 0 || True) $ do
+    liftIO . putStrLn . show $ prettyLintExp lintExp
 
 check :: PipelineM ()
 check = do
