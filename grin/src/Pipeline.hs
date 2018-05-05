@@ -145,6 +145,7 @@ data Pipeline
   | SaveGrin FilePath
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
+  | PrintTypeEnv
   deriving Show
 
 pattern PrintGrin :: (Doc -> Doc) -> Pipeline
@@ -199,6 +200,7 @@ pipelineStep p = do
     SaveLLVM path   -> saveLLVM path
     SaveGrin path   -> saveGrin path
     PrintAST        -> printAST
+    PrintTypeEnv    -> printTypeEnv
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
   after <- use psExp
@@ -237,6 +239,11 @@ runHPTPure = do
       result = HPT.toHPTResult hptProgram hptResult
   psHPTResult .= Just result
   psTypeEnv .= Just (typeEnvFromHPTResult result)
+
+printTypeEnv :: PipelineM ()
+printTypeEnv = do
+  Just typeEnv <- use psTypeEnv
+  liftIO $ putStrLn . show . pretty $ typeEnv
 
 preconditionCheck :: Transformation -> PipelineM ()
 preconditionCheck t = do
