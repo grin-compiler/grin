@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
-module Transformations.Lint (lint, Error) where
+module Lint (lint, Error) where
 
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable

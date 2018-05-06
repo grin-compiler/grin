@@ -11,7 +11,7 @@ import Text.PrettyPrint.ANSI.Leijen
 
 import Grin
 import Pretty
-import Transformations.Lint
+import Lint
 
 keyword :: String -> Doc
 keyword = yellow . text

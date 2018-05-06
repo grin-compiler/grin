@@ -39,7 +39,7 @@ library
     Test
     Gspec
     Statistics
-    Transformations.Lint
+    Lint
     Transformations.AssignStoreIDs
     Transformations.GenerateEval
     Transformations.BindNormalisation

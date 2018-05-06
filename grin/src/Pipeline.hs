@@ -22,7 +22,7 @@ import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
 import Transformations.Simplifying.Vectorisation
 import Transformations.BindNormalisation
-import qualified Transformations.Lint as Lint
+import qualified Lint
 import PrettyLint
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
