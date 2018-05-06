@@ -128,10 +128,10 @@ parseGrin :: String -> String -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename content
 
 parseProg :: String -> Exp
-parseProg = either (error . show) id . parseGrin ""
+parseProg src = either (error . parseErrorPretty' src) id . parseGrin "" $ src
 
 parseDef :: String -> Exp
-parseDef = either (error . show) id . runParser def ""
+parseDef src = either (error . parseErrorPretty' src) id . runParser def "" $ src
 
 parseExpr :: String -> Exp
-parseExpr = either (error . show) id . runParser (expr pos1) ""
+parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1) "" $ src
