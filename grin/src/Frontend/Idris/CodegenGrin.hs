@@ -348,7 +348,17 @@ simplifyingPipeline =
   ]
 
 optimisingPipeline :: [Pipeline]
-optimisingPipeline = [ T GeneralizedUnboxing ]
+optimisingPipeline = concat $ replicate 1
+  [ T GeneralizedUnboxing
+--  , Lint
+  , T BindNormalisation
+--  , Lint
+  , T CopyPropagation
+--  , Lint
+--  , SaveGrin "mid"
+  , T ArityRaising
+--  , SaveGrin "mid2"
+  ]
 
 optimisingPipeline' :: [Pipeline]
 optimisingPipeline' = concat $ replicate 10
@@ -383,7 +393,7 @@ codegenPipeline =
   , SaveGrin "high-level-opt-code.grin"
   , PureEval
 --  , SaveLLVM "high-level-opt-code"
---  , JITLLVM
+  , JITLLVM
   ]
 
 idrisPipeLine :: [Pipeline]

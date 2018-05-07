@@ -35,7 +35,8 @@ changeParams tagParams names = map
   names
 
 newParams :: Name -> [SimpleType] -> [(Name, Type)]
-newParams name types = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> show i, T_SimpleType t)
+newParams name [ty] = [(name, T_SimpleType ty)]
+newParams name types  = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> show i, T_SimpleType t)
 
 -- TODO: Create unique names
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
@@ -166,6 +167,7 @@ examineCallers candidates e =
       EBindF (_, lhs) pat (_, rhs)      -> mconcat [lhs, rhs, (mempty, mempty, mempty, vars pat)]
 
       AltF (NodePat _ names) (_, body) -> body <> (mempty, mempty, mempty, Set.fromList names)
+      AltF _                 (_, body) -> body
       SAppF name params ->
         ( MMap $ Map.fromSet (const [name]) $ Set.unions $ (vars <$> params)
         , Set.unions (vars <$> params)
@@ -175,30 +177,34 @@ examineCallers candidates e =
 
       _ -> mempty
 
--- Keep the parameters that are part of an invariant calls,
+-- Keep the parameters that are part of an invariant calls only,
 -- or an argument to a fetch.
 examineCallees :: Map Name [(Name, Int, (Tag, Vector SimpleType))] -> (TypeEnv, Exp) -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
 examineCallees funParams (te, exp) =
     Map.mapMaybe (nonEmpty . (filter ((`Set.notMember` others) . view _1))) funParams
   where
-    others = cata collect exp
+    others = fst $ cata collect exp
 
-    collect :: ExpF (Set Name) -> Set Name
+    collect :: ExpF (Set Name, [(Name, Name)]) -> (Set Name, [(Name, Name)])
     collect = \case
       ProgramF  defs             -> mconcat defs
 
-      DefF name params body
-        | Map.member name funParams -> body
+      DefF name params body@(others, funCalls)
+        | Map.member name funParams ->
+            -- non recursive function call parameters mut be included in others.
+            let otherCalls = Set.fromList $ map snd $ filter ((name /=) . view _1) funCalls
+            in (others `Set.union` otherCalls, mempty)
         | otherwise                 -> mempty
 
       SBlockF   body             -> body
       EBindF    lhs _ rhs        -> lhs <> rhs
-      ECaseF    val as           -> vars val <> mconcat as
+      ECaseF    val as           -> (vars val, mempty) <> mconcat as
       AltF cpat body             -> body
 
-      SReturnF  val      -> vars val
-      SStoreF   val      -> vars val
-      SUpdateF  name val -> Set.insert name (vars val)
+      SReturnF  val      -> (vars val, mempty)
+      SStoreF   val      -> (vars val, mempty)
+      SUpdateF  name val -> (Set.insert name (vars val), mempty)
+      SAppF name params  -> (mempty, (,) name <$> concatMap (Set.toList . vars) params)
 
       _ -> mempty -- Update and SApp parameters don't need to be crossed out
 
