@@ -191,9 +191,9 @@ examineCallees funParams (te, exp) =
 
       DefF name params body@(others, funCalls)
         | Map.member name funParams ->
-            -- non recursive function call parameters mut be included in others.
-            let otherCalls = Set.fromList $ map snd $ filter ((name /=) . view _1) funCalls
-            in (others `Set.union` otherCalls, mempty)
+            -- non recursive function call parameters mut be included in other parameters.
+            let otherCallParams = Set.fromList $ map snd $ filter ((name /=) . view _1) funCalls
+            in (others `Set.union` otherCallParams, mempty)
         | otherwise                 -> mempty
 
       SBlockF   body             -> body
