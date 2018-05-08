@@ -24,6 +24,7 @@ constantPropagation e = ana builder (mempty, e) where
         _ -> error $ printf "illegal case expression\n%s" (show $ pretty exp)
 
     -- HINT: in each alternative set val value like it was matched
+    -- TODO: do proper unification
     ECase val alts -> ECaseF val [(Map.insert val (cpatToVal cpat) env, alt) | alt@(Alt cpat _) <- alts]
 
     -- track values
