@@ -78,8 +78,7 @@ spec = do
               i <- pure 0
               f <- pure 1.1
               a <- pure (CPair 0 1.1)
-              j <- pure 0
-              g <- pure 1.1
+              (CPair j g) <- pure (CPair 0 1.1)
               store (CPair 0 1.1)
             |]
       constantFolding before `sameAs` after
@@ -98,6 +97,24 @@ spec = do
               store (CTriple k l m)
             |]
       constantFolding before `sameAs` after
+
+    it "bugfix - cascade" $ do
+      let before =
+            [expr|
+              i <- pure 0
+              f <- pure 1.1
+              (CNil) <- pure (CNil)
+              store (CPair i f)
+            |]
+      let after =
+            [expr|
+              i <- pure 0
+              f <- pure 1.1
+              (CNil) <- pure (CNil)
+              store (CPair 0 1.1)
+            |]
+      constantFolding before `sameAs` after
+
 
   forM_ programGenerators $ \(name, gen) -> do
     describe name $ do
