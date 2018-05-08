@@ -9,6 +9,7 @@ import GrinTH
 import Test hiding (newVar)
 import Assertions
 import TypeEnv
+import TypeCheck
 import Data.Monoid
 import Control.Arrow
 import qualified Data.Map.Strict as Map
@@ -197,3 +198,112 @@ spec = do
           prim_print_int i1
       |]
     arityRaising (teBefore, before) `sameAs` (teAfter, after)
+
+  it "bugfix - leaving unknown variable behind" $ do
+    let before = [prog|
+        grinMain =
+          p2 <- store (CInt 1)
+          n13' <- sum #False p2
+          _prim_int_print n13'
+
+        sum b2' p30 =
+          (CInt n17') <- fetch p30
+          case b2' of
+            #True ->
+              pure n17'
+            #False ->
+              sum #True p30
+      |]
+    let after = [prog|
+        grinMain =
+          p2 <- store (CInt 1)
+          n13' <- sum #False 1
+          _prim_int_print n13'
+
+        sum b2' p30 =
+          (CInt n17') <- pure (CInt p30)
+          case b2' of
+            #True ->
+              pure n17'
+            #False ->
+              sum #True p30
+      |]
+    snd (arityRaising (inferTypeEnv before, before)) `sameAs` after
+
+  it "bugfix - parameter type error" $ do
+    let before = [prog|
+        grinMain =
+          p1 <- store (CInt 1)
+          p4 <- store (Fupto p1)
+          n13' <- sum p1 p4
+          _prim_int_print n13'
+
+        sum p10 p11 =
+          (Fupto p6) <- fetch p11
+          (CInt n2') <- fetch p6
+          b1' <- _prim_int_gt n2' 0
+          case b1' of
+            #True ->
+              pure 1
+            #False ->
+              p8 <- store (CInt n2')
+              p9 <- store (Fupto p8)
+              sum p10 p9
+      |]
+    let after = [prog|
+        grinMain =
+          p1 <- store (CInt 1)
+          p4 <- store (Fupto p1)
+          n13' <- sum 1 p1
+          _prim_int_print n13'
+
+        sum p10 p11 =
+          (Fupto p6) <- pure (Fupto p11)
+          (CInt n2') <- fetch p6
+          b1' <- _prim_int_gt n2' 0
+          case b1' of
+            #True ->
+              pure 1
+            #False ->
+              p8 <- store (CInt n2')
+              p9 <- store (Fupto p8)
+              sum p10 p8
+      |]
+    snd (arityRaising (inferTypeEnv before, before)) `sameAs` after
+
+  it "bugfix - multi call" $ do
+    let before = [prog|
+        sub' p1 p2 =
+          (CGrInt n1) <- fetch p1
+          (CGrInt n2) <- fetch p2
+          _prim_int_sub n1 n2
+
+        test' t1 =
+          p3 <- store (CGrInt t1)
+          p4 <- store (CGrInt 1)
+          v2' <- sub' p3 p4
+          p5 <- store (CGrInt v2')
+          sub' p3 p5
+
+        grinMain =
+          m' <- test' 10
+          _prim_int_print m'
+      |]
+    let after = [prog|
+        sub' p1 p2 =
+          (CGrInt n1) <- pure (CGrInt p1)
+          (CGrInt n2) <- pure (CGrInt p2)
+          _prim_int_sub n1 n2
+
+        test' t1 =
+          p3 <- store (CGrInt t1)
+          p4 <- store (CGrInt 1)
+          v2' <- sub' t1 1
+          p5 <- store (CGrInt v2')
+          sub' t1 v2'
+
+        grinMain =
+          m' <- test' 10
+          _prim_int_print m'
+      |]
+    snd (arityRaising (inferTypeEnv before, before)) `sameAs` after
