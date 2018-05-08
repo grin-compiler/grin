@@ -27,6 +27,7 @@ spec = do
             [expr|
               x <- store a
               y <- store b
+              u <- pure 5
               pure 5
             |]
       constantFolding before `sameAs` after
@@ -41,6 +42,7 @@ spec = do
       let after =
             [expr|
               x <- store (CNone)
+              u <- pure 4
               pure 5
             |]
       constantFolding before `sameAs` after
@@ -55,7 +57,45 @@ spec = do
             |]
       let after =
             [expr|
+              i <- pure 0
+              f <- pure 1.1
+              a <- pure (CPair 0 1.1)
               store (CPair 0 1.1)
+            |]
+      constantFolding before `sameAs` after
+
+    it "node pattern" $ do
+      let before =
+            [expr|
+              i <- pure 0
+              f <- pure 1.1
+              a <- pure (CPair i f)
+              (CPair j g) <- pure a
+              store (CPair j g)
+            |]
+      let after =
+            [expr|
+              i <- pure 0
+              f <- pure 1.1
+              a <- pure (CPair 0 1.1)
+              j <- pure 0
+              g <- pure 1.1
+              store (CPair 0 1.1)
+            |]
+      constantFolding before `sameAs` after
+
+    it "node pattern mismatch" $ do
+      let before =
+            [expr|
+              a <- pure (CPair 0 1.1)
+              (CTriple k l m) <- pure a
+              store (CTriple k l m)
+            |]
+      let after =
+            [expr|
+              a <- pure (CPair 0 1.1)
+              (CTriple k l m) <- pure (CPair 0 1.1)
+              store (CTriple k l m)
             |]
       constantFolding before `sameAs` after
 
