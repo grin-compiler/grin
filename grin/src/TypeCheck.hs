@@ -14,12 +14,15 @@ import qualified Data.Vector as V
 
 import Lens.Micro.Platform
 
-import Grin (Tag)
+import Grin (Tag, Exp)
 import Pretty
 import AbstractInterpretation.PrettyHPT
 
 import AbstractInterpretation.HPTResultNew
 import qualified TypeEnv
+
+import qualified AbstractInterpretation.CodeGen as HPT
+import qualified AbstractInterpretation.Reduce as HPT
 
 {-
   validate HPT result
@@ -69,3 +72,9 @@ typeEnvFromHPTResult hptResult = typeEnv where
     , _variable = Map.map convertTypeSet $ _register hptResult
     , _function = Map.map convertFunction $ _function hptResult
     }
+
+inferTypeEnv :: Exp -> TypeEnv.TypeEnv
+inferTypeEnv exp = typeEnvFromHPTResult result where
+  hptProgram = HPT.codeGen exp
+  hptResult = HPT.evalHPT hptProgram
+  result = HPT.toHPTResult hptProgram hptResult
