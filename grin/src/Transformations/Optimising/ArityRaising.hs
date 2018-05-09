@@ -134,7 +134,6 @@ instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
--- TODO: Only exclude parameters not whole functions
 -- | Examine the function calls in the body.
 examineCallers :: Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
 examineCallers candidates e =
@@ -142,11 +141,16 @@ examineCallers candidates e =
     (\(_,_,exclude,_) -> Map.fromSet (const ()) exclude) $
     para collect e
   where
-    -- Function calls in body: VarName -> [FunName]
+    inCandidates :: (Name, Int) -> Bool
+    inCandidates (funName, nth) = isJust $ do -- Maybe
+      params <- Map.lookup funName candidates
+      List.find ((nth ==) . view _2) params
+
+    -- Function calls in body: VarName -> [(FunName, Nth param)]
     -- Name of parameters to be checked
     -- Name of functions to be excluded
     -- Name of parameters not bound to a store
-    collect :: ExpF (Exp, (MMap Name [Name], Set Name, Set Name, Set Name)) -> (MMap Name [Name], Set Name, Set Name, Set Name)
+    collect :: ExpF (Exp, (MMap Name [(Name, Int)], Set Name, Set Name, Set Name)) -> (MMap Name [(Name, Int)], Set Name, Set Name, Set Name)
     collect = \case
       ProgramF defs -> mconcat $ map snd defs
 
@@ -155,7 +159,7 @@ examineCallers candidates e =
             params0 = Set.fromList $ params \\ recFunParams
         in ( mempty
            , mempty
-           , Set.fromList $
+           , Set.map fst $ Set.fromList $ filter inCandidates $
              concatMap (\p -> fromMaybe [] $ Map.lookup p calls) $
              (nonStored `Set.union` params0) `Set.intersection` callsParam -- Call parameters should be stored.
            , mempty
@@ -169,7 +173,9 @@ examineCallers candidates e =
       AltF (NodePat _ names) (_, body) -> body <> (mempty, mempty, mempty, Set.fromList names)
       AltF _                 (_, body) -> body
       SAppF name params ->
-        ( MMap $ Map.fromSet (const [name]) $ Set.unions $ (vars <$> params)
+        ( mconcat $
+          map (\(p, i) -> MMap (Map.singleton p [(name, i)])) $
+          concatMap (\(p,i) -> (map (flip (,) i) (Set.toList $ vars p))) (params `zip` [1..])
         , Set.unions (vars <$> params)
         , mempty
         , mempty
