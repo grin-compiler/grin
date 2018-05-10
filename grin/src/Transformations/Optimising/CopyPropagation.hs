@@ -35,7 +35,7 @@ copyPropagation e = hylo folder builder (mempty, e) where
     (Var lpatVar, Var valVar) -> Map.singleton lpatVar valVar
     _                         -> mempty -- LPat: unit, lit, tag
 
-  -- question: does this belong here? or to dead variable elimination / constant propagation?
+  -- QUESTION: does this belong here? or to dead variable elimination / constant propagation?
   folder :: ExpF Exp -> Exp
   folder = \case
     -- right unit law
