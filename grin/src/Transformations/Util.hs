@@ -91,6 +91,10 @@ subst env x = Map.findWithDefault x x env
 substVarRefExp :: Map Name Name -> Exp -> Exp
 substVarRefExp env = mapVarRefExp (subst env)
 
+-- val name substitution (non recursive)
+substNamesVal :: Map Name Name -> Val -> Val
+substNamesVal env = mapNamesVal (subst env)
+
 -- val substitution (non recursive)
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (mapValVal $ subst env)
