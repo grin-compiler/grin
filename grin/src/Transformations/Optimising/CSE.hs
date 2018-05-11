@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
 module Transformations.Optimising.CSE where
 
 -- HINT: common sub-expression elimination
@@ -20,7 +20,7 @@ commonSubExpressionElimination :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 commonSubExpressionElimination (typeEnv, e) = (typeEnv, hylo skipUnit builder (mempty, e)) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
-  builder (env, exp) = case exp of
+  builder (env, subst env -> exp) = case exp of
     EBind leftExp lpat rightExp -> EBindF (env, leftExp) lpat (newEnv, rightExp) where
       newEnv = case leftExp of
         -- HINT: also save fetch (the inverse operation) for store and update
@@ -35,9 +35,17 @@ commonSubExpressionElimination (typeEnv, e) = (typeEnv, hylo skipUnit builder (m
     SUpdate name val | Just (SReturn fetchedVal) <- Map.lookup (SFetch name) env
                      , fetchedVal == val
                      -> SReturnF Unit
-    _ -> (env,) <$> project (subst env exp)
+    ECase val alts -> ECaseF val [(altEnv env val cpat, alt) | alt@(Alt cpat _) <- alts]
+    _ -> (env,) <$> project exp
 
   isLocation :: Name -> Bool
   isLocation name = case variableType typeEnv name of
     T_SimpleType T_Location{} -> True
     _ -> False
+
+  altEnv :: Env -> Val -> CPat -> Env
+  altEnv env val cpat = case cpat of
+    NodePat tag args  -> Map.insert (SReturn (ConstTagNode tag $ map Var args)) (SReturn val) env
+    LitPat lit        -> Map.insert (SReturn (Lit lit)) (SReturn val) env
+    TagPat tag        -> Map.insert (SReturn (ValTag tag)) (SReturn val) env
+    DefaultPat        -> env

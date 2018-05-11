@@ -154,3 +154,30 @@ spec = do
           pure v4
         |]
       commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+
+    it "case alternative tracking" $ do
+      let before = [expr|
+          case n1 of
+            (CNode a1 b2) ->
+              n2 <- pure (CNode a1 b2)
+              pure n2
+            (CBox a2) ->
+              n3 <- pure (CBox a2)
+              pure n3
+            #default ->
+              n4 <- pure n1
+              pure n4
+        |]
+      let after = [expr|
+          case n1 of
+            (CNode a1 b2) ->
+              n2 <- pure n1
+              pure n2
+            (CBox a2) ->
+              n3 <- pure n1
+              pure n3
+            #default ->
+              n4 <- pure n1
+              pure n4
+        |]
+      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
