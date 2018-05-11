@@ -109,3 +109,37 @@ spec = do
           pure a1
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
+
+    it "bugfix - node pattern - var (infinite loop)" $ do
+      let before = [expr|
+          p1 <- store (CNode 1 1)
+          v1 <- fetch p1
+          (CNode p2 p3) <- pure v1
+          pure ()
+        |]
+      let after = [expr|
+          p1 <- store (CNode 1 1)
+          v1 <- fetch p1
+          (CNode p2 p3) <- pure v1
+          pure ()
+        |]
+      copyPropagation (ctx before) `sameAs` (ctx after)
+
+    it "node pattern mismatch" $ do
+      let before = [expr|
+          n1 <- pure (CPair 1 1)
+          (CNode v1 v2) <- pure n1
+          (CNode 1 1) <- pure n1
+          (CPair v3 v4) <- pure n1
+          (CPair 1 1) <- pure n1
+          pure ()
+        |]
+      let after = [expr|
+          n1 <- pure (CPair 1 1)
+          (CNode v1 v2) <- pure n1
+          (CNode 1 1) <- pure n1
+          v3 <- pure 1
+          v4 <- pure 1
+          pure ()
+        |]
+      copyPropagation (ctx before) `sameAs` (ctx after)

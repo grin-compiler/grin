@@ -26,8 +26,12 @@ copyPropagation e = hylo folder builder (mempty, e) where
     EBind (SReturn val) lpat rightExp
       | newEnv <- env `mappend` unify env val lpat
       , reducedVal <- substNamesVal nameEnv val
-      -> case lpat of
-        ConstTagNode{}  -> EBindF (mempty, SReturn Unit) Unit (newEnv, bindChain env reducedVal lpat rightExp)
+      , constVal <- subst valEnv reducedVal
+      -> case (lpat, constVal) of
+        (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
+          | lpatTag == valTag
+          , bindChain <- foldr (genBind env) rightExp $ zip valArgs lpatArgs
+          -> (newEnv,) <$> project (EBind (SReturn Unit) Unit bindChain)
         _ -> (newEnv,) <$> project (genBind env (reducedVal, lpat) rightExp)
 
     _ -> (env,) <$> project e
@@ -37,14 +41,8 @@ copyPropagation e = hylo folder builder (mempty, e) where
     (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
       | lpatTag == valTag         -> mconcat $ zipWith (unify env) valArgs lpatArgs
     (Var lpatVar, Var valVar)     -> (mempty, Map.singleton lpatVar valVar)
-    (Var lpatVar, {-ConstTagNode{}-}_) -> (Map.singleton lpat val, mempty)
+    (Var lpatVar, _)              -> (Map.singleton lpat val, mempty)
     _ -> mempty -- LPat: unit, lit, tag
-
-  bindChain :: Env -> Val -> LPat -> Exp -> Exp
-  bindChain env@(valEnv, nameEnv) val@(subst{-ValsVal-} valEnv -> reducedVal) lpat exp = case (lpat, reducedVal) of
-    (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
-      | lpatTag == valTag -> foldr (genBind env) exp $ zip valArgs lpatArgs
-    _ -> EBind (SReturn val) lpat exp
 
   genBind :: Env -> (Val, LPat) -> Exp -> Exp
   genBind env@(valEnv, nameEnv) (val@(substValsVal valEnv -> constVal), lpat) exp = case lpat of
