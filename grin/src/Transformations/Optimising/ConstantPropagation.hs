@@ -11,13 +11,19 @@ import Transformations.Util
 
 type Env = Map Val Val
 
+{-
+  HINT:
+    propagates only tag values but not literals
+    GRIN is not a supercompiler
+-}
+
 constantPropagation :: Exp -> Exp
 constantPropagation e = ana builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, exp) = case exp of
     ECase val alts ->
-      let constVal      = subst env val
+      let constVal      = substValsVal env val
           known         = isKnown constVal || Map.member val env
           matchingAlts  = [alt | alt@(Alt cpat body) <- alts, match cpat constVal]
           defaultAlts   = [alt | alt@(Alt DefaultPat body) <- alts]
@@ -35,27 +41,23 @@ constantPropagation e = ana builder (mempty, e) where
         _ -> ECaseF val [(altEnv cpat, alt) | alt@(Alt cpat _) <- alts]
 
     -- track values
-    EBind (SReturn val) lpat _rightExp -> (newEnv,) <$> project exp where
-      newEnv = env `mappend` unify env val lpat
+    EBind (SReturn val) lpat rightExp -> (env `mappend` unify env val lpat,) <$> project exp
 
     _ -> (env,) <$> project exp
 
   unify :: Env -> Val -> LPat -> Env
-  unify env (subst env -> val) lpat = case (lpat, val) of
-    (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
-      | lpatTag == valTag     -> mconcat $ zipWith (unify env) valArgs lpatArgs
-    (Var{}, _)                -> Map.singleton lpat val
+  unify env (substValsVal env -> val) lpat = case (lpat, val) of
+    (Var{}, ConstTagNode{})   -> Map.singleton lpat val
+    (Var{}, Unit)             -> Map.singleton lpat val -- HINT: default pattern (minor hack)
     _                         -> mempty -- LPat: unit, lit, tag
 
   isKnown :: Val -> Bool
   isKnown = \case
     ConstTagNode{} -> True
-    Lit{}          -> True
     ValTag{}       -> True
     _              -> False
 
   match :: CPat -> Val -> Bool
   match (NodePat tagA _) (ConstTagNode tagB _) = tagA == tagB
-  match (LitPat litA)    (Lit litB)            = litA == litB
   match (TagPat tagA)    (ValTag tagB)         = tagA == tagB
   match _ _ = False

@@ -95,6 +95,10 @@ substVarRefExp env = mapVarRefExp (subst env)
 substNamesVal :: Map Name Name -> Val -> Val
 substNamesVal env = mapNamesVal (subst env)
 
+-- val name substitution (non recursive)
+substValsVal :: Map Val Val -> Val -> Val
+substValsVal env = mapValVal (subst env)
+
 -- val substitution (non recursive)
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (mapValVal $ subst env)

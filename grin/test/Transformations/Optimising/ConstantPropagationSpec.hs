@@ -15,6 +15,25 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
+  it "ignore binds" $ do
+    let before = [expr|
+        i1 <- pure 1
+        i2 <- pure i1
+        n1 <- pure (CNode i2)
+        (CNode 0) <- pure n1
+        (CNode 1) <- pure n1
+        pure 2
+      |]
+    let after = [expr|
+        i1 <- pure 1
+        i2 <- pure i1
+        n1 <- pure (CNode i2)
+        (CNode 0) <- pure n1
+        (CNode 1) <- pure n1
+        pure 2
+      |]
+    constantPropagation before `sameAs` after
+
   it "base case" $ do
     let before = [expr|
         i1 <- pure 1
@@ -145,8 +164,12 @@ spec = do
       |]
     let after = [expr|
         i1 <- pure 1
-        1 <- pure 1
-        pure 3
+        case i1 of
+          (CNil)      -> pure 1
+          (CNode a1)  -> pure 2
+          1           -> pure 3
+          2           -> pure 4
+          #default    -> pure 5
       |]
     constantPropagation before `sameAs` after
 
@@ -162,7 +185,11 @@ spec = do
       |]
     let after = [expr|
         i1 <- pure 3
-        pure ()
-        pure 5
+        case i1 of
+          (CNil)      -> pure 1
+          (CNode a1)  -> pure 2
+          1           -> pure 3
+          2           -> pure 4
+          #default    -> pure 5
       |]
     constantPropagation before `sameAs` after
