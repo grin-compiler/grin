@@ -1,10 +1,10 @@
 stack exec -- grin -o . -p \
   --bn --cnp --hpt \
   --save-llvm simple \
-  --cse --cfl --dve \
-  --ar --cfl --dve \
+  --cse --cp --dve \
+  --ar --cp --dve \
   --hpt \
-  --ar --cfl --dve \
+  --ar --cp --dve \
   --hpt -p --llvm \
-  --save-llvm opt --ast \
+  --save-llvm opt --save-grin opt.grin --ast \
   stage-06.grin
