@@ -116,11 +116,15 @@ spec = do
       let before = [expr|
           v1 <- pure (CInt 0)
           v2 <- pure (CInt 0)
+          i1 <- pure 1
+          i2 <- pure 1
           pure v2
         |]
       let after = [expr|
           v1 <- pure (CInt 0)
           v2 <- pure v1
+          i1 <- pure 1
+          i2 <- pure i1
           pure v2
         |]
       commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
