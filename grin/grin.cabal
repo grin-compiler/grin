@@ -187,6 +187,7 @@ test-suite grin-test
                      , Transformations.Optimising.DeadVariableEliminationSpec
                      , Transformations.SingleStaticAssignmentSpec
                      , Transformations.BindNormalisationSpec
+                     , LintSpec
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec
