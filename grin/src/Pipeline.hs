@@ -64,15 +64,17 @@ import Debug.Trace
 type RenameVariablesMap = Map String String
 
 data Transformation
-  = CaseSimplification
-  | SplitFetch
+  -- Simplifying
+  = RegisterIntroduction
   | Vectorisation
-  | RegisterIntroduction
-  | BindNormalisation
+  | SplitFetch
+  | CaseSimplification
   | RightHoistFetch
+  -- Misc
   | GenerateEval
-  -- Optimizations
+  | BindNormalisation
   | ConstantFolding
+  -- Optimizations
   | EvaluatedCaseElimination
   | TrivialCaseElimination
   | SparseCaseOptimisation
