@@ -36,16 +36,21 @@ spec = do
     it "node value - node pattern" $ do
       let before = [expr|
           a1 <- pure 1
-          (CNode a2 b1) <- pure (CNode a1 0)
+          n1 <- pure (CNode a1 0)
+          n2 <- pure n1
+          (CNode a2 b1) <- pure n2
           b2 <- pure b1
           (CNode a3 0) <- pure (CNode a2 0)
           pure (CNode a3 b2)
         |]
       let after = [expr|
           a1 <- pure 1
-          (CNode a2 b1) <- pure (CNode a1 0)
+          n1 <- pure (CNode a1 0)
+          n2 <- pure n1
+          a2 <- pure a1
+          b1 <- pure 0
           b2 <- pure b1
-          (CNode a3 0) <- pure (CNode a1 0)
+          a3 <- pure a1
           pure (CNode a1 b1)
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
@@ -85,7 +90,22 @@ spec = do
           a1 <- pure 1
           b1 <- pure 0
           n1 <- pure (CNode a1 b1)
-          (CNode 1 0) <- pure (CNode a1 b1)
           pure n1
+        |]
+      copyPropagation (ctx before) `sameAs` (ctx after)
+
+    it "literal pattern" $ do
+      let before = [expr|
+          a1 <- pure 1
+          a2 <- pure a1
+          0 <- pure a2
+          1 <- pure a2
+          pure a2
+        |]
+      let after = [expr|
+          a1 <- pure 1
+          a2 <- pure a1
+          0 <- pure 1
+          pure a1
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)

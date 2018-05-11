@@ -173,6 +173,7 @@ test-suite grin-test
                      , Transformations.Simplifying.RightHoistFetchSpec
                      , Transformations.Simplifying.VectorisationSpec
                      , Transformations.Optimising.CaseCopyPropagationSpec
+                     , Transformations.Optimising.CopyPropagationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
                      , Transformations.Optimising.ConstantPropagationSpec
                      , Transformations.Optimising.EvaluatedCaseEliminationSpec

@@ -15,25 +15,42 @@ import Transformations.Util
     Only propagates variables. It does not cause performance penalty, LLVM will optimise the code further.
 -}
 
-type Env = Map Name Name
+type Env = (Map Val Val, Map Name Name)
 
 copyPropagation :: Exp -> Exp
 copyPropagation e = hylo folder builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
-  builder (nameEnv, exp) = let e = substVarRefExp nameEnv $ exp in case e of
+  builder (env@(valEnv, nameEnv), exp) = let e = substVarRefExp nameEnv $ exp in case e of
     -- left unit law
-    EBind (SReturn val) lpat rightExp -> EBindF (nameEnv, SReturn $ substNamesVal nameEnv val) lpat (newEnv, rightExp) where
-      newEnv = nameEnv `mappend` unify nameEnv val lpat
+    EBind (SReturn val) lpat rightExp
+      | newEnv <- env `mappend` unify env val lpat
+      , reducedVal <- substNamesVal nameEnv val
+      -> case lpat of
+        ConstTagNode{}  -> EBindF (mempty, SReturn Unit) Unit (newEnv, bindChain env reducedVal lpat rightExp)
+        _ -> (newEnv,) <$> project (genBind env (reducedVal, lpat) rightExp)
 
-    _ -> (nameEnv,) <$> project e
+    _ -> (env,) <$> project e
 
   unify :: Env -> Val -> LPat -> Env
-  unify nameEnv (substNamesVal nameEnv -> val) lpat = case (lpat, val) of
+  unify env@(valEnv, nameEnv) (substNamesVal nameEnv -> val) lpat = case (lpat, val) of
     (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
-      | lpatTag == valTag     -> mconcat $ zipWith (unify nameEnv) valArgs lpatArgs
-    (Var lpatVar, Var valVar) -> Map.singleton lpatVar valVar
-    _                         -> mempty -- LPat: unit, lit, tag
+      | lpatTag == valTag         -> mconcat $ zipWith (unify env) valArgs lpatArgs
+    (Var lpatVar, Var valVar)     -> (mempty, Map.singleton lpatVar valVar)
+    (Var lpatVar, {-ConstTagNode{}-}_) -> (Map.singleton lpat val, mempty)
+    _ -> mempty -- LPat: unit, lit, tag
+
+  bindChain :: Env -> Val -> LPat -> Exp -> Exp
+  bindChain env@(valEnv, nameEnv) val@(subst{-ValsVal-} valEnv -> reducedVal) lpat exp = case (lpat, reducedVal) of
+    (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
+      | lpatTag == valTag -> foldr (genBind env) exp $ zip valArgs lpatArgs
+    _ -> EBind (SReturn val) lpat exp
+
+  genBind :: Env -> (Val, LPat) -> Exp -> Exp
+  genBind env@(valEnv, nameEnv) (val@(substValsVal valEnv -> constVal), lpat) exp = case lpat of
+    ValTag{}        -> EBind (SReturn constVal) lpat exp
+    Lit{}           -> EBind (SReturn constVal) lpat exp
+    _               -> EBind (SReturn val) lpat exp
 
   -- QUESTION: does this belong here? or to dead variable elimination / constant propagation?
   folder :: ExpF Exp -> Exp
