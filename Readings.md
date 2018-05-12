@@ -29,7 +29,8 @@ https://github.com/passy/awesome-recursion-schemes
 
 Limits of recusrion schemes? Maybe a hylo can help to implement the list filter?
 
--  https://stackoverflow.com/questions/18421926/list-filter-using-an-anamorphism
+- https://stackoverflow.com/questions/18421926/list-filter-using-an-anamorphism
+- http://newartisans.com/2018/04/win-for-recursion-schemes
 
 ## Articles
 
