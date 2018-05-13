@@ -113,25 +113,31 @@ cpatToLPat = \case
 -- monadic recursion schemes
 --  see: https://jtobin.io/monadic-recursion-schemes
 
+cataM
+  :: (Monad m, Traversable (Base t), Recursive t)
+  => (Base t a -> m a) -> t ->  m a
+cataM alg = c where
+    c = alg <=< traverse c . project
+
 anaM
   :: (Monad m, Traversable (Base t), Corecursive t)
   => (a -> m (Base t a)) -> a -> m t
 anaM coalg = a where
-  a = (return . embed) <=< traverse a <=< coalg
+  a = (pure . embed) <=< traverse a <=< coalg
 
 paraM
   :: (Monad m, Traversable (Base t), Recursive t)
   => (Base t (t, a) -> m a) -> t -> m a
 paraM alg = p where
   p   = alg <=< traverse f . project
-  f t = liftM2 (,) (return t) (p t)
+  f t = liftM2 (,) (pure t) (p t)
 
 apoM
   :: (Monad m, Traversable (Base t), Corecursive t)
   => (a -> m (Base t (Either t a))) -> a -> m t
 apoM coalg = a where
-  a = (return . embed) <=< traverse f <=< coalg
-  f = either return a
+  a = (pure . embed) <=< traverse f <=< coalg
+  f = either pure a
 
 hyloM
   :: (Monad m, Traversable t)
