@@ -186,6 +186,7 @@ test-suite grin-test
                      , Transformations.Optimising.ArityRaisingSpec
                      , Transformations.Optimising.DeadProcedureEliminationSpec
                      , Transformations.Optimising.DeadVariableEliminationSpec
+                     , Transformations.Optimising.InliningSpec
                      , Transformations.SingleStaticAssignmentSpec
                      , Transformations.BindNormalisationSpec
                      , Samples.SumListSpec
