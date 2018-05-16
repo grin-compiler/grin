@@ -18,4 +18,4 @@ deadVariableElimination = fst . cata folder where
       , vars <- foldNamesVal Set.singleton lpat
       , all (flip Set.notMember rightRef) vars
       -> right
-    exp -> (embed $ fmap fst exp, foldVarRefExpF Set.singleton exp `mappend` Data.Foldable.fold (fmap snd exp))
+    exp -> (embed $ fmap fst exp, foldNameUseExpF Set.singleton exp `mappend` Data.Foldable.fold (fmap snd exp))
