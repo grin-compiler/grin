@@ -11,12 +11,12 @@ import Grin
 
 {-
   HINT: Name usage in Exp
-    - variable binder
+    - variable def
         names in CPat
         names in LPat
         arg names in Def
 
-    - variable reference
+    - variable use
         names in Val
         names in FetchI and Update
 
@@ -26,6 +26,7 @@ import Grin
     - function reference
         function name in SApp
 -}
+
 foldNamesVal :: (Monoid m) => (Name -> m) -> Val -> m
 foldNamesVal f = \case
   ConstTagNode tag vals -> mconcat $ map (foldNamesVal f) vals
@@ -33,8 +34,8 @@ foldNamesVal f = \case
   Var name              -> f name
   _                     -> mempty
 
-foldVarRefExpF :: (Monoid m) => (Name -> m) -> ExpF a -> m
-foldVarRefExpF f = \case
+foldNameUseExpF :: (Monoid m) => (Name -> m) -> ExpF a -> m
+foldNameUseExpF f = \case
   ECaseF val _      -> foldNamesVal f val
   SAppF name vals   -> mconcat $ map (foldNamesVal f) vals
   SReturnF val      -> foldNamesVal f val
@@ -72,24 +73,18 @@ mapValsExp f = \case
   SUpdate name val  -> SUpdate name $ f val
   exp               -> exp
 
-mapVarRefExp :: (Name -> Name) -> Exp -> Exp
-mapVarRefExp f = \case
+mapNameUseExp :: (Name -> Name) -> Exp -> Exp
+mapNameUseExp f = \case
   SFetchI name i    -> SFetchI (f name) i
   SUpdate name val  -> SUpdate (f name) $ mapNamesVal f val
   exp               -> mapValsExp (mapNamesVal f) exp
-
-mapVarBindExp :: (Name -> Name) -> Exp -> Exp
-mapVarBindExp f = \case
-  EBind leftExp lpat rightExp -> EBind leftExp (mapNamesVal f lpat) rightExp
-  Alt cpat body               -> Alt (mapNamesCPat f cpat) body
-  exp                         -> exp
 
 subst :: Ord a => Map a a -> a -> a
 subst env x = Map.findWithDefault x x env
 
 -- variable reference substitution (non recursive)
 substVarRefExp :: Map Name Name -> Exp -> Exp
-substVarRefExp env = mapVarRefExp (subst env)
+substVarRefExp env = mapNameUseExp (subst env)
 
 -- val name substitution (non recursive)
 substNamesVal :: Map Name Name -> Val -> Val
