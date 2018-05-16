@@ -37,8 +37,9 @@ kw w = lexeme $ string w
 
 op w = L.symbol sc' w
 
+-- TODO: unify var and con + support quotted syntax which allow any character
 var :: Parser String
-var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_")) >>= \x -> case Set.member x keywords of
+var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_.$-")) >>= \x -> case Set.member x keywords of
   True -> fail $ "keyword: " ++ x
   False -> return x
 
