@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
 module Transformations.Optimising.Inlining where
 
-import Text.Printf
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map.Strict (Map)
@@ -11,12 +10,9 @@ import qualified Data.Foldable
 import Grin
 import TypeEnv
 import Transformations.Util
+import Transformations.Names
 
-{-
-  collect function statistics:
-    done - bind count
-    done - called functions + count
--}
+-- analysis
 
 data Stat
   = Stat
@@ -36,50 +32,41 @@ defStatistics = cata folder where
     SAppF name _        -> Stat 0 $ Map.singleton name 1
     exp -> Data.Foldable.fold exp
 
-{-
-  done - replace SApp-s with Block with the function body
-  done - substitute the arguments with parameters
-  done - substitute all binding names with fresh names ; separate builder
-  - generate name suffix
-  - add the cloned variables to the type env
--}
+-- transformation
 
+-- TODO: add the cloned variables to the type env
+-- QUESTION: apo OR ana ???
+inlining :: Set Name -> (TypeEnv, Program) -> (TypeEnv, Program)
+inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM $ apoM builder prog) where
 
-inlining :: TypeEnv -> Set Name -> Program -> Program
-inlining typeEnv functionsToInline prog@(Program defs) = apo builder prog where
   defMap :: Map Name Def
   defMap = Map.fromList [(name, def) | def@(Def name _ _) <- defs]
 
-  lookupDef :: Name -> Def
-  lookupDef name = case Map.lookup name defMap of
-    Nothing -> error $ printf "unknown function: %s" name
-    Just a  -> a
-
-  builder :: Exp -> ExpF (Either Exp Exp)
+  builder :: Exp -> NameM (ExpF (Either Exp Exp))
   builder = \case
+
     -- HINT: do not touch functions marked to inline
-    Def name args body | Set.member name functionsToInline -> DefF name args $ Left body
+    Def name args body | Set.member name functionsToInline -> pure . DefF name args $ Left body
 
     -- HINT: bind argument values to function's new arguments and append the body with the fresh names
     --       with this solution the name refreshing is just a name mapping and does not require a substitution map
-    SApp name vals | Set.member name functionsToInline -> SBlockF . Left $ bindArgs newBody (zip vals newArgs) where
-      Def _ args body = lookupDef name
+    SApp name argVals
+      | Set.member name functionsToInline
+      , Just def <- Map.lookup name defMap
+      -> do
+        (Def _ argNames funBody, nameMap) <- refreshNames def
+        let bind (n,v) e = EBind (SReturn v) (Var n) e
+        pure . SBlockF . Left $ foldr bind funBody (zip argNames argVals)
 
-      mapName :: Name -> Name
-      mapName = (++ nameSuffix)
+    exp -> pure (Right <$> project exp)
 
-      nameSuffix      = ".inlined" -- TODO: make this always unique
-      newArgs         = map mapName args
-      newBody         = mapNames mapName body
+inline :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+inline = id
 
-    exp -> Right <$> project exp
+{-
+  - maintain type env
+  - test inlining
+  - test inline selection
+  - test inline: autoselection + inlining
 
-  bindArgs :: Exp -> [(Val, Name)] -> Exp
-  bindArgs = foldr (\(val, name) exp -> EBind (SReturn val) (Var name) exp)
-
--- map variable and binding names
-
-mapNames :: (Name -> Name) -> Exp -> Exp
-mapNames mapName = ana builder where
-  builder :: Exp -> ExpF Exp
-  builder = project . mapVarBindExp mapName . mapVarRefExp mapName
+-}
