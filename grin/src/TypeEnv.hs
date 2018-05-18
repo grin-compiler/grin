@@ -101,6 +101,11 @@ variableType TypeEnv{..} name = case Map.lookup name _variable of
   Nothing -> error $ printf "variable %s is missing from type environment" name
   Just t -> t
 
+functionType :: TypeEnv -> Name -> (Type, Vector Type)
+functionType TypeEnv{..} name = case Map.lookup name _function of
+  Nothing -> error $ printf "function %s is missing from type environment" name
+  Just t -> t
+
 typeOfLit :: Lit -> Type
 typeOfLit = T_SimpleType . typeOfLitST
 
@@ -122,5 +127,19 @@ typeOfVal = \case
 
   Unit    -> T_SimpleType T_Unit
   Lit lit -> typeOfLit lit
+
+  bad -> error (show bad)
+
+typeOfValTE :: TypeEnv -> Val -> Type
+typeOfValTE typeEnv = \case
+  ConstTagNode  tag simpleVals ->
+    T_NodeSet
+      $ Map.singleton tag
+      $ Vector.fromList
+      $ map ((\(T_SimpleType t) -> t) . typeOfValTE typeEnv) simpleVals
+
+  Unit      -> T_SimpleType T_Unit
+  Lit lit   -> typeOfLit lit
+  Var name  -> variableType typeEnv name
 
   bad -> error (show bad)

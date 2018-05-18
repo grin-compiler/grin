@@ -54,7 +54,7 @@ inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM 
       | Set.member name functionsToInline
       , Just def <- Map.lookup name defMap
       -> do
-        (Def _ argNames funBody, nameMap) <- refreshNames def
+        (Def _ argNames funBody, nameMap) <- refreshNames mempty def
         let bind (n,v) e = EBind (SReturn v) (Var n) e
         pure . SBlockF . Left $ foldr bind funBody (zip argNames argVals)
 

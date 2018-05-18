@@ -37,8 +37,8 @@ evalNameM m = evalState m (NameEnv mempty)
 
 type FreshM = StateT (Map Name Name) NameM
 
-refreshNames :: Exp -> NameM (Exp, Map Name Name)
-refreshNames e = runStateT (anaM builder e) mempty where
+refreshNames :: Map Name Name -> Exp -> NameM (Exp, Map Name Name)
+refreshNames nameMap e = runStateT (anaM builder e) nameMap where
 
   builder :: Exp -> FreshM (ExpF Exp)
   builder = fmap project . mapNameDefExpM defName <=< mapNameUseExpM useName

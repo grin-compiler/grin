@@ -297,3 +297,9 @@ hasConstant = cata $ \case
   UnitF     -> True
   LitF{}    -> True
   v         -> or v
+
+isAllVar :: Val -> Bool
+isAllVar = cata $ \case
+  ConstTagNodeF _ params  -> and params
+  VarF{}                  -> True
+  _                       -> False
