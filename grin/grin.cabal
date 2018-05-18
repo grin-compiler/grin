@@ -60,6 +60,7 @@ library
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.SparseCaseOptimisation
     Transformations.Optimising.UpdateElimination
+    Transformations.Optimising.CaseHoisting
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.ConstantPropagation
@@ -187,6 +188,7 @@ test-suite grin-test
                      , Transformations.Optimising.DeadProcedureEliminationSpec
                      , Transformations.Optimising.DeadVariableEliminationSpec
                      , Transformations.Optimising.InliningSpec
+                     , Transformations.Optimising.CaseHoistingSpec
                      , Transformations.SingleStaticAssignmentSpec
                      , Transformations.BindNormalisationSpec
                      , Samples.SumListSpec
