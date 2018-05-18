@@ -53,7 +53,7 @@ Transformation | Schema
 [generalised unboxing][134]               <br><br> _source code:_ <br> [GeneralizedUnboxing.hs]       | [<img src="images/generalised-unboxing.png"       width="500"><img src="images/unboxing-of-function-return-values.png" width="500">][134]
 [arity raising][160]                      <br><br> _source code:_ <br> [ArityRaising.hs]              | [<img src="images/arity-raising.png"              width="500">][160]
 [case copy propagation][144]              <br><br> _source code:_ <br> [CaseCopyPropagation.hs]       | [<img src="images/case-copy-propagation.png"      width="500">][144]
-[case hoisting][153]                      <br><br> _source code:_ <br> __TODO__                       | [<img src="images/case-hoisting.png"              width="500">][153]
+[case hoisting][153]                      <br><br> _source code:_ <br> [CaseHoisting.hs]              | [<img src="images/case-hoisting.png"              width="500">][153]
 [whnf update elimination][149]            <br><br> _source code:_ <br> __TODO__                       | [<img src="images/whnf-update-elimination.png"    width="500">][149]
 [common sub-expression elimination][164]  <br><br> _source code:_ <br> [CSE.hs]                       | [<img src="images/common-sub-expression-elimination-1.png" width="500"><img src="images/common-sub-expression-elimination-2.png" width="500">][164]
 [constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]       | 
@@ -82,6 +82,7 @@ Transformation | Schema
 [ConstantPropagation.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/ConstantPropagation.hs
 [CopyPropagation.hs]:           https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CopyPropagation.hs
 [CaseCopyPropagation.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CaseCopyPropagation.hs
+[CaseHoisting.hs]:              https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CaseHoisting.hs
 [CSE.hs]:                       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CSE.hs
 [DeadProcedureElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadProcedureElimination.hs
 [DeadVariableElimination.hs]:   https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadVariableElimination.hs
