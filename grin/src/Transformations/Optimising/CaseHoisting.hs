@@ -57,35 +57,26 @@ caseHoisting (typeEnv, exp) = (typeEnv, evalNameM $ anaM builder exp) where
         , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
         , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
         -> do
-          hoistedAlts <- forM matchList $ \(Alt cpat1 alt1, Alt cpat2 alt2) -> do
-            freshLPatName <- deriveNewName lpatName
-            let nameMap = Map.singleton lpatName freshLPatName
-            (freshAlt2, _) <- case cpat2 of
-              DefaultPat  -> refreshNames nameMap alt2
-              _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (cpatToLPat cpat2) alt2
-            pure . Alt cpat1 $ EBind (SBlock alt1) (Var freshLPatName) freshAlt2
-
+          hoistedAlts <- mapM (hoistAlts lpatName) matchList
           pure $ EBindF (ECase val hoistedAlts) lpat rightExp
-
-    -- TODO: factor out code duplication
 
     -- last case
     EBind (ECase val alts1) (Var lpatName) (ECase (Var varName) alts2)
         | lpatName == varName
         , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
         , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
-        -> do
-          hoistedAlts <- forM matchList $ \(Alt cpat1 alt1, Alt cpat2 alt2) -> do
-            freshLPatName <- deriveNewName lpatName
-            let nameMap = Map.singleton lpatName freshLPatName
-            (freshAlt2, _) <- case cpat2 of
-              DefaultPat  -> refreshNames nameMap alt2
-              _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (cpatToLPat cpat2) alt2
-            pure . Alt cpat1 $ EBind (SBlock alt1) (Var freshLPatName) freshAlt2
-
-          pure $ ECaseF val hoistedAlts
+        -> ECaseF val <$> mapM (hoistAlts lpatName) matchList
 
     _ -> pure (project exp)
+
+hoistAlts :: Name -> (Alt, Alt) -> NameM Alt
+hoistAlts lpatName (Alt cpat1 alt1, Alt cpat2 alt2) = do
+  freshLPatName <- deriveNewName lpatName
+  let nameMap = Map.singleton lpatName freshLPatName
+  (freshAlt2, _) <- case cpat2 of
+    DefaultPat  -> refreshNames nameMap alt2
+    _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (cpatToLPat cpat2) alt2
+  pure . Alt cpat1 $ EBind (SBlock alt1) (Var freshLPatName) freshAlt2
 
 disjointMatch :: [(Set Tag, Alt)] -> [Alt] -> Maybe [(Alt, Alt)]
 disjointMatch tsAlts1 alts2
