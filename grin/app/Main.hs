@@ -43,6 +43,7 @@ transformOpts =
   <|> flg CaseCopyPropagation "ccp" "Case Copy Propagation"
   <|> flg GeneralizedUnboxing "gub" "GeneralizedUnboxing"
   <|> flg ArityRaising "ar" "Arity Raising"
+  <|> flg CaseHoisting "ch" "Case Hoisting"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =

@@ -85,6 +85,7 @@ data Transformation
   | DeadVariableElimination
   | CommonSubExpressionElimination
   | CaseCopyPropagation
+  | CaseHoisting
   | GeneralizedUnboxing
   | ArityRaising
   deriving (Enum, Eq, Ord, Show)
@@ -112,6 +113,7 @@ transformation n = \case
   DeadVariableElimination         -> noTypeEnv deadVariableElimination
   CommonSubExpressionElimination  -> commonSubExpressionElimination
   CaseCopyPropagation             -> caseCopyPropagation
+  CaseHoisting                    -> caseHoisting
   GeneralizedUnboxing             -> generalizedUnboxing
   ArityRaising                    -> arityRaising
 

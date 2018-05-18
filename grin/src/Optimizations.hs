@@ -12,6 +12,7 @@ module Optimizations
   , caseCopyPropagation
   , generalizedUnboxing
   , arityRaising
+  , caseHoisting
   ) where
 
 import Transformations.Optimising.ConstantFolding (constantFolding)
@@ -27,3 +28,4 @@ import Transformations.Optimising.CSE (commonSubExpressionElimination)
 import Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation)
 import Transformations.Optimising.GeneralizedUnboxing (generalizedUnboxing)
 import Transformations.Optimising.ArityRaising (arityRaising)
+import Transformations.Optimising.CaseHoisting (caseHoisting)
