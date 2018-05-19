@@ -141,10 +141,14 @@ examineCallers candidates e =
     (\(_,_,exclude,_) -> Map.fromSet (const ()) exclude) $
     para collect e
   where
-    inCandidates :: (Name, Int) -> Bool
-    inCandidates (funName, nth) = isJust $ do -- Maybe
-      params <- Map.lookup funName candidates
-      List.find ((nth ==) . view _2) params
+    inCandidates :: Name -> (Name, Int) -> Bool
+    inCandidates fn (funName, nth)
+        -- Non-recursive case
+      | fn /= funName = Map.member funName candidates
+        -- Recursive case
+      | otherwise = isJust $ do -- Maybe
+          params <- Map.lookup funName candidates
+          List.find ((nth ==) . view _2) params
 
     -- Function calls in body: VarName -> [(FunName, Nth param)]
     -- Name of parameters to be checked
@@ -159,9 +163,9 @@ examineCallers candidates e =
             params0 = Set.fromList $ params \\ recFunParams
         in ( mempty
            , mempty
-           , Set.map fst $ Set.fromList $ filter inCandidates $
-             concatMap (\p -> fromMaybe [] $ Map.lookup p calls) $
-             (nonStored `Set.union` params0) `Set.intersection` callsParam -- Call parameters should be stored.
+           , Set.map fst $ Set.fromList $ filter (inCandidates name) $ -- Only interested in candidates
+             concatMap (\p -> fromMaybe [] $ Map.lookup p calls) $ -- Every function that uses the parameters
+             (nonStored `Set.union` params0) `Set.intersection` callsParam -- Call parameters should be stored
            , mempty
            )
 
