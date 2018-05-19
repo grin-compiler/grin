@@ -69,7 +69,7 @@ instance Pretty R.TypeSet where
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
-    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ zip [(1 :: Int)..] $ V.toList _memory)
+    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ V.toList _memory)
     , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList  _register)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyHPTFunction $ Map.toList _function)
     ]
