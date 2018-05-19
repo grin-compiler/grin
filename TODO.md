@@ -30,3 +30,7 @@
 - LLVM backend for HPT IR
 - inline support
 - sharing analysis
+
+# SIMD / SPMD
+- [The story of ispc](http://pharr.org/matt/blog/2018/04/30/ispc-all.html)
+- [Intel SPMD Program Compiler](https://ispc.github.io)
