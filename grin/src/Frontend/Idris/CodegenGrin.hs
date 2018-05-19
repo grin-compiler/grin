@@ -347,21 +347,23 @@ simplifyingPipeline =
   , T RightHoistFetch
   ]
 
-optimisingPipeline :: [Pipeline]
-optimisingPipeline = concat $ replicate 1
-  [ T GeneralizedUnboxing
+optimisingPipeline' :: [Pipeline]
+optimisingPipeline' = concat $ replicate 1
+  [ -- T GeneralizedUnboxing
 --  , Lint
-  , T BindNormalisation
+    T BindNormalisation
 --  , Lint
-  , T CopyPropagation
+--  , T CopyPropagation
 --  , Lint
 --  , SaveGrin "mid"
+  , HPT CompileHPT
+  , HPT RunHPTPure
   , T ArityRaising
 --  , SaveGrin "mid2"
   ]
 
-optimisingPipeline' :: [Pipeline]
-optimisingPipeline' = concat $ replicate 10
+optimisingPipeline :: [Pipeline]
+optimisingPipeline = concat $ replicate 10
   [ T CaseCopyPropagation
   , T CommonSubExpressionElimination
   , T ConstantPropagation
@@ -391,7 +393,11 @@ codegenPipeline :: [Pipeline]
 codegenPipeline =
   [ PrintGrin ondullblack
   , SaveGrin "high-level-opt-code.grin"
+  , HPT CompileHPT
+  , HPT RunHPTPure
+  , HPT PrintHPTResult
   , PureEval
+
 --  , SaveLLVM "high-level-opt-code"
   , JITLLVM
   ]
