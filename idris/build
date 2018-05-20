@@ -1,0 +1,5 @@
+OPT="121.hello"
+
+llc-5.0 -O3 -relocation-model=pic -filetype=obj ${OPT}.ll
+gcc -O3 test.c ${OPT}.o -s -o opt
+./opt

@@ -86,6 +86,7 @@ library
     Frontend.PrimOps
     Frontend.FromSTG
     Frontend.Idris.CodegenGrin
+    Frontend.Idris.PrimOps
     VarGen
     Pipeline
     Assertions

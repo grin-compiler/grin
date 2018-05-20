@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, TypeApplications #-}
-{-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings, ViewPatterns #-}
 module Frontend.Idris.CodegenGrin(codegenGrin) where
 
 import Control.Monad
@@ -23,7 +23,7 @@ import Transformations.BindNormalisation
 import Pipeline
 import Text.PrettyPrint.ANSI.Leijen (ondullblack)
 
-import GrinTH
+import Frontend.Idris.PrimOps
 
 {-
 TODO:
@@ -32,86 +32,13 @@ TODO:
  * Implement String primitives
 -}
 
-codegenGrin :: CodeGenerator
+codegenGrin :: CodegenInfo -> IO ()
 codegenGrin CodegenInfo{..} = do
-  forM_ simpleDecls $ \(name, sdecl) -> do
-    print name
-    putStrLn $ ppShow sdecl
-    putStr "\n"
-  let idrisGrin = program simpleDecls
-  pipeline pipelineOpts idrisGrin idrisPipeLine
+  pipeline
+    pipelineOpts
+    (program simpleDecls)
+    (idrisPipeLine outputFile)
   putStrLn ""
-
-idrisPrimOps = [prog|
-  idris_int_eq idris_int_eq0 idris_int_eq1 =
-    (CGrInt idris_int_eq0_1) <- fetch idris_int_eq0
-    (CGrInt idris_int_eq1_1) <- fetch idris_int_eq1
-    idris_int_eq2 <- _prim_int_eq idris_int_eq0_1 idris_int_eq1_1
-    case idris_int_eq2 of
-      #False  -> pure (CGrInt 0)
-      #True   -> pure (CGrInt 1)
-
-  idris_int_lt idris_int_lt0 idris_int_lt1 =
-    (CGrInt idris_int_lt0_1) <- fetch idris_int_lt0
-    (CGrInt idris_int_lt1_1) <- fetch idris_int_lt1
-    idris_int_lt2 <- _prim_int_lt idris_int_lt0_1 idris_int_lt1_1
-    case idris_int_lt2 of
-      #False  -> pure (CGrInt 0)
-      #True   -> pure (CGrInt 1)
-
-  idris_int_le idris_int_le0 idris_int_le1 =
-    (CGrInt idris_int_le0_1) <- fetch idris_int_le0
-    (CGrInt idris_int_le1_1) <- fetch idris_int_le1
-    idris_int_le2 <- _prim_int_le idris_int_le0_1 idris_int_le1_1
-    case idris_int_le2 of
-      #False -> pure (CGrInt 0)
-      #True  -> pure (CGrInt 1)
-
-  idris_int_gt idris_int_gt0 idris_int_gt1 =
-    (CGrInt idris_int_gt0_1) <- fetch idris_int_gt0
-    (CGrInt idris_int_gt1_1) <- fetch idris_int_gt1
-    idris_int_gt2 <- _prim_int_gt idris_int_gt0_1 idris_int_gt1_1
-    case idris_int_gt2 of
-      #False  -> pure (CGrInt 0)
-      #True   -> pure (CGrInt 1)
-
-  idris_int_ge idris_int_ge0 idris_int_ge1 =
-    (CGrInt idris_int_ge0_1) <- fetch idris_int_ge0
-    (CGrInt idris_int_ge1_1) <- fetch idris_int_ge1
-    idris_int_ge2 <- _prim_int_ge idris_int_ge0_1 idris_int_ge1_1
-    case idris_int_ge2 of
-      #False -> pure (CGrInt 0)
-      #True  -> pure (CGrInt 1)
-
-  idris_int_print idris_int_print0 =
-    (CGrInt idris_int_print0_1) <- fetch idris_int_print0
-    _prim_int_print idris_int_print0_1
-    pure (CUnit)
-
-  idris_int_add idris_int_add0 idris_int_add1 =
-    (CGrInt idris_int_add0_1) <- fetch idris_int_add0
-    (CGrInt idris_int_add1_1) <- fetch idris_int_add1
-    idris_int_add2 <- _prim_int_add idris_int_add0_1 idris_int_add1_1
-    pure (CGrInt idris_int_add2)
-
-  idris_int_sub idris_int_sub0 idris_int_sub1 =
-    (CGrInt idris_int_sub0_1) <- fetch idris_int_sub0
-    (CGrInt idris_int_sub1_1) <- fetch idris_int_sub1
-    idris_int_sub2 <- _prim_int_sub idris_int_sub0_1 idris_int_sub1_1
-    pure (CGrInt idris_int_sub2)
-
-  idris_int_mul idris_int_mul0 idris_int_mul1 =
-    (CGrInt idris_int_mul0_1) <- fetch idris_int_mul0
-    (CGrInt idris_int_mul1_1) <- fetch idris_int_mul1
-    idris_int_mul2 <- _prim_int_mul idris_int_mul0_1 idris_int_mul1_1
-    pure (CGrInt idris_int_mul2)
-
-  idris_int_div idris_int_div0 idris_int_div1 =
-    (CGrInt idris_int_div0_1) <- fetch idris_int_div0
-    (CGrInt idris_int_div1_1) <- fetch idris_int_div1
-    idris_int_div2 <- _prim_int_div idris_int_div0_1 idris_int_div1_1
-    pure (CGrInt idris_int_div2)
-|]
 
 program :: [(Idris.Name, SDecl)] -> Exp
 program defs =
@@ -347,21 +274,6 @@ simplifyingPipeline =
   , T RightHoistFetch
   ]
 
-optimisingPipeline' :: [Pipeline]
-optimisingPipeline' = concat $ replicate 1
-  [ -- T GeneralizedUnboxing
---  , Lint
-    T BindNormalisation
---  , Lint
---  , T CopyPropagation
---  , Lint
---  , SaveGrin "mid"
-  , HPT CompileHPT
-  , HPT RunHPTPure
-  , T ArityRaising
---  , SaveGrin "mid2"
-  ]
-
 optimisingPipeline :: [Pipeline]
 optimisingPipeline = concat $ replicate 10
   [ T CaseCopyPropagation
@@ -388,29 +300,24 @@ miscPipeline =
   [ T ConstantFolding
   ]
 
-
-codegenPipeline :: [Pipeline]
-codegenPipeline =
+idrisPipeLine :: String -> [Pipeline]
+idrisPipeLine outputFile =
+  [ SaveGrin "FromIdris"
+  , T DeadProcedureElimination
+  , PrintGrin ondullblack
+  , HPT CompileHPT
+  , HPT RunHPTPure
+  , HPT PrintHPTResult
+  , HPT PrintHPT
+  , SaveGrin "high-level-code.grin"
+  ] ++
+  optimisingPipeline ++
   [ PrintGrin ondullblack
   , SaveGrin "high-level-opt-code.grin"
   , HPT CompileHPT
   , HPT RunHPTPure
   , HPT PrintHPTResult
   , PureEval
-
---  , SaveLLVM "high-level-opt-code"
+  , SaveLLVM outputFile
   , JITLLVM
   ]
-
-idrisPipeLine :: [Pipeline]
-idrisPipeLine =
-  [ SaveGrin "FromIdris"
-  , T DeadProcedureElimination
-  , PrintGrin ondullblack
-  , HPT CompileHPT
-  , HPT PrintHPT
-  , HPT RunHPTPure
-  , HPT PrintHPTResult
---  , SaveLLVM "high-level-code"
-  , SaveGrin "high-level-code.grin"
-  ] ++ optimisingPipeline ++ codegenPipeline
