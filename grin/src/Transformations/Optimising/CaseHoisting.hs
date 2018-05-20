@@ -95,4 +95,5 @@ disjointMatch _ _ = Nothing
   TODO:
     - default pat
     - check non overlapping coverage
+    - add cloned variables to TypeEnv
 -}
