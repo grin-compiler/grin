@@ -19,6 +19,9 @@ http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html
 
 - [Calling External Functions from JIT-compiled LLVM Modules using llvm-hs](https://purelyfunctional.org/posts/2018-04-02-llvm-hs-jit-external-function.html)
 
+# GRIN
+- [Sharing Analysis + EVAL inlining + Unboxing = Deforestation](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.48.6217&rep=rep1&type=pdf)
+
 # Recursion schemes
 
 Resources for learning and using recursion schemes.
