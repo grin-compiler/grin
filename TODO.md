@@ -34,3 +34,4 @@
 # SIMD / SPMD
 - [The story of ispc](http://pharr.org/matt/blog/2018/04/30/ispc-all.html)
 - [Intel SPMD Program Compiler](https://ispc.github.io)
+- [Tutorial: Creating an SPMD Vectorizer for OpenCL with LLVM](https://www.youtube.com/watch?v=ePu6c4FLc9I)
