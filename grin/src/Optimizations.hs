@@ -13,6 +13,7 @@ module Optimizations
   , generalizedUnboxing
   , arityRaising
   , caseHoisting
+  , lateInlining
   ) where
 
 import Transformations.Optimising.ConstantFolding (constantFolding)
@@ -29,3 +30,4 @@ import Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation)
 import Transformations.Optimising.GeneralizedUnboxing (generalizedUnboxing)
 import Transformations.Optimising.ArityRaising (arityRaising)
 import Transformations.Optimising.CaseHoisting (caseHoisting)
+import Transformations.Optimising.Inlining (lateInlining)

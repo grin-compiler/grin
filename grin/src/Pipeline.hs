@@ -91,6 +91,7 @@ data Transformation
   | CaseHoisting
   | GeneralizedUnboxing
   | ArityRaising
+  | LateInlining
   deriving (Enum, Eq, Ord, Show)
 
 noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
@@ -121,6 +122,7 @@ transformation n = \case
   CaseHoisting                    -> caseHoisting
   GeneralizedUnboxing             -> generalizedUnboxing
   ArityRaising                    -> arityRaising
+  LateInlining                    -> lateInlining
 
 -- TODO
 precondition :: Transformation -> [Check]
@@ -196,7 +198,7 @@ data PipelineEff
 
 pipelineStep :: Pipeline -> PipelineM PipelineEff
 pipelineStep p = do
-  liftIO $ putStrLn $ "Pipeline: " ++ show p
+  --liftIO $ putStrLn $ "Pipeline: " ++ show p
   before <- use psExp
   case p of
     HPT hptStep -> case hptStep of
@@ -219,7 +221,7 @@ pipelineStep p = do
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
-    T _ -> liftIO $ putStrLn $ unwords ["Pipeline:", show p, "has effect:", show eff]
+    T _ -> liftIO $ putStrLn $ printf "Pipeline: %-35s has effect: %s" (show p) (show eff)
     _   -> return ()
   -- TODO: Test this only for development mode.
   return eff

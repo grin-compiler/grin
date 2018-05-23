@@ -46,6 +46,7 @@ transformOpts =
   <|> flg GeneralizedUnboxing "gub" "GeneralizedUnboxing"
   <|> flg ArityRaising "ar" "Arity Raising"
   <|> flg CaseHoisting "ch" "Case Hoisting"
+  <|> flg LateInlining "li" "Late Inlining"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =

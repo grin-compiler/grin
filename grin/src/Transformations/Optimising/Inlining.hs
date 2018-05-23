@@ -60,9 +60,6 @@ inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM 
 
     exp -> pure (Right <$> project exp)
 
-inline :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-inline = id
-
 {-
   - maintain type env
   - test inlining
@@ -76,3 +73,6 @@ inlineEval = inlining (Set.singleton "eval")
 
 inlineApply :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 inlineApply = inlining (Set.singleton "apply")
+
+lateInlining :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+lateInlining = inlining (Set.singleton "upto") -- TODO: use proper selection
