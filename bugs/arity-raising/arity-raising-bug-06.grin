@@ -39,7 +39,7 @@ sum' p10 p11 =
       pure e_v1.3
     (Fupto e_p2.3 e_p3.3) ->
       e_v2.3 <- upto e_p2.3 e_p3.3
-      update p11 e_v2.3
+      update p11 e_v2.3 -- HINT: it works without this update (without the update it's call by name)
       pure e_v2.3
   case v1 of
     (CNil) ->
