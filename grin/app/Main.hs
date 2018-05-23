@@ -27,6 +27,8 @@ transformOpts =
   <|> flg SplitFetch "sf" "Split Fetch"
   <|> flg Vectorisation "v" "Vectorisation"
   <|> flg RegisterIntroduction "ri" "Register Introduction"
+  <|> flg InlineEval "ie" "Inline Eval"
+  <|> flg InlineApply "ia" "Inline Apply"
   <|> flg BindNormalisation "bn" "Bind Normalisation"
   <|> flg RightHoistFetch "rhf" "Right Hoist Fetch"
   <|> flg GenerateEval "ge" "Generate Eval"

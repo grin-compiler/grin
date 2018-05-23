@@ -27,6 +27,7 @@ import PrettyLint
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Simplifying.RightHoistFetch
+import Transformations.Optimising.Inlining (inlineEval, inlineApply)
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
@@ -70,6 +71,8 @@ data Transformation
   | SplitFetch
   | CaseSimplification
   | RightHoistFetch
+  | InlineEval
+  | InlineApply
   -- Misc
   | GenerateEval
   | BindNormalisation
@@ -99,6 +102,8 @@ transformation n = \case
   SplitFetch                      -> noTypeEnv splitFetch
   Vectorisation                   -> Vectorisation2.vectorisation
   RegisterIntroduction            -> noTypeEnv $ registerIntroductionI n
+  InlineEval                      -> inlineEval
+  InlineApply                     -> inlineApply
   BindNormalisation               -> noTypeEnv bindNormalisation
   RightHoistFetch                 -> noTypeEnv RHF.rightHoistFetch
   GenerateEval                    -> noTypeEnv generateEval

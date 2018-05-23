@@ -70,3 +70,9 @@ inline = id
   - test inline: autoselection + inlining
 
 -}
+
+inlineEval :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+inlineEval = inlining (Set.singleton "eval")
+
+inlineApply :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+inlineApply = inlining (Set.singleton "apply")
