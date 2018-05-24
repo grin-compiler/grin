@@ -198,7 +198,6 @@ data PipelineEff
 
 pipelineStep :: Pipeline -> PipelineM PipelineEff
 pipelineStep p = do
-  --liftIO $ putStrLn $ "Pipeline: " ++ show p
   before <- use psExp
   case p of
     HPT hptStep -> case hptStep of
@@ -221,8 +220,9 @@ pipelineStep p = do
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
-    T _ -> liftIO $ putStrLn $ printf "Pipeline: %-35s has effect: %s" (show p) (show eff)
-    _   -> return ()
+    T{}     -> liftIO $ putStrLn $ printf "Pipeline: %-35s has effect: %s" (show p) (show eff)
+    Pass{}  -> pure () -- each pass step will be printed anyway
+    _       -> liftIO $ putStrLn $ printf "Pipeline: %-35s" (show p)
   -- TODO: Test this only for development mode.
   return eff
 
