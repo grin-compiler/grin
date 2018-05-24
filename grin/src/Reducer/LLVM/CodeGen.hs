@@ -46,6 +46,9 @@ import Reducer.LLVM.PrimOps
 import Reducer.LLVM.TypeGen
 import Reducer.LLVM.InferType
 
+debugMode :: Bool
+debugMode = False
+
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
@@ -250,7 +253,8 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
         , metadata'     = []
         }
 
-      errorBlock
+      when debugMode $ do
+        errorBlock
       blockInstructions <- Map.delete (mkName "") <$> gets _envBlockInstructions
       unless (Map.null blockInstructions) $ error $ printf "unclosed blocks in %s\n  %s" name (show blockInstructions)
       blocks <- gets _envBasicBlocks
@@ -374,7 +378,7 @@ codeGenCase opVal alts bindingGen = do
 
   activeBlock curBlockName
   let (defaultDest, normalAltDests) = if null defaultAlts
-        then (mkName "error_block", altDests)
+        then (if debugMode then mkName "error_block" else switchExit, altDests)
         else (snd $ head altDests, tail altDests)
   closeBlock $ Switch
         { operand0'   = opVal
@@ -387,7 +391,7 @@ codeGenCase opVal alts bindingGen = do
 
   pure . I resultCGType $ Phi
     { type'           = cgLLVMType resultCGType
-    , incomingValues  = {-(undef (cgLLVMType resultCGType), curBlockName) : -}altConvertedValues
+    , incomingValues  = altConvertedValues ++ if debugMode then [] else [(undef (cgLLVMType resultCGType), curBlockName)]
     , metadata        = []
     }
 
@@ -425,7 +429,7 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
   activeBlock curBlockName
   closeBlock $ Switch
     { operand0'   = tagVal
-    , defaultDest = mkName "error_block" -- QUESTION: do we want to catch this error?
+    , defaultDest = if debugMode then mkName "error_block" else switchExit
     , dests       = altDests
     , metadata'   = []
     }
@@ -434,7 +438,7 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
 
   pure . I resultCGType $ Phi
     { type'           = cgLLVMType resultCGType
-    , incomingValues  = {-(undef (cgLLVMType resultCGType), curBlockName) : -}altConvertedValues
+    , incomingValues  = altConvertedValues ++ if debugMode then [] else [(undef (cgLLVMType resultCGType), curBlockName)]
     , metadata        = []
     }
 
