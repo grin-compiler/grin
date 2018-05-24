@@ -6,88 +6,95 @@
 grinMain:                               # @grinMain
 	.cfi_startproc
 # BB#0:                                 # %grinMain.entry
-	pushq	%rbx
+	pushq	%rax
 .Lcfi0:
 	.cfi_def_cfa_offset 16
-.Lcfi1:
-	.cfi_offset %rbx, -16
-	movq	%rdi, %rax
-	movq	$0, 8(%rax)
+	movl	$16, %eax
+	movl	$16, %edi
+	lock		xaddq	%rdi, _heap_ptr_(%rip)
+	movq	$0, 8(%rdi)
+	movq	$0, (%rdi)
+	movl	$16, %ecx
+	lock		xaddq	%rcx, _heap_ptr_(%rip)
+	movq	$1, 8(%rcx)
+	movq	$0, (%rcx)
+	lock		xaddq	%rax, _heap_ptr_(%rip)
+	movq	$1000, 8(%rax)          # imm = 0x3E8
 	movq	$0, (%rax)
-	leaq	16(%rax), %rcx
-	movq	$1, 24(%rax)
-	movq	$0, 16(%rax)
-	leaq	32(%rax), %rsi
-	movq	$1000, 40(%rax)         # imm = 0x3E8
-	movq	$0, 32(%rax)
-	leaq	48(%rax), %rdx
-	movq	%rsi, 64(%rax)
-	movq	%rcx, 56(%rax)
-	movq	$1, 48(%rax)
-	movq	%rdx, 88(%rax)
-	movq	%rax, 80(%rax)
-	movq	$2, 72(%rax)
-	leaq	96(%rax), %rdi
-	movq	%rax, %rsi
-	callq	sum
-	movq	%rax, %rbx
-	movq	%rdx, %rdi
+	movl	$24, %edx
+	movl	$24, %esi
+	lock		xaddq	%rsi, _heap_ptr_(%rip)
+	movq	%rax, 16(%rsi)
+	movq	%rcx, 8(%rsi)
+	movq	$1, (%rsi)
+	lock		xaddq	%rdx, _heap_ptr_(%rip)
+	movq	%rsi, 16(%rdx)
+	movq	%rdi, 8(%rdx)
+	movq	$2, (%rdx)
+	callq	.Lsum
+	movq	%rax, %rdi
 	callq	_prim_int_print
-	movq	%rbx, %rax
-	popq	%rbx
+	popq	%rcx
 	retq
 .Lfunc_end0:
 	.size	grinMain, .Lfunc_end0-grinMain
 	.cfi_endproc
                                         # -- End function
-	.globl	sum                     # -- Begin function sum
-	.p2align	4, 0x90
-	.type	sum,@function
-sum:                                    # @sum
+	.p2align	4, 0x90         # -- Begin function sum
+	.type	.Lsum,@function
+.Lsum:                                  # @sum
 	.cfi_startproc
 # BB#0:                                 # %sum.entry
 	pushq	%rax
-.Lcfi2:
+.Lcfi1:
 	.cfi_def_cfa_offset 16
-	movq	8(%rdx), %rcx
-	movq	16(%rdx), %rax
-	movq	8(%rcx), %rdx
-	cmpq	8(%rax), %rdx
-	setg	%r8b
-	jle	.LBB1_3
+	movq	8(%rsi), %r8
+	movq	16(%rsi), %rdx
+	movq	8(%r8), %rsi
+	cmpq	8(%rdx), %rsi
+	setg	%al
+	jg	.LBB1_3
 # BB#1:                                 # %sum.entry
-	testb	%r8b, %r8b
-	je	.LBB1_5
-# BB#2:                                 # %switch.bool_True.58
-	movq	8(%rsi), %rdx
-	jmp	.LBB1_4
-.LBB1_3:                                # %switch.bool_False.64
-	incq	%rdx
-	movq	%rdx, 8(%rdi)
-	movq	$0, (%rdi)
-	movq	%rax, 32(%rdi)
-	movq	%rdi, 24(%rdi)
-	movq	$1, 16(%rdi)
-	leaq	40(%rdi), %rax
-	movq	8(%rsi), %rdx
-	addq	8(%rcx), %rdx
-	movq	%rdx, 48(%rdi)
-	movq	$0, 40(%rdi)
-	leaq	16(%rdi), %rdx
-	addq	$56, %rdi
-	movq	%rax, %rsi
-	callq	sum
+	testb	%al, %al
+	jne	.LBB1_4
+# BB#2:                                 # %switch.bool_False.64
+	incq	%rsi
+	movl	$16, %eax
+	movl	$16, %ecx
+	lock		xaddq	%rcx, _heap_ptr_(%rip)
+	movq	%rsi, 8(%rcx)
+	movq	$0, (%rcx)
+	movl	$24, %esi
+	lock		xaddq	%rsi, _heap_ptr_(%rip)
+	movq	%rdx, 16(%rsi)
+	movq	%rcx, 8(%rsi)
+	movq	$1, (%rsi)
+	movq	8(%rdi), %rcx
+	addq	8(%r8), %rcx
+	lock		xaddq	%rax, _heap_ptr_(%rip)
+	movq	%rcx, 8(%rax)
+	movq	$0, (%rax)
 	movq	%rax, %rdi
-.LBB1_4:                                # %switch.exit.104
-	movq	%rdi, %rax
+	popq	%rax
+	jmp	.Lsum                   # TAILCALL
+.LBB1_3:                                # %switch.exit.105
+	movq	8(%rdi), %rax
 	popq	%rcx
 	retq
-.LBB1_5:                                # %error_block
+.LBB1_4:                                # %error_block
 	movl	$666, %edi              # imm = 0x29A
 	callq	_prim_int_print
 .Lfunc_end1:
-	.size	sum, .Lfunc_end1-sum
+	.size	.Lsum, .Lfunc_end1-.Lsum
 	.cfi_endproc
                                         # -- End function
+	.type	_heap_ptr_,@object      # @_heap_ptr_
+	.bss
+	.globl	_heap_ptr_
+	.p2align	3
+_heap_ptr_:
+	.quad	0                       # 0x0
+	.size	_heap_ptr_, 8
+
 
 	.section	".note.GNU-stack","",@progbits

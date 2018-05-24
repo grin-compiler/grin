@@ -1,6 +1,6 @@
 stack exec -- grin -o . -p \
   --bn --cnp --hpt \
-  --save-llvm simple \
+  --save-llvm simple --llvm \
   --cse --cp --dve \
   --ar --cp --dve \
   --hpt \
