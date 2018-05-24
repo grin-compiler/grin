@@ -47,7 +47,7 @@ import Reducer.LLVM.TypeGen
 import Reducer.LLVM.InferType
 
 debugMode :: Bool
-debugMode = False
+debugMode = True
 
 toLLVM :: String -> AST.Module -> IO BS.ByteString
 toLLVM fname mod = withContext $ \ctx -> do
