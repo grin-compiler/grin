@@ -49,7 +49,6 @@ data Env
   , _currentBlockName     :: AST.Name                         -- Def state
   , _envBlockInstructions :: Map AST.Name [Named Instruction] -- Def state
   , _envBlockOrder        :: Map AST.Name Int                 -- Def state
-  , _envHeapPointer       :: Operand                          -- Def state
   , _envTempCounter       :: Int
   , _envTypeEnv           :: TypeEnv.TypeEnv
   , _envTagMap            :: Map Tag Constant
@@ -63,7 +62,6 @@ emptyEnv = Env
   , _currentBlockName     = mkName ""
   , _envBlockInstructions = mempty
   , _envBlockOrder        = mempty
-  , _envHeapPointer       = ConstantOperand $ Null locationLLVMType
   , _envTempCounter       = 0
   , _envTypeEnv           = TypeEnv.TypeEnv mempty mempty mempty
   , _envTagMap            = mempty

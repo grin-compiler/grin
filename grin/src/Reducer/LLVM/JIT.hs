@@ -18,10 +18,11 @@ import qualified Data.ByteString.Char8 as BS
 
 import Data.Int
 import Foreign.Ptr
+import Foreign.Storable
 import Foreign.Marshal.Alloc
 
 foreign import ccall "dynamic"
-  mkMain :: FunPtr (Ptr Int8 -> IO Int64) -> Ptr Int8 -> IO Int64
+  mkMain :: FunPtr (IO Int64) -> IO Int64
 
 foreign import ccall "wrapper"
   wrapIntPrint :: (Int64 -> IO Int64) -> IO (FunPtr (Int64 -> IO Int64))
@@ -63,10 +64,13 @@ eagerJit amod mainName =
               \moduleSet -> do
                 mainSymbol <- mangleSymbol compileLayer (fromString mainName)
                 JITSymbol mainFn _ <- findSymbol compileLayer mainSymbol True
+                heapSymbol <- mangleSymbol compileLayer (fromString "_heap_ptr_")
+                JITSymbol heapWordPtr _ <- findSymbol compileLayer heapSymbol True
                 -- allocate GRIN heap
                 heapPointer <- callocBytes grinHeapSize :: IO (Ptr Int8)
+                poke (wordPtrToPtr heapWordPtr :: Ptr Int64) (fromIntegral $ minusPtr heapPointer nullPtr)
                 -- run function
-                result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn)) heapPointer
+                result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn))
                 -- TODO: read back the result and build the haskell value represenation
                 -- free GRIN heap
                 free heapPointer
