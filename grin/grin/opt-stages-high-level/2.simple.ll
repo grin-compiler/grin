@@ -64,18 +64,18 @@ sum.entry:
   %"n3'" = extractvalue <{ i64, [1 x i64] }> %node_CInt.51, 1, 0
   %"b1'.52" = icmp sgt i64 %"n2'", %"n3'"
   switch i1 %"b1'.52", label %error_block [
-    i1 true, label %switch.bool_True.53
-    i1 false, label %switch.bool_False.57
+    i1 true, label %block.bool_True.53
+    i1 false, label %block.bool_False.57
   ]
 
-switch.bool_True.53:                              ; preds = %sum.entry
+block.bool_True.53:                               ; preds = %sum.entry
   %tag.54 = load i64, i64* %p10, align 1
   %ptr_CInt.55 = bitcast i64* %p10 to <{ i64, [1 x i64] }>*
   %node_CInt.56 = load <{ i64, [1 x i64] }>, <{ i64, [1 x i64] }>* %ptr_CInt.55, align 1
   %"n14'" = extractvalue <{ i64, [1 x i64] }> %node_CInt.56, 1, 0
-  br label %switch.exit.93
+  br label %block.exit.93
 
-switch.bool_False.57:                             ; preds = %sum.entry
+block.bool_False.57:                              ; preds = %sum.entry
   %"n4'.58" = add i64 %"n2'", 1
   %new_node_ptr.61 = atomicrmw add i64* @_heap_ptr_, i64 ptrtoint (<{ i64, [1 x i64] }>* getelementptr inbounds (<{ i64, [1 x i64] }>, <{ i64, [1 x i64] }>* null, i32 1) to i64) monotonic
   %new_node_ptr.62 = inttoptr i64 %new_node_ptr.61 to i64*
@@ -112,10 +112,10 @@ switch.bool_False.57:                             ; preds = %sum.entry
   %ptr_CInt.91 = bitcast i64* %new_node_ptr.88 to <{ i64, [1 x i64] }>*
   store <{ i64, [1 x i64] }> %node_CInt.89, <{ i64, [1 x i64] }>* %ptr_CInt.91, align 1
   %alt_result_bool_False.92 = tail call fastcc i64 @sum(i64* %new_node_ptr.88, i64* %p13_2)
-  br label %switch.exit.93
+  br label %block.exit.93
 
-switch.exit.93:                                   ; preds = %switch.bool_False.57, %switch.bool_True.53
-  %sum_result.94 = phi i64 [ %"n14'", %switch.bool_True.53 ], [ %alt_result_bool_False.92, %switch.bool_False.57 ]
+block.exit.93:                                    ; preds = %block.bool_False.57, %block.bool_True.53
+  %sum_result.94 = phi i64 [ %"n14'", %block.bool_True.53 ], [ %alt_result_bool_False.92, %block.bool_False.57 ]
   ret i64 %sum_result.94
 
 error_block:                                      ; preds = %sum.entry

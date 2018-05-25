@@ -351,7 +351,7 @@ codeGenCase opVal alts bindingGen = do
 
   (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM orderedAlts $ \(Alt cpat _, altBody) -> do
     altCPatVal <- getCPatConstant cpat
-    altEntryBlock <- uniqueName ("switch." ++ getCPatName cpat)
+    altEntryBlock <- uniqueName ("block." ++ getCPatName cpat)
     activeBlock altEntryBlock
 
     bindingGen cpat
@@ -364,7 +364,7 @@ codeGenCase opVal alts bindingGen = do
     pure ((altCPatVal, altEntryBlock), (altOp, lastAltBlock, altCGTy), altCGTy)
 
   let resultCGType = commonCGType altCGTypes
-  switchExit <- uniqueName "switch.exit" -- this is the next block
+  switchExit <- uniqueName "block.exit" -- this is the next block
 
   altConvertedValues <- forM altValues $ \(altOp, lastAltBlock, altCGTy) -> do
     activeBlock lastAltBlock
@@ -403,7 +403,7 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
 
   (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM possibleNodes $ \(tag, items) -> do
     let cpat = TagPat tag
-    altEntryBlock <- uniqueName ("tag.switch." ++ getCPatName cpat)
+    altEntryBlock <- uniqueName ("block." ++ getCPatName cpat)
     altCPatVal <- getCPatConstant cpat
     activeBlock altEntryBlock
 
@@ -414,7 +414,7 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
     pure ((altCPatVal, altEntryBlock), (altOp, lastAltBlock, altCGTy), altCGTy)
 
   let resultCGType = commonCGType altCGTypes
-  switchExit <- uniqueName "tag.switch.exit" -- this is the next block
+  switchExit <- uniqueName "block.exit" -- this is the next block
 
   altConvertedValues <- forM altValues $ \(altOp, lastAltBlock, altCGTy) -> do
     activeBlock lastAltBlock
