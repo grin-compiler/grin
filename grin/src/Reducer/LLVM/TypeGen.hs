@@ -103,12 +103,12 @@ copyTaggedUnion srcVal srcTU dstTU = do
                      | otherwise      -> error $ printf "invalid tagged union mapping: %s" (show mapping)
       -- set node items
       build agg (itemType, srcIndex, dstIndex) = do
-        item <- codeGenLocalVar "item" itemType $ AST.ExtractValue
+        item <- codeGenLocalVar "src" itemType $ AST.ExtractValue
           { aggregate = srcVal
           , indices'  = srcIndex
           , metadata  = []
           }
-        codeGenLocalVar "node" dstTULLVMType $ AST.InsertValue
+        codeGenLocalVar "dst" dstTULLVMType $ AST.InsertValue
           { aggregate = agg
           , element   = item
           , indices'  = dstIndex

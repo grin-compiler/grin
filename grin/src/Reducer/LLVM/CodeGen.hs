@@ -66,29 +66,29 @@ codeGenVal :: Val -> CG Operand
 codeGenVal val = case val of
   -- TODO: var tag node support
   ConstTagNode tag args -> do
-    opTag <- ConstantOperand <$> getTagId tag
     opArgs <- mapM codeGenVal args
 
     T_NodeSet ns <- typeOfVal val
     ty <- typeOfVal val
     let cgTy = toCGType ty
         TaggedUnion{..} = cgTaggedUnion cgTy
+        nodeName = printf "node_%s" (show $ PP tag)
         -- set node items
         build agg (item, TUIndex{..}) = do
-          codeGenLocalVar "node" (cgLLVMType cgTy) $ AST.InsertValue
+          codeGenLocalVar nodeName (cgLLVMType cgTy) $ AST.InsertValue
             { aggregate = agg
             , element   = item
             , indices'  = [1 + tuStructIndex, tuArrayIndex]
             , metadata  = []
             }
 
-        -- set tag
-    agg0 <- codeGenLocalVar "node" (cgLLVMType cgTy) $ AST.InsertValue
-            { aggregate = undef tuLLVMType
-            , element   = opTag
-            , indices'  = [0]
-            , metadata  = []
-            }
+    -- set tag
+    tagId <- getTagId tag
+    let agg0 = ConstantOperand $ C.Struct
+          { structName    = Nothing
+          , isPacked      = True
+          , memberValues  = tagId : [C.Undef t | t <- tail $ elementTypes tuLLVMType]
+          }
     foldM build agg0 $ zip opArgs $ V.toList $ Map.findWithDefault undefined tag tuMapping
 
   ValTag tag  -> ConstantOperand <$> getTagId tag
@@ -173,7 +173,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       case lpat of
           VarTagNode{} -> error $ printf "TODO: codegen not implemented %s" (show $ pretty lpat)
           ConstTagNode tag args -> do
-            (cgTy,operand) <- getOperand "node" leftResult
+            (cgTy,operand) <- getOperand (printf "node_%s" . show $ PP tag) leftResult
             let mapping = tuMapping $ cgTaggedUnion cgTy
             -- bind node pattern variables
             forM_ (zip (V.toList $ Map.findWithDefault undefined tag mapping) args) $ \(TUIndex{..}, arg) -> case arg of
@@ -300,8 +300,8 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       codeGenTagSwitch tagVal nodeSet $ \tag items -> do
         let nodeCGType  = toCGType $ T_NodeSet $ Map.singleton tag items
             nodeTU      = cgTaggedUnion nodeCGType
-        nodeAddress <- codeGenBitCast "nodeAddress" tagAddress (ptr $ tuLLVMType nodeTU)
-        nodeVal <- codeGenLocalVar "node" (cgLLVMType nodeCGType) $ Load
+        nodeAddress <- codeGenBitCast (printf "ptr_%s" . show $ PP tag) tagAddress (ptr $ tuLLVMType nodeTU)
+        nodeVal <- codeGenLocalVar (printf "node_%s" . show $ PP tag) (cgLLVMType nodeCGType) $ Load
           { volatile        = False
           , address         = nodeAddress
           , maybeAtomicity  = Nothing
@@ -326,7 +326,7 @@ codeGenStoreNode val nodeLocation = do
   codeGenTagSwitch tagVal nodeSet $ \tag items -> do
     let nodeTU = taggedUnion $ Map.singleton tag items
     nodeVal <- copyTaggedUnion tuVal valueTU nodeTU
-    nodeAddress <- codeGenBitCast "nodeAddress" nodeLocation (ptr $ tuLLVMType nodeTU)
+    nodeAddress <- codeGenBitCast (printf "ptr_%s" . show $ PP tag) nodeLocation (ptr $ tuLLVMType nodeTU)
     emit [Do Store
       { volatile        = False
       , address         = nodeAddress
@@ -357,7 +357,7 @@ codeGenCase opVal alts bindingGen = do
     bindingGen cpat
 
     altResult <- altBody
-    (altCGTy, altOp) <- getOperand "altResult" altResult
+    (altCGTy, altOp) <- getOperand (printf "alt_result_%s" $ getCPatName cpat) altResult
 
     lastAltBlock <- gets _currentBlockName
 
@@ -454,18 +454,18 @@ codeGenIncreaseHeapPointer name = do
   nodeSet <- use $ envTypeEnv.location.ix loc
 
   let tuPtrTy = ptr $ tuLLVMType $ taggedUnion nodeSet
-  tuSizePtr <- codeGenLocalVar "size" tuPtrTy $ AST.GetElementPtr
+  tuSizePtr <- codeGenLocalVar "alloc_bytes" tuPtrTy $ AST.GetElementPtr
     { inBounds  = True
     , address   = ConstantOperand $ Null tuPtrTy
     , indices   = [ConstantOperand $ C.Int 32 1]
     , metadata  = []
     }
-  tuSizeInt <- codeGenLocalVar "size" i64 $ AST.PtrToInt
+  tuSizeInt <- codeGenLocalVar "alloc_bytes" i64 $ AST.PtrToInt
     { operand0  = tuSizePtr
     , type'     = i64
     , metadata  = []
     }
-  heapInt <- codeGenLocalVar "heap_ptr" i64 $ AST.AtomicRMW
+  heapInt <- codeGenLocalVar "new_node_ptr" i64 $ AST.AtomicRMW
     { volatile      = False
     , rmwOperation  = RMWOperation.Add
     , address       = ConstantOperand $ GlobalReference (ptr i64) (mkName heapPointerName)
@@ -473,7 +473,7 @@ codeGenIncreaseHeapPointer name = do
     , atomicity     = (System, Monotonic)
     , metadata      = []
     }
-  codeGenLocalVar "heap_ptr" (ptr i64) $ AST.IntToPtr
+  codeGenLocalVar "new_node_ptr" (ptr i64) $ AST.IntToPtr
     { operand0  = heapInt
     , type'     = ptr i64
     , metadata  = []
