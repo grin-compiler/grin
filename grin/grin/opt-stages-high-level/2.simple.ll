@@ -39,8 +39,8 @@ grinMain.entry:
   %p15 = extractvalue <{ i64, [2 x i64*] }> %node_Fsum.39, 1, 0
   %p16 = extractvalue <{ i64, [2 x i64*] }> %node_Fsum.39, 1, 1
   %"n13'.40" = tail call fastcc i64 @sum(i64* %p15, i64* %p16)
-  %grinMain_result.41 = call i64 @_prim_int_print(i64 %"n13'.40")
-  ret i64 %grinMain_result.41
+  %result.grinMain.41 = call i64 @_prim_int_print(i64 %"n13'.40")
+  ret i64 %result.grinMain.41
 
 error_block:                                      ; No predecessors!
   %error_result.42 = tail call i64 @_prim_int_print(i64 666)
@@ -111,12 +111,12 @@ block.bool_False.57:                              ; preds = %sum.entry
   %tag.90 = extractvalue <{ i64, [1 x i64] }> %node_CInt.89, 0
   %ptr_CInt.91 = bitcast i64* %new_node_ptr.88 to <{ i64, [1 x i64] }>*
   store <{ i64, [1 x i64] }> %node_CInt.89, <{ i64, [1 x i64] }>* %ptr_CInt.91, align 1
-  %alt_result_bool_False.92 = tail call fastcc i64 @sum(i64* %new_node_ptr.88, i64* %p13_2)
+  %result.bool_False.92 = tail call fastcc i64 @sum(i64* %new_node_ptr.88, i64* %p13_2)
   br label %block.exit.93
 
 block.exit.93:                                    ; preds = %block.bool_False.57, %block.bool_True.53
-  %sum_result.94 = phi i64 [ %"n14'", %block.bool_True.53 ], [ %alt_result_bool_False.92, %block.bool_False.57 ]
-  ret i64 %sum_result.94
+  %result.sum.94 = phi i64 [ %"n14'", %block.bool_True.53 ], [ %result.bool_False.92, %block.bool_False.57 ]
+  ret i64 %result.sum.94
 
 error_block:                                      ; preds = %sum.entry
   %error_result.95 = tail call i64 @_prim_int_print(i64 666)
