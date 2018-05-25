@@ -246,7 +246,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
             }
       clearDefState
       activeBlock (mkName $ name ++ ".entry")
-      (cgTy, result) <- body >>= getOperand (printf "%s_result" name)
+      (cgTy, result) <- body >>= getOperand (printf "result.%s" name)
       let llvmRetType = cgLLVMType cgTy
       closeBlock $ Ret
         { returnOperand = Just result
@@ -357,7 +357,7 @@ codeGenCase opVal alts bindingGen = do
     bindingGen cpat
 
     altResult <- altBody
-    (altCGTy, altOp) <- getOperand (printf "alt_result_%s" $ getCPatName cpat) altResult
+    (altCGTy, altOp) <- getOperand (printf "result.%s" $ getCPatName cpat) altResult
 
     lastAltBlock <- gets _currentBlockName
 
