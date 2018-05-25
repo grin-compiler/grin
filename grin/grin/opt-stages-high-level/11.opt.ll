@@ -30,11 +30,11 @@ switch.bool_True.4:                               ; preds = %sum.entry
 switch.bool_False.5:                              ; preds = %sum.entry
   %"n4'.6" = add i64 %p111, 1
   %"n7'_2.7" = add i64 %p10, %p111
-  %altResult.8 = tail call fastcc i64 @sum(i64 %"n7'_2.7", i64 %"n4'.6", i64 %p112)
+  %alt_result_bool_False.8 = tail call fastcc i64 @sum(i64 %"n7'_2.7", i64 %"n4'.6", i64 %p112)
   br label %switch.exit.9
 
 switch.exit.9:                                    ; preds = %switch.bool_False.5, %switch.bool_True.4
-  %sum_result.10 = phi i64 [ %p10, %switch.bool_True.4 ], [ %altResult.8, %switch.bool_False.5 ]
+  %sum_result.10 = phi i64 [ %p10, %switch.bool_True.4 ], [ %alt_result_bool_False.8, %switch.bool_False.5 ]
   ret i64 %sum_result.10
 
 error_block:                                      ; preds = %sum.entry

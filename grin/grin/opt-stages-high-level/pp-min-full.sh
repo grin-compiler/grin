@@ -1,5 +1,6 @@
 reset
 stack exec -- grin -o . -p \
+  -t --save-llvm slow --save-grin slow.grin \
   --ie --dpe --bn -t \
   --sco --ece --tce -t \
   --gub -t --cp \
