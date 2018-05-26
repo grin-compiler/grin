@@ -11,5 +11,5 @@ stack exec -- grin -o . -p \
   --ar --cp --dve \
   --hpt \
   --ar --cp --dve \
-  -p --hpt --llvm \
+  -p --hpt --save-llvm fast --llvm \
   stage-00.grin
