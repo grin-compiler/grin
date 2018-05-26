@@ -88,8 +88,8 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
           (_, Lit l) -> [Lit l]
           (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
             Nothing -> case List.lookup v substs0 of
-              Nothing             -> [Var v]
               Just (Right [name]) -> [Var name]
+              _                   -> [Var v]
             Just _  -> case List.lookup v substs0 of
               Nothing -> [Var v]
               Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
@@ -100,7 +100,7 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
         Nothing        -> pure $ SFetchIF name pos
         Just (tag, ps) -> do
           let params = newParams name (Vector.toList ps)
-          forM params $ \(newName, newType) ->
+          forM_ params $ \(newName, newType) ->
             variable . at newName .= Just newType
           pure $ SReturnF $ ConstTagNode tag $ ((Var . fst) <$> params)
 
