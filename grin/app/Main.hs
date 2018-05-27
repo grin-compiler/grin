@@ -40,6 +40,7 @@ transformOpts =
   <|> flg CopyPropagation "cp" "Copy Propagation"
   <|> flg ConstantPropagation "cnp" "Constant Propagation"
   <|> flg DeadProcedureElimination "dpe" "Dead Procedure Elimination"
+  <|> flg DeadParameterElimination "dae" "Dead Parameter Elimination"
   <|> flg DeadVariableElimination "dve" "Dead Variable Elimination"
   <|> flg CommonSubExpressionElimination "cse" "Common Sub-Expression Elimination"
   <|> flg CaseCopyPropagation "ccp" "Case Copy Propagation"

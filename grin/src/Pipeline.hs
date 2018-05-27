@@ -85,6 +85,7 @@ data Transformation
   | CopyPropagation
   | ConstantPropagation
   | DeadProcedureElimination
+  | DeadParameterElimination
   | DeadVariableElimination
   | CommonSubExpressionElimination
   | CaseCopyPropagation
@@ -116,6 +117,7 @@ transformation n = \case
   CopyPropagation                 -> noTypeEnv copyPropagation
   ConstantPropagation             -> noTypeEnv constantPropagation
   DeadProcedureElimination        -> noTypeEnv deadProcedureElimination
+  DeadParameterElimination        -> noTypeEnv deadParameterElimination
   DeadVariableElimination         -> noTypeEnv deadVariableElimination
   CommonSubExpressionElimination  -> commonSubExpressionElimination
   CaseCopyPropagation             -> caseCopyPropagation
