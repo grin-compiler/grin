@@ -59,7 +59,7 @@ Transformation | Schema
 [constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]       | 
 [dead procedure elimination][169]         <br><br> _source code:_ <br> [DeadProcedureElimination.hs]  | 
 [dead variable elimination][170]          <br><br> _source code:_ <br> [DeadVariableElimination.hs]   | 
-[dead parameter elimination][171]         <br><br> _source code:_ <br> __TODO__                       | 
+[dead parameter elimination][171]         <br><br> _source code:_ <br> [DeadParameterElimination.hs]  | 
 
 [129]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=129
 [134]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=134
@@ -86,6 +86,7 @@ Transformation | Schema
 [CSE.hs]:                       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CSE.hs
 [DeadProcedureElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadProcedureElimination.hs
 [DeadVariableElimination.hs]:   https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadVariableElimination.hs
+[DeadParameterElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadParameterElimination.hs
 [EvaluatedCaseElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/EvaluatedCaseElimination.hs
 [Inlining.hs]:                  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/Inlining.hs
 [SparseCaseOptimisation.hs]:    https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/SparseCaseOptimisation.hs
