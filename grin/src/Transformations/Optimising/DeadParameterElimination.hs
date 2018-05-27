@@ -42,13 +42,9 @@ deadParameterElimination prog@(Program defs) = ana builder prog where
       -> SAppF name (removeDead dead args)
     {-
       implementation
-        done - def
-        done - app
         - Fname ; val, lpat, cpat
         - Pname
       test
-        - def
-        - app
         - Fname ; val, lpat, cpat
         - Pname
     -}

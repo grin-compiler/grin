@@ -188,6 +188,7 @@ test-suite grin-test
                      , Transformations.Optimising.GeneralizedUnboxingSpec
                      , Transformations.Optimising.ArityRaisingSpec
                      , Transformations.Optimising.DeadProcedureEliminationSpec
+                     , Transformations.Optimising.DeadParameterEliminationSpec
                      , Transformations.Optimising.DeadVariableEliminationSpec
                      , Transformations.Optimising.InliningSpec
                      , Transformations.Optimising.CaseHoistingSpec
