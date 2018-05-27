@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
-module Frontend.FromSTG (codegenGrin) where
+module Frontend.GHC.FromSTG (codegenGrin) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -18,7 +18,7 @@ import Literal
 import DataCon
 
 -- Grin
-import Frontend.Lambda
+import Frontend.Lambda.Syntax
 
 type CG = StateT Env IO
 

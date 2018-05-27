@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections, LambdaCase #-}
 
-module Frontend.ParseLambda (parseLambda) where
+module Frontend.Lambda.Parse (parseLambda) where
 
 import Data.Void
 import Control.Applicative (empty)
@@ -9,7 +9,7 @@ import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
-import Frontend.Lambda
+import Frontend.Lambda.Syntax
 
 keywords = Set.fromList ["case","of","let","letrec","letS", "#True", "#False", "_"]
 

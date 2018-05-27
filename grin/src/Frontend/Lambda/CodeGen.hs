@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
-module Frontend.CodeGen (codegenGrin) where
+module Frontend.Lambda.CodeGen (codegenGrin) where
 
 import Text.Printf
 import Control.Monad
@@ -9,8 +9,8 @@ import Data.Foldable
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-import Frontend.Lambda
-import Frontend.PrimOps
+import Frontend.Lambda.Syntax
+import Frontend.Lambda.PrimOps
 import qualified Grin as G
 import Transformations.Optimising.DeadProcedureElimination
 import Transformations.GenerateEval

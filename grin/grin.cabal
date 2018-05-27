@@ -80,12 +80,12 @@ library
     AbstractInterpretation.IR
     AbstractInterpretation.CodeGen
     AbstractInterpretation.Reduce
-    Frontend.Lambda
-    Frontend.ParseLambda
-    Frontend.PrettyLambda
-    Frontend.CodeGen
-    Frontend.PrimOps
-    Frontend.FromSTG
+    Frontend.Lambda.Syntax
+    Frontend.Lambda.Parse
+    Frontend.Lambda.Pretty
+    Frontend.Lambda.CodeGen
+    Frontend.Lambda.PrimOps
+    Frontend.GHC.FromSTG
     Frontend.Idris.CodegenGrin
     Frontend.Idris.PrimOps
     VarGen

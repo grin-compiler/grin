@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
-module Frontend.PrimOps where
+module Frontend.Lambda.PrimOps where
 
 import GrinTH
 

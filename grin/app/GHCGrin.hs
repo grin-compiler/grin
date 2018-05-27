@@ -13,7 +13,7 @@ import Control.Monad.Trans
 import System.Environment
 import System.Exit
 
-import Frontend.FromSTG
+import Frontend.GHC.FromSTG
 
 data Opts
   = Opts
