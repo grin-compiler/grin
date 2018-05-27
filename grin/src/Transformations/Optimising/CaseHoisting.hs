@@ -80,20 +80,34 @@ hoistAlts lpatName (Alt cpat1 alt1, Alt cpat2 alt2) = do
 
 disjointMatch :: [(Set Tag, Alt)] -> [Alt] -> Maybe [(Alt, Alt)]
 disjointMatch tsAlts1 alts2
-  | and [Set.size ts == 1 | (ts, _) <- tsAlts1]
-  , length tsAlts1 == Set.size (mconcat . map fst $ tsAlts1)
-  = Just
-      [ (alt1, alt2)
-      | (ts, alt1) <- tsAlts1
-      , let tag = Set.findMin ts
-      , alt2@(Alt (NodePat patTag _) _) <- alts2
-      , patTag == tag
-      ]
+  | Just (defaults, tagMap) <- mconcat <$> mapM groupByCPats alts2
+  , length defaults <= 1
+  , Just (altPairs, _, _) <- Data.Foldable.foldrM (matchAlt tagMap) ([], defaults, Set.empty) tsAlts1
+  = Just altPairs
 disjointMatch _ _ = Nothing
+
+groupByCPats :: Alt -> Maybe ([Alt], Map Tag Alt)
+groupByCPats alt@(Alt cpat _) = case cpat of
+  DefaultPat    -> Just ([alt], mempty)
+  NodePat tag _ -> Just ([], Map.singleton tag alt)
+  _             -> Nothing
+
+matchAlt :: Map Tag Alt -> (Set Tag, Alt) -> ([(Alt, Alt)], [Alt], Set Tag) -> Maybe ([(Alt, Alt)], [Alt], Set Tag)
+matchAlt tagMap (ts, alt1) (matchList, defaults, coveredTags)
+  | Set.size ts > 1   -- HINT: default can handle this
+  , defaultAlt:[] <- defaults
+  , Data.Foldable.all (flip Set.notMember coveredTags) ts
+  = Just ((alt1, defaultAlt):matchList, [], coveredTags `mappend` ts)
+
+  | Set.size ts == 1  -- HINT: regular node pattern
+  , tag <- Set.findMin ts
+  , Set.notMember tag coveredTags
+  , Just alt2 <- Map.lookup tag tagMap
+  = Just ((alt1, alt2):matchList, defaults, Set.insert tag coveredTags)
+
+  | otherwise = Nothing
 
 {-
   TODO:
-    - default pat
-    - check non overlapping coverage
     - add cloned variables to TypeEnv
 -}
