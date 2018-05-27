@@ -41,14 +41,8 @@ sum p10 p11 =
 eval e_p1 =
   e_v1 <- fetch e_p1
   case e_v1 of
-    {-
     #default ->
       pure e_v1
-    -}
-    (CInt e_i1)       -> pure e_v1
-    (CNil)            -> pure e_v1
-    (CCons e_i2 e_i3) -> pure e_v1
-
     (Fupto e_p2 e_p3) ->
       e_v2 <- upto e_p2 e_p3
       --update e_p1 e_v2
