@@ -94,16 +94,17 @@ groupByCPats alt@(Alt cpat _) = case cpat of
 
 matchAlt :: Map Tag Alt -> (Set Tag, Alt) -> ([(Alt, Alt)], [Alt], Set Tag) -> Maybe ([(Alt, Alt)], [Alt], Set Tag)
 matchAlt tagMap (ts, alt1) (matchList, defaults, coveredTags)
-  | Set.size ts > 1   -- HINT: default can handle this
-  , defaultAlt:[] <- defaults
-  , Data.Foldable.all (flip Set.notMember coveredTags) ts
-  = Just ((alt1, defaultAlt):matchList, [], coveredTags `mappend` ts)
-
-  | Set.size ts == 1  -- HINT: regular node pattern
+  -- regular node pattern
+  | Set.size ts == 1
   , tag <- Set.findMin ts
   , Set.notMember tag coveredTags
   , Just alt2 <- Map.lookup tag tagMap
   = Just ((alt1, alt2):matchList, defaults, Set.insert tag coveredTags)
+
+  -- default can handle this
+  | defaultAlt:[] <- defaults
+  , Data.Foldable.all (flip Set.notMember coveredTags) ts
+  = Just ((alt1, defaultAlt):matchList, [], coveredTags `mappend` ts)
 
   | otherwise = Nothing
 
