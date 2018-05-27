@@ -33,19 +33,41 @@ deadParameterElimination prog@(Program defs) = ana builder prog where
   removeDead dead args = [arg | (idx, arg) <- zip [0..] args, Set.notMember idx dead]
 
   builder :: Exp -> ExpF Exp
-  builder = \case
+  builder e = case mapValsExp pruneVal e of
     Def name args body
       | Just dead <- Map.lookup name deadArgMap
       -> DefF name (removeDead dead args) body
+
     SApp name args
       | Just dead <- Map.lookup name deadArgMap
       -> SAppF name (removeDead dead args)
-    {-
-      implementation
-        - Fname ; val, lpat, cpat
-        - Pname
-      test
-        - Fname ; val, lpat, cpat
-        - Pname
-    -}
+
+    EBind leftExp lpat@ConstTagNode{} rightExp
+      -> EBindF leftExp (pruneVal lpat) rightExp
+
+    Alt cpat@NodePat{} body
+      -> AltF (pruneCPat cpat) body
+
     exp -> project exp
+
+  pruneVal :: Val -> Val
+  pruneVal = \case
+    ConstTagNode tag@(Tag kind name) vals
+      | isPFtag kind
+      , Just dead <- Map.lookup name deadArgMap
+      -> ConstTagNode tag (removeDead dead vals)
+    val -> val
+
+  pruneCPat :: CPat -> CPat
+  pruneCPat = \case
+    NodePat tag@(Tag kind name) vars
+      | isPFtag kind
+      , Just dead <- Map.lookup name deadArgMap
+      -> NodePat tag (removeDead dead vars)
+    cpat -> cpat
+
+  isPFtag :: TagType -> Bool
+  isPFtag = \case
+    F{} -> True
+    P{} -> True
+    _   -> False
