@@ -136,7 +136,7 @@ library
 
 executable grin
   hs-source-dirs:      app
-  main-is:             Main.hs
+  main-is:             GrinCLI.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , grin
