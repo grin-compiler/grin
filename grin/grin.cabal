@@ -66,6 +66,7 @@ library
     Transformations.Optimising.ConstantPropagation
     Transformations.Optimising.DeadProcedureElimination
     Transformations.Optimising.DeadVariableElimination
+    Transformations.Optimising.DeadParameterElimination
     Transformations.Optimising.CSE
     Transformations.Optimising.Inlining
     Transformations.Optimising.ArityRaising
