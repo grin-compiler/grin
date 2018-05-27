@@ -90,9 +90,9 @@ instance Pretty CPat where
 
 instance Pretty TagType where
   pretty = green . \case
-    C -> text "C"
-    F -> text "F"
-    P -> text "P"
+    C   -> text "C"
+    F   -> text "F"
+    P i -> text "P" <> int i
 
 instance Pretty Tag where
   pretty (Tag tagtype name) = pretty tagtype <> text name

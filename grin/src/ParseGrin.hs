@@ -98,7 +98,7 @@ altPat = parens (NodePat <$> tag <*> many var) <|>
 
 tag = Tag C <$ char 'C' <*> con <|>
       Tag F <$ char 'F' <*> var <|>
-      Tag P <$ char 'P' <*> (var <|> con)
+      Tag <$> (P <$ char 'P' <*> L.decimal) <*> (var <|> con)
 
 simpleValue = Lit <$> literal <|>
               Var <$> var

@@ -148,7 +148,7 @@ instance FoldNames CPat where
     LitPat _    -> mempty
     DefaultPat  -> mempty
 
-data TagType = C | F | P
+data TagType = C | F | P Int {-missing parameter count-}
   deriving (Generic, NFData, Eq, Ord, Show)
 
 data Tag = Tag

@@ -60,7 +60,7 @@ genC e = gets _arityMap >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Just ar <- arity arityMap name -> case argCount `compare` ar of
     EQ  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F name) $ map genAtom args
-    LT  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.P $ name ++ show (ar - argCount)) $ map genAtom args
+    LT  -> pure $ G.SStore $ G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) $ map genAtom args
   -- TODO: use ap for suspended application
   App name [arg] | Nothing <- arity arityMap name -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F "ap") [G.Var name, genAtom arg]
   --App name args | Nothing <- arity arityMap name -> -- ap store chain
@@ -73,7 +73,7 @@ genE e = gets _arityMap >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Just ar <- arity arityMap name -> case argCount `compare` ar of
     EQ  -> pure $ G.SApp name $ map genAtom args
-    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag G.P $ name ++ show (ar - argCount)) $ map genAtom args
+    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) $ map genAtom args
     GT  -> let (funArgs, extraArgs) = splitAt ar args
            in apChain (G.SApp name $ map genAtom funArgs) extraArgs
   -- HINT: unknown function ; generate apply chain
@@ -106,7 +106,7 @@ genR e = gets _arityMap >>= \arityMap -> case e of
   App name args | argCount <- length args
                 , Just ar <- arity arityMap name -> case argCount `compare` ar of
     EQ  -> pure $ G.SApp name $ map genAtom args
-    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag G.P $ name ++ show (ar - argCount)) $ map genAtom args
+    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) $ map genAtom args
     GT  -> let (funArgs, extraArgs) = splitAt ar args
            in apChain (G.SApp name $ map genAtom funArgs) extraArgs
   -- HINT: unknown function ; generate apply chain

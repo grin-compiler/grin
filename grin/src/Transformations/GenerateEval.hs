@@ -34,10 +34,10 @@ apply defs = Def "apply" ["f", "x"] $
     f (Def name args _) = name `notElem` ["int_print", "grinMain"] && length args > 0 -- TODO: proper filtering
     funAlts def@(Def _ args _) = map (funAlt def) [0..length args-1]
     funAlt (Def name args _) i
-      | i == n-1  = Alt (NodePat (Tag P $ name ++ show missingCount) argNames) $
+      | i == n-1  = Alt (NodePat (Tag (P missingCount) name) argNames) $
                           SApp name $ map Var argNames ++ [Var "x"]
-      | otherwise = Alt (NodePat (Tag P $ name ++ show missingCount) argNames) $
-                          SReturn $ ConstTagNode (Tag P $ name ++ show (pred missingCount)) $ map Var argNames ++ [Var "x"]
+      | otherwise = Alt (NodePat (Tag (P missingCount) name) argNames) $
+                          SReturn $ ConstTagNode (Tag (P $ pred missingCount) name) $ map Var argNames ++ [Var "x"]
       where
         argNames      = map (printf "%s%d.%d" name missingCount) [1..i]
         n             = length args
