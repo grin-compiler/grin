@@ -5,6 +5,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Control.Monad
+import Control.Comonad
+import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
 
 import Grin
@@ -139,6 +141,13 @@ hyloM
   => (t b -> m b) -> (a -> m (t a)) -> a -> m b
 hyloM alg coalg = h
   where h = alg <=< traverse h <=< coalg
+
+histoM
+  :: (Monad m, Traversable (Base t), Recursive t)
+  => (Base t (Cofree (Base t) a) -> m a) -> t -> m a
+histoM h = pure . extract <=< worker where
+  worker = f <=< traverse worker . project
+  f x = (:<) <$> h x <*> pure x
 
 -- misc
 
