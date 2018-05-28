@@ -308,7 +308,7 @@ idrisPipeLine outputFile =
   , HPT CompileHPT
   , HPT RunHPTPure
   , HPT PrintHPTResult
-  , HPT PrintHPT
+  , HPT PrintHPTCode
   , SaveGrin "high-level-code.grin"
   ] ++
   optimisingPipeline ++

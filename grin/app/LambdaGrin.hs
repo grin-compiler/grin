@@ -102,7 +102,7 @@ lambdaPipeLine =
   , T DeadProcedureElimination
   , PrintGrin ondullblack
   , HPT CompileHPT
-  , HPT PrintHPT
+  , HPT PrintHPTCode
   , HPT RunHPTPure
   , HPT PrintHPTResult
   , SaveLLVM "high-level-code"

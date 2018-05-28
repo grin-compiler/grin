@@ -52,7 +52,7 @@ transformOpts =
 pipelineOpts :: Parser Pipeline
 pipelineOpts =
       flg (HPT CompileHPT) "compile-hpt" "Compiles heap-points-to analysis machine"
-  <|> flg (HPT PrintHPT) "print-hpt" "Prints the heap-points-to analysis machine"
+  <|> flg (HPT PrintHPTCode) "print-hpt-code" "Prints the heap-points-to analysis machine"
   <|> flg (HPT RunHPTPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
   <|> flg (HPT PrintHPTResult) "print-hpt-result" "Prints the heap-points-to analysis result"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
@@ -97,7 +97,7 @@ defaultPipeline = \case
     Options
       files
       [ HPT CompileHPT
-      , HPT PrintHPT
+      , HPT PrintHPTCode
       , PrintGrin ondullblack
       , HPT RunHPTPure
       , HPT PrintHPTResult

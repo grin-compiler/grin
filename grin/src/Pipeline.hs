@@ -143,7 +143,7 @@ instance Eq (Hidden a) where
 
 data HPTStep
   = CompileHPT
-  | PrintHPT
+  | PrintHPTCode
   | RunHPTPure
   | PrintHPTResult
   deriving Show
@@ -208,7 +208,7 @@ pipelineStep p = do
   case p of
     HPT hptStep -> case hptStep of
       CompileHPT      -> compileHPT
-      PrintHPT        -> printHPT
+      PrintHPTCode    -> printHPTCode
       RunHPTPure      -> runHPTPure
       PrintHPTResult  -> printHPTResult
     T t             -> transformationM t
@@ -237,8 +237,8 @@ compileHPT = do
   let hptProgram = HPT.codeGen grin
   psHPTProgram .= Just hptProgram
 
-printHPT :: PipelineM ()
-printHPT = do
+printHPTCode :: PipelineM ()
+printHPTCode = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
         putStrLn . show . HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
