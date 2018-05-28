@@ -409,8 +409,10 @@ optimizeWith o e ps = loop
       effs <- forM ps $ \p -> do
         eff <- pipelineStep p
         when (eff == ExpChanged) $ void $ do
+          pipelineStep $ T DeadProcedureElimination
           pipelineStep $ HPT CompileHPT
           pipelineStep $ HPT RunHPTPure
+          pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
         pure eff
       -- Run loop again on change
       when (any (match _ExpChanged) effs)
@@ -427,32 +429,26 @@ optimize o e = fmap fst $ flip runStateT start $ flip runReaderT o $ do
     , SaveLLVM "high-level-code"
     ]
 
-  optimizeWith o e $
-    concatMap
-      (\t ->
-        [ T t
-        , SaveGrin (show t)
-        , T BindNormalisation
-        , SaveGrin (show t)
-        ])
-      [ EvaluatedCaseElimination
-      , TrivialCaseElimination
-      , SparseCaseOptimisation
-      , UpdateElimination
-      , CopyPropagation
-      , ConstantPropagation
-      , DeadProcedureElimination
-      , DeadVariableElimination
-      , DeadParameterElimination
-      , CommonSubExpressionElimination
-      , CaseCopyPropagation
-      , CaseHoisting
-      , GeneralizedUnboxing
-      , ArityRaising
---      , InlineEval
---      , InlineApply
---      , LateInlining
-      ]
+  optimizeWith o e $ fmap T
+    [ BindNormalisation
+    , EvaluatedCaseElimination
+    , TrivialCaseElimination
+    , SparseCaseOptimisation
+    , UpdateElimination
+    , CopyPropagation
+    , ConstantPropagation
+    , DeadProcedureElimination
+    , DeadVariableElimination
+    , DeadParameterElimination
+    , CommonSubExpressionElimination
+    , CaseCopyPropagation
+    , CaseHoisting
+    , GeneralizedUnboxing
+    , ArityRaising
+    , InlineEval
+    , InlineApply
+    , LateInlining
+    ]
 
   mapM_ pipelineStep
     [ SaveLLVM "high-level-opt-code"
