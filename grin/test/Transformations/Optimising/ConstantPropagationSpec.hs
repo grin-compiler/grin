@@ -45,8 +45,9 @@ spec = do
     let after = [expr|
         i1 <- pure 1
         n1 <- pure (CNode i1)
-        (CNode a1) <- pure (CNode i1)
-        pure 2
+        do
+          (CNode a1) <- pure (CNode i1)
+          pure 2
       |]
     constantPropagation before `sameAs` after
 
@@ -88,8 +89,8 @@ spec = do
     let after = [expr|
         i1 <- pure 1
         n1 <- pure (CNode i1)
-        pure ()
-        pure 3
+        do
+          pure 3
       |]
     constantPropagation before `sameAs` after
 
@@ -121,11 +122,13 @@ spec = do
     let after = [expr|
         case n1 of
           (CNil) ->
-            (CNil) <- pure (CNil)
-            pure 1
+            do
+              (CNil) <- pure (CNil)
+              pure 1
           (CNode a2) ->
-            (CNode a3) <- pure (CNode a2)
-            pure 4
+            do
+              (CNode a3) <- pure (CNode a2)
+              pure 4
       |]
     constantPropagation before `sameAs` after
 
@@ -144,11 +147,12 @@ spec = do
     let after = [expr|
         case n1 of
           #default ->
-            pure ()
-            pure 1
+            do
+              pure 1
           (CNode a2) ->
-            (CNode a3) <- pure (CNode a2)
-            pure 4
+            do
+              (CNode a3) <- pure (CNode a2)
+              pure 4
       |]
     constantPropagation before `sameAs` after
 

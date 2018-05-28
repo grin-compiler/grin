@@ -31,10 +31,10 @@ constantPropagation e = ana builder (mempty, e) where
           altEnv cpat   = env `mappend` unify env (cpatToLPat cpat) val
       in case (known, matchingAlts, defaultAlts) of
         -- known scutinee, specific pattern
-        (True, [Alt cpat body], _)        -> (env,) <$> EBindF (SReturn constVal) (cpatToLPat cpat) body
+        (True, [Alt cpat body], _)        -> (env,) <$> SBlockF (EBind (SReturn constVal) (cpatToLPat cpat) body)
 
         -- known scutinee, default pattern
-        (True, _, [Alt DefaultPat body])  -> (env,) <$> EBindF (SReturn Unit) Unit body
+        (True, _, [Alt DefaultPat body])  -> (env,) <$> SBlockF body
 
         -- unknown scutinee
         -- HINT: in each alternative set val value like it was matched
