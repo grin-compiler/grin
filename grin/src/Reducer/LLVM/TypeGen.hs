@@ -12,6 +12,7 @@ import qualified Data.Set as Set
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.List as List
+import qualified Data.Foldable
 
 import Control.Monad.State
 import Lens.Micro.Platform
@@ -90,8 +91,12 @@ taggedUnion ns = TaggedUnion (tuLLVMType tub) tuMapping where
                                ]
               }
 
+isCompatibleTaggedUnion :: TaggedUnion -> TaggedUnion -> Bool
+isCompatibleTaggedUnion (TaggedUnion tuLLVMTypeA tuMappingA) (TaggedUnion tuLLVMTypeB tuMappingB)
+  = tuLLVMTypeA == tuLLVMTypeB && Data.Foldable.and (Map.intersectionWith (==) tuMappingA tuMappingB)
+
 copyTaggedUnion :: Operand -> TaggedUnion -> TaggedUnion -> CG Operand
-copyTaggedUnion srcVal srcTU dstTU | srcTU == dstTU = pure srcVal
+copyTaggedUnion srcVal srcTU dstTU | isCompatibleTaggedUnion srcTU dstTU = pure srcVal
 copyTaggedUnion srcVal srcTU dstTU = do
   let -- calculate mapping
       mapping :: [(TUIndex, TUIndex)] -- src dst
