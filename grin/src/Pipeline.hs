@@ -405,7 +405,14 @@ optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> PipelineM ()
 optimizeWith o e ps = loop
   where
     loop = do
-      effs <- mapM pipelineStep ps
+      -- Run every step and on changes run HPT
+      effs <- forM ps $ \p -> do
+        eff <- pipelineStep p
+        when (eff == ExpChanged) $ void $ do
+          pipelineStep $ HPT CompileHPT
+          pipelineStep $ HPT RunHPTPure
+        pure eff
+      -- Run loop again on change
       when (any (match _ExpChanged) effs)
         loop
 
@@ -424,8 +431,6 @@ optimize o e = fmap fst $ flip runStateT start $ flip runReaderT o $ do
     concatMap
       (\t ->
         [ T t
-        , HPT CompileHPT
-        , HPT RunHPTPure
         , SaveGrin (show t)
         , T BindNormalisation
         , SaveGrin (show t)
