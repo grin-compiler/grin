@@ -327,7 +327,7 @@ saveGrin fn = do
   n <- use psTransStep
   e <- use psExp
   outputDir <- view poOutputDir
-  let fname = (concat [show n,".",fn])
+  let fname = printf "%03d.%s" n fn
   let content = show $ plain $ pretty e
   liftIO $ do
     createDirectoryIfMissing True outputDir
@@ -339,7 +339,7 @@ saveLLVM fname' = do
   n <- use psTransStep
   Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
-  let fname = o </> concat [show n,".", fname']
+  let fname = o </> printf "%03d.%s" n fname'
       code = CGLLVM.codeGen typeEnv e
       llName = printf "%s.ll" fname
       sName = printf "%s.s" fname
@@ -410,9 +410,11 @@ optimizeWith o e ps = loop
         eff <- pipelineStep p
         when (eff == ExpChanged) $ void $ do
           pipelineStep $ T DeadProcedureElimination
+          psTransStep %= pred
           pipelineStep $ HPT CompileHPT
           pipelineStep $ HPT RunHPTPure
           pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
+        unless (eff == ExpChanged) $ psTransStep %= pred
         pure eff
       -- Run loop again on change
       when (any (match _ExpChanged) effs)
