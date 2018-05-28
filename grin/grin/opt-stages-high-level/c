@@ -1,5 +1,5 @@
-SIMPLE="2.simple"
-OPT="11.opt"
+SIMPLE="002.simple"
+OPT="011.opt"
 
 llc-5.0 -O3 -relocation-model=pic -filetype=obj ${SIMPLE}.ll
 gcc -O3 test.c ${SIMPLE}.o -s -o slow
