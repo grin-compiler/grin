@@ -81,6 +81,7 @@ spec = do
           [ Pass [HPT CompileHPT, HPT RunHPTPure]
           , T BindNormalisation
           , T ConstantPropagation
+          , T BindNormalisation
           , T CommonSubExpressionElimination
           , T CopyPropagation
           , T DeadVariableElimination
