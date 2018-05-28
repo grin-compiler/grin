@@ -73,12 +73,6 @@ spec = do
       |]
     snd (caseHoisting (inferTypeEnv before, before)) `sameAs` after
 
-{-
-  TODO:
-    - default pat
-    - skip code duplication
--}
-
   it "default pattern" $ do
     let before = [prog|
           grinMain =
