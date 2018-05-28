@@ -59,6 +59,8 @@ import Data.Set
 import System.FilePath
 import Control.DeepSeq
 import Debug.Trace
+import Lens.Micro
+import Data.List
 
 
 
@@ -198,6 +200,14 @@ data PipelineEff
   | ExpChanged
   deriving (Eq, Show)
 
+_None :: Traversal' PipelineEff ()
+_None f None = const None <$> f ()
+_None _ rest = pure rest
+
+_ExpChanged :: Traversal' PipelineEff ()
+_ExpChanged f ExpChanged = const ExpChanged <$> f ()
+_ExpChanged _ rest       = pure rest
+
 pipelineStep :: Pipeline -> PipelineM PipelineEff
 pipelineStep p = do
   case p of
@@ -241,7 +251,7 @@ printHPTCode :: PipelineM ()
 printHPTCode = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
-        putStrLn . show . HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
+        print . HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
         putStrLn $ printf "memory size    %d" $ HPT.hptMemoryCounter a
         putStrLn $ printf "register count %d" $ HPT.hptRegisterCounter a
         putStrLn $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
@@ -250,7 +260,7 @@ printHPTCode = do
 printHPTResult :: PipelineM ()
 printHPTResult = do
   Just result <- use psHPTResult
-  liftIO $ putStrLn . show . pretty $ result
+  liftIO $ print . pretty $ result
 
 runHPTPure :: PipelineM ()
 runHPTPure = do
@@ -263,7 +273,7 @@ runHPTPure = do
 printTypeEnv :: PipelineM ()
 printTypeEnv = do
   Just typeEnv <- use psTypeEnv
-  liftIO $ putStrLn . show . pretty $ typeEnv
+  liftIO $ print . pretty $ typeEnv
 
 preconditionCheck :: Transformation -> PipelineM ()
 preconditionCheck t = do
@@ -297,7 +307,7 @@ pureEval = do
 printGrinM :: (Doc -> Doc) -> PipelineM ()
 printGrinM color = do
   e <- use psExp
-  liftIO . putStrLn . show . color $ pretty e
+  liftIO . print . color $ pretty e
 
 jitLLVM :: PipelineM ()
 jitLLVM = do
@@ -344,7 +354,7 @@ saveLLVM fname' = do
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do
   e <- use psExp
-  liftIO . putStrLn . show $ pretty (t e)
+  liftIO . print $ pretty (t e)
 
 statistics :: PipelineM ()
 statistics = do
@@ -356,8 +366,8 @@ lintGrin = do
   exp <- use psExp
   Just typeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint typeEnv exp
-  when (Map.size errorMap > 0 || True) $ do
-    liftIO . putStrLn . show $ prettyLintExp lintExp
+  when (Map.size errorMap > 0 || True) $
+    liftIO . print $ prettyLintExp lintExp
 
 check :: PipelineM ()
 check = do
@@ -381,6 +391,74 @@ pipeline o e ps = do
     start = PState
       { _psExp        = e
       , _psTransStep  = 0
+      , _psHPTProgram = Nothing
+      , _psHPTResult  = Nothing
+      , _psTypeEnv    = Nothing
+      }
+
+-- | Run the pipeline with the given set of transformations, till
+-- it reaches a fixpoint where none of the pipeline transformations
+-- changes the expression itself, the order of the transformations
+-- are defined in the pipeline list. After all round the TypeEnv
+-- is restored
+optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> PipelineM ()
+optimizeWith o e ps = loop
+  where
+    loop = do
+      effs <- mapM pipelineStep ps
+      when (any (match _ExpChanged) effs)
+        loop
+
+optimize :: PipelineOpts -> Exp -> IO Exp
+optimize o e = fmap fst $ flip runStateT start $ flip runReaderT o $ do
+  mapM_ pipelineStep
+    [ HPT CompileHPT
+    , HPT PrintHPTCode
+    , PrintGrin ondullblack
+    , HPT RunHPTPure
+    , HPT PrintHPTResult
+    , SaveLLVM "high-level-code"
+    ]
+
+  optimizeWith o e $
+    concatMap
+      (\t ->
+        [ T t
+        , HPT CompileHPT
+        , HPT RunHPTPure
+        , SaveGrin (show t)
+        , T BindNormalisation
+        , SaveGrin (show t)
+        ])
+      [ EvaluatedCaseElimination
+      , TrivialCaseElimination
+      , SparseCaseOptimisation
+      , UpdateElimination
+      , CopyPropagation
+      , ConstantPropagation
+      , DeadProcedureElimination
+      , DeadVariableElimination
+      , DeadParameterElimination
+      , CommonSubExpressionElimination
+      , CaseCopyPropagation
+      , CaseHoisting
+      , GeneralizedUnboxing
+      , ArityRaising
+--      , InlineEval
+--      , InlineApply
+--      , LateInlining
+      ]
+
+  mapM_ pipelineStep
+    [ SaveLLVM "high-level-opt-code"
+    , JITLLVM -- TODO: Remove this.
+    ]
+
+  use psExp
+  where
+    start = PState
+      { _psExp = e
+      , _psTransStep = 0
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
       , _psTypeEnv    = Nothing

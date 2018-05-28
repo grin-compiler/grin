@@ -91,130 +91,13 @@ options = execParser $ info
             , value "./output"
             ])
 
-defaultPipeline :: Options -> Options
-defaultPipeline = \case
-  Options files [] output ->
-    Options
-      files
-      [ HPT CompileHPT
-      , HPT PrintHPTCode
-      , PrintGrin ondullblack
-      , HPT RunHPTPure
-      , HPT PrintHPTResult
-      , SaveLLVM "high-level-code"
-      , JITLLVM
-
-      , T UpdateElimination
-      , SaveGrin "UpdateElimination"
-      , T BindNormalisation
-      , SaveGrin "UpdateElimination"
-      , PrintGrin ondullblack
-
-      , T SparseCaseOptimisation
-      , SaveGrin "SparseCaseOptimisation"
-      , T BindNormalisation
-      , SaveGrin "SparseCaseOptimisation"
-      , PrintGrin ondullcyan
-
-      , T EvaluatedCaseElimination
-      , SaveGrin "EvaluatedCaseElimination"
-      , T BindNormalisation
-      , SaveGrin "EvaluatedCaseElimination"
-      , PrintGrin ondullblack
-
-      , T TrivialCaseElimination
-      , SaveGrin "TrivialCaseElimination"
-      , T BindNormalisation
-      , SaveGrin "TrivialCaseElimination"
-      , PrintGrin ondullcyan
-
-      , T CopyPropagation
-      , SaveGrin "CopyPropagation"
-      , T BindNormalisation
-      , SaveGrin "CopyPropagation"
-      , PrintGrin ondullblack
-
-      , T ConstantPropagation
-      , SaveGrin "ConstantPropagation"
-      , T BindNormalisation
-      , SaveGrin "ConstantPropagation"
-      , PrintGrin ondullblack
-
-      , T DeadProcedureElimination
-      , SaveGrin "DeadProcedureElimination"
-      , T BindNormalisation
-      , SaveGrin "DeadProcedureElimination"
-      , PrintGrin ondullblack
-
-      , T DeadVariableElimination
-      , SaveGrin "DeadVariableElimination"
-      , T BindNormalisation
-      , SaveGrin "DeadVariableElimination"
-      , PrintGrin ondullblack
-
-      , T CommonSubExpressionElimination
-      , SaveGrin "CommonSubExpressionElimination"
-      , T BindNormalisation
-      , SaveGrin "CommonSubExpressionElimination"
-      , PrintGrin ondullblack
-
-      , T CaseCopyPropagation
-      , SaveGrin "CaseCopyPropagation"
-      , T BindNormalisation
-      , SaveGrin "CaseCopyPropagation"
-      , PrintGrin ondullblack
-
-      , T GeneralizedUnboxing
-      , SaveGrin "GeneralizedUnboxing"
-      , T BindNormalisation
-      , SaveGrin "GeneralizedUnboxing"
-      , PrintGrin ondullblack
-
-      , T ArityRaising
-      , SaveGrin "ArityRaising"
-      , T BindNormalisation
-      , SaveGrin "ArityRaising"
-      , PrintGrin ondullblack
-
-{- TODO: Enable simplificaiton transformations in the pipeline.
-      , T Vectorisation
-      , SaveGrin "Vectorisation"
-      , T BindNormalisation
-      , SaveGrin "Vectorisation"
-      , PrintGrin ondullblack
-      , T CaseSimplification
-      , SaveGrin "CaseSimplification"
-      , T BindNormalisation
-      , SaveGrin "CaseSimplification"
-      , PrintGrin ondullcyan
-      , T SplitFetch
-      , SaveGrin "SplitFetch"
-      , T BindNormalisation
-      , SaveGrin "SplitFetch"
-      , PrintGrin ondullblack
-      , T RightHoistFetch
-      , SaveGrin "RightHoistFetch"
-      , T BindNormalisation
-      , SaveGrin "RightHoistFetch"
-      , PrintGrin ondullcyan
-      , T RegisterIntroduction
-      , SaveGrin "RegisterIntroduction"
-      , T BindNormalisation
-      , SaveGrin "RegisterIntroduction"
-      , PrintGrin ondullblack
-      , SaveLLVM "low-level-code"
--}
-      , SaveLLVM "high-level-opt-code"
-      , JITLLVM
-      ]
-      output
-  opts -> opts
-
 main :: IO ()
 main = do
-  Options files steps outputDir <- defaultPipeline <$> options
+  Options files steps outputDir <- options
   forM_ files $ \fname -> do
     content <- readFile fname
     let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
         opts = PipelineOpts { _poOutputDir = outputDir }
-    pipeline opts program steps
+    case steps of
+      [] -> void $ optimize opts program
+      _  -> void $ pipeline opts program steps
