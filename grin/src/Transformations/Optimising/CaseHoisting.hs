@@ -2,6 +2,7 @@
 module Transformations.Optimising.CaseHoisting where
 
 import Control.Monad
+import Control.Comonad
 import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
@@ -46,28 +47,33 @@ getReturnTagSet typeEnv = cata folder where
 
 
 caseHoisting :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-caseHoisting (typeEnv, exp) = (typeEnv, evalNameM $ anaM builder exp) where
+caseHoisting (typeEnv, exp) = (typeEnv, fst . evalNameM $ histoM folder exp) where
 
-  builder :: Exp -> NameM (ExpF Exp)
-  builder exp = case exp of
+  folder :: ExpF (Cofree ExpF (Exp, Set Name)) -> NameM (Exp, Set Name)
+  folder exp = case exp of
     -- middle case
-    EBind    (ECase val           alts1)  (Var lpatName)
-      (EBind (ECase (Var varName) alts2)  lpat            rightExp)
+    EBindF ((ECase val alts1, leftUse) :< _)  (Var lpatName)
+      (_ :< (EBindF ((ECase (Var varName) alts2, caseUse) :< _) lpat ((rightExp, rightUse) :< _)))
+        | lpatName == varName
+        , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
+        , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
+        , Set.notMember varName rightUse -- allow only linear variables ; that are not used later
+        -> do
+          hoistedAlts <- mapM (hoistAlts lpatName) matchList
+          pure (EBind (ECase val hoistedAlts) lpat rightExp, Set.delete varName $ mconcat [leftUse, caseUse, rightUse])
+
+    -- last case
+    EBindF ((ECase val alts1, leftUse) :< _) (Var lpatName) ((ECase (Var varName) alts2, rightUse) :< _)
         | lpatName == varName
         , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
         , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
         -> do
           hoistedAlts <- mapM (hoistAlts lpatName) matchList
-          pure $ EBindF (ECase val hoistedAlts) lpat rightExp
+          pure (ECase val hoistedAlts, Set.delete varName $ mconcat [leftUse, rightUse])
 
-    -- last case
-    EBind (ECase val alts1) (Var lpatName) (ECase (Var varName) alts2)
-        | lpatName == varName
-        , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
-        , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
-        -> ECaseF val <$> mapM (hoistAlts lpatName) matchList
-
-    _ -> pure (project exp)
+    _ -> let useSub = Data.Foldable.fold (snd . extract <$> exp)
+             useExp = foldNameUseExpF Set.singleton exp
+         in pure (embed (fst . extract <$> exp), mconcat [useSub, useExp])
 
 hoistAlts :: Name -> (Alt, Alt) -> NameM Alt
 hoistAlts lpatName (Alt cpat1 alt1, Alt cpat2 alt2) = do
@@ -111,4 +117,7 @@ matchAlt tagMap (ts, alt1) (matchList, defaults, coveredTags)
 {-
   TODO:
     - add cloned variables to TypeEnv
+    done - ignore non linear scrutinee
+      IDEA:
+        this could be supported if product type was available in GRIN then the second case could return from the hoisted case with a pair of the original two case results
 -}
