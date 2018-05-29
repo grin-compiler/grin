@@ -73,3 +73,28 @@ spec = do
           funB 2
       |]
     deadProcedureElimination before `sameAs` after
+
+  it "dead clique" $ do
+    let before = [prog|
+        grinMain =
+          funA 1
+
+        funA b = funB b
+        funB c = pure ()
+
+        deadFunA d =
+          v1 <- funA d
+          deadFunB d
+
+        deadFunB e =
+          v2 <- funA d
+          deadFunA e
+      |]
+    let after = [prog|
+        grinMain =
+          funA 1
+
+        funA b = funB b
+        funB c = pure ()
+      |]
+    deadProcedureElimination before `sameAs` after
