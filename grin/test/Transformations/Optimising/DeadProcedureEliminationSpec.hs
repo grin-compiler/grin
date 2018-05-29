@@ -57,3 +57,19 @@ spec = do
         funB c = pure ()
       |]
     deadProcedureElimination before `sameAs` after
+
+  it "ignore unknown function" $ do
+    let before = [prog|
+        grinMain =
+          funA 1
+          funB 2
+
+        deadFunA d = pure d
+        deadFunB e = deadFunA e
+      |]
+    let after = [prog|
+        grinMain =
+          funA 1
+          funB 2
+      |]
+    deadProcedureElimination before `sameAs` after

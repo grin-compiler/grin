@@ -15,10 +15,8 @@ deadProcedureElimination (Program defs) = Program [def | def@(Def name _ _) <- d
   defMap :: Map Name Def
   defMap = Map.fromList [(name, def) | def@(Def name _ _) <- defs]
 
-  lookupDef :: Name -> Def
-  lookupDef name = case Map.lookup name defMap of
-    Nothing -> error $ printf "unknown function: %s" name
-    Just a  -> a
+  lookupDef :: Name -> Maybe Def
+  lookupDef name = Map.lookup name defMap
 
   liveDefs :: Set Name
   liveDefs = fst $ until (\(live, visited) -> live == visited) visit (Set.singleton "grinMain", mempty)
@@ -26,7 +24,7 @@ deadProcedureElimination (Program defs) = Program [def | def@(Def name _ _) <- d
   visit :: (Set Name, Set Name) -> (Set Name, Set Name)
   visit (live, visited) = (mappend live seen, mappend visited toVisit) where
     toVisit = Set.difference live visited
-    seen    = foldMap (cata collect . lookupDef) toVisit
+    seen    = foldMap (maybe mempty (cata collect) . lookupDef) toVisit
 
   collect :: ExpF (Set Name) -> Set Name
   collect = \case
