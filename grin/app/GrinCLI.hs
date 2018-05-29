@@ -99,5 +99,21 @@ main = do
     let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
         opts = PipelineOpts { _poOutputDir = outputDir }
     case steps of
-      [] -> void $ optimize opts program
+      [] -> void $ optimize opts program prePipeline postPipeline
       _  -> void $ pipeline opts program steps
+
+prePipeline :: [Pipeline]
+prePipeline =
+  [ HPT CompileHPT
+  , HPT PrintHPTCode
+  , PrintGrin ondullblack
+  , HPT RunHPTPure
+  , HPT PrintHPTResult
+  , SaveLLVM "high-level-code"
+  ]
+
+postPipeline :: [Pipeline]
+postPipeline =
+  [ SaveLLVM "high-level-opt-code"
+  , JITLLVM -- TODO: Remove this.
+  ]

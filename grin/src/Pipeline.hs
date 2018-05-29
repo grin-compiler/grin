@@ -427,17 +427,14 @@ optimizeWith o e ps = loop
       when (any (match _ExpChanged) effs)
         loop
 
-optimize :: PipelineOpts -> Exp -> IO Exp
-optimize o e = fmap fst $ flip runStateT start $ flip runReaderT o $ do
+optimize :: PipelineOpts -> Exp -> [Pipeline] -> [Pipeline] -> IO Exp
+optimize o e pre post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
+  mapM_ pipelineStep pre
+
   mapM_ pipelineStep
     [ HPT CompileHPT
-    , HPT PrintHPTCode
-    , PrintGrin ondullblack
     , HPT RunHPTPure
-    , HPT PrintHPTResult
-    , SaveLLVM "high-level-code"
     ]
-
   optimizeWith o e $ fmap T
     [ BindNormalisation
     , EvaluatedCaseElimination
@@ -458,11 +455,7 @@ optimize o e = fmap fst $ flip runStateT start $ flip runReaderT o $ do
     , InlineApply
     , LateInlining
     ]
-
-  mapM_ pipelineStep
-    [ SaveLLVM "high-level-opt-code"
-    , JITLLVM -- TODO: Remove this.
-    ]
+  mapM_ pipelineStep post
 
   use psExp
   where

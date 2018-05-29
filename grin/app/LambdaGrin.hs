@@ -40,8 +40,17 @@ cg_main opts = do
     putStrLn "\n* Lambda"
     printLambda program
     let lambdaGrin = codegenGrin program
-    pipeline pipelineOpts lambdaGrin [SaveGrin "from-lambda"]
     void $ optimize pipelineOpts lambdaGrin
+      -- pre
+      [ SaveGrin "from-lambda"
+      , PrintGrin ondullblack
+      ]
+      -- post
+      [ SaveGrin "opt"
+      , PrintGrin ondullblack
+      , SaveLLVM "opt"
+      , JITLLVM
+      ]
 
 main :: IO ()
 main = do opts <- getOpts
