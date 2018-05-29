@@ -40,7 +40,8 @@ cg_main opts = do
     putStrLn "\n* Lambda"
     printLambda program
     let lambdaGrin = codegenGrin program
-    pipeline pipelineOpts lambdaGrin lambdaPipeLine
+    pipeline pipelineOpts lambdaGrin [SaveGrin "from-lambda"]
+    void $ optimize pipelineOpts lambdaGrin
 
 main :: IO ()
 main = do opts <- getOpts
@@ -52,62 +53,3 @@ pipelineOpts :: PipelineOpts
 pipelineOpts = PipelineOpts
   { _poOutputDir = "./lambda/"
   }
-
-simplifyingPipeline :: [Pipeline]
-simplifyingPipeline =
-  [ T CaseSimplification
---  , T SplitFetch -- has an issue
-  , T RightHoistFetch
-  ]
-
-optimisingPipeline :: [Pipeline]
-optimisingPipeline = concat $ replicate 10
-  [ T CaseCopyPropagation
-  , T CommonSubExpressionElimination
-  , T ConstantPropagation
-  , T CopyPropagation
-  , T EvaluatedCaseElimination
-  , T TrivialCaseElimination
-  , T UpdateElimination
-  , T ArityRaising -- has an issue ; always trigger -> unfolds the same expression multiple times
---  , T GeneralizedUnboxing -- has an issue ; mixes up simple type and node types
-  , T SparseCaseOptimisation -- has an issue ; workaround ; llvm codegen validator should be smarter
-
---  , T Inlining -- integrate to the pipeline
-
-  , T BindNormalisation
-  , T DeadProcedureElimination
-  , T DeadVariableElimination -- has an issue: removed effectful code, like print_int ; idris-grin codegen should treat unboxed units as grin unit value
-  , T BindNormalisation
-  ]
-
-miscPipeline :: [Pipeline]
-miscPipeline =
-  [ T ConstantFolding
-  ]
-
-
-codegenPipeline :: [Pipeline]
-codegenPipeline =
-  [ PrintGrin ondullblack
-  , SaveGrin "high-level-opt-code.grin"
-  , SaveLLVM "high-level-opt-code"
-  , PureEval
-  , JITLLVM
-  ]
-
-lambdaPipeLine :: [Pipeline]
-lambdaPipeLine =
-  [ SaveGrin "from-lambda"
-  , T DeadProcedureElimination
-  , PrintGrin ondullblack
-  , HPT CompileHPT
-  , HPT PrintHPTCode
-  , HPT RunHPTPure
-  , HPT PrintHPTResult
-  , SaveLLVM "high-level-code"
-  , SaveGrin "high-level-code.grin"
-  ]
-  ++ optimisingPipeline
-  ++ codegenPipeline
-
