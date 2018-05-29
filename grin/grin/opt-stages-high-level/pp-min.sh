@@ -1,3 +1,4 @@
+reset
 stack exec -- grin -o . -p \
   --bn --cnp --hpt \
   --save-llvm simple --llvm \
