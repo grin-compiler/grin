@@ -68,11 +68,20 @@ inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM 
 
 -}
 
+lateInlining :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+lateInlining = inlining (Set.fromList ["upto"]) -- TODO: use proper selection
+
 inlineEval :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-inlineEval = inlining (Set.singleton "eval")
+inlineEval = cleanup nameSet . inlining nameSet where
+  nameSet = Set.singleton "eval"
 
 inlineApply :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-inlineApply = inlining (Set.singleton "apply")
+inlineApply = cleanup nameSet . inlining nameSet where
+  nameSet = Set.singleton "apply"
 
-lateInlining :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-lateInlining = inlining (Set.singleton "upto") -- TODO: use proper selection
+inlineBuiltins :: (TypeEnv, Exp) -> (TypeEnv, Exp)
+inlineBuiltins = cleanup nameSet . inlining nameSet where
+  nameSet = Set.fromList ["int_gt", "int_add", "int_print"] -- TODO: use proper selection
+
+cleanup :: Set Name -> (TypeEnv, Program) -> (TypeEnv, Program)
+cleanup nameSet (typeEnv, Program defs) = (typeEnv, Program [def | def@(Def name _ _) <- defs, Set.notMember name nameSet])
