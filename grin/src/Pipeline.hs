@@ -17,6 +17,7 @@ import TypeCheck
 import Optimizations
 import qualified Statistics
 import Pretty()
+import Transformations.CountVariableUse
 import Transformations.AssignStoreIDs
 import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
@@ -246,6 +247,12 @@ compileHPT = do
   grin <- use psExp
   let hptProgram = HPT.codeGen grin
   psHPTProgram .= Just hptProgram
+  let nonlinearSet  = nonlinearVariables grin
+      countMap      = countVariableUse grin
+  --pPrint countMap
+  --pPrint nonlinearSet
+  liftIO $ putStrLn "non-linear variables:"
+  liftIO $ print . pretty $ nonlinearSet
 
 printHPTCode :: PipelineM ()
 printHPTCode = do
