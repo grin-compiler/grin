@@ -2,7 +2,6 @@
 module Pipeline where
 
 import Control.Monad
-import Data.List (intersperse)
 import Data.Maybe (maybe, fromJust, fromMaybe)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
@@ -188,6 +187,7 @@ type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
     { _psExp        :: Exp
     , _psTransStep  :: Int
+    , _psSaveIdx    :: Int
     , _psHPTProgram :: Maybe HPT.HPTProgram
     , _psHPTResult  :: Maybe HPT.HPTResult
     , _psTypeEnv    :: Maybe TypeEnv
@@ -331,7 +331,8 @@ printAST = do
 
 saveGrin :: FilePath -> PipelineM ()
 saveGrin fn = do
-  n <- use psTransStep
+  psSaveIdx %= succ
+  n <- use psSaveIdx
   e <- use psExp
   outputDir <- view poOutputDir
   let fname = printf "%03d.%s" n fn
@@ -343,7 +344,8 @@ saveGrin fn = do
 saveLLVM :: FilePath -> PipelineM ()
 saveLLVM fname' = do
   e <- use psExp
-  n <- use psTransStep
+  psSaveIdx %= succ
+  n <- use psSaveIdx
   Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
   let fname = o </> printf "%03d.%s" n fname'
@@ -398,6 +400,7 @@ pipeline o e ps = do
     start = PState
       { _psExp        = e
       , _psTransStep  = 0
+      , _psSaveIdx    = 0
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
       , _psTypeEnv    = Nothing
@@ -417,11 +420,9 @@ optimizeWith o e ps = loop
         eff <- pipelineStep p
         when (eff == ExpChanged) $ void $ do
           pipelineStep $ T DeadProcedureElimination
-          psTransStep %= pred
           pipelineStep $ HPT CompileHPT
           pipelineStep $ HPT RunHPTPure
           pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
-        unless (eff == ExpChanged) $ psTransStep %= pred
         pure eff
       -- Run loop again on change
       when (any (match _ExpChanged) effs)
@@ -460,8 +461,9 @@ optimize o e pre post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
   use psExp
   where
     start = PState
-      { _psExp = e
-      , _psTransStep = 0
+      { _psExp        = e
+      , _psTransStep  = 0
+      , _psSaveIdx    = 0
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
       , _psTypeEnv    = Nothing
