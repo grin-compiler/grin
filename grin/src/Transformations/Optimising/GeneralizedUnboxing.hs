@@ -64,6 +64,13 @@ singleton = \case
   [a] -> Just a
   _   -> Nothing
 
+transitive :: (Ord a) => (a -> Set a) -> Set a -> Set a
+transitive f res0 =
+  let res1 = res0 `Set.union` (Set.unions $ map f $ Set.toList res0)
+  in if res1 == res0
+      then res0
+      else transitive f res1
+
 -- TODO: Remove the fix combinator, explore the function
 -- dependency graph and rewrite disqualify steps based on that.
 functionsToUnbox :: (TypeEnv, Exp) -> [Name]
@@ -73,8 +80,14 @@ functionsToUnbox (te, Program defs) = Set.toList result where
   tailCallsMap :: Map Name [Name]
   tailCallsMap = Map.fromList $ mapMaybe (\e -> (,) (funName e) <$> tailCalls e) defs
 
-  nonCandidateTailCallMap = Map.withoutKeys tailCallsMap result0
-  candidateCalledByNonCandidate = (Set.fromList $ concat $ Map.elems nonCandidateTailCallMap) `Set.intersection` result0
+  tranisitiveTailCalls :: Map Name (Set Name)
+  tranisitiveTailCalls = Map.fromList $ map (\k -> (k, transitive inTailCalls (Set.singleton k))) $ Map.keys tailCallsMap
+    where
+      inTailCalls :: Name -> Set Name
+      inTailCalls n = maybe mempty Set.fromList $ Map.lookup n tailCallsMap
+
+  nonCandidateTailCallMap = Map.withoutKeys tranisitiveTailCalls result0
+  candidateCalledByNonCandidate = (Set.unions $ Map.elems nonCandidateTailCallMap) `Set.intersection` result0
   result = result0 `Set.difference` candidateCalledByNonCandidate
 
   result0 = Set.fromList $ step initial

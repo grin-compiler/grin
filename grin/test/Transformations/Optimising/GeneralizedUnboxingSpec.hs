@@ -276,8 +276,7 @@ spec = do
           x <- pure (CNat y)
           pure x
       |]
-    -- This one is suspicious: chaned tailcalls, and the type of the outside3 changes
-    functionsToUnbox (teBefore, before) `shouldBe` ["outside1"]
+    functionsToUnbox (teBefore, before) `shouldBe` []
 
   it "Tail call function 1" $ do
     let fun = [def|
