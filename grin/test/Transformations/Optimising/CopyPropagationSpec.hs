@@ -89,8 +89,7 @@ spec = do
       let after = [expr|
           a1 <- pure 1
           b1 <- pure 0
-          n1 <- pure (CNode a1 b1)
-          pure n1
+          pure (CNode a1 b1)
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
 

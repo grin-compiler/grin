@@ -54,5 +54,12 @@ copyPropagation e = hylo folder builder (mempty, e) where
   folder :: ExpF Exp -> Exp
   folder = \case
     -- right unit law
-    EBindF (SReturn val) lpat rightExp | val == lpat -> rightExp
+    EBindF leftExp lpat (SReturn val) | val == lpat -> leftExp
+
+    -- left unit law ; cleanup matching constants
+    EBindF (SReturn val) lpat rightExp
+      | val == lpat
+      , isConstant val
+      -> rightExp
+
     exp -> embed exp
