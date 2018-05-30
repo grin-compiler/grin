@@ -12,6 +12,7 @@ import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
+import qualified Data.Foldable
 
 import Control.Monad.State.Strict
 import Lens.Micro.Platform
@@ -76,10 +77,10 @@ evalInstruction = \case
       SimpleTypeExists ty -> do
         typeSet <- use $ register.ix (regIndex srcReg).simpleType
         pure $ Set.member ty typeSet
-      HasMoreThan tags -> do
+      NotIn tags -> do
         tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
         typeSet <- use $ register.ix (regIndex srcReg).simpleType
-        pure $ not (Set.null typeSet) || Set.isProperSubsetOf tags (Map.keysSet tagMap)
+        pure $ not (Set.null typeSet) || Data.Foldable.any (flip Set.notMember tags) (Map.keysSet tagMap)
     when satisfy $ mapM_ evalInstruction instructions
 
   Project {..} -> do

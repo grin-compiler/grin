@@ -86,7 +86,7 @@ prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
     NodeTypeExists tag  -> prettyTag mirm tag
     SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty)
-    HasMoreThan tags    -> text "has more than" <+> list (map (prettyTag mirm) $ Set.toList tags)
+    NotIn tags    -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
 
 prettyConstant :: Maybe IRMap -> Constant -> Doc
 prettyConstant mirm = \case
