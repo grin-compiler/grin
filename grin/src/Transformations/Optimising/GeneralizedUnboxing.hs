@@ -1,9 +1,11 @@
-{-# LANGUAGE LambdaCase, ViewPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 module Transformations.Optimising.GeneralizedUnboxing where
 
 import Text.Printf
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Maybe
 import Data.List
 import Data.Function
@@ -19,6 +21,7 @@ import Lens.Micro.Platform
 import Transformations.Util (anaM, apoM)
 import Control.Monad.Writer
 import Control.Arrow
+import Debug.Trace
 
 
 generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)
@@ -37,12 +40,14 @@ tailCalls = cata collect where
   collect = \case
     DefF _ _ result   -> result
     EBindF _ _ result -> result
-    ECaseF _ alts
-      | all isJust alts -> nub <$> mconcat alts
-      | otherwise       -> Nothing
+    ECaseF _ alts -> nonEmpty $ concat $ catMaybes alts
     AltF _ result -> result
     SAppF f _     -> Just [f]
     e -> Nothing
+
+nonEmpty :: [a] -> Maybe [a]
+nonEmpty [] = Nothing
+nonEmpty xs = Just xs
 
 doesReturnAKnownProduct :: TypeEnv -> Name -> Bool
 doesReturnAKnownProduct = isJust <$$> returnsAUniqueTag
@@ -62,13 +67,17 @@ singleton = \case
 -- TODO: Remove the fix combinator, explore the function
 -- dependency graph and rewrite disqualify steps based on that.
 functionsToUnbox :: (TypeEnv, Exp) -> [Name]
-functionsToUnbox (te, Program defs) = result where
+functionsToUnbox (te, Program defs) = Set.toList result where
   funName (Def n _ _) = n
 
   tailCallsMap :: Map Name [Name]
-  tailCallsMap = Map.fromList $ catMaybes $ map (\e -> (,) (funName e) <$> tailCalls e) $ defs
+  tailCallsMap = Map.fromList $ mapMaybe (\e -> (,) (funName e) <$> tailCalls e) defs
 
-  result = step initial
+  nonCandidateTailCallMap = Map.withoutKeys tailCallsMap result0
+  candidateCalledByNonCandidate = (Set.fromList $ concat $ Map.elems nonCandidateTailCallMap) `Set.intersection` result0
+  result = result0 `Set.difference` candidateCalledByNonCandidate
+
+  result0 = Set.fromList $ step initial
   initial = map funName $ filter (doesReturnAKnownProduct te . funName) defs
   disqualify candidates = filter
     (\candidate -> case Map.lookup candidate tailCallsMap of
@@ -182,10 +191,3 @@ transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM exp wher
       -> pure $ SAppF (name ++ "'") params
 
     rest -> pure $ project rest
-
--- Collect all the names that are introduced during the call transform
-collectNewNames :: [Name] -> Exp -> (Map Name Type)
-collectNewNames funs = para collect where
-  collect :: ExpF (Exp, Map Name Type) -> Map Name Type
-  collect = \case
-    _ -> mempty

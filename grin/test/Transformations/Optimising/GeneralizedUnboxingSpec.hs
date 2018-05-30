@@ -264,8 +264,8 @@ spec = do
 
         outside3 p1 =
           case p1 of
-            1 -> inside1 p1 p1 p1
-            2 -> outside2 p1
+            1 -> inside1 p1 p1 p1 -- :: CInt Int
+            2 -> outside2 p1      -- :: CNat Int
 
         outside2 p1 =
           pure ()
@@ -276,7 +276,8 @@ spec = do
           x <- pure (CNat y)
           pure x
       |]
-    functionsToUnbox (teBefore, before) `shouldBe` ["inside1", "outside2", "outside1"]
+    -- This one is suspicious: chaned tailcalls, and the type of the outside3 changes
+    functionsToUnbox (teBefore, before) `shouldBe` ["outside1"]
 
   it "Tail call function 1" $ do
     let fun = [def|
@@ -300,7 +301,7 @@ spec = do
       |]
     tailCalls fun `shouldBe` (Just ["tail1", "tail2"])
 
-  it "Non-tail call function 2" $ do
+  it "Partially tail call function 2" $ do
     let fun = [def|
         fun x =
           l <- store x
@@ -309,11 +310,11 @@ spec = do
               x <- prim_int_add 1 2
               y <- tail x
               pure y
-            1 ->
+            2 ->
               x <- prim_int_add 2 3
               tail x
       |]
-    tailCalls fun `shouldBe` Nothing
+    tailCalls fun `shouldBe` (Just ["tail"])
 
   it "Non-tail call function 1" $ do
     let fun = [def|
