@@ -177,9 +177,9 @@ transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM exp wher
 
 
     -- Tailcalls do not need a transform
-    EBind lhs pat (SApp name params)
-      | name `elem` toUnbox -> pure $
-          EBindF lhs pat (SApp (name ++ "'") params)
+    SApp name params
+      | name `elem` toUnbox
+      -> pure $ SAppF (name ++ "'") params
 
     rest -> pure $ project rest
 

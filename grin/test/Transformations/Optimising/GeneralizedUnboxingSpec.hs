@@ -32,6 +32,11 @@ spec = do
                     [(Tag C "Int", Vector.fromList [T_Int64])
                     ])
                   , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2B", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
               , ("foo3", (T_NodeSet
                   (Map.fromList
                     [(Tag C "Int", Vector.fromList [T_Int64])
@@ -57,6 +62,11 @@ spec = do
           c1 <- prim_int_add a1 a2
           foo c1 c1 a3
 
+        foo2B a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          do
+            foo c1 c1 a3
+
         foo3 a1 a2 a3 =
           c1 <- prim_int_add a1 a2
           -- In this case the vectorisation did not happen.
@@ -77,6 +87,7 @@ spec = do
               [ ("test", (int64_t, Vector.fromList [int64_t]))
               , ("foo'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
               , ("foo2'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2B'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
               , ("foo3'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
               , ("foo4'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
               , ("bar", (int64_t, Vector.fromList []))
@@ -98,6 +109,11 @@ spec = do
         foo2' a1 a2 a3 =
           c1 <- prim_int_add a1 a2
           foo' c1 c1 a3
+
+        foo2B' a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          do
+            foo' c1 c1 a3
 
         foo3' a1 a2 a3 =
           c1 <- prim_int_add a1 a2
