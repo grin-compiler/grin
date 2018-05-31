@@ -38,7 +38,7 @@ kw w = lexeme $ string w
 op w = L.symbol sc' w
 
 var :: Parser String
-var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_")) >>= \x -> case Set.member x keywords of
+var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_.:!@{}$-")) >>= \x -> case Set.member x keywords of
   True -> fail $ "keyword: " ++ x
   False -> pure x
 
@@ -54,7 +54,7 @@ signedFloat = L.signed sc' float
 -- lambda syntax
 
 def :: Parser Def
-def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (L.indentGuard sc GT pos1 >>= expr)
+def = Def <$> try (L.indentGuard sc EQ pos1 *> primNameOrDefName) <*> many var <* op "=" <*> (L.indentGuard sc GT pos1 >>= expr)
 
 varBind :: Pos -> Parser (Name, Exp)
 varBind i = (,) <$> try (L.indentGuard sc EQ i *> var) <* op "=" <*> (L.indentGuard sc GT i >>= expr)
