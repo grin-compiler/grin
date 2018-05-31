@@ -178,6 +178,8 @@ optimising transformations:
   done - late inlining
   done - case copy propagation
   done - generalised unboxing
+  done - dead parameter elimination
+  done - case hoisting
 
  complex:
   done - arity raising
@@ -185,8 +187,6 @@ optimising transformations:
 ============================
 
  remaining (medium):
-  - dead parameter elimination
-  - case hoisting
   - whnf update elimination ; requires sharing analysis
 
 IDEA:
