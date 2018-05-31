@@ -318,7 +318,7 @@ spec = do
           x <- pure (CNat y)
           pure x
       |]
-    functionsToUnbox (teBefore, before) `shouldBe` []
+    functionsToUnbox (teBefore, before) `shouldBe` mempty
 
   it "Tail call function 1" $ do
     let fun = [def|
