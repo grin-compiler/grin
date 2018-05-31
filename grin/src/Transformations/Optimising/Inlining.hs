@@ -1,5 +1,8 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
 module Transformations.Optimising.Inlining where
+
+import Debug.Trace
+import Text.Printf
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -24,8 +27,24 @@ instance Monoid Stat where
   mempty = Stat 0 mempty
   mappend (Stat i1 m1) (Stat i2 m2) = Stat (i1 + i2) (Map.unionWith (+) m1 m2)
 
-defStatistics :: Exp -> Stat
-defStatistics = cata folder where
+selectInlineSet :: Program -> Set Name
+selectInlineSet prog@(Program defs) = inlineSet where
+
+  (bindList, callList) = unzip
+    [ (Map.singleton name bindCount, functionCallCount)
+    | def@(Def name _ _) <- defs
+    , let Stat{..} = cata folder def
+    ]
+
+  bindSequenceLimit = 100
+
+  -- TODO: limit inline overhead using CALL COUNT * SIZE < LIMIT
+
+  (validCallSet, invalidCallSet) = Map.partition (== 1) $ Map.unionsWith (+) callList
+  bindSet   = Map.keysSet . Map.filter (< bindSequenceLimit) $ mconcat bindList
+  inlineSet = Map.keysSet validCallSet --mconcat [bindSet, Map.keysSet validCallSet] Set.\\ (Map.keysSet invalidCallSet)
+
+
   folder :: ExpF Stat -> Stat
   folder = \case
     EBindF left _ right -> mconcat [left, right, Stat 1 mempty]
@@ -69,7 +88,8 @@ inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM 
 -}
 
 lateInlining :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-lateInlining = inlining (Set.fromList ["upto"]) -- TODO: use proper selection
+lateInlining (typeEnv, prog) = cleanup nameSet $ inlining nameSet (typeEnv, prog) where
+  nameSet = selectInlineSet prog
 
 inlineEval :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 inlineEval = cleanup nameSet . inlining nameSet where
@@ -81,7 +101,7 @@ inlineApply = cleanup nameSet . inlining nameSet where
 
 inlineBuiltins :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 inlineBuiltins = cleanup nameSet . inlining nameSet where
-  nameSet = Set.fromList ["int_gt", "int_add", "int_print"] -- TODO: use proper selection
+  nameSet = Set.fromList ["_rts_int_gt", "_rts_int_add", "_rts_int_print"] -- TODO: use proper selection
 
 cleanup :: Set Name -> (TypeEnv, Program) -> (TypeEnv, Program)
 cleanup nameSet (typeEnv, Program defs) = (typeEnv, Program [def | def@(Def name _ _) <- defs, Set.notMember name nameSet])
