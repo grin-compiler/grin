@@ -9,6 +9,7 @@ import GrinTH
 import Test hiding (newVar)
 import Assertions
 import TypeEnv
+import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
 import qualified Data.Vector as Vector
 
@@ -37,12 +38,22 @@ spec = do
                     [(Tag C "Int", Vector.fromList [T_Int64])
                     ])
                   , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2C", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
               , ("foo3", (T_NodeSet
                   (Map.fromList
                     [(Tag C "Int", Vector.fromList [T_Int64])
                     ])
                   , Vector.fromList [int64_t, int64_t, int64_t]))
               , ("foo4", (T_NodeSet
+                  (Map.fromList
+                    [(Tag C "Int", Vector.fromList [T_Int64])
+                    ])
+                  , Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo5", (T_NodeSet
                   (Map.fromList
                     [(Tag C "Int", Vector.fromList [T_Int64])
                     ])
@@ -67,6 +78,12 @@ spec = do
           do
             foo c1 c1 a3
 
+        foo2C a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          case c1 of
+            #default  -> pure c1
+            (CInt x1) -> foo c1 c1 a3
+
         foo3 a1 a2 a3 =
           c1 <- prim_int_add a1 a2
           -- In this case the vectorisation did not happen.
@@ -77,6 +94,10 @@ spec = do
           v <- pure (CInt a1)
           pure v
 
+        foo5 a1 =
+          p <- store (CInt a1)
+          fetch p
+
         bar =
           n <- test 1
           (CInt y') <- foo a1 a2 a3
@@ -85,56 +106,77 @@ spec = do
     let teAfter = emptyTypeEnv
           { _function = Map.fromList
               [ ("test", (int64_t, Vector.fromList [int64_t]))
-              , ("foo'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
-              , ("foo2'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
-              , ("foo2B'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
-              , ("foo3'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
-              , ("foo4'", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo.unboxed", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2.unboxed", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2B.unboxed", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo2C.unboxed", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo3.unboxed", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo4.unboxed", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
+              , ("foo5.unboxed", (int64_t, Vector.fromList [int64_t, int64_t, int64_t]))
               , ("bar", (int64_t, Vector.fromList []))
               ]
           , _variable = Map.fromList
-              [ ("c2'", int64_t)
-              , ("v'", int64_t)
-              , ("y''", int64_t)
+              [ ("unboxed.CInt.0", int64_t)
+              , ("unboxed.CInt.1", int64_t)
+              , ("unboxed.CInt.2", int64_t)
+              , ("unboxed.CInt.3", int64_t)
+              , ("unboxed.CInt.4", int64_t)
+              , ("unboxed.CInt.5", int64_t)
               ]
           }
     let after = [prog|
         test n = prim_int_add n 1
 
-        foo' a1 a2 a3 =
+        foo.unboxed a1 a2 a3 =
           b1 <- prim_int_add a1 a2
           b2 <- prim_int_add b1 a3
           pure b2
 
-        foo2' a1 a2 a3 =
+        foo2.unboxed a1 a2 a3 =
           c1 <- prim_int_add a1 a2
-          foo' c1 c1 a3
+          foo.unboxed c1 c1 a3
 
-        foo2B' a1 a2 a3 =
+        foo2B.unboxed a1 a2 a3 =
           c1 <- prim_int_add a1 a2
           do
-            foo' c1 c1 a3
+            foo.unboxed c1 c1 a3
 
-        foo3' a1 a2 a3 =
+        foo2C.unboxed a1 a2 a3 =
+          c1 <- prim_int_add a1 a2
+          case c1 of
+            #default ->
+              do
+                (CInt unboxed.CInt.0) <- pure c1
+                pure unboxed.CInt.0
+            (CInt x1) ->
+              foo.unboxed c1 c1 a3
+
+        foo3.unboxed a1 a2 a3 =
           c1 <- prim_int_add a1 a2
           c2 <- do
-            c2' <- foo' c1 c1 a3
-            pure (CInt c2')
+            unboxed.CInt.4 <- foo.unboxed c1 c1 a3
+            pure (CInt unboxed.CInt.4)
           do
-            (CInt c2') <- pure c2
-            pure c2'
+            (CInt unboxed.CInt.1) <- pure c2
+            pure unboxed.CInt.1
 
-        foo4' a1 =
+        foo4.unboxed a1 =
           v <- pure (CInt a1)
           do
-            (CInt v') <- pure v
-            pure v'
+            (CInt unboxed.CInt.2) <- pure v
+            pure unboxed.CInt.2
+
+        foo5.unboxed a1 =
+          p <- store (CInt a1)
+          do
+            (CInt unboxed.CInt.3) <- fetch p
+            pure unboxed.CInt.3
 
         bar =
           n <- test 1
           (CInt y') <- do
-            y'' <- foo' a1 a2 a3
-            pure (CInt y'')
+            unboxed.CInt.5 <- foo.unboxed a1 a2 a3
+            pure (CInt unboxed.CInt.5)
           test y'
       |]
     generalizedUnboxing (teBefore, before) `sameAs` (teAfter, after)
@@ -168,7 +210,7 @@ spec = do
       |]
     let teAfter = emptyTypeEnv
           { _function =
-              fun_t "int_eq'"
+              fun_t "int_eq.unboxed"
                 [ T_NodeSet $ cnode_t "Int" [T_Int64]
                 , T_NodeSet $ cnode_t "Int" [T_Int64]
                 ]
@@ -182,7 +224,7 @@ spec = do
               ]
           }
     let after = [prog|
-        int_eq' eq0 eq1 =
+        int_eq.unboxed eq0 eq1 =
           (CInt eq0_1) <- fetch eq0
           (CInt eq1_1) <- fetch eq1
           eq2 <- _prim_int_eq eq0_1 eq1_1
@@ -219,7 +261,7 @@ spec = do
           (CInt y') <- foo a1 a2 a3
           test y'
       |]
-    functionsToUnbox (teBefore, before) `shouldBe` ["foo"]
+    functionsToUnbox (teBefore, before) `shouldBe` (Set.fromList ["foo"])
 
   it "Tail calls and general unboxing" $ do
     let teBefore = emptyTypeEnv

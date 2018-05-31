@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 module Transformations.Optimising.GeneralizedUnboxing where
 
 import Text.Printf
@@ -13,22 +13,24 @@ import Data.Functor.Foldable as Foldable
 import Data.Functor.Infix
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
-import Grin
-import TypeEnv
-import Pretty
 import Control.Applicative
 import Lens.Micro.Platform
-import Transformations.Util (anaM, apoM)
 import Control.Monad.Writer
 import Control.Arrow
 import Debug.Trace
+
+import Transformations.Util (anaM, apoM)
+import Transformations.Names
+
+import Grin
+import TypeEnv
+import Pretty
 
 
 generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 generalizedUnboxing te =
     (first (updateTypeEnv funs)) $
-    transformCalls funs $
-    transformReturns funs te
+    evalNameM (transformCalls funs =<< transformReturns funs te)
   where
     funs = functionsToUnbox te
 
@@ -73,8 +75,8 @@ transitive f res0 =
 
 -- TODO: Remove the fix combinator, explore the function
 -- dependency graph and rewrite disqualify steps based on that.
-functionsToUnbox :: (TypeEnv, Exp) -> [Name]
-functionsToUnbox (te, Program defs) = Set.toList result where
+functionsToUnbox :: (TypeEnv, Exp) -> Set Name
+functionsToUnbox (te, Program defs) = result where
   funName (Def n _ _) = n
 
   tailCallsMap :: Map Name [Name]
@@ -103,13 +105,13 @@ functionsToUnbox (te, Program defs) = Set.toList result where
       then x0
       else rec x1
 
-updateTypeEnv :: [Name] -> TypeEnv -> TypeEnv
+updateTypeEnv :: Set Name -> TypeEnv -> TypeEnv
 updateTypeEnv funs te = te & function %~ unboxFun
   where
     unboxFun = Map.fromList . map changeFun . Map.toList
     changeFun (n, ts@(ret, params)) =
-      if n `elem` funs
-        then (,) (n ++ "'")
+      if Set.member n funs
+        then (,) (n ++ ".unboxed")
           $ maybe ts ((\t -> (t, params)) . T_SimpleType) $
               ret ^? _T_NodeSet
                   . to Map.elems
@@ -120,20 +122,20 @@ updateTypeEnv funs te = te & function %~ unboxFun
                   . _Just
         else (n, ts)
 
-type VarM a = Writer [(Name, Type)] a
+type VarM = WriterT [(Name, Type)] NameM
 
-runVarM :: TypeEnv -> VarM a -> (TypeEnv, a)
-runVarM te = (\(result, newVars) -> (newTe newVars, result)) . runWriter
+runVarM :: TypeEnv -> VarM a -> NameM (TypeEnv, a)
+runVarM te m = (\(result, newVars) -> (newTe newVars, result)) <$> runWriterT m
   where
     newTe vs = te & variable %~ (Map.union (Map.fromList vs))
 
-transformReturns :: [Name] -> (TypeEnv, Exp) -> (TypeEnv, Exp)
+transformReturns :: Set Name -> (TypeEnv, Exp) -> NameM (TypeEnv, Exp)
 transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) where
   builder :: (Maybe (Tag, Type), Exp) -> VarM (ExpF (Either Exp (Maybe (Tag, Type), Exp)))
   builder (mTagType, exp0) = case exp0 of
     Def name params body
-      | name `elem` toUnbox -> pure $ DefF name params (Right (returnsAUniqueTag te name, body))
-      | otherwise           -> pure $ DefF name params (Left body)
+      | Set.member name toUnbox -> pure $ DefF name params (Right (returnsAUniqueTag te name, body))
+      | otherwise               -> pure $ DefF name params (Left body)
 
     -- Always skip the lhs of a bind.
     EBind lhs pat rhs -> pure $ EBindF (Left lhs) pat (Right (mTagType, rhs))
@@ -142,65 +144,52 @@ transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) wh
     SReturn (ConstTagNode tag [val]) -> pure $ SReturnF val
 
     -- Rewrite a node variable
-    -- TODO: Unique variable name
-    SReturn (Var v)
+    simpleExp
       -- fromJust works, as when we enter the processing of body of the
       -- expression only happens with the provided tag.
-      -> do let Just (tag, typ) = mTagType
-                v' = v ++ "'"
-            tell [(v', typ)]
-            pure $ (SBlockF (Left (EBind
-                (SReturn (Var v))
-                (ConstTagNode tag [Var v'])
-                (SReturn (Var v')))))
+      | canUnbox simpleExp
+      , Just (tag, typ) <- mTagType
+      -> do
+        freshName <- lift . deriveNewName $ printf "unboxed.%s" (show $ PP tag)
+        tell [(freshName, typ)]
+        pure . SBlockF . Left $ EBind simpleExp (ConstTagNode tag [Var freshName]) (SReturn $ Var freshName)
 
     rest -> pure (Right . (,) mTagType <$> project rest)
 
+  -- NOTE: SApp is handled by transformCalls
+  canUnbox :: SimpleExp -> Bool
+  canUnbox = \case
+    SReturn{} -> True
+    SFetchI{} -> True
+    _         -> False
 
-transformCalls :: [Name] -> (TypeEnv, Exp) -> (TypeEnv, Exp)
-transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM exp where
-  builderM :: Exp -> VarM (ExpF Exp)
-  builderM = \case
+transformCalls :: Set Name -> (TypeEnv, Exp) -> NameM (TypeEnv, Exp)
+transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM (True, Nothing, exp) where
+  builderM :: (Bool, Maybe Name, Exp) -> VarM (ExpF (Bool, Maybe Name, Exp))
+
+  builderM (isRightExp, mDefName, e) = case e of
+
     Def name params body
-      | name `elem` toUnbox -> pure $ DefF (name ++ "'") params body
-      | otherwise           -> pure $ DefF name          params body
+      -> pure $ DefF (if Set.member name toUnbox then name ++ ".unboxed" else name) params (True, Just name, body)
 
-    -- TODO: Unique name
-    EBind lhs@(SApp name params) ctag@(ConstTagNode (Tag C tag) [Var x]) rhs
-      | name `elem` toUnbox -> do
-          let x' = x ++ "'"
-              name' = name ++ "'"
-              Just (_, fstType) = returnsAUniqueTag typeEnv name
-          tell [(x', fstType)]
-          pure $ EBindF
-            (SBlock (EBind
-              (SApp name' params)
-              (Var x')
-              (SReturn (ConstTagNode (Tag C tag) [Var x']))
-              ))
-            ctag
-            rhs
+    -- track the control flow
+    EBind lhs pat rhs -> pure $ EBindF (False, mDefName, lhs) pat (isRightExp, mDefName, rhs)
 
-    -- TODO: Unique name
-    EBind lhs@(SApp name params) (Var x) rhs
-      | name `elem` toUnbox -> do
-          let x' = x ++ "'"
-              name' = name ++ "'"
-              Just (tag, fstType) = returnsAUniqueTag typeEnv name
-          tell [(x', fstType)]
-          pure $ EBindF
-            (SBlock (EBind
-              (SApp name' params)
-              (Var x')
-              (SReturn (ConstTagNode tag $ [Var x']))
-              ))
-            (Var x)
-            rhs
-
-
-    -- Tailcalls do not need a transform
     SApp name params
-      | name `elem` toUnbox
-      -> pure $ SAppF (name ++ "'") params
+      | Set.member name toUnbox
+      , Just defName <- mDefName
+      , unboxedName <- name ++ ".unboxed"
+      , Just (tag, fstType) <- returnsAUniqueTag typeEnv name
+      -> if Set.member defName toUnbox && isRightExp
 
-    rest -> pure $ project rest
+          -- from candidate to candidate: tailcalls do not need a transform
+          then pure $ SAppF unboxedName params
+
+          -- from outside to candidate
+          else do
+            freshName <- lift . deriveNewName $ printf "unboxed.%s" (show $ PP tag)
+            tell [(freshName, fstType)]
+            pure . SBlockF . (isRightExp, mDefName,) $
+              EBind (SApp unboxedName params) (Var freshName) (SReturn $ ConstTagNode tag [Var freshName])
+
+    rest -> pure ((isRightExp, mDefName,) <$> project rest)
