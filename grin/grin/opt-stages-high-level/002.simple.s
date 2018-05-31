@@ -33,10 +33,10 @@ grinMain:                               # @grinMain
 	movq	8(%rcx), %rsi
 	cmpq	8(%rdx), %rsi
 	jg	.LBB0_3
-# BB#1:                                 # %block.bool_False.57.i.preheader
+# BB#1:                                 # %block.bool_False.55.i.preheader
 	addq	$8, %rcx
 	.p2align	4, 0x90
-.LBB0_2:                                # %block.bool_False.57.i
+.LBB0_2:                                # %block.bool_False.55.i
                                         # =>This Inner Loop Header: Depth=1
 	incq	%rsi
 	movl	$16, %edi
