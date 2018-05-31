@@ -249,7 +249,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       (cgTy, result) <- body >>= getOperand (printf "result.%s" name)
       let llvmRetType = cgLLVMType cgTy
       closeBlock $ Ret
-        { returnOperand = Just result
+        { returnOperand = if llvmRetType == VoidType then Nothing else Just result
         , metadata'     = []
         }
 
@@ -492,23 +492,23 @@ external retty label argtys = modify' (\env@Env{..} -> env {_envDefinitions = de
 -- available primitive functions
 registerPrimFunLib :: CG ()
 registerPrimFunLib = do
-  external i64 (mkName "_prim_int_print") [(i64, mkName "x")]
+  external VoidType (mkName "_prim_int_print") [(i64, mkName "x")]
 
 errorBlock = do
   activeBlock $ mkName "error_block"
   let functionType = FunctionType
-                { resultType    = i64
+                { resultType    = VoidType
                 , argumentTypes = [i64]
                 , isVarArg      = False
                 }
 
-  codeGenLocalVar "error_result" i64 $ Call
-            { tailCallKind        = Just Tail
-            , callingConvention   = CC.C
-            , returnAttributes    = []
-            , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName "_prim_int_print")
-            , arguments           = zip [ConstantOperand $ C.Int 64 666] (repeat [])
-            , functionAttributes  = []
-            , metadata            = []
-            }
+  emit [Do Call
+    { tailCallKind        = Just Tail
+    , callingConvention   = CC.C
+    , returnAttributes    = []
+    , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName "_prim_int_print")
+    , arguments           = zip [ConstantOperand $ C.Int 64 666] (repeat [])
+    , functionAttributes  = []
+    , metadata            = []
+    }]
   closeBlock $ Unreachable []
