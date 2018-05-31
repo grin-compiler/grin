@@ -40,9 +40,36 @@ cg_main opts = do
     putStrLn "\n* Lambda"
     printLambda program
     let lambdaGrin = codegenGrin program
+    void $ pipeline pipelineOpts lambdaGrin
+      [ SaveGrin "from-lambda.grin"
+      , T GenerateEval
+      , T DeadProcedureElimination
+      , HPT CompileHPT
+      , HPT RunHPTPure
+      , T SparseCaseOptimisation
+      , HPT CompileHPT
+      , HPT RunHPTPure
+      , T UnitPropagation
+      , SaveGrin (output opts)
+      , PrintGrin ondullblack
+      ]
+{-
     void $ optimize pipelineOpts lambdaGrin
       -- pre
       [ SaveGrin "from-lambda"
+      , PrintGrin ondullblack
+      , HPT CompileHPT
+      , HPT RunHPTPure
+      , HPT PrintHPTResult
+--      , T DeadProcedureElimination
+      , T InlineBuiltins
+--      , T DeadProcedureElimination
+      , T GenerateEval
+      , T InlineEval
+--      , T DeadProcedureElimination
+--      , T InlineApply
+      , T DeadProcedureElimination
+      , SaveGrin "simplified"
       , PrintGrin ondullblack
       ]
       -- post
@@ -51,6 +78,7 @@ cg_main opts = do
       , SaveLLVM "opt"
       , JITLLVM
       ]
+-}
 
 main :: IO ()
 main = do opts <- getOpts
@@ -60,5 +88,5 @@ main = do opts <- getOpts
 
 pipelineOpts :: PipelineOpts
 pipelineOpts = PipelineOpts
-  { _poOutputDir = "./lambda/"
+  { _poOutputDir = "."
   }
