@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, PatternSynonyms #-}
 module Pipeline where
 
+import Prelude
 import Control.Monad
 import Data.Maybe (maybe, fromJust, fromMaybe)
 import Text.Printf
@@ -286,7 +287,6 @@ runHPTPure = do
     Right te  -> psTypeEnv .= Just te
     Left err  -> do
       psErrors %= (err :)
-      liftIO $ print err
       psTypeEnv .= Nothing
 
 printTypeEnv :: PipelineM ()
@@ -436,11 +436,10 @@ optimizeWith o e ps = loop
           pipelineStep $ HPT CompileHPT
           pipelineStep $ HPT RunHPTPure
 
-          typeEnv <- use psTypeEnv
-          when (typeEnv == Nothing) $ void $ do
+          errors <- use psErrors
+          unless (Prelude.null errors) $ void $ do
             pipelineStep $ HPT PrintHPTResult
             pipelineStep $ PrintGrin ondullblack
-            errors <- use psErrors
             liftIO . putStrLn $ printf "error after %s:\n%s" (show p) (unlines errors)
             fail "illegal code"
 

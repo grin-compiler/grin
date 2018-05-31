@@ -3,7 +3,7 @@ upto m n =
   case cmp of
     (True)  -> (Nil)
     (False) -> let box1 = (Int 1)
-               letS succ = rts_int_add m box1
+               let succ = rts_int_add m box1
                let tail = upto succ n
                (Cons m tail)
 
