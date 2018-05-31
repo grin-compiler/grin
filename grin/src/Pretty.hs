@@ -109,7 +109,7 @@ prettyKeyValue kvList = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,
 
 instance Pretty SimpleType where
   pretty = \case
-    T_Location l  -> encloseSep lbrace rbrace comma $ map (cyan . int . succ) l
+    T_Location l  -> encloseSep lbrace rbrace comma $ map (cyan . int) l
     ty            -> red $ text $ show ty
 
 prettyNode :: (Tag, Vector SimpleType) -> Doc
