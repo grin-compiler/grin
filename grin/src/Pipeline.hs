@@ -27,7 +27,8 @@ import PrettyLint
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Simplifying.RightHoistFetch
-import Transformations.Optimising.Inlining (inlineEval, inlineApply)
+import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
+import Transformations.UnitPropagation
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
@@ -75,10 +76,12 @@ data Transformation
   | RightHoistFetch
   | InlineEval
   | InlineApply
+  | InlineBuiltins
   -- Misc
   | GenerateEval
   | BindNormalisation
   | ConstantFolding
+  | UnitPropagation
   -- Optimizations
   | EvaluatedCaseElimination
   | TrivialCaseElimination
@@ -102,31 +105,34 @@ noTypeEnv f (t, e) = (t, f e)
 
 transformation :: Int -> Transformation -> (TypeEnv, Exp) -> (TypeEnv, Exp)
 transformation n = \case
+  Vectorisation                   -> Vectorisation2.vectorisation
+  GenerateEval                    -> noTypeEnv generateEval
   CaseSimplification              -> noTypeEnv caseSimplification
   SplitFetch                      -> noTypeEnv splitFetch
-  Vectorisation                   -> Vectorisation2.vectorisation
   RegisterIntroduction            -> noTypeEnv $ registerIntroductionI n
-  InlineEval                      -> inlineEval
-  InlineApply                     -> inlineApply
-  BindNormalisation               -> noTypeEnv bindNormalisation
   RightHoistFetch                 -> noTypeEnv RHF.rightHoistFetch
-  GenerateEval                    -> noTypeEnv generateEval
+  -- optimising
+  BindNormalisation               -> noTypeEnv bindNormalisation
   ConstantFolding                 -> noTypeEnv constantFolding
   EvaluatedCaseElimination        -> noTypeEnv evaluatedCaseElimination
   TrivialCaseElimination          -> noTypeEnv trivialCaseElimination
-  SparseCaseOptimisation          -> sparseCaseOptimisation
   UpdateElimination               -> noTypeEnv updateElimination
   CopyPropagation                 -> noTypeEnv copyPropagation
   ConstantPropagation             -> noTypeEnv constantPropagation
   DeadProcedureElimination        -> noTypeEnv deadProcedureElimination
   DeadParameterElimination        -> noTypeEnv deadParameterElimination
-  DeadVariableElimination         -> noTypeEnv deadVariableElimination
+  InlineEval                      -> inlineEval
+  InlineApply                     -> inlineApply
+  InlineBuiltins                  -> inlineBuiltins
+  SparseCaseOptimisation          -> sparseCaseOptimisation
+  DeadVariableElimination         -> deadVariableElimination
   CommonSubExpressionElimination  -> commonSubExpressionElimination
   CaseCopyPropagation             -> caseCopyPropagation
   CaseHoisting                    -> caseHoisting
   GeneralizedUnboxing             -> generalizedUnboxing
   ArityRaising                    -> arityRaising
   LateInlining                    -> lateInlining
+  UnitPropagation                 -> unitPropagation
 
 -- TODO
 precondition :: Transformation -> [Check]
@@ -148,7 +154,7 @@ data HPTStep
   | PrintHPTCode
   | RunHPTPure
   | PrintHPTResult
-  deriving Show
+  deriving (Eq, Show)
 
 data Pipeline
   = HPT HPTStep
@@ -164,7 +170,7 @@ data Pipeline
   | Statistics
   | PrintTypeEnv
   | Lint
-  deriving Show
+  deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> Pipeline
 pattern PrintGrin c <- PrintGrinH (H c)
@@ -191,6 +197,7 @@ data PState = PState
     , _psHPTProgram :: Maybe HPT.HPTProgram
     , _psHPTResult  :: Maybe HPT.HPTResult
     , _psTypeEnv    :: Maybe TypeEnv
+    , _psErrors     :: [String]
     }
 
 makeLenses ''PState
@@ -275,7 +282,12 @@ runHPTPure = do
   let hptResult = HPT.evalHPT hptProgram
       result = HPT.toHPTResult hptProgram hptResult
   psHPTResult .= Just result
-  psTypeEnv .= Just (typeEnvFromHPTResult result)
+  case typeEnvFromHPTResult result of
+    Right te  -> psTypeEnv .= Just te
+    Left err  -> do
+      psErrors %= (err :)
+      liftIO $ print err
+      psTypeEnv .= Nothing
 
 printTypeEnv :: PipelineM ()
 printTypeEnv = do
@@ -404,6 +416,7 @@ pipeline o e ps = do
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
       , _psTypeEnv    = Nothing
+      , _psErrors     = []
       }
 
 -- | Run the pipeline with the given set of transformations, till
@@ -419,10 +432,18 @@ optimizeWith o e ps = loop
       effs <- forM ps $ \p -> do
         eff <- pipelineStep p
         when (eff == ExpChanged) $ void $ do
-          pipelineStep $ T DeadProcedureElimination
+          pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
           pipelineStep $ HPT CompileHPT
           pipelineStep $ HPT RunHPTPure
-          pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
+
+          typeEnv <- use psTypeEnv
+          when (typeEnv == Nothing) $ void $ do
+            pipelineStep $ HPT PrintHPTResult
+            pipelineStep $ PrintGrin ondullblack
+            errors <- use psErrors
+            liftIO . putStrLn $ printf "error after %s:\n%s" (show p) (unlines errors)
+            fail "illegal code"
+
         pure eff
       -- Run loop again on change
       when (any (match _ExpChanged) effs)
@@ -435,6 +456,7 @@ optimize o e pre post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
   mapM_ pipelineStep
     [ HPT CompileHPT
     , HPT RunHPTPure
+    , T UnitPropagation
     ]
   optimizeWith o e $ fmap T
     [ BindNormalisation
@@ -467,4 +489,5 @@ optimize o e pre post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
       , _psTypeEnv    = Nothing
+      , _psErrors     = []
       }
