@@ -20,6 +20,7 @@ data SimpleType
   | T_Bool
   | T_Unit
   | T_Location {_locations :: [Int]}
+  | T_Dead
   deriving (Eq, Ord, Show)
 
 type NodeSet = Map Tag (Vector SimpleType)
@@ -34,6 +35,9 @@ data Type
                   ,_itemIndex   :: Int        -- item index in the node
                   }
   deriving (Eq, Ord, Show)
+
+dead_t :: Type
+dead_t = T_SimpleType T_Dead
 
 unit_t :: Type
 unit_t = T_SimpleType T_Unit

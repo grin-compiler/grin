@@ -34,4 +34,4 @@ sparseCaseOptimisation (typeEnv, exp) = (typeEnv, ana builder exp) where
     DefaultPat -> True -- HINT: the value domain is unknown, it is not possible to prove if it overlaps or it is fully covered
     _ -> False
 
-  possible _ _ _ = True -- bypass everything else
+  possible ty _ _ = ty /= dead_t -- bypass everything else

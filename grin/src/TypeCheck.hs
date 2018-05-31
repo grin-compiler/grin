@@ -2,7 +2,6 @@
 module TypeCheck where
 
 import Text.Printf
-import Text.PrettyPrint.ANSI.Leijen
 
 import Data.Int
 import Data.Set (Set)
@@ -12,6 +11,7 @@ import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
+import Control.Monad.Except
 import Lens.Micro.Platform
 
 import Grin (Tag, Exp)
@@ -31,7 +31,7 @@ import qualified AbstractInterpretation.Reduce as HPT
             - singleton simple type
             - one or more location
 -}
-typeEnvFromHPTResult :: HPTResult -> TypeEnv.TypeEnv
+typeEnvFromHPTResult :: HPTResult -> Either String TypeEnv.TypeEnv
 typeEnvFromHPTResult hptResult = typeEnv where
   convertSimpleType :: SimpleType -> TypeEnv.SimpleType
   convertSimpleType = \case
@@ -47,34 +47,42 @@ typeEnvFromHPTResult hptResult = typeEnv where
     T_Location _ -> True
     _ -> False
 
-  convertNodeItem :: [SimpleType] -> TypeEnv.SimpleType
-  convertNodeItem [sTy] = convertSimpleType sTy
-  convertNodeItem tys | all isLocation tys = TypeEnv.T_Location [l | T_Location l <- tys]
-  convertNodeItem tys = error $ printf "illegal type %s" (show . pretty $ Set.fromList tys)
+  convertNodeItem :: [SimpleType] -> Either String TypeEnv.SimpleType
+  convertNodeItem [sTy] = pure $ convertSimpleType sTy
+  convertNodeItem tys
+    | all isLocation tys
+    = pure $ TypeEnv.T_Location [l | T_Location l <- tys]
+  convertNodeItem tys = throwError $ printf "illegal node item type %s" (show . pretty $ Set.fromList tys)
 
-  convertNodeSet :: NodeSet -> Map Tag (Vector TypeEnv.SimpleType)
-  convertNodeSet (NodeSet ns) = Map.map (V.map (convertNodeItem . Set.toList)) ns
+  checkNode :: NodeSet -> Vector TypeEnv.SimpleType -> Either String (Vector TypeEnv.SimpleType)
+  checkNode ns v
+    | any (TypeEnv.T_Location [] ==) v = throwError $ printf "illegal node type %s in %s" (show . pretty $ V.toList v) (show $ pretty ns)
+    | otherwise = pure v
 
-  convertTypeSet :: TypeSet -> TypeEnv.Type
-  convertTypeSet ts = let ns = ts^.nodeSet
-                          st = ts^.simpleType
-                      in case (Set.size st, Map.size $ ns^.nodeTagMap) of
-                          (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet $ convertNodeSet ns
-                          (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType $ convertNodeItem $ Set.toList st
-                          _ -> error $ printf "illegal type %s" (show . pretty $ ts)
+  convertNodeSet :: NodeSet -> Either String (Map Tag (Vector TypeEnv.SimpleType))
+  convertNodeSet a@(NodeSet ns) = mapM (checkNode a <=< mapM (convertNodeItem . Set.toList)) ns
 
-  convertFunction :: (TypeSet, Vector TypeSet) -> (TypeEnv.Type, Vector TypeEnv.Type)
-  convertFunction (ret, args) = (convertTypeSet ret, V.map convertTypeSet args)
+  convertTypeSet :: TypeSet -> Either String TypeEnv.Type
+  convertTypeSet ts = do
+    let ns = ts^.nodeSet
+        st = ts^.simpleType
+    case (Set.size st, Map.size $ ns^.nodeTagMap) of
+      (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet <$> convertNodeSet ns
+      (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType <$> convertNodeItem (Set.toList st)
+      (0,0)                                           -> pure TypeEnv.dead_t
+      _ -> throwError $ printf "illegal type %s" (show . pretty $ ts)
 
-  typeEnv :: TypeEnv.TypeEnv
-  typeEnv = TypeEnv.TypeEnv
-    { _location = V.map convertNodeSet $ _memory hptResult
-    , _variable = Map.map convertTypeSet $ _register hptResult
-    , _function = Map.map convertFunction $ _function hptResult
-    }
+  convertFunction :: (TypeSet, Vector TypeSet) -> Either String (TypeEnv.Type, Vector TypeEnv.Type)
+  convertFunction (ret, args) = (,) <$> convertTypeSet ret <*> mapM convertTypeSet args
+
+  typeEnv :: Either String TypeEnv.TypeEnv
+  typeEnv = TypeEnv.TypeEnv <$>
+    mapM convertNodeSet  (_memory hptResult) <*>
+    mapM convertTypeSet  (_register hptResult) <*>
+    mapM convertFunction (_function hptResult)
 
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
-inferTypeEnv exp = typeEnvFromHPTResult result where
+inferTypeEnv exp = either error id $ typeEnvFromHPTResult result where
   hptProgram = HPT.codeGen exp
   hptResult = HPT.evalHPT hptProgram
   result = HPT.toHPTResult hptProgram hptResult
