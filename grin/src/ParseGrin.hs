@@ -123,7 +123,7 @@ satisfyM pred parser = do
 
 
 grinModule :: Parser Exp
-grinModule = Program <$> some def <* sc <* eof
+grinModule = Program <$> many def <* sc <* eof
 
 parseGrin :: String -> String -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename content
