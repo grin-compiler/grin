@@ -105,15 +105,18 @@ main = do
 prePipeline :: [Pipeline]
 prePipeline =
   [ HPT CompileHPT
-  , HPT PrintHPTCode
-  , PrintGrin ondullblack
+--  , HPT PrintHPTCode
+--  , PrintGrin ondullblack
   , HPT RunHPTPure
-  , HPT PrintHPTResult
-  , SaveLLVM "high-level-code"
+--  , HPT PrintHPTResult
+  , T UnitPropagation
+--  , PrintGrin ondullblack
+--  , SaveLLVM "high-level-code"
   ]
 
 postPipeline :: [Pipeline]
 postPipeline =
   [ SaveLLVM "high-level-opt-code"
   , JITLLVM -- TODO: Remove this.
+  , PrintGrin ondullblack
   ]
