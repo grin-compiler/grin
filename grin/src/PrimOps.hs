@@ -18,7 +18,7 @@ checkName name = maybe (error $ "primOp is not defined:" ++ name) (const id) $ M
 -- TODO: Record effects
 primOps :: Map String ([PrimType], PrimType)
 primOps = Map.fromList $
-  [ ("_prim_int_print", ([TInt], TInt)) -- HINT: this primop is adhoc, will be removed
+  [ ("_prim_int_print", ([TInt], TUnit)) -- HINT: this primop is adhoc, will be removed
   -- Int
   , ("_prim_int_add", ([TInt, TInt], TInt))
   , ("_prim_int_sub", ([TInt, TInt], TInt))

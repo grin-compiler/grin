@@ -12,6 +12,7 @@ import TypeEnv hiding (function)
 import Reducer.LLVM.Base
 import Reducer.LLVM.TypeGen
 
+cgUnit    = toCGType $ T_SimpleType T_Unit    :: CGType
 cgInt64   = toCGType $ T_SimpleType T_Int64   :: CGType
 cgWord64  = toCGType $ T_SimpleType T_Word64  :: CGType
 cgFloat   = toCGType $ T_SimpleType T_Float   :: CGType
@@ -58,11 +59,11 @@ codeGenPrimOp name _ [opA, opB] = case name of
   "_prim_bool_eq"   -> pure . I cgBool $ ICmp {iPredicate=I.EQ,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_bool_ne"   -> pure . I cgBool $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}
 
-codeGenPrimOp "_prim_int_print" _ [opA] = pure . I cgInt64 $ Call
+codeGenPrimOp "_prim_int_print" _ [opA] = pure . I cgUnit $ Call
     { tailCallKind        = Nothing
     , callingConvention   = CC.C
     , returnAttributes    = []
-    , function            = Right $ ConstantOperand $ C.GlobalReference (fun i64 [i64]) (mkName "_prim_int_print")
+    , function            = Right $ ConstantOperand $ C.GlobalReference (fun void [i64]) (mkName "_prim_int_print")
     , arguments           = [(opA, [])]
     , functionAttributes  = []
     , metadata            = []

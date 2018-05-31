@@ -25,13 +25,13 @@ foreign import ccall "dynamic"
   mkMain :: FunPtr (IO Int64) -> IO Int64
 
 foreign import ccall "wrapper"
-  wrapIntPrint :: (Int64 -> IO Int64) -> IO (FunPtr (Int64 -> IO Int64))
+  wrapIntPrint :: (Int64 -> IO ()) -> IO (FunPtr (Int64 -> IO ()))
 
 withTestModule :: AST.Module -> (LLVM.Module.Module -> IO a) -> IO a
 withTestModule mod f = withContext $ \context -> withModuleFromAST context mod f
 
-myIntPrintImpl :: Int64 -> IO Int64
-myIntPrintImpl i = print i >> pure i
+myIntPrintImpl :: Int64 -> IO ()
+myIntPrintImpl i = print i
 
 resolver :: CompileLayer l => MangledSymbol -> l -> MangledSymbol -> IO JITSymbol
 resolver intPrint compileLayer symbol

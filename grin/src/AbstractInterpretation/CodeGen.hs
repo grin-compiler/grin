@@ -131,7 +131,7 @@ codeGenPrimOp name funResultReg funArgRegs = do
       bool  = litToSimpleType $ LBool False
 
   case name of
-    "_prim_int_print" -> op [int] int
+    "_prim_int_print" -> op [int] unit
     -- Int
     "_prim_int_add"   -> op [int, int] int
     "_prim_int_sub"   -> op [int, int] int
