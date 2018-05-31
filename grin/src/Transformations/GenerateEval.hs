@@ -21,7 +21,8 @@ eval defs = Def "eval" ["p"] $
     defaultAlt                = Alt DefaultPat (SReturn $ Var "v")
     funAlt (Def name args _) = Alt (NodePat (Tag F name) argNames) $
                                       EBind (SApp name $ map Var argNames) (Var whnf) $
-                                      EBind (SUpdate "p" $ Var whnf) Unit $
+                                      -- NOTE: use call by name evaluation temporarly ; optimisations works better with this
+                                      --EBind (SUpdate "p" $ Var whnf) Unit $
                                       SReturn $ Var whnf
                                     where
                                       whnf      = printf "%s.whnf" name
