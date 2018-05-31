@@ -19,6 +19,7 @@ data Env
   = Env
   { _counter  :: Int
   , _arityMap :: Map Name Int
+  , _whnfMap  :: Map Name Name
   }
 
 type CG = State Env
@@ -82,7 +83,10 @@ genE e = gets _arityMap >>= \arityMap -> case e of
         -- apply chain
         -> apChain (G.SApp "eval" [G.Var name]) args
   -- TODO: track if var is in WHNF already
-  Var name -> pure $ G.SApp "eval" [G.Var name] -- TODO: handle functions
+  Var name -> do
+    gets $ Map.lookup name . _whnfMap >>= \case
+      Just whnf -> pure $ G.SReturn $ G.Var whnf
+      Nothing   -> pure $ G.SApp "eval" [G.Var name] -- TODO: handle functions
   x -> error $ printf "unsupported E: %s" $ show x
 
 -- strict and return context (evaluates to WHNF) ; R is similar to E
@@ -90,13 +94,23 @@ genR :: Exp -> CG G.Exp
 genR e = gets _arityMap >>= \arityMap -> case e of
   -- TODO: build var name <--> location name map for suspended computations
   Let  binds exp -> foldr (\(name, e) rightExp -> G.EBind <$> genC e <*> pure (G.Var name {-TODO-}) <*> rightExp) (genR exp) binds
-  LetS binds exp -> foldr (\(name, e) rightExp -> G.EBind <$> genE e <*> pure (G.Var name) <*> rightExp) (genR exp) binds
+
+  LetS binds exp -> foldr (\(name, e) rightExp -> do
+    leftExp <- genE e
+    -- track whnf
+    modify' $ \env@Env{..} -> env {_whnfMap = Map.insert name name _whnfMap}
+    G.EBind leftExp (G.Var name) <$> rightExp) (genR exp) binds
 
   Con name args -> pure $ G.SReturn $ G.ConstTagNode (G.Tag G.C name) $ map genAtom args
 
   Case exp alts -> do
     whnf <- uniq "value"
-    G.EBind <$> genE exp <*> pure (G.Var whnf) <*> (G.ECase (G.Var whnf) <$> mapM genR alts) -- TODO: handle name mapping for var name -> whnf value name
+    scrutExp <- genE exp
+    -- track whnf
+    case exp of
+      Var name -> modify' $ \env@Env{..} -> env {_whnfMap = Map.insert name whnf _whnfMap}
+      _ -> pure ()
+    G.EBind scrutExp (G.Var whnf) . G.ECase (G.Var whnf) <$> mapM genR alts -- TODO: handle name mapping for var name -> whnf value name
   Alt pat exp -> G.Alt (genCPat pat) <$> genR exp
 
   Program defs      -> G.Program <$> mapM genR defs
@@ -133,8 +147,8 @@ genR e = gets _arityMap >>= \arityMap -> case e of
 -}
 
 codegenGrin :: Program -> G.Program
-codegenGrin exp = generateEval . G.Program $ prog ++ primOps where
-  G.Program prog    = evalState (genR exp) (Env 0 $ buildArityMap exp)
+codegenGrin exp = G.Program $ prog ++ primOps where
+  G.Program prog    = evalState (genR exp) (Env 0 (buildArityMap exp) mempty)
   G.Program primOps = lambdaPrimOps
 
 -- HINT: arity map for lambda
@@ -142,5 +156,9 @@ buildArityMap :: Program -> Map Name Int
 buildArityMap (Program defs) =
   Map.fromList $
     [(name, length args) | Def name args _ <- defs] ++
-    [(name, length args) | let G.Program ops = lambdaPrimOps, G.Def name args _ <- ops]
+    [(name, length args) | let G.Program ops = lambdaPrimOps, G.Def name args _ <- ops] ++
+    [("_prim_int_add", 2)
+    ,("_prim_int_gt", 2)
+    ,("_prim_int_print", 1)
+    ]
 buildArityMap _ = error "invalid expression, program expected"
