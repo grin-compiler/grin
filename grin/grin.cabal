@@ -50,6 +50,7 @@ library
     Transformations.Playground
     Transformations.Names
     Transformations.Util
+    Transformations.UnitPropagation
     Transformations.Simplifying.Vectorisation
     Transformations.Simplifying.Vectorisation2
     Transformations.Simplifying.SplitFetch
