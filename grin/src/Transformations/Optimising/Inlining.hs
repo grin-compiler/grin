@@ -30,8 +30,8 @@ instance Monoid Stat where
 selectInlineSet :: Program -> Set Name
 selectInlineSet prog@(Program defs) = inlineSet where
 
-  (bindList, callList) = unzip
-    [ (Map.singleton name bindCount, functionCallCount)
+  (bindList, callTrees) = unzip
+    [ (Map.singleton name bindCount, (name, functionCallCount))
     | def@(Def name _ _) <- defs
     , let Stat{..} = cata folder def
     ]
@@ -40,9 +40,16 @@ selectInlineSet prog@(Program defs) = inlineSet where
 
   -- TODO: limit inline overhead using CALL COUNT * SIZE < LIMIT
 
-  (validCallSet, invalidCallSet) = Map.partition (== 1) $ Map.unionsWith (+) callList
-  bindSet   = Map.keysSet . Map.filter (< bindSequenceLimit) $ mconcat bindList
-  inlineSet = Map.keysSet validCallSet --mconcat [bindSet, Map.keysSet validCallSet] Set.\\ (Map.keysSet invalidCallSet)
+  callSet       = Map.keysSet . Map.filter (== 1) . Map.unionsWith (+) $ map snd callTrees
+  bindSet       = mempty -- Map.keysSet . Map.filter (< bindSequenceLimit) $ mconcat bindList
+  candidateSet  = mconcat [bindSet, callSet]
+  defCallTree   = Map.fromList callTrees
+
+  -- keep only the leaves of the candidate call tree
+  inlineSet     = Data.Foldable.foldr stripCallers candidateSet candidateSet
+
+  -- remove intermediate nodes from the call tree
+  stripCallers name set = set Set.\\ (Map.keysSet $ Map.findWithDefault mempty name defCallTree)
 
 
   folder :: ExpF Stat -> Stat
