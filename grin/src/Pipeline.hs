@@ -64,7 +64,7 @@ import Debug.Trace
 import Lens.Micro
 import Data.List
 
-
+import Lint
 
 type RenameVariablesMap = Map String String
 
@@ -387,8 +387,9 @@ lintGrin = do
   exp <- use psExp
   Just typeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint typeEnv exp
-  when (Map.size errorMap > 0 || True) $
+  when (Map.size errorMap > 0) $ do
     liftIO . print $ prettyLintExp lintExp
+    psErrors %= ((concat $ Map.elems errorMap) ++)
 
 check :: PipelineM ()
 check = do
@@ -435,6 +436,7 @@ optimizeWith o e ps = loop
           pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
           pipelineStep $ HPT CompileHPT
           pipelineStep $ HPT RunHPTPure
+          pipelineStep $ Lint
 
           errors <- use psErrors
           unless (Prelude.null errors) $ void $ do
