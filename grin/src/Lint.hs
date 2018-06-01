@@ -109,7 +109,7 @@ lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) em
     EBind leftExp lpat rightExp -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
       checkSyntax ExpCtx
     ECase{} -> check ((AltCtx,) <$> project e) $ do
-      checkSyntax ExpCtx
+      checkSyntax SimpleExpCtx
 
     -- Simple Exp
     SApp name args -> check ((ctx,) <$> project e) $ do
@@ -136,6 +136,7 @@ lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) em
       checkSyntax :: SyntaxCtx -> Check ()
       checkSyntax expCtx
         | expCtx == ctx = pure ()
+        -- simple exp is also an exp
         | expCtx == SimpleExpCtx && ctx == ExpCtx = pure ()
         | otherwise = tell ["Syntax error - expected " ++ showCtx ctx]
 
