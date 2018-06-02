@@ -9,25 +9,25 @@ duration: 2 weeks
 deadline: May 6
 
 ### new additions
-- module system
-- name handling
-  - locally new names (in block + pass to flatten out and maintain uniqueness)
-  - name scopes (module, function)
-  - liberal name support (like in llvm, i.e. %"any characer 1234 {}!@#$%} -"
-- context aware logging framework (for errors and debugging)
+- [ ] module system
+- [ ] name handling
+  - [ ] locally new names (in block + pass to flatten out and maintain uniqueness)
+  - [ ] name scopes (module, function)
+  - [ ] liberal name support (like in llvm, i.e. %"any characer 1234 {}!@#$%} -"
+- [ ] context aware logging framework (for errors and debugging)
 - [x] pass manager ; run passes until the fixpoint is reached
 - ~~add `allocate` memory operation to grin ; required by circular data structures~~
-- grin syntax for type signatures
-- grin syntax to declare primops with their type signature
-- grin validator pass
+- [ ] grin syntax for type signatures
+- [ ] grin syntax to declare primops with their type signature
+- [ ] grin validator pass
 - ~~hpt result based dead code elimination pass~~
 
 ### finish
-- lambda frontend
-- type system
-- simplification transformations (answer if vectorisation equals with a mapping to tagged unions)
-- missing optimisations
+- [ ] lambda frontend
+- [ ] type system
+- [ ] simplification transformations (answer if vectorisation equals with a mapping to tagged unions)
+- [ ] missing optimisations
   - [x] case hoisting
-  - whnf update elimination
+  - [ ] whnf update elimination
   - [x] dead parameter elimination
-- simplify llvm codegen (factor out complex operations as passes)
+- [ ] simplify llvm codegen (factor out complex operations as passes)
