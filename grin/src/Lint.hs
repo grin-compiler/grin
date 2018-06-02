@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
 module Lint (lint, Error) where
 
+import Text.Printf
+
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Control.Comonad.Cofree
@@ -10,6 +12,9 @@ import qualified Control.Comonad.Trans.Cofree as CCTC
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 import Grin
 import TypeEnv hiding (typeOfVal)
@@ -38,7 +43,7 @@ import Transformations.Util
 type Error = String
 
 
-data SyntaxCtx
+data ExpCtx
   = ProgramCtx
   | DefCtx
   | ExpCtx
@@ -46,25 +51,37 @@ data SyntaxCtx
   | AltCtx
   deriving Eq
 
-showCtx :: SyntaxCtx -> String
-showCtx = \case
+data ValCtx
+  = ValCtx
+  | SimpleValCtx
+  deriving Eq
+
+showExpCtx :: ExpCtx -> String
+showExpCtx = \case
   ProgramCtx    -> "Program"
   DefCtx        -> "Def"
   ExpCtx        -> "Exp"
   SimpleExpCtx  -> "SimpleExp"
   AltCtx        -> "Alt"
 
+showValCtx :: ValCtx -> String
+showValCtx = \case
+  ValCtx        -> "Val"
+  SimpleValCtx  -> "SimpleVal"
+
 data Env
   = Env
-  { envNextId     :: Int
-  , envVars       :: Map Name Int -- exp id
-  , envErrors     :: Map Int [Error]
+  { envNextId       :: Int
+  , envVars         :: Map Name Int -- exp id
+  , envErrors       :: Map Int [Error]
+  , envDefinedNames :: Set Name
   }
 
 emptyEnv = Env
-  { envNextId     = 0
-  , envVars       = mempty
-  , envErrors     = mempty
+  { envNextId       = 0
+  , envVars         = mempty
+  , envErrors       = mempty
+  , envDefinedNames = mempty
   }
 
 type Lint   = State Env
@@ -76,70 +93,133 @@ expId = gets envNextId
 nextId :: Lint ()
 nextId = modify' $ \env@Env{..} -> env {envNextId = succ envNextId}
 
-check :: ExpF (SyntaxCtx, Exp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (SyntaxCtx, Exp))
-check exp m = do
+{-
+  TODO:
+    type check
+-}
+
+syntaxVal :: ValCtx -> Val -> Check ()
+syntaxVal ctx = \case
+  Lit{} -> pure ()
+  Var{} -> pure ()
+
+  ConstTagNode _ args
+    | ctx == ValCtx
+    -> mapM_ (syntaxVal SimpleValCtx) args
+
+  VarTagNode _ args
+    | ctx == ValCtx
+    -> mapM_ (syntaxVal SimpleValCtx) args
+
+  _ | ctx == ValCtx
+    -> pure ()
+
+  _ -> tell ["Syntax error - expected " ++ showValCtx ctx]
+
+{-
+  ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
+  VarTagNode    Name [SimpleVal] -- complete node (variable tag)
+  ValTag        Tag
+  Unit                           -- HIGH level GRIN
+  Lit Lit                        -- HIGH level GRIN
+  Var Name                       -- HIGH level GRIN
+-}
+
+syntaxExp :: ExpCtx -> ExpCtx -> Check ()
+syntaxExp ctx expCtx
+  | expCtx == ctx = pure ()
+  | expCtx == SimpleExpCtx && ctx == ExpCtx = pure () -- simple exp is also an exp
+  | otherwise = tell ["Syntax error - expected " ++ showExpCtx ctx]
+
+check :: ExpF (ExpCtx, Exp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, Exp))
+check exp nodeCheckM = do
   idx <- expId
-  errors <- execWriterT m
+  errors <- execWriterT (nodeCheckM >> checkVarScopeM exp)
   unless (null errors) $ do
     modify' $ \env@Env{..} -> env {envErrors = Map.insert idx errors envErrors}
   nextId
-  pure (idx CCTC.:< exp)
+  pure (idx CCTC.:< exp )
 
-isSimpleVal :: Val -> Bool
-isSimpleVal = \case
-  Lit{} -> True
-  Var{} -> True
-  _ -> False
-{-
-checkVal val :: Val -> Check ()
-checkVal _ = pure ()
--}
-lint :: TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
-lint typeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) emptyEnv where
-  builder :: (SyntaxCtx, Exp) -> Lint (CCTC.CofreeF ExpF Int (SyntaxCtx, Exp))
+checkNameDef :: Name -> Check ()
+checkNameDef name = do
+  defined <- state $ \env@Env{..} -> (Set.member name envDefinedNames, env {envDefinedNames = Set.insert name envDefinedNames})
+  when defined $ do
+    tell [printf "multiple defintion of %s" name]
+
+checkNameUse :: Name -> Check ()
+checkNameUse name = do
+  defined <- state $ \env@Env{..} -> (Set.member name envDefinedNames, env {envDefinedNames = Set.insert name envDefinedNames})
+  unless defined $ do
+    tell [printf "undefined variable: %s" name]
+
+checkVarScopeM :: ExpF a -> Check ()
+checkVarScopeM exp = mapM_ checkNameUse $ foldNameUseExpF (:[]) exp
+
+lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
+lint mTypeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) emptyEnv where
+
+  builder :: (ExpCtx, Exp) -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, Exp))
   builder (ctx, e) = case e of
-    Program{} -> check ((DefCtx,) <$> project e) $ do
-      checkSyntax ProgramCtx
-      -- check multiple definitions
 
-    Def{} -> check ((ExpCtx,) <$> project e) $ do
-      checkSyntax DefCtx
+    Program{} -> checkWithChild DefCtx $ do
+      syntaxE ProgramCtx
+
+    Def name args _ -> checkWithChild ExpCtx $ do
+      syntaxE DefCtx
+      -- check for multiple definitions
+      mapM_ checkNameDef $ name : args
 
     -- Exp
     EBind leftExp lpat rightExp -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
-      checkSyntax ExpCtx
-    ECase{} -> check ((AltCtx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
+      syntaxE ExpCtx
+      -- check for multiple definitions
+      mapM_ checkNameDef $ foldNamesVal (:[]) lpat
+
+    ECase val alts -> checkWithChild AltCtx $ do
+      syntaxE SimpleExpCtx
+      {-
+        val must not have location type
+      -}
 
     -- Simple Exp
-    SApp name args -> check ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-      unless (all isSimpleVal args) $ tell ["simple val expected"]
-    SReturn{} -> check ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SStore{} -> check ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SFetchI{} -> check ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-    SUpdate name val -> check ((ctx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
-      --isNode val
+    SApp name args -> checkWithChild ctx $ do
+      syntaxE SimpleExpCtx
+      mapM_ (syntaxV SimpleValCtx) args
+
+    SReturn val -> checkWithChild ctx $ do
+      syntaxE SimpleExpCtx
+      syntaxV ValCtx val
+
+    SStore val -> checkWithChild ctx $ do
+      syntaxE SimpleExpCtx
+      syntaxV ValCtx val
+      --typeV NodeTypeCtx val
+
+    SFetchI name _ -> checkWithChild ctx $ do
+      syntaxE SimpleExpCtx
+      --typeN LocationType name
+
+    SUpdate name val -> checkWithChild ctx $ do
+      syntaxE SimpleExpCtx
+      syntaxV ValCtx val
+      --typeN LocationType name
       --isNodePtr name val
-    SBlock{} -> check ((ExpCtx,) <$> project e) $ do
-      checkSyntax SimpleExpCtx
+
+    SBlock{} -> checkWithChild ExpCtx $ do
+      syntaxE SimpleExpCtx
 
     -- Alt
-    Alt{} -> check ((ExpCtx,) <$> project e) $ do
-      checkSyntax AltCtx
+    Alt cpat _ -> checkWithChild ExpCtx $ do
+      syntaxE AltCtx
+      -- check for multiple definitions
+      case cpat of
+        NodePat _ args -> mapM_ checkNameDef args
+        _ -> pure ()
 
     where
-      checkSyntax :: SyntaxCtx -> Check ()
-      checkSyntax expCtx
-        | expCtx == ctx = pure ()
-        -- simple exp is also an exp
-        | expCtx == SimpleExpCtx && ctx == ExpCtx = pure ()
-        | otherwise = tell ["Syntax error - expected " ++ showCtx ctx]
-
+      syntaxE = syntaxExp ctx
+      syntaxV = syntaxVal
+      checkWithChild childCtx m = check ((childCtx,) <$> project e) m
 {-
   = Program     [Def]
   | Def         Name [Name] Exp

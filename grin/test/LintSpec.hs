@@ -20,7 +20,6 @@ spec = do
           undefinedParam p1 p2 =
             _prim_int p3 p2
         |]
-      let (_, errors) = lint emptyTypeEnv program
-      pending
+      let (_, errors) = lint Nothing program
       -- TODO: Better check.
       Map.null errors `shouldBe` False

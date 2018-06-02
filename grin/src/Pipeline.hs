@@ -385,8 +385,8 @@ statistics = do
 lintGrin :: PipelineM ()
 lintGrin = do
   exp <- use psExp
-  Just typeEnv <- use psTypeEnv
-  let lintExp@(_, errorMap) = Lint.lint typeEnv exp
+  mTypeEnv <- use psTypeEnv
+  let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
   when (Map.size errorMap > 0) $ do
     liftIO . print $ prettyLintExp lintExp
     psErrors %= ((concat $ Map.elems errorMap) ++)
