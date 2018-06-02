@@ -426,25 +426,27 @@ pipeline o e ps = do
 -- are defined in the pipeline list. After all round the TypeEnv
 -- is restored
 optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> PipelineM ()
-optimizeWith o e ps = loop
+optimizeWith o e ps = check "init" >> loop
   where
+    check phaseName = do
+      pipelineStep $ HPT CompileHPT
+      pipelineStep $ HPT RunHPTPure
+      pipelineStep $ Lint
+
+      errors <- use psErrors
+      unless (Prelude.null errors) $ void $ do
+        pipelineStep $ HPT PrintHPTResult
+        pipelineStep $ PrintGrin ondullblack
+        liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
+        fail "illegal code"
+
     loop = do
       -- Run every step and on changes run HPT
       effs <- forM ps $ \p -> do
         eff <- pipelineStep p
         when (eff == ExpChanged) $ void $ do
           pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
-          pipelineStep $ HPT CompileHPT
-          pipelineStep $ HPT RunHPTPure
-          pipelineStep $ Lint
-
-          errors <- use psErrors
-          unless (Prelude.null errors) $ void $ do
-            pipelineStep $ HPT PrintHPTResult
-            pipelineStep $ PrintGrin ondullblack
-            liftIO . putStrLn $ printf "error after %s:\n%s" (show p) (unlines errors)
-            fail "illegal code"
-
+          check $ show p
         pure eff
       -- Run loop again on change
       when (any (match _ExpChanged) effs)
