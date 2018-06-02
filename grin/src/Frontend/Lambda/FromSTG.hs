@@ -1,8 +1,6 @@
 {-# LANGUAGE LambdaCase, TupleSections, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances, RecordWildCards #-}
 module Frontend.Lambda.FromSTG (codegenLambda) where
 
-import Debug.Trace
-
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad
@@ -27,12 +25,12 @@ type CG = StateT Env IO
 data Env
   = Env
   { dflags      :: DynFlags
-  , closureDefs :: Map Name Def
+  , closureDefs :: [Def]
   , counter     :: Int
   }
 
-addDef :: Name -> Def -> CG ()
-addDef name def = modify' $ \env@Env{..} -> env {closureDefs = Map.insert name def closureDefs}
+addDef :: Def -> CG ()
+addDef def = modify' $ \env@Env{..} -> env {closureDefs = def:closureDefs}
 
 uniq :: Name -> CG Name
 uniq name = state (\env@Env{..} -> (printf "%s.%d" name counter, env {counter = succ counter}))
@@ -40,7 +38,8 @@ uniq name = state (\env@Env{..} -> (printf "%s.%d" name counter, env {counter = 
 genName :: Id -> CG String
 genName id = do
   s <- pprM id
-  pure $ printf "%s{%d,%d}" s (idArity id) (idCallArity id)
+  pure s
+  --pure $ printf "%s{%d,%d}" s (idArity id) (idCallArity id)
 
 pprM :: Outputable a => a -> CG String
 pprM a = flip showPpr a <$> gets dflags
@@ -61,8 +60,8 @@ visitArg = \case
   StgLitArg lit -> Lit <$> convertLit lit
 
 -- expr level
-visitRhs :: StgRhs -> CG Exp
-visitRhs stgRhs = case stgRhs of
+visitRhs :: Name -> StgRhs -> CG Exp
+visitRhs name stgRhs = case stgRhs of
   StgRhsCon _ dataCon args -> Con <$> pprM (dataConName dataCon) <*> mapM visitArg args
 
   StgRhsClosure _ _ [] _ [] body -> visitExpr body
@@ -71,8 +70,8 @@ visitRhs stgRhs = case stgRhs of
     freeVarNames <- mapM genName freeVars
     argNames <- mapM genName args
 
-    closureName <- uniq "closure-name"
-    visitTopRhs closureName stgRhs >>= addDef closureName
+    closureName <- uniq $ printf "closure-%s" name
+    visitTopRhs closureName stgRhs >>= addDef
 
     pure . App closureName . map Var $ freeVarNames ++ argNames
 
@@ -80,30 +79,28 @@ visitBinding :: StgBinding -> CG (Exp -> Exp)
 visitBinding = \case
   StgNonRec id stgRhs -> do
     name <- genName id
-    exp <- visitRhs stgRhs
+    exp <- visitRhs name stgRhs
     pure (Let [(name, exp)])
 
   StgRec bindings -> LetRec <$> mapM f bindings where
     f (id, stgRhs) = do
       name <- genName id
-      exp <- visitRhs stgRhs
+      exp <- visitRhs name stgRhs
       pure (name, exp)
 
 visitExpr :: StgExpr -> CG Exp
 visitExpr = \case
-  -- app
   StgApp id args                  -> App <$> genName id <*> mapM visitArg args
   StgOpApp op args _ty            -> App <$> genOpName op <*> mapM visitArg args
   StgConApp dataCon args _        -> Con <$> pprM (dataConName dataCon) <*> mapM visitArg args
-  --StgConApp dataCon args _ty      -> ConstTagNode <$> genTag dataCon <*> mapM visitArg args >>= fmap SReturn
-  -- return lit
   StgLit literal                  -> Lit <$> convertLit literal
+
   -- bypass
   StgTick _tickish expr           -> visitExpr expr
-  -- ???
-  StgLet binding expr             -> ($) <$> visitBinding binding <*> visitExpr expr -- TODO: generate local or global bind
-  StgLetNoEscape binding expr     -> ($) <$> visitBinding binding <*> visitExpr expr -- TODO: generate local or global bind
-  -- case + bind
+
+  StgLet binding expr             -> ($) <$> visitBinding binding <*> visitExpr expr
+  StgLetNoEscape binding expr     -> ($) <$> visitBinding binding <*> visitExpr expr
+
   StgCase stgExpr resultId _ty alts  -> do
     scrutName <- genName resultId
     scrutExp <- visitExpr stgExpr
@@ -117,14 +114,6 @@ genOpName = \case
   StgPrimCallOp op  -> pprM op -- TODO
   StgFCallOp op _   -> pprM op -- TODO
 
-{-
-data DataCon
-  = MkData {
-        dcName    :: Name,      -- This is the name of the *source data con*
-                                -- (see "Note [Data Constructor Naming]" above)
-        dcUnique :: Unique,     -- Cached from Name
-        dcTag    :: ConTag,     -- ^ Tag, used for ordering 'DataCon's
--}
 genTag :: DataCon -> CG Name
 genTag dataCon = pprM dataCon
 
@@ -135,17 +124,6 @@ visitAlt (altCon, argIds, body) = do
     LitAlt  lit     -> LitPat <$> convertLit lit
     DEFAULT         -> pure DefaultPat
   Alt cpat <$> visitExpr body
-
-
-{-
-  top binding / binding / rhs
-    expr
-      arg / lit / alt
-
-  method:
-    - lambda lift STG
-    - compile to grin according boquist phd
--}
 
 -- top level
 visitTopRhs :: Name -> StgRhs -> CG Def
@@ -171,10 +149,11 @@ visitTopBinding = \case
     name <- genName id
     visitTopRhs name stgRhs
 
-  StgTopStringLit id byteString -> error "unsupported: StgTopStringLit"
+  StgTopStringLit id byteString -> do
+    name <- genName id
+    pure [Def name [] . Lit . LError $ show byteString]
 
 codegenLambda :: DynFlags -> [StgTopBinding] -> IO Program
 codegenLambda dflags stg = do
-
   (defs, Env{..}) <- runStateT (mapM visitTopBinding stg) (Env dflags mempty 0)
-  pure . Program $ concat defs ++ Map.elems closureDefs
+  pure . Program $ concat defs ++ closureDefs

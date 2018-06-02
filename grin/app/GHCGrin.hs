@@ -3,7 +3,9 @@ module Main where
 import GHC
 import GHC.Paths (libdir)
 
+import DynFlags hiding (getOpts)
 import HscTypes
+import SimplCore
 import CorePrep
 import CoreToStg
 
@@ -38,7 +40,16 @@ cg_main :: Opts -> IO ()
 cg_main opts = runGhc (Just libdir) $ do
   env <- getSession
   dflags <- getSessionDynFlags
-  setSessionDynFlags $ dflags { hscTarget = HscInterpreted, ghcLink = NoLink }
+  let flagList = []
+      {-
+        [ Opt_DoLambdaEtaExpansion
+        , Opt_FullLaziness
+        , Opt_LiberateCase
+        ]
+      -}
+      dflags' = foldl gopt_set dflags flagList
+  setSessionDynFlags $ dflags' { hscTarget = HscInterpreted, ghcLink = NoLink }
+  env <- getSession
 
   targets <- forM (inputs opts) $ \input -> guessTarget input Nothing
   setTargets targets
@@ -49,6 +60,7 @@ cg_main opts = runGhc (Just libdir) $ do
   tmod <- typecheckModule pmod    -- TypecheckedSource
   dmod <- desugarModule tmod      -- DesugaredModule
   let core = coreModule dmod      -- CoreModule
+  core <- liftIO $ core2core env core
 
   -- Run the Core prep pass
   prep <- liftIO $ corePrepPgm env (mg_module core) (ms_location modSum) (mg_binds core) (mg_tcs core)
