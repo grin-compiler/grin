@@ -38,6 +38,7 @@ data Lit
   | LWord64 Word64
   | LFloat  Float
   | LBool   Bool
+  | LError  String
   deriving (Eq, Ord, Show)
 
 data Pat

@@ -44,6 +44,7 @@ instance Pretty Lit where
     LWord64 a -> integer (fromIntegral a) <> text "u"
     LFloat a  -> float a
     LBool a   -> text "#" <> text (show a)
+    LError a  -> red $ text "!" <> text a
 
 instance Pretty Pat where
   pretty = \case
