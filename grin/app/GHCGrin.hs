@@ -13,7 +13,9 @@ import Control.Monad.Trans
 import System.Environment
 import System.Exit
 
-import Frontend.GHC.FromSTG
+import Frontend.Lambda.FromSTG
+import Frontend.Lambda.CodeGen
+import Frontend.Lambda.Pretty
 
 data Opts
   = Opts
@@ -55,7 +57,9 @@ cg_main opts = runGhc (Just libdir) $ do
   let stg = coreToStg dflags (mg_module core) prep
 
   -- TODO: convert to grin
-  grin <- liftIO $ codegenGrin dflags stg
+  lambda <- liftIO $ codegenLambda dflags stg
+  liftIO $ printLambda lambda
+  let grin = codegenGrin lambda
   pure ()
 
 main :: IO ()
