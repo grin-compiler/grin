@@ -7,18 +7,18 @@ upto m n =
                let tail = upto succ n
                (Cons m tail)
 
-sum l =
-  case l of
+sum l1 =
+  case l1 of
     (Nil)       -> (Int 0)
-    (Cons n ns) -> let s = sum ns
-                   rts_int_add n s
+    (Cons n1 ns) -> let s1 = sum ns
+                    rts_int_add n1 s1
 
 grinMain =
-  let box1 = (Int 1)
-      box2 = (Int 10)
-      l = upto box1 box2
-      s = sum l
-  rts_int_print s
+  let box2 = (Int 1)
+      box3 = (Int 10)
+      l2 = upto box2 box3
+      s2 = sum l2
+  rts_int_print s2
 
 -- rts
 
