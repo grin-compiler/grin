@@ -426,34 +426,36 @@ pipeline o e ps = do
 -- are defined in the pipeline list. After all round the TypeEnv
 -- is restored
 optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> PipelineM ()
-optimizeWith o e ps = check "init" >> loop
-  where
-    check phaseName = do
-      pipelineStep $ HPT CompileHPT
-      pipelineStep $ HPT RunHPTPure
-      pipelineStep $ Lint
+optimizeWith o e ps = loop where
+  loop = do
+    -- Run every step and on changes run HPT
+    effs <- forM ps $ \p -> do
+      eff <- pipelineStep p
+      when (eff == ExpChanged) $ void $ do
+        pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
+        checkCode $ show p
+      pure eff
+    -- Run loop again on change
+    when (any (match _ExpChanged) effs)
+      loop
 
-      errors <- use psErrors
-      unless (Prelude.null errors) $ void $ do
-        pipelineStep $ HPT PrintHPTResult
-        pipelineStep $ PrintGrin ondullblack
-        liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
-        fail "illegal code"
+checkCode :: String -> PipelineM ()
+checkCode phaseName = do
+  pipelineStep $ HPT CompileHPT
+  pipelineStep $ HPT RunHPTPure
+  pipelineStep $ Lint
 
-    loop = do
-      -- Run every step and on changes run HPT
-      effs <- forM ps $ \p -> do
-        eff <- pipelineStep p
-        when (eff == ExpChanged) $ void $ do
-          pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
-          check $ show p
-        pure eff
-      -- Run loop again on change
-      when (any (match _ExpChanged) effs)
-        loop
+  errors <- use psErrors
+  unless (Prelude.null errors) $ void $ do
+    pipelineStep $ HPT PrintHPTResult
+    pipelineStep $ PrintGrin ondullblack
+    liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
+    fail "illegal code"
 
 optimize :: PipelineOpts -> Exp -> [Pipeline] -> [Pipeline] -> IO Exp
 optimize o e pre post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
+  checkCode "init"
+
   mapM_ pipelineStep pre
 
   mapM_ pipelineStep
