@@ -118,5 +118,6 @@ postPipeline :: [Pipeline]
 postPipeline =
   [ SaveLLVM "high-level-opt-code"
   , JITLLVM -- TODO: Remove this.
+  , PrintTypeEnv
   , PrintGrin ondullblack
   ]
