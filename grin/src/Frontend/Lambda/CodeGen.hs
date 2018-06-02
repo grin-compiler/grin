@@ -42,94 +42,103 @@ genCPat = \case
   NodePat name args -> G.NodePat (G.Tag G.C name) args
   LitPat  lit       -> G.LitPat (genLit lit)
   DefaultPat        -> G.DefaultPat
-
-genAtom :: Atom -> G.Val
-genAtom = \case
-  Var name  -> G.Var name
-  Lit lit   -> G.Lit $ genLit lit
-  x -> error $ printf "unsupported atom: %s" $ show x
-
-apChain :: G.Exp -> [Atom] -> CG G.Exp
-apChain exp args = foldr ap (pure exp) args where -- TODO: fix the order
+{-
+apChain :: Mode -> G.Exp -> [Atom] -> CG G.Exp
+apChain mode exp args = foldrM ap exp args where -- TODO: fix the order
   ap arg leftExp = do
     argWhnf <- uniq "arg"
-    G.EBind <$> leftExp <*> pure (G.Var argWhnf) <*> pure (G.SApp "apply" [G.Var argWhnf, genAtom arg])
+    newArg <- genVal C arg
+    case mode of
+      pure $ G.EBind leftExp (G.Var argWhnf) (G.SApp "apply" [G.Var argWhnf, newArg])
+-}
+data Mode = C | E | R deriving (Eq, Ord, Show)
 
--- lazy context ; constructs suspended computations
-genC :: Exp -> CG G.Exp
-genC e = gets _arityMap >>= \arityMap -> case e of
-  App name args | argCount <- length args
-                , Just ar <- arity arityMap name -> case argCount `compare` ar of
-    EQ  -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F name) $ map genAtom args
-    LT  -> pure $ G.SStore $ G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) $ map genAtom args
-  -- TODO: use ap for suspended application
-  App name [arg] | Nothing <- arity arityMap name -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F "ap") [G.Var name, genAtom arg]
-  --App name args | Nothing <- arity arityMap name -> -- ap store chain
-  Con name args -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.C name) $ map genAtom args
-  x -> error $ printf "unsupported C: %s" $ show x
+genVal :: Mode -> Atom -> CG G.Val
+genVal mode = \case
+  Var name  -> pure $ G.Var name -- TODO: handle C,E,R
+  Lit lit   -> pure . G.Lit $ genLit lit
+  x -> error $ printf "unsupported atom: %s in mode %s" (show x) (show mode)
 
--- strict context ; evaluates to WHNF
-genE :: Exp -> CG G.Exp
-genE e = gets _arityMap >>= \arityMap -> case e of
-  App name args | argCount <- length args
-                , Just ar <- arity arityMap name -> case argCount `compare` ar of
-    EQ  -> pure $ G.SApp name $ map genAtom args
-    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) $ map genAtom args
-    GT  -> let (funArgs, extraArgs) = splitAt ar args
-           in apChain (G.SApp name $ map genAtom funArgs) extraArgs
-  -- HINT: unknown function ; generate apply chain
-  App name args | argCount <- length args
-                , Nothing <- arity arityMap name
-        -- apply chain
-        -> apChain (G.SApp "eval" [G.Var name]) args
-  -- TODO: track if var is in WHNF already
-  Var name -> do
-    gets $ Map.lookup name . _whnfMap >>= \case
-      Just whnf -> pure $ G.SReturn $ G.Var whnf
-      Nothing   -> pure $ G.SApp "eval" [G.Var name] -- TODO: handle functions
-  x -> error $ printf "unsupported E: %s" $ show x
+gen :: Mode -> Exp -> CG G.Exp
+gen mode e = gets _arityMap >>= \arityMap -> case e of
+  Program defs      -> G.Program <$> mapM (gen mode) defs
+  Def name args exp -> G.Def name args <$> gen mode exp
 
--- strict and return context (evaluates to WHNF) ; R is similar to E
-genR :: Exp -> CG G.Exp
-genR e = gets _arityMap >>= \arityMap -> case e of
+  Lit lit -> pure . G.SReturn . G.Lit $ genLit lit
+
+  Con name args
+    | mode == C
+    -> G.SStore . G.ConstTagNode (G.Tag G.C name) <$> mapM (genVal C) args
+
+    | mode == R
+    -> G.SReturn . G.ConstTagNode (G.Tag G.C name) <$> mapM (genVal C) args
+
+  Var name
+    | mode == E || mode == R
+    -> do
+      gets $ Map.lookup name . _whnfMap >>= \case
+        Just whnf -> pure $ G.SReturn $ G.Var whnf
+        Nothing   -> pure $ G.SApp "eval" [G.Var name] -- TODO: handle functions
+
   -- TODO: build var name <--> location name map for suspended computations
-  Let  binds exp -> foldr (\(name, e) rightExp -> G.EBind <$> genC e <*> pure (G.Var name {-TODO-}) <*> rightExp) (genR exp) binds
+  Let binds exp
+    | mode == R
+    -> foldr (\(name, e) rightExp -> G.EBind <$> gen C e <*> pure (G.Var name) <*> rightExp) (gen R exp) binds
 
-  LetS binds exp -> foldr (\(name, e) rightExp -> do
-    leftExp <- genE e
-    -- track whnf
-    modify' $ \env@Env{..} -> env {_whnfMap = Map.insert name name _whnfMap}
-    G.EBind leftExp (G.Var name) <$> rightExp) (genR exp) binds
+  LetS binds exp
+    | mode == R
+    -> foldr (\(name, e) rightExp -> do
+      leftExp <- gen E e
+      -- track whnf
+      modify' $ \env@Env{..} -> env {_whnfMap = Map.insert name name _whnfMap}
+      G.EBind leftExp (G.Var name) <$> rightExp) (gen R exp) binds
 
-  Con name args -> pure $ G.SReturn $ G.ConstTagNode (G.Tag G.C name) $ map genAtom args
+  App name args
+    | argCount <- length args
+    -> case arity arityMap name of
 
-  Case exp alts -> do
-    whnf <- uniq "value"
-    scrutExp <- genE exp
-    -- track whnf
-    case exp of
-      Var name -> modify' $ \env@Env{..} -> env {_whnfMap = Map.insert name whnf _whnfMap}
-      _ -> pure ()
-    G.EBind scrutExp (G.Var whnf) . G.ECase (G.Var whnf) <$> mapM genR alts -- TODO: handle name mapping for var name -> whnf value name
-  Alt pat exp -> G.Alt (genCPat pat) <$> genR exp
+      -- unknown function ; generate apply chain
+      {-
+      Nothing
+        | mode == C
+        , [arg] <- args
+        -> pure $ G.SStore $ G.ConstTagNode (G.Tag G.F "ap") [G.Var name, gen C arg]
 
-  Program defs      -> G.Program <$> mapM genR defs
-  Def name args exp -> G.Def name args <$> genR exp
-
-  Lit lit -> pure $ G.SReturn $ G.Lit $ genLit lit
-  App name args | argCount <- length args
-                , Just ar <- arity arityMap name -> case argCount `compare` ar of
-    EQ  -> pure $ G.SApp name $ map genAtom args
-    LT  -> pure $ G.SReturn $ G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) $ map genAtom args
-    GT  -> let (funArgs, extraArgs) = splitAt ar args
-           in apChain (G.SApp name $ map genAtom funArgs) extraArgs
-  -- HINT: unknown function ; generate apply chain
-  App name args | argCount <- length args
-                , Nothing <- arity arityMap name
-        -- apply chain
+        | mode == E
         -> apChain (G.SApp "eval" [G.Var name]) args
+      -}
+      -- known function
+      Just ar -> case argCount `compare` ar of
+        EQ
+          | mode == C -> G.SStore . G.ConstTagNode (G.Tag G.F name) <$> mapM (genVal C) args
+          | mode == E -> G.SApp name <$> mapM (genVal C) args
+          | mode == R -> G.SApp name <$> mapM (genVal C) args
 
-  x -> error $ printf "unsupported R: %s" $ show x
+        LT
+          | mode == C -> G.SStore  . G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) <$> mapM (genVal C) args
+          | mode == E -> G.SReturn . G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) <$> mapM (genVal C) args
+          | mode == R -> G.SReturn . G.ConstTagNode (G.Tag (G.P $ ar - argCount) name) <$> mapM (genVal C) args
+{-
+        GT  -> let (funArgs, extraArgs) = splitAt ar args
+               in apChain (G.SApp name $ map genAtom funArgs) extraArgs
+-}
+
+  Alt pat exp
+    | mode == R
+    -> G.Alt (genCPat pat) <$> gen R exp
+
+  Case exp alts
+    | mode == R
+    -> do
+      whnf <- uniq "value"
+      scrutExp <- gen E exp
+      -- track whnf
+      case exp of
+        Var name -> modify' $ \env@Env{..} -> env {_whnfMap = Map.insert name whnf _whnfMap}
+        _ -> pure ()
+      G.EBind scrutExp (G.Var whnf) . G.ECase (G.Var whnf) <$> mapM (gen R) alts -- TODO: handle name mapping for var name -> whnf value name
+
+  x -> error $ printf "unsupported %s in mode: %s" (show x) (show mode)
 
 {-
   TODO:
@@ -148,7 +157,7 @@ genR e = gets _arityMap >>= \arityMap -> case e of
 
 codegenGrin :: Program -> G.Program
 codegenGrin exp = G.Program $ prog ++ primOps where
-  G.Program prog    = evalState (genR exp) (Env 0 (buildArityMap exp) mempty)
+  G.Program prog    = evalState (gen R exp) (Env 0 (buildArityMap exp) mempty)
   G.Program primOps = lambdaPrimOps
 
 -- HINT: arity map for lambda
