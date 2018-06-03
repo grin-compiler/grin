@@ -248,7 +248,7 @@ pipelineStep p = do
     PrintTypeEnv    -> printTypeEnv
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
-    Lint            -> lintGrin
+    Lint            -> lintGrin Nothing
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
@@ -389,15 +389,31 @@ statistics = do
   e <- use psExp
   liftIO . print $ Statistics.statistics e
 
-lintGrin :: PipelineM ()
-lintGrin = do
+lintGrin :: Maybe String -> PipelineM ()
+lintGrin mPhaseName = do
+  pipelineStep $ HPT CompileHPT
+  pipelineStep $ HPT RunHPTPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
   when (Map.size errorMap > 0) $ do
-    failOnLint <- view poFailOnLint
-    when failOnLint . liftIO . print $ prettyLintExp lintExp
     psErrors %= ((concat $ Map.elems errorMap) ++)
+
+  -- print errors
+  errors <- use psErrors
+  unless (Prelude.null errors) $ void $ do
+    failOnLintError <- view poFailOnLint
+    when failOnLintError $ void $ do
+      --liftIO . print $ prettyLintExp lintExp -- TODO: print code with errors
+      pipelineStep $ HPT PrintHPTResult
+      pipelineStep $ PrintGrin ondullblack
+    case mPhaseName of
+      Just phaseName  -> liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
+      Nothing         -> liftIO . putStrLn $ printf "error:\n%s" (unlines errors)
+
+    failOnLintError <- view poFailOnLint
+    when failOnLintError $ do
+      liftIO $ die "illegal code"
 
 check :: PipelineM ()
 check = do
@@ -441,28 +457,11 @@ optimizeWithPM o e ps = loop where
       eff <- pipelineStep p
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
-        checkCode $ show p
+        lintGrin . Just $ show p
       pure eff
     -- Run loop again on change
     when (any (match _ExpChanged) effs)
       loop
-
-checkCode :: String -> PipelineM ()
-checkCode phaseName = do
-  pipelineStep $ HPT CompileHPT
-  pipelineStep $ HPT RunHPTPure
-  pipelineStep $ Lint
-
-  errors <- use psErrors
-  unless (Prelude.null errors) $ void $ do
-    failOnLintError <- view poFailOnLint
-    when failOnLintError $ void $ do
-      pipelineStep $ HPT PrintHPTResult
-      pipelineStep $ PrintGrin ondullblack
-    liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
-    failOnLintError <- view poFailOnLint
-    when failOnLintError $ do
-      liftIO $ die "illegal code"
 
 optimize :: PipelineOpts -> Exp -> [Pipeline] -> [Pipeline] -> IO Exp
 optimize o e pre post = optimizeWith o e pre optimizations post where
@@ -489,7 +488,7 @@ optimize o e pre post = optimizeWith o e pre optimizations post where
 
 optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> [Transformation] -> [Pipeline] -> IO Exp
 optimizeWith o e pre optimizations post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
-  checkCode "init"
+  lintGrin $ Just "init"
 
   mapM_ pipelineStep pre
 
