@@ -15,9 +15,13 @@ import Control.Monad.Trans
 import System.Environment
 import System.Exit
 
+import Text.Pretty.Simple (pPrint)
+import Text.PrettyPrint.ANSI.Leijen (ondullblack)
+
 import Frontend.Lambda.FromSTG
 import Frontend.Lambda.CodeGen
 import Frontend.Lambda.Pretty
+import Pipeline
 
 data Opts
   = Opts
@@ -30,7 +34,7 @@ showUsage = do putStrLn "Usage: ghc-grin <haskell-files> [-o <output-file>]"
 
 getOpts :: IO Opts
 getOpts = do xs <- getArgs
-             return $ process (Opts [] "a.out") xs
+             return $ process (Opts [] "from-stg.grin") xs
   where
     process opts ("-o":o:xs) = process (opts { output = o }) xs
     process opts (x:xs) = process (opts { inputs = x:inputs opts }) xs
@@ -71,7 +75,16 @@ cg_main opts = runGhc (Just libdir) $ do
   -- TODO: convert to grin
   lambda <- liftIO $ codegenLambda dflags stg
   liftIO $ printLambda lambda
+  --liftIO $ pPrint lambda
   let grin = codegenGrin lambda
+  {-
+  liftIO . void $ pipeline pipelineOpts grin
+    [ SaveGrin "from-stg-no-eval.grin"
+    , T GenerateEval
+    , SaveGrin (output opts)
+    , PrintGrin ondullblack
+    ]
+  -}
   pure ()
 
 main :: IO ()
@@ -79,3 +92,8 @@ main = do opts <- getOpts
           if (null (inputs opts))
              then showUsage
              else cg_main opts
+
+pipelineOpts :: PipelineOpts
+pipelineOpts = PipelineOpts
+  { _poOutputDir = "."
+  }

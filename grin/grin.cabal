@@ -247,6 +247,8 @@ executable ghc-grin
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , mtl
+                     , pretty-simple
+                     , ansi-wl-pprint
                      , grin
                      , ghc
                      , ghc-paths
