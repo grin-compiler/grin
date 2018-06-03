@@ -41,9 +41,10 @@ selectInlineSet prog@(Program defs) = inlineSet where
   -- TODO: limit inline overhead using CALL COUNT * SIZE < LIMIT
 
   callSet       = Map.keysSet . Map.filter (== 1) . Map.unionsWith (+) $ map snd callTrees
-  bindSet       = mempty -- Map.keysSet . Map.filter (< bindSequenceLimit) $ mconcat bindList
-  candidateSet  = mconcat [bindSet, callSet]
+  bindSet       = Map.keysSet . Map.filter (< bindSequenceLimit) $ mconcat bindList
+  candidateSet  = mconcat [bindSet `Set.intersection` leafSet, callSet]
   defCallTree   = Map.fromList callTrees
+  leafSet       = Set.fromList [name | (name, callMap) <- callTrees, Map.null callMap]
 
   -- keep only the leaves of the candidate call tree
   inlineSet     = Data.Foldable.foldr stripCallers candidateSet candidateSet
@@ -54,8 +55,13 @@ selectInlineSet prog@(Program defs) = inlineSet where
 
   folder :: ExpF Stat -> Stat
   folder = \case
-    EBindF left _ right -> mconcat [left, right, Stat 1 mempty]
-    SAppF name _        -> Stat 0 $ Map.singleton name 1
+    EBindF left _ right
+      -> mconcat [left, right, Stat 1 mempty]
+
+    SAppF name _
+      | not (isPrimName name)
+      -> Stat 0 $ Map.singleton name 1
+
     exp -> Data.Foldable.fold exp
 
 -- transformation
