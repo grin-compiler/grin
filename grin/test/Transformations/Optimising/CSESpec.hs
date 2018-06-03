@@ -8,6 +8,7 @@ import GrinTH
 import Test hiding (newVar)
 import Assertions
 import TypeEnv
+import TypeCheck
 
 
 runTests :: IO ()
@@ -68,13 +69,24 @@ spec = do
           p1 <- store (CInt 0)
           v1 <- fetch p1
           update p1 v1
-
+          update p1 v1
+          update p1 (CInt 0)
+          update p1 (CInt 0)
+          update p1 (CInt 2)
+          update p1 (CInt 2)
+          update p1 (CInt 2)
+          update p1 (CInt 2)
           update p1 (CInt 1)
           fetch p1
         |]
       let after = [expr|
           p1 <- store (CInt 0)
           v1 <- pure (CInt 0)
+
+          -- TODO: improve CSE to remove these redundant updates
+          update p1 v1
+          update p1 (CInt 0)
+          update p1 (CInt 2)
 
           update p1 (CInt 1)
           pure (CInt 1)
@@ -118,6 +130,11 @@ spec = do
           v2 <- pure (CInt 0)
           i1 <- pure 1
           i2 <- pure 1
+          (CInt i3) <- pure (CInt i1)
+          (CInt i4) <- pure (CInt i3)
+          (CInt i5) <- pure (CInt 0)
+          (CInt i6) <- pure (CInt 0)
+          (CInt i7) <- pure (CInt i6)
           pure v2
         |]
       let after = [expr|
@@ -125,6 +142,11 @@ spec = do
           v2 <- pure v1
           i1 <- pure 1
           i2 <- pure i1
+          (CInt i3) <- pure (CInt i1)
+          (CInt i4) <- pure (CInt i3)
+          (CInt i5) <- pure v1
+          (CInt i6) <- pure v1
+          (CInt i7) <- pure (CInt i6)
           pure v2
         |]
       commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
@@ -181,3 +203,20 @@ spec = do
               pure n4
         |]
       commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+
+  it "no copy propagation of def arguments" $ do
+    let before = [prog|
+          fun a =
+            b <- pure a
+            c <- pure b
+            d <- pure c
+            pure d
+      |]
+    let after = [prog|
+          fun a =
+            b <- pure a
+            c <- pure b
+            d <- pure c
+            pure d
+      |]
+    snd (commonSubExpressionElimination (inferTypeEnv before, before)) `sameAs` after

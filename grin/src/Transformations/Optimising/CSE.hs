@@ -25,13 +25,13 @@ commonSubExpressionElimination (typeEnv, e) = (typeEnv, hylo skipUnit builder (m
       newEnv = case leftExp of
         -- HINT: also save fetch (the inverse operation) for store and update
         SUpdate name val              -> Map.insert (SFetch name) (SReturn val) env
-        SStore val | Var name <- lpat -> Map.insert (SFetch name) (SReturn val) extEnv
+        SStore val | Var name <- lpat -> Map.insert (SFetch name) (SReturn val) extEnvKeepOld
         -- HINT: location parameters might be updated in the called function, so forget their content
-        SApp _defName args            -> foldr Map.delete extEnv [SFetch name | Var name <- args, isLocation name]
-        SReturn{} -> extEnv
-        SFetch{}  -> extEnv
+        SApp _defName args            -> foldr Map.delete extEnvKeepOld [SFetch name | Var name <- args, isLocation name]
+        SReturn val | isConstant val  -> extEnvKeepOld
+        SFetch{}  -> extEnvKeepOld
         _         -> env
-      extEnv = Map.insertWith (\new old -> new) leftExp (SReturn lpat) env
+      extEnvKeepOld = Map.insertWith (\new old -> old) leftExp (SReturn lpat) env
     SUpdate name val | Just (SReturn fetchedVal) <- Map.lookup (SFetch name) env
                      , fetchedVal == val
                      -> SReturnF Unit
@@ -44,8 +44,12 @@ commonSubExpressionElimination (typeEnv, e) = (typeEnv, hylo skipUnit builder (m
     _ -> False
 
   altEnv :: Env -> Val -> CPat -> Env
-  altEnv env val cpat = case cpat of
-    NodePat tag args  -> Map.insert (SReturn (ConstTagNode tag $ map Var args)) (SReturn val) env
-    LitPat lit        -> Map.insert (SReturn (Lit lit)) (SReturn val) env
-    TagPat tag        -> Map.insert (SReturn (ValTag tag)) (SReturn val) env
-    DefaultPat        -> env
+  altEnv env val cpat
+    | not (isConstant val)
+    = case cpat of
+      NodePat tag args  -> Map.insertWith (\new old -> old) (SReturn (ConstTagNode tag $ map Var args)) (SReturn val) env
+      LitPat lit        -> Map.insertWith (\new old -> old) (SReturn (Lit lit)) (SReturn val) env
+      TagPat tag        -> Map.insertWith (\new old -> old) (SReturn (ValTag tag)) (SReturn val) env
+      DefaultPat        -> env
+
+    | otherwise = env
