@@ -1,0 +1,197 @@
+{-
+Run:
+  stack exec -- grin -t --cse --cp --cse --cp --cse 014.T-CommonSubExpressionElimination
+Error:
+  Copy propagation and sub expression elimination change code back and forth.
+
+  Pipeline: T CopyPropagation                   has effect: ExpChanged
+  Pipeline: T CommonSubExpressionElimination    has effect: ExpChanged
+  Pipeline: T CopyPropagation                   has effect: ExpChanged
+  Pipeline: T CommonSubExpressionElimination    has effect: ExpChanged
+-}
+
+idr_Main.fn.unboxed idr_Main.fn0 =
+  idr_Main.fn1_val_1 <- pure (CGrInt 0)
+  idr_Main.fn1 <- store idr_Main.fn1_val_1
+  idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:00.0 <- pure idr_Main.fn0
+  idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:01.0 <- pure idr_Main.fn1
+  idris_int_eq0.0.0 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:00.0
+  idris_int_eq1.0.0 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:01.0
+  (CGrInt idris_int_eq0_1.0.0) <- fetch idr_Main.fn0
+  (CGrInt idris_int_eq1_1.0.0) <- pure idr_Main.fn1_val_1
+  idris_int_eq2.0.0 <- _prim_int_eq idris_int_eq0_1.0.0 idris_int_eq1_1.0.0
+  unboxed.CGrInt.8.0 <- case idris_int_eq2.0.0 of
+    #False ->
+      pure 0
+    #True ->
+      pure 1
+  idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val.0 <- pure (CGrInt unboxed.CGrInt.8.0)
+  idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02.0 <- store idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val.0
+  idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val_38.0 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val.0
+  idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:0_cpat_LInt64_0.0 <- pure unboxed.CGrInt.8.0
+  idr_Main.fn1_val <- case unboxed.CGrInt.8.0 of
+    0 ->
+      idris_int_lt0.0.0 <- pure idris_int_eq0.0.0
+      idris_int_lt1.0.0 <- pure idris_int_eq1.0.0
+      idris_int_lt0_1.0.0 <- pure idris_int_eq0_1.0.0
+      idris_int_lt1_1.0.0 <- pure idris_int_eq1_1.0.0
+      idris_int_lt2.0.0 <- _prim_int_lt idris_int_eq0_1.0.0 idris_int_eq1_1.0.0
+      unboxed.CGrInt.9.0 <- case idris_int_lt2.0.0 of
+        #False ->
+          pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:0_cpat_LInt64_0.0
+        #True ->
+          pure 1
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val.0 <- pure (CGrInt unboxed.CGrInt.9.0)
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03.0 <- store idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val.0
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val_39.0 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val.0
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:0_cpat_LInt64_0.1 <- pure unboxed.CGrInt.9.0
+      case unboxed.CGrInt.9.0 of
+        0 ->
+          pure (Cidr_Prelude.Interfaces.GT)
+        #default ->
+          pure (Cidr_Prelude.Interfaces.LT)
+    #default ->
+      pure (Cidr_Prelude.Interfaces.EQ)
+  idr_Main.fn1_2 <- store idr_Main.fn1_val
+  idr_Main.fn1_val_3 <- pure idr_Main.fn1_val
+  case idr_Main.fn1_val of
+    (Cidr_Prelude.Interfaces.GT) ->
+      idr_Main.fn2_val_5 <- pure (CGrInt 1)
+      idr_Main.fn2 <- store idr_Main.fn2_val_5
+      idris_int_sub0.0 <- pure idris_int_eq0.0.0
+      idris_int_sub1.0 <- pure idr_Main.fn2
+      (CGrInt idris_int_sub0_1.0) <- pure (CGrInt idris_int_eq0_1.0.0)
+      (CGrInt idris_int_sub1_1.0) <- pure idr_Main.fn2_val_5
+      unboxed.CGrInt.2 <- _prim_int_sub idris_int_sub0_1.0 idris_int_sub1_1.0
+      idr_Main.fn2_val_4 <- pure (CGrInt unboxed.CGrInt.2)
+      idr_Main.fn2_6 <- store idr_Main.fn2_val_4
+      unboxed.CGrInt.3 <- idr_Main.fn.unboxed idr_Main.fn2_6
+      idr_Main.fn2_val <- pure (CGrInt unboxed.CGrInt.3)
+      idr_Main.fn2_7 <- store idr_Main.fn2_val
+      idris_int_add0.0 <- pure idris_int_sub0.0
+      idris_int_add1.0 <- pure idr_Main.fn2_7
+      (CGrInt idris_int_add0_1.0) <- pure (CGrInt idris_int_sub0_1.0)
+      (CGrInt idris_int_add1_1.0) <- pure idr_Main.fn2_val
+      _prim_int_add idris_int_add0_1.0 idris_int_add1_1.0
+    #default ->
+      pure 0
+
+idr_{EVAL_0} idr_{EVAL_0}0 =
+  idr_{EVAL_0}0_val <- fetch idr_{EVAL_0}0
+  case idr_{EVAL_0}0_val of
+    (Cidr_{P_Main.{lazy_fn_0}_0} idr_{EVAL_0}1) ->
+      idr_Main.{lazy_fn_0}0.0 <- pure idr_{EVAL_0}1
+      idr_Main.{lazy_fn_0}1_val_27.0 <- pure (CGrInt 0)
+      idr_Main.{lazy_fn_0}1.0 <- store idr_Main.{lazy_fn_0}1_val_27.0
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:00.1 <- pure idr_Main.{lazy_fn_0}0.0
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:01.1 <- pure idr_Main.{lazy_fn_0}1.0
+      idris_int_eq0.0.1 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:00.1
+      idris_int_eq1.0.1 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:01.1
+      (CGrInt idris_int_eq0_1.0.1) <- fetch idr_{EVAL_0}1
+      (CGrInt idris_int_eq1_1.0.1) <- pure idr_Main.{lazy_fn_0}1_val_27.0
+      idris_int_eq2.0.1 <- _prim_int_eq idris_int_eq0_1.0.1 idris_int_eq1_1.0.1
+      unboxed.CGrInt.8.1 <- case idris_int_eq2.0.1 of
+        #False ->
+          pure 0
+        #True ->
+          pure 1
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val.1 <- pure (CGrInt unboxed.CGrInt.8.1)
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02.1 <- store idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val.1
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val_38.1 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:02_val.1
+      idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:0_cpat_LInt64_0.2 <- pure unboxed.CGrInt.8.1
+      idr_Main.{lazy_fn_0}1_val.0 <- case unboxed.CGrInt.8.1 of
+        0 ->
+          idris_int_lt0.0.1 <- pure idris_int_eq0.0.1
+          idris_int_lt1.0.1 <- pure idris_int_eq1.0.1
+          idris_int_lt0_1.0.1 <- pure idris_int_eq0_1.0.1
+          idris_int_lt1_1.0.1 <- pure idris_int_eq1_1.0.1
+          idris_int_lt2.0.1 <- _prim_int_lt idris_int_eq0_1.0.1 idris_int_eq1_1.0.1
+          unboxed.CGrInt.9.1 <- case idris_int_lt2.0.1 of
+            #False ->
+              pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:0_cpat_LInt64_0.2
+            #True ->
+              pure 1
+          idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val.1 <- pure (CGrInt unboxed.CGrInt.9.1)
+          idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03.1 <- store idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val.1
+          idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val_39.1 <- pure idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:03_val.1
+          idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Int:!compare:0_cpat_LInt64_0.3 <- pure unboxed.CGrInt.9.1
+          case unboxed.CGrInt.9.1 of
+            0 ->
+              pure (Cidr_Prelude.Interfaces.GT)
+            #default ->
+              pure (Cidr_Prelude.Interfaces.LT)
+        #default ->
+          pure (Cidr_Prelude.Interfaces.EQ)
+      idr_Main.{lazy_fn_0}1_28.0 <- store idr_Main.{lazy_fn_0}1_val.0
+      idr_Main.{lazy_fn_0}1_val_29.0 <- pure idr_Main.{lazy_fn_0}1_val.0
+      unboxed.CGrInt.6 <- case idr_Main.{lazy_fn_0}1_val.0 of
+        (Cidr_Prelude.Interfaces.GT) ->
+          idr_Main.{lazy_fn_0}2_val_32.0 <- pure (CGrInt 1)
+          idr_Main.{lazy_fn_0}2.0 <- store idr_Main.{lazy_fn_0}2_val_32.0
+          idris_int_sub0.1 <- pure idris_int_eq0.0.1
+          idris_int_sub1.1 <- pure idr_Main.{lazy_fn_0}2.0
+          (CGrInt idris_int_sub0_1.1) <- pure (CGrInt idris_int_eq0_1.0.1)
+          (CGrInt idris_int_sub1_1.1) <- pure idr_Main.{lazy_fn_0}2_val_32.0
+          unboxed.CGrInt.7.0 <- _prim_int_sub idris_int_sub0_1.1 idris_int_sub1_1.1
+          idr_Main.{lazy_fn_0}2_val_31.0 <- pure (CGrInt unboxed.CGrInt.7.0)
+          idr_Main.{lazy_fn_0}2_33.0 <- store idr_Main.{lazy_fn_0}2_val_31.0
+          idr_Main.lazy_fn0.0 <- pure idr_Main.{lazy_fn_0}2_33.0
+          unboxed.Cidr_{P_Main.{lazy_fn_0}_0}.2.0 <- pure idr_Main.lazy_fn0.0
+          idr_Main.{lazy_fn_0}2_val_30.0 <- pure (Cidr_{P_Main.{lazy_fn_0}_0} idr_Main.{lazy_fn_0}2_33.0)
+          idr_Main.{lazy_fn_0}2_34.0 <- store idr_Main.{lazy_fn_0}2_val_30.0
+          idr_Main.{lazy_fn_0}2_val.0 <- idr_{EVAL_0} idr_Main.{lazy_fn_0}2_34.0
+          idr_Main.{lazy_fn_0}2_35.0 <- store idr_Main.{lazy_fn_0}2_val.0
+          idris_int_add0.1 <- pure idris_int_sub0.1
+          idris_int_add1.1 <- pure idr_Main.{lazy_fn_0}2_35.0
+          (CGrInt idris_int_add0_1.1) <- pure (CGrInt idris_int_sub0_1.1)
+          (CGrInt idris_int_add1_1.1) <- pure idr_Main.{lazy_fn_0}2_val.0
+          _prim_int_add idris_int_add0_1.1 idris_int_add1_1.1
+        #default ->
+          pure 0
+      idr_{EVAL_0}0_val_26 <- pure (CGrInt unboxed.CGrInt.6)
+      update idr_{EVAL_0}0 idr_{EVAL_0}0_val_26
+      pure idr_{EVAL_0}0_val_26
+    #default ->
+      pure idr_{EVAL_0}0_val
+
+grinMain =
+  idr_{runMain_0}0_val_36 <- pure (Cidr_TheWorld)
+  idr_{runMain_0}0 <- store idr_{runMain_0}0_val_36
+  idr_Main.main0.0 <- pure idr_{runMain_0}0
+  idr_Main.main1_val_12.0 <- pure (CGrInt 10)
+  idr_Main.main1.0 <- store idr_Main.main1_val_12.0
+  unboxed.CGrInt.4.0 <- idr_Main.fn.unboxed idr_Main.main1.0
+  idr_Main.main1_val_11.0 <- pure (CGrInt unboxed.CGrInt.4.0)
+  idr_Main.main1_13.0 <- store idr_Main.main1_val_11.0
+  unboxed.CGrInt.5.0 <- idr_Main.fn.unboxed idr_Main.main1_13.0
+  idr_Main.main1_val_10.0 <- pure (CGrInt unboxed.CGrInt.5.0)
+  idr_Main.main1_14.0 <- store idr_Main.main1_val_10.0
+  idr_GrinFFI.int_print0.0 <- pure idr_Main.main1_14.0
+  idris_int_print0.0.0 <- pure idr_GrinFFI.int_print0.0
+  (CGrInt idris_int_print0_1.0.0) <- pure idr_Main.main1_val_10.0
+  _prim_int_print idris_int_print0_1.0.0
+  idr_Main.main1_val.0 <- pure (CUnit)
+  idr_Main.main1_15.0 <- store idr_Main.main1_val.0
+  idr_Main.main2_val_20.0 <- pure idr_Main.main1_val_12.0
+  idr_Main.main2.0 <- pure idr_Main.main1.0
+  idr_Main.lazy_fn0.1 <- pure idr_Main.main2.0
+  unboxed.Cidr_{P_Main.{lazy_fn_0}_0}.0.0 <- pure idr_Main.lazy_fn0.1
+  idr_Main.main2_val_19.0 <- pure (Cidr_{P_Main.{lazy_fn_0}_0} idr_Main.main1.0)
+  idr_Main.main2_21.0 <- store idr_Main.main2_val_19.0
+  idr_Main.main2_val_18.0 <- idr_{EVAL_0} idr_Main.main2_21.0
+  idr_Main.main2_22.0 <- store idr_Main.main2_val_18.0
+  idr_Main.lazy_fn0.2 <- pure idr_Main.main2_22.0
+  unboxed.Cidr_{P_Main.{lazy_fn_0}_0}.1.0 <- pure idr_Main.lazy_fn0.2
+  idr_Main.main2_val_17.0 <- pure (Cidr_{P_Main.{lazy_fn_0}_0} idr_Main.main2_22.0)
+  idr_Main.main2_23.0 <- store idr_Main.main2_val_17.0
+  idr_Main.main2_val_16.0 <- idr_{EVAL_0} idr_Main.main2_23.0
+  idr_Main.main2_24.0 <- store idr_Main.main2_val_16.0
+  idr_GrinFFI.int_print0.1 <- pure idr_Main.main2_24.0
+  idris_int_print0.0.1 <- pure idr_GrinFFI.int_print0.1
+  (CGrInt idris_int_print0_1.0.1) <- pure idr_Main.main2_val_16.0
+  _prim_int_print idris_int_print0_1.0.1
+  idr_Main.main2_val.0 <- pure idr_Main.main1_val.0
+  idr_Main.main2_25.0 <- store idr_Main.main2_val.0
+  idr_{runMain_0}0_val <- pure (Cidr_MkUnit)
+  idr_{runMain_0}0_37 <- store idr_{runMain_0}0_val
+  idr_{EVAL_0} idr_{runMain_0}0_37
