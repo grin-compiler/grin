@@ -52,13 +52,25 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
 
     -- Set of stores in the function body.
     collectStores :: Exp -> [(Name, Val)]
-    collectStores = para $ \case
+    collectStores e = followVariables $ flip para e $ \case
       SBlockF (_, body)  -> body
       AltF _ (_, body)   -> body
       ECaseF _ alts -> mconcat $ map snd alts
-      EBindF (SStore node, _) (Var v) (_, rhs) -> [(v,node)] <> rhs
+      EBindF (SStore node@(ConstTagNode _ _), _) (Var v) (_, rhs) -> [(v,node)] <> rhs
+      EBindF (SStore var@(Var _), _) (Var v) (_, rhs)             -> [(v,var)]  <> rhs
+      EBindF (SReturn node, _) (Var v) (_, rhs) -> [(v,node)] <> rhs
       EBindF (_, lhs) _ (_, rhs) -> lhs <> rhs
       _ -> mempty
+
+    -- Follow variables in substiotions based on stores.
+    followVariables :: [(Name, Val)] -> [(Name, Val)]
+    followVariables susbsts = Map.toList $ go susbstMap where
+      susbstMap = Map.fromList susbsts
+      go m =
+        let m' = flip Map.map m $ \case
+                        (Var v) | Just val <- Map.lookup v susbstMap -> val
+                        rest                                         -> rest
+        in if m == m' then m else go m'
 
     -- The substituition that contains a Node or a list of new invariant parameters
     builder :: ([(Name, Either Val [Name])], Exp) -> VarM (ExpF (Either Exp ([(Name, Either Val [Name])], Exp)))
