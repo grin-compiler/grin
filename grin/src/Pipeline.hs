@@ -59,6 +59,7 @@ import Lens.Micro.TH
 import Lens.Micro.Mtl
 import Data.Set
 import System.FilePath
+import System.Exit
 import Control.DeepSeq
 import Debug.Trace
 import Lens.Micro
@@ -455,7 +456,7 @@ checkCode phaseName = do
     when failOnLintError $ do
       pipelineStep $ HPT PrintHPTResult
       pipelineStep $ PrintGrin ondullblack
-      fail "illegal code"
+      liftIO $ die "illegal code"
 
 optimize :: PipelineOpts -> Exp -> [Pipeline] -> [Pipeline] -> IO Exp
 optimize o e pre post = optimizeWith o e pre optimizations post where
