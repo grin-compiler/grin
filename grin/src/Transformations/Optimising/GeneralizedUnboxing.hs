@@ -30,7 +30,7 @@ import Pretty
 generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 generalizedUnboxing te =
     (first (updateTypeEnv funs)) $
-    evalNameM (transformCalls funs =<< transformReturns funs te)
+    evalNameM (snd te) (transformCalls funs =<< transformReturns funs te)
   where
     funs = functionsToUnbox te
 

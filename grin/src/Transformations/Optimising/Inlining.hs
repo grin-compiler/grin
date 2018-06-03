@@ -63,7 +63,7 @@ selectInlineSet prog@(Program defs) = inlineSet where
 -- TODO: add the cloned variables to the type env
 -- QUESTION: apo OR ana ???
 inlining :: Set Name -> (TypeEnv, Program) -> (TypeEnv, Program)
-inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM $ apoM builder prog) where
+inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM prog $ apoM builder prog) where
 
   defMap :: Map Name Def
   defMap = Map.fromList [(name, def) | def@(Def name _ _) <- defs]

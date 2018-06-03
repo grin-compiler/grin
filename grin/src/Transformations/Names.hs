@@ -4,11 +4,14 @@ module Transformations.Names where
 import Text.Printf
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 import Control.Monad
 import Control.Monad.State
 
 import Data.Functor.Foldable as Foldable
+import qualified Data.Foldable
 import Grin
 
 import Transformations.Util
@@ -18,20 +21,27 @@ import Transformations.Util
 data NameEnv
   = NameEnv
   { namePool  :: Map Name Int
+  , nameSet   :: Set Name
   }
 
 type NameM = State NameEnv
 
 mkNameEnv :: Exp -> NameEnv
-mkNameEnv = undefined
+mkNameEnv exp = NameEnv mempty (cata folder exp) where
+  folder e = foldNameDefExpF Set.singleton e `mappend` Data.Foldable.fold e
 
 deriveNewName :: Name -> NameM Name
-deriveNewName name = state $ \env@NameEnv{..} ->
-  let idx = Map.findWithDefault 0 name namePool
-  in (printf "%s.%d" name idx, env {namePool = Map.insert name (succ idx) namePool})
+deriveNewName name = do
+  (newName, conflict) <- state $ \env@NameEnv{..} ->
+    let idx = Map.findWithDefault 0 name namePool
+        new = printf "%s.%d" name idx
+    in ((new, Set.member new nameSet), env {namePool = Map.insert name (succ idx) namePool, nameSet = Set.insert new nameSet})
+  if conflict
+    then deriveNewName name
+    else pure newName
 
-evalNameM :: NameM a -> a
-evalNameM m = evalState m (NameEnv mempty)
+evalNameM :: Exp -> NameM a -> a
+evalNameM e m = evalState m (mkNameEnv e)
 
 -- refresh names
 
