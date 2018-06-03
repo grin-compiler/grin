@@ -451,11 +451,13 @@ checkCode phaseName = do
 
   errors <- use psErrors
   unless (Prelude.null errors) $ void $ do
+    failOnLintError <- view poFailOnLint
+    when failOnLintError $ void $ do
+      pipelineStep $ HPT PrintHPTResult
+      pipelineStep $ PrintGrin ondullblack
     liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
     failOnLintError <- view poFailOnLint
     when failOnLintError $ do
-      pipelineStep $ HPT PrintHPTResult
-      pipelineStep $ PrintGrin ondullblack
       liftIO $ die "illegal code"
 
 optimize :: PipelineOpts -> Exp -> [Pipeline] -> [Pipeline] -> IO Exp
