@@ -46,12 +46,22 @@ foldNameUseExpF f = \case
   SFetchIF name i   -> f name
   _                 -> mempty
 
+foldNameDefExpF :: (Monoid m) => (Name -> m) -> ExpF a -> m
+foldNameDefExpF f = \case
+  DefF name args _  -> mconcat $ f name : map f args
+  EBindF _ lpat _   -> foldNamesVal f lpat
+  AltF cpat _       -> foldNamesCPat f cpat
+  _                 -> mempty
+
+foldNamesCPat :: Monoid m => (Name -> m) -> CPat -> m
+foldNamesCPat f = \case
+  NodePat _ args  -> mconcat $ map f args
+  cpat            -> mempty
+
 mapNamesCPat :: (Name -> Name) -> CPat -> CPat
 mapNamesCPat f = \case
   NodePat tag args  -> NodePat tag (map f args)
-  LitPat  lit       -> LitPat lit
-  TagPat  tag       -> TagPat tag
-  DefaultPat        -> DefaultPat
+  cpat              -> cpat
 
 mapNamesVal :: (Name -> Name) -> Val -> Val
 mapNamesVal f = \case

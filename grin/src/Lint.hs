@@ -153,7 +153,9 @@ checkNameUse name = do
     tell [printf "undefined variable: %s" name]
 
 checkVarScopeM :: ExpF a -> Check ()
-checkVarScopeM exp = mapM_ checkNameUse $ foldNameUseExpF (:[]) exp
+checkVarScopeM exp = do
+  mapM_ checkNameUse $ foldNameUseExpF (:[]) exp
+  mapM_ checkNameDef $ foldNameDefExpF (:[]) exp
 
 lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
 lint mTypeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) emptyEnv where
@@ -166,14 +168,10 @@ lint mTypeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) e
 
     Def name args _ -> checkWithChild ExpCtx $ do
       syntaxE DefCtx
-      -- check for multiple definitions
-      mapM_ checkNameDef $ name : args
 
     -- Exp
     EBind leftExp lpat rightExp -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
       syntaxE ExpCtx
-      -- check for multiple definitions
-      mapM_ checkNameDef $ foldNamesVal (:[]) lpat
 
     ECase val alts -> checkWithChild AltCtx $ do
       syntaxE SimpleExpCtx
@@ -211,10 +209,6 @@ lint mTypeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) e
     -- Alt
     Alt cpat _ -> checkWithChild ExpCtx $ do
       syntaxE AltCtx
-      -- check for multiple definitions
-      case cpat of
-        NodePat _ args -> mapM_ checkNameDef args
-        _ -> pure ()
 
     where
       syntaxE = syntaxExp ctx
