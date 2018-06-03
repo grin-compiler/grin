@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 module Transformations.Optimising.ArityRaising where
 
 import Control.Arrow
@@ -30,9 +30,8 @@ runVarM :: TypeEnv -> VarM a -> (TypeEnv, a)
 runVarM te = (\(f,s) -> (s,f)) . flip runState te
 
 changeParams :: [(Name, [SimpleType])] -> [(Name, Type)] -> [(Name, [(Name, Type)])]
-changeParams tagParams names = map
+changeParams tagParams = map
   (\(name, t) -> maybe (name, [(name, t)]) (((,) name) . newParams name) $ List.lookup name tagParams)
-  names
 
 newParams :: Name -> [SimpleType] -> [(Name, Type)]
 newParams name [ty] = [(name, T_SimpleType ty)]
@@ -45,7 +44,7 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
     candidates :: Map Name [(Name, Int, (Tag, Vector SimpleType))]
     candidates =
       flip examineCallees (te,exp) $
-      flip examineCallers exp $
+      flip (examineCallers te) exp $
       examineTheParameters (te, exp)
 
     nodeParamMap :: Map Name (Tag, Vector SimpleType)
@@ -73,7 +72,7 @@ arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
               let oldToNewParams = changeParams
                     (map (\(n, i, (t, ts)) -> (n, Vector.toList ts)) tagParams)
                     (params0 `zip` (Vector.toList paramsTypes0))
-              forM oldToNewParams $ \(old, news) -> do
+              forM_ oldToNewParams $ \(old, news) -> do
                 variable . at old .= Nothing
                 forM news $ \(newName, newType) -> (variable . at newName) .= Just newType
               let params1 = concatMap snd oldToNewParams
@@ -135,8 +134,8 @@ instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
 -- | Examine the function calls in the body.
-examineCallers :: Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
-examineCallers candidates e =
+examineCallers :: TypeEnv -> Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]
+examineCallers te candidates e =
     Map.difference candidates $
     (\(_,_,exclude,_) -> Map.fromSet (const ()) exclude) $
     para collect e
@@ -171,7 +170,9 @@ examineCallers candidates e =
 
       SBlockF (_, body) -> body
       ECaseF _ alts     -> mconcat $ map snd alts
-      EBindF (SStore (ConstTagNode _ _), lhs) (Var _) (_, rhs) -> rhs
+      EBindF (SStore (ConstTagNode _ _), _) (Var _) (_, rhs) -> rhs
+      EBindF (SStore (Var v1), _) (Var _) (_, rhs)
+        | match (variable . at v1 . _Just . _T_NodeSet . _T_OnlyOneTag) te -> rhs
       EBindF (_, lhs) pat (_, rhs)      -> mconcat [lhs, rhs, (mempty, mempty, mempty, vars pat)]
 
       AltF (NodePat _ names) (_, body) -> body <> (mempty, mempty, mempty, Set.fromList names)
