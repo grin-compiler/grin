@@ -56,4 +56,5 @@ main = do opts <- getOpts
 pipelineOpts :: PipelineOpts
 pipelineOpts = PipelineOpts
   { _poOutputDir = "."
+  , _poFailOnLint = True
   }

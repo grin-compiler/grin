@@ -97,7 +97,7 @@ main = do
   forM_ files $ \fname -> do
     content <- readFile fname
     let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
-        opts = PipelineOpts { _poOutputDir = outputDir }
+        opts = PipelineOpts { _poOutputDir = outputDir, _poFailOnLint = True }
     case steps of
       [] -> void $ optimize opts program prePipeline postPipeline
       _  -> void $ pipeline opts program steps

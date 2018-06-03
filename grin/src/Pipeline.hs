@@ -182,12 +182,14 @@ pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
 
 data PipelineOpts = PipelineOpts
-  { _poOutputDir :: FilePath
+  { _poOutputDir  :: FilePath
+  , _poFailOnLint :: Bool
   }
 
 defaultOpts :: PipelineOpts
 defaultOpts = PipelineOpts
-  { _poOutputDir = "./"
+  { _poOutputDir  = "./"
+  , _poFailOnLint = True
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -388,7 +390,8 @@ lintGrin = do
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
   when (Map.size errorMap > 0) $ do
-    liftIO . print $ prettyLintExp lintExp
+    failOnLint <- view poFailOnLint
+    when failOnLint . liftIO . print $ prettyLintExp lintExp
     psErrors %= ((concat $ Map.elems errorMap) ++)
 
 check :: PipelineM ()
@@ -425,8 +428,8 @@ pipeline o e ps = do
 -- changes the expression itself, the order of the transformations
 -- are defined in the pipeline list. After all round the TypeEnv
 -- is restored
-optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> PipelineM ()
-optimizeWith o e ps = loop where
+optimizeWithPM :: PipelineOpts -> Exp -> [Pipeline] -> PipelineM ()
+optimizeWithPM o e ps = loop where
   loop = do
     -- Run every step and on changes run HPT
     effs <- forM ps $ \p -> do
@@ -447,23 +450,16 @@ checkCode phaseName = do
 
   errors <- use psErrors
   unless (Prelude.null errors) $ void $ do
-    pipelineStep $ HPT PrintHPTResult
-    pipelineStep $ PrintGrin ondullblack
     liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
-    fail "illegal code"
+    failOnLintError <- view poFailOnLint
+    when failOnLintError $ do
+      pipelineStep $ HPT PrintHPTResult
+      pipelineStep $ PrintGrin ondullblack
+      fail "illegal code"
 
 optimize :: PipelineOpts -> Exp -> [Pipeline] -> [Pipeline] -> IO Exp
-optimize o e pre post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
-  checkCode "init"
-
-  mapM_ pipelineStep pre
-
-  mapM_ pipelineStep
-    [ HPT CompileHPT
-    , HPT RunHPTPure
-    , T UnitPropagation
-    ]
-  optimizeWith o e $ fmap T
+optimize o e pre post = optimizeWith o e pre optimizations post where
+  optimizations =
     [ BindNormalisation
     , EvaluatedCaseElimination
     , TrivialCaseElimination
@@ -483,6 +479,19 @@ optimize o e pre post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
     , InlineApply
     , LateInlining
     ]
+
+optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> [Transformation] -> [Pipeline] -> IO Exp
+optimizeWith o e pre optimizations post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
+  checkCode "init"
+
+  mapM_ pipelineStep pre
+
+  mapM_ pipelineStep
+    [ HPT CompileHPT
+    , HPT RunHPTPure
+    , T UnitPropagation
+    ]
+  optimizeWithPM o e $ fmap T optimizations
   mapM_ pipelineStep post
 
   use psExp

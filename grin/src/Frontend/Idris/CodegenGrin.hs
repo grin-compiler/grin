@@ -34,10 +34,12 @@ TODO:
 
 codegenGrin :: CodegenInfo -> IO ()
 codegenGrin CodegenInfo{..} = do
-  pipeline
+  optimizeWith
     pipelineOpts
     (program simpleDecls)
-    (idrisPipeLine outputFile)
+    preparation
+    idrisOptimizations
+    (postProcessing outputFile)
   putStrLn ""
 
 program :: [(Idris.Name, SDecl)] -> Exp
@@ -265,43 +267,11 @@ literal = \case
 pipelineOpts :: PipelineOpts
 pipelineOpts = PipelineOpts
   { _poOutputDir = "./idris/"
+  , _poFailOnLint = False
   }
 
-simplifyingPipeline :: [Pipeline]
-simplifyingPipeline =
-  [ T CaseSimplification
---  , T SplitFetch -- has an issue
-  , T RightHoistFetch
-  ]
-
-optimisingPipeline :: [Pipeline]
-optimisingPipeline = concat $ replicate 10
-  [ T CaseCopyPropagation
-  , T CommonSubExpressionElimination
-  , T ConstantPropagation
-  , T CopyPropagation
-  , T EvaluatedCaseElimination
-  , T TrivialCaseElimination
-  , T UpdateElimination
-  , T ArityRaising
-  , T GeneralizedUnboxing
---  , T SparseCaseOptimisation -- has an issue ; workaround ; llvm codegen validator should be smarter
-
---  , T Inlining -- integrate to the pipeline
-
-  , T BindNormalisation
-  , T DeadProcedureElimination
---  , T DeadVariableElimination -- has an issue: removed effectful code, like print_int ; idris-grin codegen should treat unboxed units as grin unit value
-  , T BindNormalisation
-  ]
-
-miscPipeline :: [Pipeline]
-miscPipeline =
-  [ T ConstantFolding
-  ]
-
-idrisPipeLine :: String -> [Pipeline]
-idrisPipeLine outputFile =
+preparation :: [Pipeline]
+preparation =
   [ SaveGrin "FromIdris"
   , T DeadProcedureElimination
   , PrintGrin ondullblack
@@ -310,13 +280,31 @@ idrisPipeLine outputFile =
   , HPT PrintHPTResult
   , HPT PrintHPTCode
   , SaveGrin "high-level-code.grin"
-  ] ++
-  optimisingPipeline ++
-  [ PrintGrin ondullblack
-  , SaveGrin "high-level-opt-code.grin"
-  , HPT CompileHPT
-  , HPT RunHPTPure
-  , HPT PrintHPTResult
+  ]
+  
+idrisOptimizations :: [Transformation]
+idrisOptimizations =
+  [ BindNormalisation
+  , EvaluatedCaseElimination
+  , TrivialCaseElimination
+--  , SparseCaseOptimisation
+  , UpdateElimination
+--  , CopyPropagation
+  , ConstantPropagation
+  , DeadProcedureElimination
+--  , DeadVariableElimination
+  , DeadParameterElimination
+  , CommonSubExpressionElimination
+  , CaseCopyPropagation
+  , CaseHoisting
+  , GeneralizedUnboxing
+--  , ArityRaising
+  , LateInlining
+  ]
+
+postProcessing :: String -> [Pipeline]
+postProcessing outputFile =
+  [ SaveGrin "high-level-opt-code.grin"
   , PureEval
   , SaveLLVM outputFile
   , JITLLVM
