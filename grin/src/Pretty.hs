@@ -125,7 +125,7 @@ instance Pretty Type where
 
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
-    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(1 :: Int)..] $ map T_NodeSet $ V.toList _location)
+    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
     , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
