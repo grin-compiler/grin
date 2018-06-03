@@ -94,6 +94,6 @@ main = do opts <- getOpts
              else cg_main opts
 
 pipelineOpts :: PipelineOpts
-pipelineOpts = PipelineOpts
+pipelineOpts = defaultOpts
   { _poOutputDir = "."
   }

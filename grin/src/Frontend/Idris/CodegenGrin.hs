@@ -265,7 +265,7 @@ literal = \case
   x -> error $ printf "unsupported literal %s" (show x)
 
 pipelineOpts :: PipelineOpts
-pipelineOpts = PipelineOpts
+pipelineOpts = defaultOpts
   { _poOutputDir = "./idris/"
   , _poFailOnLint = False
   }
