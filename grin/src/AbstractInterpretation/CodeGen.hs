@@ -91,6 +91,13 @@ litToSimpleType = \case
   LFloat  {}  -> -4
   LBool   {}  -> -5
 
+codeGenBlock :: CG () -> CG [IR.Instruction]
+codeGenBlock genM = do
+  instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
+  genM
+  blockInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
+  pure blockInstructions
+
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
@@ -224,50 +231,36 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
           - set scrutinee value to the case alternative pattern value in the alternative scope
       -}
       alts <- sequence alts_
+
       forM_ alts $ \(A cpat altM) -> do
+        let codeGenAlt bindM = codeGenBlock $ do
+              bindM
+              altM >>= \case
+                Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
+                R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
+
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
-            ----------- BEGIN ; FIXME
-            -- save instructions, clear, join altM, read instructions, swap saved instructions back
-            instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
-            -- bind pattern variables
-            forM_ (zip [0..] vars) $ \(idx, name) -> do
-                argReg <- newReg
-                addReg name argReg
-                emit $ IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
-            altRes <- altM
-            case altRes of
-              Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
-              R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
-            altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
-            ----------- END
+            altInstructions <- codeGenAlt $ do
+              -- bind pattern variables
+              forM_ (zip [0..] vars) $ \(idx, name) -> do
+                  argReg <- newReg
+                  addReg name argReg
+                  emit $ IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
             emit $ IR.If {condition = IR.NodeTypeExists irTag, srcReg = valReg, instructions = altInstructions}
+
           LitPat lit -> do
-            ----------- BEGIN ; FIXME
-            -- save instructions, clear, join altM, read instructions, swap saved instructions back
-            instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
-            altRes <- altM -- FIXME: move after pattern variable binding
-            case altRes of
-              Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
-              R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
-            altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
-            ----------- END
+            altInstructions <- codeGenAlt $ pure ()
             emit $ IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
+
           DefaultPat -> do
-            ----------- BEGIN ; FIXME
-            -- save instructions, clear, join altM, read instructions, swap saved instructions back
-            instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
-            altRes <- altM -- FIXME: move after pattern variable binding
-            case altRes of
-              Z -> emit $ IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
-              R altResultReg -> emit $ IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
-            altInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
-            ----------- END
+            altInstructions <- codeGenAlt $ pure ()
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
             emit $ IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
           _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
+
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp
