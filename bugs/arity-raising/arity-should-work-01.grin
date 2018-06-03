@@ -1,0 +1,43 @@
+{-
+  run
+    stack exec -- grin -t --ar arity-should-work-01.grin
+
+  error: it seems that arity should kick in but it does not!
+
+    Pipeline: T ArityRaising                      has effect: None
+-}
+
+sum.unboxed a1 l1 =
+  v.0 <- fetch l1
+  (Fupto upto.1.0 upto.2.0) <- pure v.0
+  v.2.0.0 <- fetch upto.1.0
+  (CInt i0$.0.0) <- pure v.2.0.0
+  v.3.0.0 <- fetch upto.2.0
+  (CInt i1$.0.0) <- pure v.3.0.0
+  b0$.0.0 <- _prim_int_gt i0$.0.0 i1$.0.0
+  case b0$.0.0 of
+    #False ->
+      i4$.0 <- pure 1
+      unboxed.CInt.0.0.0 <- _prim_int_add i0$.0.0 i4$.0
+      succV.0.0 <- pure (CInt unboxed.CInt.0.0.0)
+      succ.0.0 <- store succV.0.0
+      tail.0.0 <- store (Fupto succ.0.0 upto.2.0)
+      v.6.1.0 <- fetch a1
+      (CInt i4$.1.0) <- pure v.6.1.0
+      unboxed.CInt.1.0 <- _prim_int_add i0$.0.0 i4$.1.0
+      a2V.0 <- pure (CInt unboxed.CInt.1.0)
+      a2.0 <- store a2V.0
+      sum.unboxed a2.0 tail.0.0
+    #True ->
+      v.1.0 <- fetch a1
+      (CInt unboxed.CInt.0.0) <- pure v.1.0
+      pure unboxed.CInt.0.0
+
+grinMain =
+  box2 <- store (CInt 1)
+  box3 <- store (CInt 10)
+  box4 <- store (CInt 0)
+  l2 <- store (Fupto box2 box3)
+  unboxed.CInt.2 <- sum.unboxed box4 l2
+  _prim_int_print unboxed.CInt.2
+  pure (CUnit)
