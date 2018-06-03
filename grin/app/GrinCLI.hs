@@ -48,6 +48,7 @@ transformOpts =
   <|> flg ArityRaising "ar" "Arity Raising"
   <|> flg CaseHoisting "ch" "Case Hoisting"
   <|> flg LateInlining "li" "Late Inlining"
+  <|> flg MangleNames "mn" "Mangle Names"
 
 pipelineOpts :: Parser Pipeline
 pipelineOpts =

@@ -84,7 +84,7 @@ instance MapVal Val
 
 mapNameUseExpM :: Monad m => (Name -> m Name) -> Exp -> m Exp
 mapNameUseExpM f = \case
-  SApp name vals    -> SApp name  <$> mapM (mapNamesValM f) vals
+  SApp name vals    -> SApp       <$> f name <*> mapM (mapNamesValM f) vals
   ECase val alts    -> ECase      <$> mapNamesValM f val <*> pure alts
   SReturn val       -> SReturn    <$> mapNamesValM f val
   SStore val        -> SStore     <$> mapNamesValM f val
@@ -94,7 +94,7 @@ mapNameUseExpM f = \case
 
 mapNameDefExpM :: Monad m => (Name -> m Name) -> Exp -> m Exp
 mapNameDefExpM f = \case
-  Def name args body          -> Def name <$> mapM f args <*> pure body
+  Def name args body          -> Def <$> f name <*> mapM f args <*> pure body
   EBind leftExp lpat rightExp -> EBind leftExp <$> mapNamesValM f lpat <*> pure rightExp
   Alt cpat body               -> Alt <$> mapNamesCPatM f cpat <*> pure body
   exp                         -> pure exp

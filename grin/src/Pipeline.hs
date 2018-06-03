@@ -30,6 +30,7 @@ import Transformations.Simplifying.CaseSimplification
 import Transformations.Simplifying.RightHoistFetch
 import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
 import Transformations.UnitPropagation
+import Transformations.MangleNames
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
@@ -84,6 +85,7 @@ data Transformation
   | BindNormalisation
   | ConstantFolding
   | UnitPropagation
+  | MangleNames
   -- Optimizations
   | EvaluatedCaseElimination
   | TrivialCaseElimination
@@ -113,6 +115,8 @@ transformation n = \case
   SplitFetch                      -> noTypeEnv splitFetch
   RegisterIntroduction            -> noTypeEnv $ registerIntroductionI n
   RightHoistFetch                 -> noTypeEnv RHF.rightHoistFetch
+  -- misc
+  MangleNames                     -> noTypeEnv mangleNames
   -- optimising
   BindNormalisation               -> noTypeEnv bindNormalisation
   ConstantFolding                 -> noTypeEnv constantFolding
