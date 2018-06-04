@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections #-}
 module AbstractInterpretation.CodeGen
   ( codeGen
   ) where
@@ -225,6 +225,11 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
     ECaseF val alts_ -> do
       valReg <- codeGenVal val
       caseResultReg <- newReg
+
+      -- save scruinee register mapping
+      scrutRegMapping <- case val of
+        Var name -> Just . (name,) <$> getReg name
+        _ -> pure Nothing
       {-
         TODO:
           - create scope monadic combinator to handle scopes
@@ -243,6 +248,16 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
           NodePat tag vars -> do
             irTag <- getTag tag
             altInstructions <- codeGenAlt $ do
+              -- restrict scrutinee to alternative's domain
+              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+                altScrutReg <- newReg
+                addReg name altScrutReg
+                emit $ IR.Project
+                  { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists irTag
+                  , srcReg = valReg
+                  , dstReg = altScrutReg
+                  }
+
               -- bind pattern variables
               forM_ (zip [0..] vars) $ \(idx, name) -> do
                   argReg <- newReg
@@ -251,15 +266,36 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
             emit $ IR.If {condition = IR.NodeTypeExists irTag, srcReg = valReg, instructions = altInstructions}
 
           LitPat lit -> do
-            altInstructions <- codeGenAlt $ pure ()
+            altInstructions <- codeGenAlt $ do
+              -- restrict scrutinee to alternative's domain
+              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+                altScrutReg <- newReg
+                addReg name altScrutReg
+                emit $ IR.Project
+                  { srcSelector = IR.ConditionAsSelector $ IR.SimpleTypeExists (litToSimpleType lit)
+                  , srcReg = valReg
+                  , dstReg = altScrutReg
+                  }
             emit $ IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
 
           DefaultPat -> do
-            altInstructions <- codeGenAlt $ pure ()
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
+            altInstructions <- codeGenAlt $ do
+              -- restrict scrutinee to alternative's domain
+              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+                altScrutReg <- newReg
+                addReg name altScrutReg
+                emit $ IR.Project
+                  { srcSelector = IR.ConditionAsSelector $ IR.NotIn tags
+                  , srcReg = valReg
+                  , dstReg = altScrutReg
+                  }
             emit $ IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
           _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
+
+      -- restore scrutinee register mapping
+      maybe (pure ()) (uncurry addReg) scrutRegMapping
 
       pure $ R caseResultReg
 

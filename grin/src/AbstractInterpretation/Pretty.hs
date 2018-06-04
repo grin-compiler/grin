@@ -80,7 +80,9 @@ prettyTag mirm tag@(Tag a) = parens (integer $ fromIntegral a) <> tagName where
   tagName = maybe empty (\irm -> pretty $ irmTagMap irm Bimap.!> tag) mirm
 
 prettySelector :: Maybe IRMap -> Selector -> Doc
-prettySelector mirm (NodeItem tag idx) = prettyTag mirm tag <> brackets (pretty idx)
+prettySelector mirm = \case
+  NodeItem tag idx          -> prettyTag mirm tag <> brackets (pretty idx)
+  ConditionAsSelector cond  -> prettyCondition mirm cond
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case

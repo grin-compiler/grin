@@ -83,12 +83,33 @@ evalInstruction = \case
         pure $ not (Set.null typeSet) || Data.Foldable.any (flip Set.notMember tags) (Map.keysSet tagMap)
     when satisfy $ mapM_ evalInstruction instructions
 
-  Project {..} -> do
-    let NodeItem tag itemIndex = srcSelector
-    value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex
-    register.ix (regIndex dstReg).simpleType %= (mappend value)
+  Project {..} -> case srcSelector of
+    NodeItem tag itemIndex -> do
+      value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex
+      register.ix (regIndex dstReg).simpleType %= (mappend value)
+
+    ConditionAsSelector cond -> case cond of
+      NodeTypeExists tag -> do
+        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
+        case Map.lookup tag tagMap of
+          Nothing -> pure ()
+          Just v  -> register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet $ Map.singleton tag v)
+
+      SimpleTypeExists ty -> do
+        typeSet <- use $ register.ix (regIndex srcReg).simpleType
+        when (Set.member ty typeSet) $ do
+          register.ix (regIndex dstReg).simpleType %= (Set.insert ty)
+
+      NotIn tags -> do
+        value <- use $ register.ix (regIndex srcReg)
+        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
+        typeSet <- use $ register.ix (regIndex srcReg).simpleType
+        let filteredTagMap = Data.Foldable.foldr Map.delete tagMap tags
+        when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
+          register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet filteredTagMap)
 
   Extend {..} -> do
+    -- TODO
     value <- use $ register.ix (regIndex srcReg).simpleType
     let NodeItem tag itemIndex = dstSelector
     register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)

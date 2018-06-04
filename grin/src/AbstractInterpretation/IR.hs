@@ -15,7 +15,8 @@ newtype Reg = Reg Word32 deriving (Eq, Ord, Show)
 newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
 
 data Selector
-  = NodeItem Tag Int -- node item index
+  = NodeItem              Tag Int   -- node item index
+  | ConditionAsSelector   Condition
   deriving Show
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
