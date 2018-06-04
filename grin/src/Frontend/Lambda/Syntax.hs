@@ -20,7 +20,8 @@ data Exp
   -- Binding
   | Def         Name [Name] Exp
   -- Exp
-  | App         Name [Atom]
+  | App         Name [Exp]
+  | AppCore     Exp Exp
   | Case        Atom [Alt]
   | Let         [(Name, Exp)] Exp -- lazy let
   | LetRec      [(Name, Exp)] Exp -- lazy let with mutually recursive bindings
@@ -31,6 +32,8 @@ data Exp
   | Lit         Lit
   -- Alt
   | Alt         Pat Exp
+  -- Extra
+  | Lam         Name Exp
   deriving (Eq, Ord, Show)
 
 data Lit

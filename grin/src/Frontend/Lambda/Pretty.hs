@@ -10,7 +10,7 @@ import Frontend.Lambda.Syntax
 import Grin (isPrimName)
 
 printLambda :: Exp -> IO ()
-printLambda = putDoc . pretty
+printLambda exp = putDoc (pretty exp) >> putStrLn ""
 
 
 keyword :: String -> Doc
@@ -27,6 +27,7 @@ instance Pretty Exp where
       DefF name args exp  -> hsep (text name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
       -- Exp
       AppF name args      -> hsep (((if isPrimName name then dullyellow else cyan) $ text name) : map pretty args)
+      AppCoreF fun arg    -> hsep [parens (pretty fun), parens (pretty arg)]
       CaseF atom alts     -> keyword "case" <+> pretty atom <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       LetF binds exp      -> keyword "let"    <+> align (vsep (map prettyBind binds)) <$$> pretty exp
       LetRecF binds exp   -> keyword "letrec" <+> align (vsep (map prettyBind binds)) <$$> pretty exp
@@ -37,6 +38,8 @@ instance Pretty Exp where
       LitF lit            -> pretty lit
       -- Alt
       AltF cpat exp       -> pretty cpat <+> text "->" <+> align (pretty exp)
+      -- Extra
+      LamF name exp       -> keyword "\\" <> text name <+> text "->" <+> align (pretty exp)
 
 instance Pretty Lit where
   pretty = \case

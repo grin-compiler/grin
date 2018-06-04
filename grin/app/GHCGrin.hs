@@ -18,7 +18,8 @@ import System.Exit
 import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen (ondullblack)
 
-import Frontend.Lambda.FromSTG
+import qualified Frontend.Lambda.FromSTG as STG
+import qualified Frontend.Lambda.FromCore as Core
 import Frontend.Lambda.CodeGen
 import Frontend.Lambda.Pretty
 import Pipeline
@@ -64,7 +65,7 @@ cg_main opts = runGhc (Just libdir) $ do
   tmod <- typecheckModule pmod    -- TypecheckedSource
   dmod <- desugarModule tmod      -- DesugaredModule
   let core = coreModule dmod      -- CoreModule
-  core <- liftIO $ core2core env core
+  --core <- liftIO $ core2core env core
 
   -- Run the Core prep pass
   prep <- liftIO $ corePrepPgm env (mg_module core) (ms_location modSum) (mg_binds core) (mg_tcs core)
@@ -73,7 +74,8 @@ cg_main opts = runGhc (Just libdir) $ do
   let stg = coreToStg dflags (mg_module core) prep
 
   -- TODO: convert to grin
-  lambda <- liftIO $ codegenLambda dflags stg
+  --lambda <- liftIO $ STG.codegenLambda dflags stg
+  lambda <- liftIO $ Core.codegenLambda dflags $ mg_binds core
   liftIO $ printLambda lambda
   --liftIO $ pPrint lambda
   let grin = codegenGrin lambda

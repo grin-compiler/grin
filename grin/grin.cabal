@@ -89,6 +89,7 @@ library
     Frontend.Lambda.CodeGen
     Frontend.Lambda.PrimOps
     Frontend.Lambda.FromSTG
+    Frontend.Lambda.FromCore
     Frontend.Idris.CodegenGrin
     Frontend.Idris.PrimOps
     VarGen
