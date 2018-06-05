@@ -28,7 +28,7 @@ singleStaticAssignment e = evalState (anaM build (mempty, e)) (mempty, 1) where
           pure (name2:names1, subst2))
         ([], subst)
         names
-      pure $ AltF (NodePat tag names0) (subst0, body)
+      pure $ AltF (NodePat tag (reverse names0)) (subst0, body)
 
     -- Substituitions
     ECase       val alts -> pure $ ECaseF (substVal val) $ ((,) subst) <$> alts
