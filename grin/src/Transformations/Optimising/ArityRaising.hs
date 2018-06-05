@@ -99,17 +99,23 @@ arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
 
       SApp name params -> pure $ case (Map.lookup name candidates) of
         Nothing -> SAppF name params
-        Just parametersToChange -> SAppF name $ flip concatMap ([1..] `zip` params) $ \case
-          (_, Lit l) -> [Lit l]
-          (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
-            Nothing -> case List.lookup v substs0 of
-              Just (Right [name]) -> [Var name]
-              _                   -> [Var v]
-            Just _  -> case List.lookup v substs0 of
-              Nothing -> [Var v]
-              Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
-              Just (Left (Var v)) -> [Var v]
-              Just (Right names) -> map Var names
+        Just parametersToChange ->
+          let newParams0 = flip map ([1..] `zip` params) $ \case
+                (_, Lit l) -> ([Lit l], [])
+                (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
+                  Nothing -> case List.lookup v substs0 of
+                    Just (Right [name]) -> ([Var name], [])
+                    _                   -> ([Var v], [])
+                  Just p  -> case List.lookup v substs0 of
+                    Nothing -> ([Var $ v ++ ".fetch"], [(v ++ ".fetch",v)])
+                    Just (Left (ConstTagNode tag vals)) -> (vals, []) -- The tag node should have the arity as in the candidates
+                    Just (Left (Var v)) -> ([Var v], [])
+                    Just (Right names) -> (map Var names, [])
+              (newParams, fetches) = (concat *** concat) $ unzip newParams0
+          in case fetches of
+              [] -> SAppF name newParams
+              _  -> SBlockF $ Left $
+                foldr (\(vf, v) -> EBind (SFetch v) (Var vf)) (SApp name newParams) fetches
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
         Nothing        -> pure $ SFetchIF name pos
