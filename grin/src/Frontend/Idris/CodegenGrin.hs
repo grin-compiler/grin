@@ -287,10 +287,10 @@ idrisOptimizations =
   [ BindNormalisation
   , EvaluatedCaseElimination
   , TrivialCaseElimination
---  , SparseCaseOptimisation
+  , SparseCaseOptimisation
   , UpdateElimination
---  , CopyPropagation
-  , ConstantPropagation
+  , CopyPropagation
+--  , ConstantPropagation
   , DeadProcedureElimination
 --  , DeadVariableElimination
   , DeadParameterElimination
@@ -298,7 +298,7 @@ idrisOptimizations =
   , CaseCopyPropagation
   , CaseHoisting
   , GeneralizedUnboxing
---  , ArityRaising
+  , ArityRaising
   , LateInlining
   ]
 
