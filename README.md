@@ -16,6 +16,43 @@ Also check the performance [benchmark](https://rawgit.com/grin-tech/grin/master/
 <img src="https://raw.githubusercontent.com/grin-tech/grin/master/images/grin-syntax.png" width="500" >
 </a>
 
+## Setup
+
+### Installing LLVM
+
+#### Homebrew
+
+Example using Homebrew on macOS:
+
+```bash
+$ brew install llvm-hs/llvm/llvm-5.0
+```
+
+#### Debian/Ubuntu
+
+For Debian/Ubuntu based Linux distributions, the LLVM.org website provides
+binary distribution packages. Check [apt.llvm.org](http://apt.llvm.org/) for
+instructions for adding the correct package database for your OS version, and
+then:
+
+```bash
+$ apt-get install llvm-5.0-dev
+```
+
+### Build GRIN
+
+```
+stack setup
+stack build
+```
+
+### Usage
+
+```
+stack exec -- grin grin/grin/opt-stages-high-level/stage-00.grin
+```
+
+
 ## Simplifying Transformations
 
 Transformation | Schema
