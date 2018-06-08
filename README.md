@@ -39,20 +39,7 @@ then:
 $ apt-get install llvm-5.0-dev
 ```
 
-### Build GRIN
-
-```
-stack setup
-stack build
-```
-
-### Usage
-
-```
-stack exec -- grin grin/grin/opt-stages-high-level/stage-00.grin
-```
-
-## nix
+#### Nix
 
 To get a nix shell with all the required dependencies do the following in the top level folder.
 
@@ -70,6 +57,19 @@ To run a local Hoogle server with Haskell documentation do the following.
 
 ```
 hoogle server --port 8087 1>/dev/null 2>/dev/null&
+```
+
+### Build GRIN
+
+```
+stack setup
+stack build
+```
+
+### Usage
+
+```
+stack exec -- grin grin/grin/opt-stages-high-level/stage-00.grin
 ```
 
 ## Example Front-End
