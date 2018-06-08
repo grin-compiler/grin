@@ -55,6 +55,7 @@ stack exec -- grin grin/grin/opt-stages-high-level/stage-00.grin
 ## Example Front-End
 
 Read about how to <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=64">generate GRIN code</a> from a frontend language.
+
 Also check the corresponding [source code](https://github.com/grin-tech/grin/tree/master/grin/src/Frontend/Lambda).
 
 i.e.
