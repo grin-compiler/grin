@@ -260,7 +260,10 @@ pipelineStep p = do
 compileHPT :: PipelineM ()
 compileHPT = do
   grin <- use psExp
-  let hptProgram = HPT.codeGen grin
+  hptProgram <-
+    case HPT.codeGen grin of
+      Left e -> psErrors %= (e:) >> pure HPT.emptyHPTProgram
+      Right a -> pure a
   psHPTProgram .= Just hptProgram
   let nonlinearSet  = nonlinearVariables grin
       countMap      = countVariableUse grin
@@ -404,7 +407,7 @@ lintGrin mPhaseName = do
   unless (Prelude.null errors) $ void $ do
     failOnLintError <- view poFailOnLint
     when failOnLintError $ void $ do
-      --liftIO . print $ prettyLintExp lintExp -- TODO: print code with errors
+      liftIO . print $ prettyLintExp lintExp
       pipelineStep $ HPT PrintHPTResult
       pipelineStep $ PrintGrin ondullblack
     case mPhaseName of

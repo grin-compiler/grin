@@ -3,6 +3,7 @@ module AbstractInterpretation.CodeGen
   ( codeGen
   ) where
 
+import Control.Monad.Trans.Except
 import Data.Word
 import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
@@ -12,9 +13,9 @@ import Data.Functor.Foldable as Foldable
 
 import Grin
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (HPTProgram(..))
+import AbstractInterpretation.IR (HPTProgram(..), emptyHPTProgram)
 
-type CG = State HPTProgram
+type CG = ExceptT String (State HPTProgram)
 
 data Result
   = R IR.Reg
@@ -68,7 +69,7 @@ getReg :: Name -> CG IR.Reg
 getReg name = do
   regMap <- gets hptRegisterMap
   case Map.lookup name regMap of
-    Nothing   -> error $ "unknown variable " ++ name
+    Nothing   -> throwE $ "unknown variable " ++ name
     Just reg  -> pure reg
 
 getTag :: Tag -> CG IR.Tag
@@ -109,7 +110,7 @@ codeGenVal = \case
         valReg <- getReg name
         emit $ IR.Extend {srcReg = valReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
       Lit lit -> emit $ IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
-      _ -> error $ "illegal node item value " ++ show val
+      _ -> throwE $ "illegal node item value " ++ show val
     pure r
   Unit -> do
     r <- newReg
@@ -123,7 +124,7 @@ codeGenVal = \case
       }
     pure r
   Var name -> getReg name
-  val -> error $ "unsupported value " ++ show val
+  val -> throwE $ "unsupported value " ++ show val
 
 codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> CG ()
 codeGenPrimOp name funResultReg funArgRegs = do
@@ -176,8 +177,9 @@ codeGenPrimOp name funResultReg funArgRegs = do
     "_prim_bool_eq"   -> op [bool, bool] bool
     "_prim_bool_ne"   -> op [bool, bool] bool
 
-codeGen :: Exp -> HPTProgram
-codeGen = flip execState IR.emptyHPTProgram . cata folder where
+
+codeGen :: Exp -> Either String HPTProgram
+codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
     ProgramF defs -> sequence_ defs >> pure Z
@@ -200,7 +202,7 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
             r <- newReg
             emit $ IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
             addReg name r
-          _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
+          _ -> throwE $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
           Lit{} -> pure () -- TODO: is this ok? or error?
@@ -213,13 +215,13 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
                 addReg name argReg
                 pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
               Lit {} -> pure []
-              _ -> error $ "illegal node pattern component " ++ show arg
+              _ -> throwE $ "illegal node pattern component " ++ show arg
             emit $ IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
               , instructions  = concat bindInstructions
               }
-          _ -> error $ "unsupported lpat " ++ show lpat
+          _ -> throwE $ "unsupported lpat " ++ show lpat
       rightExp
 
     ECaseF val alts_ -> do
@@ -292,7 +294,7 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
                   }
             emit $ IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
-          _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
+          _ -> throwE $ "HPT does not support the following case pattern: " ++ show cpat
 
       -- restore scrutinee register mapping
       maybe (pure ()) (uncurry addReg) scrutRegMapping
@@ -320,7 +322,7 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
       pure $ R r
 
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> error "HPT codegen does not support indexed fetch"
+      Just {} -> throwE "HPT codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         r <- newReg
@@ -396,7 +398,7 @@ codeGen = flip execState IR.emptyHPTProgram . cata folder where
     fetch SRC >>= (var | (T a) | (t a))
       SRC validation
       var: CopyMemReg
-      (T a): 
+      (T a):
 
 -}
 
