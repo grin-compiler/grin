@@ -3,6 +3,9 @@ module Main where
 import Control.Monad.Trans
 import Control.Monad.Reader
 import Data.List
+import System.FilePath
+import System.Directory
+import System.IO
 
 import qualified Agda.Main as M
 import Agda.Compiler.Backend
@@ -24,7 +27,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 backend = Backend backend'
 
-backend' :: Backend' Bool () () () (Maybe (String, GL.Exp))
+backend' :: Backend' Bool () () () (Maybe GL.Exp)
 backend' = Backend'
   { backendName = "Grin"
   , backendVersion = Just "ZuriHac"
@@ -34,7 +37,7 @@ backend' = Backend'
   , preCompile = \_ -> return ()
   , postCompile = \_ _ _ -> return ()
   , preModule = \_ _ _ -> return $ Recompile ()
-  , postModule = \_ _ _ _ _ -> return ()
+  , postModule = grinPostModule
   , compileDef = grinCompileDef
   , scopeCheckingSuffices = False
   }
@@ -56,7 +59,7 @@ grinCommandLineFlags =
   where
     compileGrinFlag o      = return $ True
 
-grinCompileDef :: () -> () -> Definition -> TCM (Maybe (String, GL.Exp))
+grinCompileDef :: () -> () -> Definition -> TCM (Maybe GL.Exp)
 grinCompileDef env modEnv def = do
   case theDef def of
     Function{} -> do
@@ -64,9 +67,8 @@ grinCompileDef env modEnv def = do
         treeless <- normalizeNames treeless
         reportSDoc "compile.grin" 15 $ text "Treeless: " <+> pretty treeless
         grin <- runReaderT (toGrin treeless) initialEnv
-        lift $ PP.putDoc $ PP.pretty grin
         n' <- qnameToG $ defName def
-        return $ Just (n', grin)
+        return $ Just $ GL.Def n' [] grin
     _ -> return Nothing
   where initialEnv = GEnv [] ([[c] | c <- ['a'..'z']] ++ [ "z" ++ show i | i <- [0..]])
 
@@ -83,7 +85,6 @@ toGrin t = case t of
   AT.TApp (AT.TCon n) ts -> GL.Con <$> lift (qnameToG n) <*> traverse toGrin ts
   AT.TApp t ts -> foldl GL.AppCore <$> (toGrin t) <*> (traverse toGrin ts)
   AT.TCon n -> GL.Con <$> lift(qnameToG n) <*> pure []
-  AT.TPrim p -> pure $ GL.Var $ "PRIMMMMMM"
   AT.TLit l -> pure $ GL.Lit $ litToGrin l
   AT.TVar i -> GL.Var . (!! i) <$> asks env
   AT.TLet t1 t2 -> do
@@ -136,5 +137,23 @@ unqualifyQ modNm qnm =
     qnms = qnameToList qnm
 
 
-grinPostModule :: () -> () -> IsMain -> ModuleName -> [(String, GL.Exp)] -> TCM ()
-grinPostModule _ _ _ _ _ = return ()
+grinPostModule :: () -> () -> IsMain -> ModuleName -> [Maybe GL.Exp] -> TCM ()
+grinPostModule _ _ _ modNm defs = do
+  defs <- (return . GL.Program) $ catMaybes defs
+  outFile <- grinPath modNm
+--  let doc = PP.renderPretty 0.4 500 (PP.pretty defs)
+  _ <- liftIO $ do
+    handle <- openFile outFile WriteMode
+    PP.hPutDoc handle (PP.plain $ PP.pretty defs)
+    hClose handle
+  return ()
+
+grinPath :: ModuleName -> TCM FilePath
+grinPath mName = do
+  mdir <- compileDir
+  let fp = mdir </> replaceExtension fp' "lam"
+  liftIO $ createDirectoryIfMissing True (takeDirectory fp)
+  return fp
+   where
+    fp' = foldl1 (</>) $ map show $ mnameToList mName
+
