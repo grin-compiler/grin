@@ -2,6 +2,7 @@
 module Transformations.SingleStaticAssignment where
 
 import Grin
+import Control.Arrow (first)
 import Data.Functor.Foldable
 import Data.Monoid hiding (Alt)
 import qualified Data.Map as Map
@@ -22,13 +23,11 @@ singleStaticAssignment e = evalState (anaM build (mempty, e)) (mempty, 1) where
       pure $ EBindF (subst', lhs) (Var nm') (subst', rhs)
 
     Alt (NodePat tag names) body -> do
-      (names0, subst0) <- foldM
-        (\(names1, subst1) name1 -> do
-          (name2, subst2) <- calcName (name1, subst1)
-          pure (name2:names1, subst2))
+      (names0, subst0) <- first reverse <$> foldM
+        (\(names1, subst1) name1 -> first (:names1) <$> calcName (name1, subst1))
         ([], subst)
         names
-      pure $ AltF (NodePat tag (reverse names0)) (subst0, body)
+      pure $ AltF (NodePat tag names0) (subst0, body)
 
     -- Substituitions
     ECase       val alts -> pure $ ECaseF (substVal val) $ ((,) subst) <$> alts
