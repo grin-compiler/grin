@@ -74,6 +74,13 @@ _T_Location :: Traversal' SimpleType [Int]
 _T_Location f (T_Location ls) = T_Location <$> f ls
 _T_Location _ rest            = pure rest
 
+_T_Unit :: Traversal' SimpleType ()
+_T_Unit f T_Unit = const T_Unit <$> f ()
+_T_Unit _ rest   = pure rest
+
+_ReturnType :: Traversal' (Type, Vector Type) Type
+_ReturnType = _1
+
 _T_OnlyOneTag :: Traversal' NodeSet NodeSet
 _T_OnlyOneTag f nodeSet
   | (Map.size nodeSet == 1) = f nodeSet
