@@ -40,6 +40,7 @@ library
     Gspec
     Statistics
     Lint
+    Transformations.EffectMap
     Transformations.MangleNames
     Transformations.CountVariableUse
     Transformations.AssignStoreIDs

@@ -31,6 +31,7 @@ import Transformations.Simplifying.RightHoistFetch
 import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
 import Transformations.UnitPropagation
 import Transformations.MangleNames
+import Transformations.EffectMap
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Playground
@@ -107,38 +108,41 @@ data Transformation
 noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
 noTypeEnv f (t, e) = (t, f e)
 
-transformation :: Int -> Transformation -> (TypeEnv, Exp) -> (TypeEnv, Exp)
+noEffectMap :: ((TypeEnv, Exp) -> (TypeEnv, Exp)) -> (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
+noEffectMap f (te0, em0, e0) = let (te1, e1) = f (te0, e0) in (te1, em0, e1)
+
+transformation :: Int -> Transformation -> (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
 transformation n = \case
-  Vectorisation                   -> Vectorisation2.vectorisation
-  GenerateEval                    -> noTypeEnv generateEval
-  CaseSimplification              -> noTypeEnv caseSimplification
-  SplitFetch                      -> noTypeEnv splitFetch
-  RegisterIntroduction            -> noTypeEnv $ registerIntroductionI n
-  RightHoistFetch                 -> noTypeEnv RHF.rightHoistFetch
+  Vectorisation                   -> noEffectMap Vectorisation2.vectorisation
+  GenerateEval                    -> noEffectMap $ noTypeEnv generateEval
+  CaseSimplification              -> noEffectMap $ noTypeEnv caseSimplification
+  SplitFetch                      -> noEffectMap $ noTypeEnv splitFetch
+  RegisterIntroduction            -> noEffectMap $ noTypeEnv $ registerIntroductionI n
+  RightHoistFetch                 -> noEffectMap $ noTypeEnv RHF.rightHoistFetch
   -- misc
-  MangleNames                     -> noTypeEnv mangleNames
+  MangleNames                     -> noEffectMap $ noTypeEnv mangleNames
   -- optimising
-  BindNormalisation               -> noTypeEnv bindNormalisation
-  ConstantFolding                 -> noTypeEnv constantFolding
-  EvaluatedCaseElimination        -> noTypeEnv evaluatedCaseElimination
-  TrivialCaseElimination          -> noTypeEnv trivialCaseElimination
-  UpdateElimination               -> noTypeEnv updateElimination
-  CopyPropagation                 -> noTypeEnv copyPropagation
-  ConstantPropagation             -> noTypeEnv constantPropagation
-  DeadProcedureElimination        -> noTypeEnv deadProcedureElimination
-  DeadParameterElimination        -> noTypeEnv deadParameterElimination
-  InlineEval                      -> inlineEval
-  InlineApply                     -> inlineApply
-  InlineBuiltins                  -> inlineBuiltins
-  SparseCaseOptimisation          -> sparseCaseOptimisation
+  BindNormalisation               -> noEffectMap $ noTypeEnv bindNormalisation
+  ConstantFolding                 -> noEffectMap $ noTypeEnv constantFolding
+  EvaluatedCaseElimination        -> noEffectMap $ noTypeEnv evaluatedCaseElimination
+  TrivialCaseElimination          -> noEffectMap $ noTypeEnv trivialCaseElimination
+  UpdateElimination               -> noEffectMap $ noTypeEnv updateElimination
+  CopyPropagation                 -> noEffectMap $ noTypeEnv copyPropagation
+  ConstantPropagation             -> noEffectMap $ noTypeEnv constantPropagation
+  DeadProcedureElimination        -> noEffectMap $ noTypeEnv deadProcedureElimination
+  DeadParameterElimination        -> noEffectMap $ noTypeEnv deadParameterElimination
+  InlineEval                      -> noEffectMap inlineEval
+  InlineApply                     -> noEffectMap inlineApply
+  InlineBuiltins                  -> noEffectMap inlineBuiltins
+  SparseCaseOptimisation          -> noEffectMap sparseCaseOptimisation
   DeadVariableElimination         -> deadVariableElimination
-  CommonSubExpressionElimination  -> commonSubExpressionElimination
-  CaseCopyPropagation             -> caseCopyPropagation
-  CaseHoisting                    -> caseHoisting
-  GeneralizedUnboxing             -> generalizedUnboxing
-  ArityRaising                    -> arityRaising
-  LateInlining                    -> lateInlining
-  UnitPropagation                 -> unitPropagation
+  CommonSubExpressionElimination  -> noEffectMap commonSubExpressionElimination
+  CaseCopyPropagation             -> noEffectMap caseCopyPropagation
+  CaseHoisting                    -> noEffectMap caseHoisting
+  GeneralizedUnboxing             -> noEffectMap generalizedUnboxing
+  ArityRaising                    -> noEffectMap arityRaising
+  LateInlining                    -> noEffectMap lateInlining
+  UnitPropagation                 -> noEffectMap unitPropagation
 
 -- TODO
 precondition :: Transformation -> [Check]
@@ -162,8 +166,14 @@ data HPTStep
   | PrintHPTResult
   deriving (Eq, Show)
 
+data EffectStep
+  = CalcEffectMap
+  | PrintEffectMap
+  deriving (Eq, Show)
+
 data PipelineStep
   = HPT HPTStep
+  | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
   | PrintGrinH (Hidden (Doc -> Doc))
@@ -205,6 +215,7 @@ data PState = PState
     , _psHPTProgram :: Maybe HPT.HPTProgram
     , _psHPTResult  :: Maybe HPT.HPTResult
     , _psTypeEnv    :: Maybe TypeEnv
+    , _psEffectMap  :: Maybe EffectMap
     , _psErrors     :: [String]
     }
 
@@ -237,6 +248,9 @@ pipelineStep p = do
       PrintHPTCode    -> printHPTCode
       RunHPTPure      -> runHPTPure
       PrintHPTResult  -> printHPTResult
+    Eff eff -> case eff of
+      CalcEffectMap   -> calcEffectMap
+      PrintEffectMap  -> printEffectMap
     T t             -> transformationM t
     Pass pass       -> mapM_ pipelineStep pass
     PrintGrin d     -> printGrinM d
@@ -256,6 +270,18 @@ pipelineStep p = do
     _   -> pure ()
   -- TODO: Test this only for development mode.
   return eff
+
+calcEffectMap :: PipelineM ()
+calcEffectMap = do
+  grin <- use psExp
+  env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
+  psEffectMap .= Just (effectMap (env0, grin))
+
+printEffectMap :: PipelineM ()
+printEffectMap = do
+  grin <- use psExp
+  env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
+  liftIO $ print $ pretty env0
 
 compileHPT :: PipelineM ()
 compileHPT = do
@@ -320,9 +346,10 @@ transformationM :: Transformation -> PipelineM ()
 transformationM t = do
   preconditionCheck t
   env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
+  effs0 <- fromMaybe (traceShow "emptyEffectMap is used" mempty) <$> use psEffectMap
   n    <- use psTransStep
   exp0 <- use psExp
-  let (env1, exp1) = transformation n t (env0, exp0)
+  let (env1, effs1, exp1) = transformation n t (env0, effs0, exp0)
   psTypeEnv .= Just env1
   psExp     .= exp1
   psTransStep %= (+1)
@@ -444,6 +471,7 @@ pipeline o e ps = do
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
       , _psTypeEnv    = Nothing
+      , _psEffectMap  = Nothing
       , _psErrors     = []
       }
 
@@ -461,6 +489,7 @@ optimizeWithPM o e ps = loop where
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
         lintGrin . Just $ show p
+        pipelineStep $ Eff CalcEffectMap
       pure eff
     -- Run loop again on change
     when (any (match _ExpChanged) effs)
@@ -499,6 +528,7 @@ optimizeWith o e pre optimizations post = fmap fst $ flip runStateT start $ flip
     [ HPT CompileHPT
     , HPT RunHPTPure
     , T UnitPropagation
+    , Eff CalcEffectMap
     ]
   optimizeWithPM o e $ fmap T optimizations
   mapM_ pipelineStep post
@@ -512,5 +542,6 @@ optimizeWith o e pre optimizations post = fmap fst $ flip runStateT start $ flip
       , _psHPTProgram = Nothing
       , _psHPTResult  = Nothing
       , _psTypeEnv    = Nothing
+      , _psEffectMap  = Nothing
       , _psErrors     = []
       }

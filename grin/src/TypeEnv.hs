@@ -4,6 +4,7 @@ module TypeEnv where
 import Text.Printf
 import Data.Int
 import Data.Map (Map)
+import Data.Set (Set)
 import Data.Vector (Vector)
 import qualified Data.Map as Map
 import qualified Data.Vector as Vector (fromList)
@@ -159,3 +160,12 @@ typeOfValTE typeEnv = \case
   Var name  -> variableType typeEnv name
 
   bad -> error (show bad)
+
+-- * Effects
+
+data Effect
+  = Effectful Name
+  | Update { updateLocs :: [Int] }
+  deriving (Eq, Show, Ord)
+
+type EffectMap = Map Name (Set Effect)
