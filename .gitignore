@@ -21,3 +21,4 @@ cabal.project.local
 .HTF/
 output/
 *.ibc
+*.agdai
