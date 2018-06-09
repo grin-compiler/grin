@@ -82,7 +82,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
     mapM convertFunction (_function hptResult)
 
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
-inferTypeEnv exp = either error id $ typeEnvFromHPTResult result where
+inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where
   hptProgram = HPT.codeGen exp
-  hptResult = HPT.evalHPT hptProgram
-  result = HPT.toHPTResult hptProgram hptResult
+  hptResult = HPT.evalHPT <$> hptProgram
+  result = HPT.toHPTResult <$>  hptProgram <*> hptResult

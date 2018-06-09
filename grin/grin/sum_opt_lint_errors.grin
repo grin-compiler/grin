@@ -1,0 +1,12 @@
+grinMain =
+  n13 <- sum 0 1 100000
+  _prim_int_print n13
+
+sum n29 n30 n31 =
+  b2 <- _prim_int_gt n30 n31_
+  if b2 then
+    pure n29
+  else
+    n18 <- _prim_int_add n30 1
+    n28 <- _prim_int_add n29_ n30_
+    sum n28 n18 n31

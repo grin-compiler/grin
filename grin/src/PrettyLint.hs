@@ -20,7 +20,13 @@ keywordR = red . text
 
 prettyLintExp :: (Cofree ExpF Int, Map Int [Error]) -> Doc
 prettyLintExp (exp, errorMap) = cata folder exp where
-  folder (expId CCTC.:< e) = {-fill 8 (int expId) <> -}prettyExpAlgebra e -- <> indent 2 (red $ vsep $ map text $ Map.findWithDefault [] expId errorMap) <> linebreak
+  folder (expId CCTC.:< e) = addError expId (prettyExpAlgebra e)
+
+  addError expId d =
+    maybe
+      d
+      ((d <>) . red . (string " <- "<>) . align . vsep . map string )
+      (Map.lookup expId errorMap)
 
   prettyExpAlgebra = \case
       ProgramF defs       -> vcat (map pretty defs)

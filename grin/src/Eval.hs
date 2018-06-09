@@ -28,8 +28,8 @@ eval' reducer fname = do
         PureReducer -> Reducer.Pure.reduceFun program "grinMain"
         IOReducer   -> Reducer.IO.reduceFun program "grinMain"
         LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
-          typeEnv     = either error id $ typeEnvFromHPTResult hptResult
-          hptResult   = HPT.toHPTResult hptProgram $ HPT.evalHPT hptProgram
+          typeEnv     = either error id $ typeEnvFromHPTResult =<< hptResult
+          hptResult   = HPT.toHPTResult <$> hptProgram <*> (HPT.evalHPT <$> hptProgram)
           hptProgram  = HPT.codeGen program
 
 evalProgram :: Reducer -> Program -> IO Val
