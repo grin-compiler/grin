@@ -270,7 +270,7 @@ pipelineOpts = defaultOpts
   , _poFailOnLint = False
   }
 
-preparation :: [Pipeline]
+preparation :: [PipelineStep]
 preparation =
   [ SaveGrin "FromIdris"
   , T DeadProcedureElimination
@@ -302,7 +302,7 @@ idrisOptimizations =
   , LateInlining
   ]
 
-postProcessing :: String -> [Pipeline]
+postProcessing :: String -> [PipelineStep]
 postProcessing outputFile =
   [ SaveGrin "high-level-opt-code.grin"
   , PureEval

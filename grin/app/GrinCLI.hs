@@ -14,7 +14,7 @@ import Pipeline
 
 data Options = Options
   { optFiles     :: [FilePath]
-  , optTrans     :: [Pipeline]
+  , optTrans     :: [PipelineStep]
   , optOutputDir :: FilePath
   } deriving Show
 
@@ -50,7 +50,7 @@ transformOpts =
   <|> flg LateInlining "li" "Late Inlining"
   <|> flg MangleNames "mn" "Mangle Names"
 
-pipelineOpts :: Parser Pipeline
+pipelineOpts :: Parser PipelineStep
 pipelineOpts =
       flg (HPT CompileHPT) "compile-hpt" "Compiles heap-points-to analysis machine"
   <|> flg (HPT PrintHPTCode) "print-hpt-code" "Prints the heap-points-to analysis machine"
@@ -103,7 +103,7 @@ main = do
       [] -> void $ optimize opts program prePipeline postPipeline
       _  -> void $ pipeline opts program steps
 
-prePipeline :: [Pipeline]
+prePipeline :: [PipelineStep]
 prePipeline =
   [ HPT CompileHPT
 --  , HPT PrintHPTCode
@@ -115,7 +115,7 @@ prePipeline =
 --  , SaveLLVM "high-level-code"
   ]
 
-postPipeline :: [Pipeline]
+postPipeline :: [PipelineStep]
 postPipeline =
   [ SaveLLVM "high-level-opt-code"
   , JITLLVM -- TODO: Remove this.

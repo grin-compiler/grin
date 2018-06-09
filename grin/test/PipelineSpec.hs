@@ -34,12 +34,12 @@ spec = do
         transformedValue <- run $ pure $ evalProgram PureReducer transformed
         run (transformedValue `shouldBe` originalValue)
     -}
-genPipeline :: Gen [Pipeline]
+genPipeline :: Gen [PipelineStep]
 genPipeline = do
   ([PrintGrin id, HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
 --  ([HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
 
-shrinkPipeline :: [Pipeline] -> [[Pipeline]]
+shrinkPipeline :: [PipelineStep] -> [[PipelineStep]]
 shrinkPipeline (printast:chpt:hpt:rest) = ([printast, chpt, hpt]++) <$> shrinkList (const []) rest
 
 transformations :: Gen [Transformation]

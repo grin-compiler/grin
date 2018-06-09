@@ -162,10 +162,10 @@ data HPTStep
   | PrintHPTResult
   deriving (Eq, Show)
 
-data Pipeline
+data PipelineStep
   = HPT HPTStep
   | T Transformation
-  | Pass [Pipeline]
+  | Pass [PipelineStep]
   | PrintGrinH (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
@@ -178,11 +178,11 @@ data Pipeline
   | Lint
   deriving (Eq, Show)
 
-pattern PrintGrin :: (Doc -> Doc) -> Pipeline
+pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
 pattern PrintGrin c <- PrintGrinH (H c)
   where PrintGrin c =  PrintGrinH (H c)
 
-pattern DebugTransformation :: (Exp -> Exp) -> Pipeline
+pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
 
@@ -224,12 +224,12 @@ _ExpChanged :: Traversal' PipelineEff ()
 _ExpChanged f ExpChanged = const ExpChanged <$> f ()
 _ExpChanged _ rest       = pure rest
 
-pipelineStep :: Pipeline -> PipelineM PipelineEff
+pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
   case p of
     T{}     -> pure ()
     Pass{}  -> pure () -- each pass step will be printed anyway
-    _       -> liftIO $ putStrLn $ printf "Pipeline: %-35s" (show p)
+    _       -> liftIO $ putStrLn $ printf "PipelineStep: %-35s" (show p)
   before <- use psExp
   case p of
     HPT hptStep -> case hptStep of
@@ -252,7 +252,7 @@ pipelineStep p = do
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
-    T{} -> liftIO $ putStrLn $ printf "Pipeline: %-35s has effect: %s" (show p) (show eff)
+    T{} -> liftIO $ putStrLn $ printf "PipelineStep: %-35s has effect: %s" (show p) (show eff)
     _   -> pure ()
   -- TODO: Test this only for development mode.
   return eff
@@ -426,7 +426,7 @@ check = do
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
-pipeline :: PipelineOpts -> Exp -> [Pipeline] -> IO ([(Pipeline, PipelineEff)], Exp)
+pipeline :: PipelineOpts -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
 pipeline o e ps = do
   print ps
   fmap (second _psExp) .
@@ -449,7 +449,7 @@ pipeline o e ps = do
 -- changes the expression itself, the order of the transformations
 -- are defined in the pipeline list. After all round the TypeEnv
 -- is restored
-optimizeWithPM :: PipelineOpts -> Exp -> [Pipeline] -> PipelineM ()
+optimizeWithPM :: PipelineOpts -> Exp -> [PipelineStep] -> PipelineM ()
 optimizeWithPM o e ps = loop where
   loop = do
     -- Run every step and on changes run HPT
@@ -463,7 +463,7 @@ optimizeWithPM o e ps = loop where
     when (any (match _ExpChanged) effs)
       loop
 
-optimize :: PipelineOpts -> Exp -> [Pipeline] -> [Pipeline] -> IO Exp
+optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
 optimize o e pre post = optimizeWith o e pre optimizations post where
   optimizations =
     [ BindNormalisation
@@ -486,7 +486,7 @@ optimize o e pre post = optimizeWith o e pre optimizations post where
     , LateInlining
     ]
 
-optimizeWith :: PipelineOpts -> Exp -> [Pipeline] -> [Transformation] -> [Pipeline] -> IO Exp
+optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> IO Exp
 optimizeWith o e pre optimizations post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
   lintGrin $ Just "init"
 
