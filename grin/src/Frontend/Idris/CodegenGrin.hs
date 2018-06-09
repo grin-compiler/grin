@@ -292,7 +292,7 @@ idrisOptimizations =
   , CopyPropagation
 --  , ConstantPropagation
   , DeadProcedureElimination
---  , DeadVariableElimination
+  , DeadVariableElimination
   , DeadParameterElimination
   , CommonSubExpressionElimination
   , CaseCopyPropagation
@@ -306,6 +306,9 @@ postProcessing :: String -> [PipelineStep]
 postProcessing outputFile =
   [ SaveGrin "high-level-opt-code.grin"
   , PureEval
+  , HPT CompileHPT
+  , HPT RunHPTPure
+  , HPT PrintHPTResult
   , SaveLLVM outputFile
   , JITLLVM
   ]
