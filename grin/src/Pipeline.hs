@@ -68,6 +68,12 @@ import Data.List
 
 import Lint
 
+import Test.QuickCheck
+import Test.QuickCheck.Monadic
+import Data.Algorithm.Diff
+import Data.Algorithm.DiffOutput
+import Control.Monad.Extra
+
 type RenameVariablesMap = Map String String
 
 data Transformation
@@ -176,6 +182,7 @@ data PipelineStep
   | Statistics
   | PrintTypeEnv
   | Lint
+  | ConfluenceTest Int
   deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
@@ -249,6 +256,7 @@ pipelineStep p = do
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
+    ConfluenceTest n -> void $ loopM confluenceTest n
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
@@ -262,12 +270,12 @@ compileHPT = do
   grin <- use psExp
   let hptProgram = HPT.codeGen grin
   psHPTProgram .= Just hptProgram
-  let nonlinearSet  = nonlinearVariables grin
-      countMap      = countVariableUse grin
+  --let nonlinearSet  = nonlinearVariables grin
+  --    countMap      = countVariableUse grin
   --pPrint countMap
   --pPrint nonlinearSet
-  liftIO $ putStrLn "non-linear variables:"
-  liftIO $ print . pretty $ nonlinearSet
+  --liftIO $ putStrLn "non-linear variables:"
+  --liftIO $ print . pretty $ nonlinearSet
 
 printHPTCode :: PipelineM ()
 printHPTCode = do
@@ -414,6 +422,48 @@ lintGrin mPhaseName = do
     failOnLintError <- view poFailOnLint
     when failOnLintError $ do
       liftIO $ die "illegal code"
+
+transformationWhitelist =
+  -- Misc
+  [ UnitPropagation
+  -- Optimizations
+  , EvaluatedCaseElimination
+  , TrivialCaseElimination
+  , SparseCaseOptimisation
+  , UpdateElimination
+  , CopyPropagation
+  , ConstantPropagation
+  , DeadProcedureElimination
+  , DeadParameterElimination
+  , DeadVariableElimination
+  , CommonSubExpressionElimination
+  , CaseCopyPropagation
+  , CaseHoisting
+  , GeneralizedUnboxing
+  , ArityRaising
+  , LateInlining
+  ]
+
+randomTransform :: Exp -> IO (Exp, [Transformation])
+randomTransform exp = do
+    permutation <- generate $ shuffle transformationWhitelist
+    (_, transformed) <- pipeline defaultOpts exp $ makePipeline permutation
+    return (transformed, permutation)
+  where makePipeline = (extraPass :) . (>>= (: [extraPass])) . fmap T
+        extraPass = Pass [T BindNormalisation, Lint, HPT CompileHPT, HPT RunHPTPure]
+
+confluenceTest :: Int -> PipelineM (Either Int ())
+confluenceTest iter = use psExp >>= \exp -> liftIO $ if iter <= 0 then (return $ Right ()) else do
+  (exps@(e1:e2:_), (t1:t2:_)) <- unzip <$> replicateM 2 (randomTransform exp)
+  if (mangleNames e1 == mangleNames e2) then (return $ Left (iter - 1)) else do
+    let (lines1:lines2:_) = (lines . show . plain . pretty) <$> exps
+    putStrLn $ "\nDiff between transformed codes:"
+    putStrLn $ ppDiff $ getGroupedDiff lines1 lines2
+    putStrLn "First tranformation permutation:"
+    putStrLn $ show t1
+    putStrLn "\nSecond transformation permutation:"
+    putStrLn $ show t2
+    return $ Right ()
 
 check :: PipelineM ()
 check = do

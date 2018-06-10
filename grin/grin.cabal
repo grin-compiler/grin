@@ -135,7 +135,8 @@ library
     ghc,
     idris,
     neat-interpolation,
-    template-haskell
+    template-haskell,
+    Diff
 
   default-language:    Haskell2010
 
@@ -199,6 +200,7 @@ test-suite grin-test
                      , Transformations.Optimising.CaseHoistingSpec
                      , Transformations.SingleStaticAssignmentSpec
                      , Transformations.BindNormalisationSpec
+                     , Transformations.ConfluenceSpec
                      , Samples.SumListSpec
                      , Samples.ArityFullRemoveSpec
                      , LintSpec
