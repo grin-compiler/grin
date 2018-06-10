@@ -291,12 +291,14 @@ compileHPT = do
       Left e -> psErrors %= (e:) >> pure HPT.emptyHPTProgram
       Right a -> pure a
   psHPTProgram .= Just hptProgram
+  {-
   let nonlinearSet  = nonlinearVariables grin
       countMap      = countVariableUse grin
   --pPrint countMap
   --pPrint nonlinearSet
   liftIO $ putStrLn "non-linear variables:"
   liftIO $ print . pretty $ nonlinearSet
+  -}
 
 printHPTCode :: PipelineM ()
 printHPTCode = do
