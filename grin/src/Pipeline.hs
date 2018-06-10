@@ -286,11 +286,12 @@ printEffectMap = do
 compileHPT :: PipelineM ()
 compileHPT = do
   grin <- use psExp
-  hptProgram <-
-    case HPT.codeGen grin of
-      Left e -> psErrors %= (e:) >> pure HPT.emptyHPTProgram
-      Right a -> pure a
-  psHPTProgram .= Just hptProgram
+  case HPT.codeGen grin of
+    Right hptProgram -> do
+      psHPTProgram .= Just hptProgram
+    Left e -> do
+      psErrors %= (e:)
+      psHPTProgram .= Nothing
   {-
   let nonlinearSet  = nonlinearVariables grin
       countMap      = countVariableUse grin
@@ -311,21 +312,22 @@ printHPTCode = do
   maybe (pure ()) (liftIO . printHPT) hptProgram
 
 printHPTResult :: PipelineM ()
-printHPTResult = do
-  Just result <- use psHPTResult
-  liftIO $ print . pretty $ result
+printHPTResult = use psHPTResult >>= \case
+  Nothing -> pure ()
+  Just result -> liftIO $ print . pretty $ result
 
 runHPTPure :: PipelineM ()
-runHPTPure = do
-  Just hptProgram <- use psHPTProgram
-  let hptResult = HPT.evalHPT hptProgram
-      result = HPT.toHPTResult hptProgram hptResult
-  psHPTResult .= Just result
-  case typeEnvFromHPTResult result of
-    Right te  -> psTypeEnv .= Just te
-    Left err  -> do
-      psErrors %= (err :)
-      psTypeEnv .= Nothing
+runHPTPure = use psHPTProgram >>= \case
+  Nothing -> psHPTResult .= Nothing
+  Just hptProgram -> do
+    let hptResult = HPT.evalHPT hptProgram
+        result = HPT.toHPTResult hptProgram hptResult
+    psHPTResult .= Just result
+    case typeEnvFromHPTResult result of
+      Right te  -> psTypeEnv .= Just te
+      Left err  -> do
+        psErrors %= (err :)
+        psTypeEnv .= Nothing
 
 printTypeEnv :: PipelineM ()
 printTypeEnv = do
@@ -438,7 +440,6 @@ lintGrin mPhaseName = do
     when failOnLintError $ void $ do
       liftIO . print $ prettyLintExp lintExp
       pipelineStep $ HPT PrintHPTResult
-      pipelineStep $ PrintGrin ondullblack
     case mPhaseName of
       Just phaseName  -> liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
       Nothing         -> liftIO . putStrLn $ printf "error:\n%s" (unlines errors)
