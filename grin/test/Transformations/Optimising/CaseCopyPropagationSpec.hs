@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Transformations.Optimising.CaseCopyPropagationSpec where
 
 import Transformations.Optimising.CaseCopyPropagation
@@ -10,8 +10,17 @@ import Assertions
 import TypeEnv
 import Data.Monoid
 
+ctxs :: [TestExpContext]
+ctxs =
+  [ emptyCtx
+  , lastBindR
+  , firstAlt
+  , middleAlt
+  , lastAlt
+  ]
+
 spec :: Spec
-spec = testExprContext $ \ctx -> do
+spec = testExprContextIn ctxs $ \ctx -> do
   it "Example from Figure 4.26" $ do
     let teBefore = create $
           (newVar "z'" int64_t) <>
@@ -19,7 +28,7 @@ spec = testExprContext $ \ctx -> do
           (newVar "x'" int64_t)
     let before = [expr|
             m0 <- store (CNone)
-            u  <- do
+            u  <-
               case v of
                 (Ffoo a)  -> y' <- foo a
                              pure (CInt y')
@@ -34,7 +43,7 @@ spec = testExprContext $ \ctx -> do
     let after = [expr|
             m0 <- store (CNone)
             u  <- do
-              v' <- do
+              v' <-
                 case v of
                   (Ffoo a)  -> y' <- foo a
                                pure y'
@@ -44,8 +53,8 @@ spec = testExprContext $ \ctx -> do
               pure (CInt v')
             pure m0
           |]
-    pending
-    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
+    -- TODO: Inspect type env
+    (snd (caseCopyPropagation (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
 
   it "One node has no Int tagged value" $ do
     let typeEnv = emptyTypeEnv
@@ -55,7 +64,7 @@ spec = testExprContext $ \ctx -> do
           (newVar "x'" int64_t)
     let before = [expr|
             m0 <- store (CNone)
-            u  <- do
+            u  <-
               case v of
                 (Ffoo a)  -> y' <- foo a
                              pure (CInt y')
@@ -66,7 +75,7 @@ spec = testExprContext $ \ctx -> do
           |]
     let after = [expr|
             m0 <- store (CNone)
-            u  <- do
+            u  <-
               case v of
                 (Ffoo a)  -> y' <- foo a
                              pure (CInt y')
@@ -75,8 +84,7 @@ spec = testExprContext $ \ctx -> do
                 (CInt x') -> pure (CInt x')
             pure m0
           |]
-    pending
-    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
+    (snd (caseCopyPropagation (ctx (teBefore, before)))) `sameAs` (snd (ctx (teBefore, after)))
 
   it "Embedded good case" $ do
     let teBefore = create $
@@ -88,13 +96,13 @@ spec = testExprContext $ \ctx -> do
           (newVar "x1'" int64_t)
     let before = [expr|
             m0 <- store (CNone)
-            u  <- do
+            u  <-
               case v of
                 (Ffoo a)  -> y' <- foo a
                              pure (CInt y')
                 (Fbar b)  -> z' <- bar b
                              pure (CInt z')
-                (CInt x') -> u1 <- do
+                (CInt x') -> u1 <-
                                case v1 of
                                  (Ffoo a1)  -> y1' <- foo a1
                                                pure (CInt y1')
@@ -110,14 +118,14 @@ spec = testExprContext $ \ctx -> do
     let after = [expr|
             m0 <- store (CNone)
             u  <- do
-              v' <- do
+              v' <-
                 case v of
                   (Ffoo a)  -> y' <- foo a
                                pure y'
                   (Fbar b)  -> z' <- bar b
                                pure z'
                   (CInt x') -> u1 <- do
-                                 v1' <- do
+                                 v1' <-
                                    case v1 of
                                      (Ffoo a1)  -> y1' <- foo a1
                                                    pure y1'
@@ -129,8 +137,7 @@ spec = testExprContext $ \ctx -> do
               pure (CInt v')
             pure m0
           |]
-    pending
-    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
+    (snd (caseCopyPropagation (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
 
   it "Embedded bad case" $ do
     let teBefore = create $
@@ -142,13 +149,13 @@ spec = testExprContext $ \ctx -> do
           newVar "x1'" int64_t
     let before = [expr|
             m0 <- store (CNone)
-            u  <- do
+            u  <-
               case v of
                 (Ffoo a)  -> y' <- foo a
                              pure (CInt y')
                 (Fbar b)  -> z' <- bar b
                              pure (CInt z')
-                (CInt x') -> u1 <- do
+                (CInt x') -> u1 <-
                                case v1 of
                                  (Ffoo a1)  -> y1' <- foo a1
                                                pure (CInt y1')
@@ -163,13 +170,13 @@ spec = testExprContext $ \ctx -> do
     let after = [expr|
             m0 <- store (CNone)
             u  <- do
-              v' <- do
+              v' <-
                 case v of
                   (Ffoo a)  -> y' <- foo a
                                pure y'
                   (Fbar b)  -> z' <- bar b
                                pure z'
-                  (CInt x') -> u1 <- do
+                  (CInt x') -> u1 <-
                                  case v1 of
                                    (Ffoo a1)  -> y1' <- foo a1
                                                  pure (CInt y1')
@@ -180,8 +187,7 @@ spec = testExprContext $ \ctx -> do
               pure (CInt v')
             pure m0
           |]
-    pending
-    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
+    (snd (caseCopyPropagation (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
 
   it "Leave the outher, transform the inner" $ do
     let teBefore = create $
@@ -199,7 +205,7 @@ spec = testExprContext $ \ctx -> do
                              pure (CInt y')
                 (Fbar b)  -> z' <- bar b
                              pure (CFloat z')
-                (CInt x') -> u1 <- do
+                (CInt x') -> u1 <-
                                case v1 of
                                  (Ffoo a1)  -> y1' <- foo a1
                                                pure (CInt y1')
@@ -220,7 +226,7 @@ spec = testExprContext $ \ctx -> do
                 (Fbar b)  -> z' <- bar b
                              pure (CFloat z')
                 (CInt x') -> u1 <- do
-                               v1' <- do
+                               v1' <-
                                  case v1 of
                                    (Ffoo a1)  -> y1' <- foo a1
                                                  pure y1'
@@ -231,8 +237,7 @@ spec = testExprContext $ \ctx -> do
                              pure (CInt x')
             pure m0
           |]
-    pending
-    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
+    (snd (caseCopyPropagation (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
 
   it "last expression is a case" $ do
     let teBefore = create $
@@ -261,8 +266,7 @@ spec = testExprContext $ \ctx -> do
                                   pure ax'
               pure (CInt l2')
           |]
-    pending
-    caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
+    (snd (caseCopyPropagation (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
 
 runTests :: IO ()
 runTests = hspec spec

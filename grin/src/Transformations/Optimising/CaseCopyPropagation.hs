@@ -91,8 +91,8 @@ collectInfo env = para convert where
     ProgramF (mconcat . map snd -> info) -> info
     DefF _ _ (_, info)                   -> info { returns = mempty }
 
-    ECaseF v ((mconcat . map snd) -> info) -> case info of
-      Info returns cases -> case (allTheSame $ map snd returns) of
+    ECaseF v ((mconcat . map snd) -> Info returns cases) ->
+      case (allTheSame $ map snd returns) of
         Just (Just x) -> Info mempty (([], x):cases) -- The case is the same return values
         Just Nothing  -> Info mempty cases
         Nothing       -> Info mempty cases
@@ -103,19 +103,21 @@ collectInfo env = para convert where
     _ -> mempty
 
 -- * Build
-
+{-
+-- TODO: Fix this when we optimize
 extendTypeEnv :: Info -> TypeEnv -> TypeEnv
 extendTypeEnv (Info returns cases) te = foldl addVar te cases where
   addVar te0 (path, (tag, typ)) = case (last path) of
     ECaseF v@(Var n) _ -> extend te0 $ newVar (n <> "'") (T_SimpleType typ)
     bad                -> error $ show bad
+-}
 
 data BuilderState
   = Build Exp Info Bool
   | Skip  Int Exp Info Bool
 
 caseCopyPropagation :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-caseCopyPropagation (env, e0) = (extendTypeEnv info env, apo builder (Build e info False)) where
+caseCopyPropagation (env, e0) = (env, apo builder (Build e info False)) where
     -- TODO: Ignore or handle EBind (SBlock _) _ _ and remove Bind Normalisation
   e = bindNormalisation e0
 
