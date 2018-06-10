@@ -22,6 +22,7 @@ import Data.Functor.Infix
 import Data.List as List
 import Control.Monad.State
 import Transformations.Util (apoM)
+import Transformations.BindNormalisation (bindNormalisation)
 
 
 type VarM a = State TypeEnv a
@@ -39,8 +40,11 @@ newParams name types  = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> show
 
 -- TODO: Create unique names
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-arityRaising (te, exp) = runVarM te (apoM builder ([], exp))
+arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
   where
+    -- TODO: Arity raising does not handle well the non normalised binds.
+    exp = bindNormalisation exp0
+
     candidates :: Map Name [(Name, Int, (Tag, Vector SimpleType))]
     candidates =
       flip examineCallees (te,exp) $

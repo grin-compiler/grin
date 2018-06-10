@@ -4,6 +4,7 @@ module TypeEnv where
 import Text.Printf
 import Data.Int
 import Data.Map (Map)
+import Data.Set (Set)
 import Data.Vector (Vector)
 import qualified Data.Map as Map
 import qualified Data.Vector as Vector (fromList)
@@ -73,6 +74,13 @@ _T_SimpleType _ rest             = pure rest
 _T_Location :: Traversal' SimpleType [Int]
 _T_Location f (T_Location ls) = T_Location <$> f ls
 _T_Location _ rest            = pure rest
+
+_T_Unit :: Traversal' SimpleType ()
+_T_Unit f T_Unit = const T_Unit <$> f ()
+_T_Unit _ rest   = pure rest
+
+_ReturnType :: Traversal' (Type, Vector Type) Type
+_ReturnType = _1
 
 _T_OnlyOneTag :: Traversal' NodeSet NodeSet
 _T_OnlyOneTag f nodeSet
@@ -152,3 +160,12 @@ typeOfValTE typeEnv = \case
   Var name  -> variableType typeEnv name
 
   bad -> error (show bad)
+
+-- * Effects
+
+data Effect
+  = Effectful Name
+  | Update { updateLocs :: [Int] }
+  deriving (Eq, Show, Ord)
+
+type EffectMap = Map Name (Set Effect)

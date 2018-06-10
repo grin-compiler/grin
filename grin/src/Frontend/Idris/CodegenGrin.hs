@@ -46,14 +46,8 @@ program :: [(Idris.Name, SDecl)] -> Exp
 program defs =
   bindNormalisation $
   singleStaticAssignment $
-  renameMain $
   Program $ primOps ++ map (function . snd) defs
  where Program primOps = idrisPrimOps
-
-renameMain :: Exp -> Exp
-renameMain (Program defs) = Program $ map newMain defs where
-  newMain (Def "idr_{runMain_0}" [] body) = Def "grinMain" [] body
-  newMain rest = rest
 
 function :: SDecl -> Exp
 function (SFun fname params _int body) =
@@ -292,7 +286,7 @@ idrisOptimizations =
   , CopyPropagation
 --  , ConstantPropagation
   , DeadProcedureElimination
---  , DeadVariableElimination
+  , DeadVariableElimination
   , DeadParameterElimination
   , CommonSubExpressionElimination
   , CaseCopyPropagation
@@ -306,6 +300,9 @@ postProcessing :: String -> [PipelineStep]
 postProcessing outputFile =
   [ SaveGrin "high-level-opt-code.grin"
   , PureEval
+  , HPT CompileHPT
+  , HPT RunHPTPure
+  , HPT PrintHPTResult
   , SaveLLVM outputFile
   , JITLLVM
   ]

@@ -12,6 +12,7 @@ import Lens.Micro.Platform hiding (zoom)
 import TypeEnv
 import qualified Data.Vector
 import qualified Data.Map as Map
+import Transformations.BindNormalisation (bindNormalisation)
 
 {-
 When implementing the transformation we need to, for each case expression:
@@ -114,7 +115,9 @@ data BuilderState
   | Skip  Int Exp Info Bool
 
 caseCopyPropagation :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-caseCopyPropagation (env, e) = (extendTypeEnv info env, apo builder (Build e info False)) where
+caseCopyPropagation (env, e0) = (extendTypeEnv info env, apo builder (Build e info False)) where
+    -- TODO: Ignore or handle EBind (SBlock _) _ _ and remove Bind Normalisation
+  e = bindNormalisation e0
 
   info = collectInfo env e
 
@@ -147,6 +150,9 @@ caseCopyPropagation (env, e) = (extendTypeEnv info env, apo builder (Build e inf
       where
         i1 = zoom 2 i
         newVar = Var (n <> "'")
+
+    -- TODO: Ignore or handle this, instead of throwing an error.
+    EBind (SBlock _) _ _ -> error "Non normalized bind in Case Copy Propagation."
 
     -- Exp: The last statement is a case
     EBind lhs pat rhs@(ECase var@(Var n) alts)

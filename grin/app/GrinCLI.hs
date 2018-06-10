@@ -56,6 +56,8 @@ pipelineOpts =
   <|> flg (HPT PrintHPTCode) "print-hpt-code" "Prints the heap-points-to analysis machine"
   <|> flg (HPT RunHPTPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
   <|> flg (HPT PrintHPTResult) "print-hpt-result" "Prints the heap-points-to analysis result"
+  <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
+  <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
   <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code"
   <|> flg PrintTypeEnv "te" "Prints type env"
