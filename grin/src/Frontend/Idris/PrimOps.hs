@@ -74,5 +74,9 @@ idrisPrimOps = [prog|
     (CGrInt idris_int_div1_1) <- fetch idris_int_div1
     idris_int_div2 <- _prim_int_div idris_int_div0_1 idris_int_div1_1
     pure (CGrInt idris_int_div2)
+
+  grinMain =
+    r <- idr_{runMain_0}
+    pure ()
 |]
 
