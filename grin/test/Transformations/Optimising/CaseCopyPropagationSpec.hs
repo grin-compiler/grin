@@ -44,6 +44,7 @@ spec = testExprContext $ \ctx -> do
               pure (CInt v')
             pure m0
           |]
+    pending
     caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "One node has no Int tagged value" $ do
@@ -74,6 +75,7 @@ spec = testExprContext $ \ctx -> do
                 (CInt x') -> pure (CInt x')
             pure m0
           |]
+    pending
     caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
 
   it "Embedded good case" $ do
@@ -127,6 +129,7 @@ spec = testExprContext $ \ctx -> do
               pure (CInt v')
             pure m0
           |]
+    pending
     caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "Embedded bad case" $ do
@@ -177,6 +180,7 @@ spec = testExprContext $ \ctx -> do
               pure (CInt v')
             pure m0
           |]
+    pending
     caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "Leave the outher, transform the inner" $ do
@@ -227,6 +231,7 @@ spec = testExprContext $ \ctx -> do
                              pure (CInt x')
             pure m0
           |]
+    pending
     caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
   it "last expression is a case" $ do
@@ -256,6 +261,7 @@ spec = testExprContext $ \ctx -> do
                                   pure ax'
               pure (CInt l2')
           |]
+    pending
     caseCopyPropagation (ctx (teBefore, before)) `sameAs` (ctx (teAfter, after))
 
 runTests :: IO ()
