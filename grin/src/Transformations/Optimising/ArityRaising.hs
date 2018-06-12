@@ -25,10 +25,10 @@ import Transformations.Util (apoM)
 import Transformations.BindNormalisation (bindNormalisation)
 
 
-type VarM a = State TypeEnv a
+type VarM a = State (Int, TypeEnv) a
 
 runVarM :: TypeEnv -> VarM a -> (TypeEnv, a)
-runVarM te = (\(f,s) -> (s,f)) . flip runState te
+runVarM te = (\(f,(_, s)) -> (s,f)) . flip runState (0, te)
 
 changeParams :: [(Name, [SimpleType])] -> [(Name, Type)] -> [(Name, [(Name, Type)])]
 changeParams tagParams = map
@@ -37,6 +37,15 @@ changeParams tagParams = map
 newParams :: Name -> [SimpleType] -> [(Name, Type)]
 newParams name [ty] = [(name, T_SimpleType ty)]
 newParams name types  = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> show i, T_SimpleType t)
+
+typeEnv :: Lens' (Int, TypeEnv) TypeEnv
+typeEnv = _2
+
+newVarIdx :: VarM Int
+newVarIdx = do
+  x <- use _1
+  _1 %= (+ 1)
+  pure x
 
 -- TODO: Create unique names
 arityRaising :: (TypeEnv, Exp) -> (TypeEnv, Exp)
@@ -84,39 +93,50 @@ arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
         in case Map.lookup name candidates of
             Nothing        -> pure $ DefF name params0 (Right (substs1, body))
             Just tagParams -> do
-              (Just (t, paramsTypes0)) <- use (function . at name)
+              (Just (t, paramsTypes0)) <- use (typeEnv . function . at name)
               let oldToNewParams = changeParams
                     (map (\(n, i, (t, ts)) -> (n, Vector.toList ts)) tagParams)
                     (params0 `zip` (Vector.toList paramsTypes0))
               forM_ oldToNewParams $ \(old, news) -> do
-                variable . at old .= Nothing
-                forM news $ \(newName, newType) -> (variable . at newName) .= Just newType
+                typeEnv . variable . at old .= Nothing
+                forM news $ \(newName, newType) -> (_2 . variable . at newName) .= Just newType
               let params1 = concatMap snd oldToNewParams
                   (paramNames, paramTypes) = unzip params1
               let substs2 = substs1 ++ map (second (Right . map fst)) oldToNewParams
-              function . at name %= fmap (second (const (Vector.fromList paramTypes)))
+              typeEnv . function . at name %= fmap (second (const (Vector.fromList paramTypes)))
               pure $ DefF name paramNames (Right (substs2, body))
 
-      SApp name params -> pure $ case (Map.lookup name candidates) of
-        Nothing -> SAppF name params
-        Just parametersToChange -> SAppF name $ flip concatMap ([1..] `zip` params) $ \case
-          (_, Lit l) -> [Lit l]
-          (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
-            Nothing -> case List.lookup v substs0 of
-              Just (Right [name]) -> [Var name]
-              _                   -> [Var v]
-            Just _  -> case List.lookup v substs0 of
-              Nothing -> [Var v]
-              Just (Left (ConstTagNode tag vals)) -> vals -- The tag node should have the arity as in the candidates
-              Just (Left (Var v)) -> [Var v]
-              Just (Right names) -> map Var names
+      SApp name params -> case (Map.lookup name candidates) of
+        Nothing -> pure $ SAppF name params
+        Just parametersToChange -> do
+          newParams0 <- forM ([1..] `zip` params) $ \case
+                (_, Lit l) -> pure ([Lit l], [])
+                (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
+                  Nothing -> case List.lookup v substs0 of
+                    Just (Right [name]) -> pure ([Var name], [])
+                    _                   -> pure ([Var v], [])
+                  Just p  -> case List.lookup v substs0 of
+                    Nothing -> do -- v was a parameter for the function.
+                      let locs = concat $ te ^.. variable . at v . _Just . _T_SimpleType . _T_Location
+                      let Just (tag, vs) = sameNodeOnLocations te locs
+                      c <- newVarIdx
+                      let vars = map (\n -> Var $ concat [v, ".", show c, ".f",show n]) [1 .. Vector.length vs]
+                      pure (vars, [(v, ConstTagNode tag vars)])
+                    Just (Left (ConstTagNode tag vals)) -> pure (vals, []) -- The tag node should have the arity as in the candidates
+                    Just (Left (Var v)) -> pure ([Var v], [])
+                    Just (Right names) -> pure (map Var names, [])
+          let (newParams, fetches) = (concat *** concat) $ unzip newParams0
+          case fetches of
+              [] -> pure $ SAppF name newParams
+              _  -> pure $ SBlockF $ Left $
+                foldr (\(v, ctag) -> EBind (SFetch v) ctag) (SApp name newParams) fetches
 
       SFetchI name pos -> case (Map.lookup name nodeParamMap) of
         Nothing        -> pure $ SFetchIF name pos
         Just (tag, ps) -> do
           let params = newParams name (Vector.toList ps)
           forM_ params $ \(newName, newType) ->
-            variable . at newName .= Just newType
+            typeEnv . variable . at newName .= Just newType
           pure $ SReturnF $ ConstTagNode tag $ ((Var . fst) <$> params)
 
       rest -> pure $ fmap (Right . (,) substs0) $ project rest
