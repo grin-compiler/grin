@@ -69,6 +69,12 @@ import Data.List
 
 import Lint
 
+import Test.QuickCheck
+import Test.QuickCheck.Monadic
+import Data.Algorithm.Diff
+import Data.Algorithm.DiffOutput
+import Control.Monad.Extra
+
 type RenameVariablesMap = Map String String
 
 data Transformation
@@ -186,6 +192,7 @@ data PipelineStep
   | Statistics
   | PrintTypeEnv
   | Lint
+  | ConfluenceTest Int
   deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
@@ -263,6 +270,7 @@ pipelineStep p = do
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
+    ConfluenceTest n -> void $ loopM confluenceTest n
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
@@ -447,6 +455,53 @@ lintGrin mPhaseName = do
     failOnLintError <- view poFailOnLint
     when failOnLintError $ do
       liftIO $ die "illegal code"
+
+transformationWhitelist =
+  -- Misc
+  [ UnitPropagation
+  -- Optimizations
+  , EvaluatedCaseElimination
+  , TrivialCaseElimination
+  , SparseCaseOptimisation
+  , UpdateElimination
+  , CopyPropagation
+  , ConstantPropagation
+  , DeadProcedureElimination
+  , DeadParameterElimination
+  , DeadVariableElimination
+  , CommonSubExpressionElimination
+  , CaseCopyPropagation
+  , CaseHoisting
+  , GeneralizedUnboxing
+  , ArityRaising
+  , LateInlining
+  ]
+
+randomTransformations :: Gen [Transformation]
+randomTransformations = shuffle transformationWhitelist
+
+runTransformations :: Exp -> [Transformation] -> IO Exp
+runTransformations exp = fmap snd . pipeline defaultOpts exp . (extraPass :) . (>>= (: [extraPass])) . fmap T
+  where extraPass = Pass [T BindNormalisation, Lint, HPT CompileHPT, HPT RunHPTPure]
+
+runRandomTransformations :: Exp -> IO (Exp, [Transformation])
+runRandomTransformations exp = do
+  permutation <- generate randomTransformations
+  transformed <- runTransformations exp permutation
+  return (transformed, permutation)
+
+confluenceTest :: Int -> PipelineM (Either Int ())
+confluenceTest iter = use psExp >>= \exp -> liftIO $ if iter <= 0 then (return $ Right ()) else do
+  (exps@(e1:e2:_), (t1:t2:_)) <- unzip <$> replicateM 2 (runRandomTransformations exp)
+  if (mangleNames e1 == mangleNames e2) then (return $ Left (iter - 1)) else do
+    let (lines1:lines2:_) = (lines . show . plain . pretty) <$> exps
+    putStrLn $ "\nDiff between transformed codes:"
+    putStrLn $ ppDiff $ getGroupedDiff lines1 lines2
+    putStrLn "First tranformation permutation:"
+    putStrLn $ show t1
+    putStrLn "\nSecond transformation permutation:"
+    putStrLn $ show t2
+    return $ Right ()
 
 check :: PipelineM ()
 check = do
