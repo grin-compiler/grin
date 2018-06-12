@@ -456,52 +456,58 @@ lintGrin mPhaseName = do
     when failOnLintError $ do
       liftIO $ die "illegal code"
 
-transformationWhitelist =
-  -- Misc
-  [ UnitPropagation
-  -- Optimizations
-  , EvaluatedCaseElimination
-  , TrivialCaseElimination
-  , SparseCaseOptimisation
-  , UpdateElimination
-  , CopyPropagation
-  , ConstantPropagation
-  , DeadProcedureElimination
-  , DeadParameterElimination
-  , DeadVariableElimination
-  , CommonSubExpressionElimination
-  , CaseCopyPropagation
-  , CaseHoisting
-  , GeneralizedUnboxing
-  , ArityRaising
-  , LateInlining
-  ]
+-- confluence testing
 
 randomTransformations :: Gen [Transformation]
-randomTransformations = shuffle transformationWhitelist
+randomTransformations = shuffle transformationWhitelist where
+  transformationWhitelist =
+    -- Misc
+    [ UnitPropagation
+    -- Optimizations
+    , EvaluatedCaseElimination
+    , TrivialCaseElimination
+    , SparseCaseOptimisation
+    , UpdateElimination
+    , CopyPropagation
+    , ConstantPropagation
+    , DeadProcedureElimination
+    , DeadParameterElimination
+    , DeadVariableElimination
+    , CommonSubExpressionElimination
+    , CaseCopyPropagation
+    , CaseHoisting
+    , GeneralizedUnboxing
+    , ArityRaising
+    , LateInlining
+    ]
 
 runTransformations :: Exp -> [Transformation] -> IO Exp
-runTransformations exp = fmap snd . pipeline defaultOpts exp . (extraPass :) . (>>= (: [extraPass])) . fmap T
-  where extraPass = Pass [T BindNormalisation, Lint, HPT CompileHPT, HPT RunHPTPure]
+runTransformations exp transformations = do
+  let fillPass = Pass [T BindNormalisation, Lint, HPT CompileHPT, HPT RunHPTPure]
+      ppl = fillPass : concat [[T t, fillPass] | t <- transformations]
+  snd <$> pipeline defaultOpts exp ppl
 
 runRandomTransformations :: Exp -> IO (Exp, [Transformation])
 runRandomTransformations exp = do
   permutation <- generate randomTransformations
   transformed <- runTransformations exp permutation
-  return (transformed, permutation)
+  pure (transformed, permutation)
 
 confluenceTest :: Int -> PipelineM (Either Int ())
-confluenceTest iter = use psExp >>= \exp -> liftIO $ if iter <= 0 then (return $ Right ()) else do
-  (exps@(e1:e2:_), (t1:t2:_)) <- unzip <$> replicateM 2 (runRandomTransformations exp)
-  if (mangleNames e1 == mangleNames e2) then (return $ Left (iter - 1)) else do
-    let (lines1:lines2:_) = (lines . show . plain . pretty) <$> exps
-    putStrLn $ "\nDiff between transformed codes:"
-    putStrLn $ ppDiff $ getGroupedDiff lines1 lines2
-    putStrLn "First tranformation permutation:"
-    putStrLn $ show t1
-    putStrLn "\nSecond transformation permutation:"
-    putStrLn $ show t2
-    return $ Right ()
+confluenceTest iter | iter <= 0 = pure $ Right ()
+confluenceTest iter = use psExp >>= \exp -> liftIO $ do
+  (exps@[exp1, exp2], [pipeline1, pipeline2]) <- unzip <$> replicateM 2 (runRandomTransformations exp)
+  if mangleNames exp1 == mangleNames exp2
+    then pure . Left $ pred iter
+    else do
+      let [lines1, lines2] = lines . show . plain . pretty <$> exps
+      putStrLn "\nDiff between transformed codes:"
+      putStrLn . ppDiff $ getGroupedDiff lines1 lines2
+      putStrLn "First tranformation permutation:"
+      putStrLn $ show pipeline1
+      putStrLn "\nSecond transformation permutation:"
+      putStrLn $ show pipeline2
+      pure $ Right ()
 
 check :: PipelineM ()
 check = do
