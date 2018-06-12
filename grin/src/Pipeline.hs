@@ -477,17 +477,22 @@ transformationWhitelist =
   , LateInlining
   ]
 
-randomTransform :: Exp -> IO (Exp, [Transformation])
-randomTransform exp = do
-    permutation <- generate $ shuffle transformationWhitelist
-    (_, transformed) <- pipeline defaultOpts exp $ makePipeline permutation
-    return (transformed, permutation)
-  where makePipeline = (extraPass :) . (>>= (: [extraPass])) . fmap T
-        extraPass = Pass [T BindNormalisation, Lint, HPT CompileHPT, HPT RunHPTPure]
+randomTransformations :: Gen [Transformation]
+randomTransformations = shuffle transformationWhitelist
+
+runTransformations :: Exp -> [Transformation] -> IO Exp
+runTransformations exp = fmap snd . pipeline defaultOpts exp . (extraPass :) . (>>= (: [extraPass])) . fmap T
+  where extraPass = Pass [T BindNormalisation, Lint, HPT CompileHPT, HPT RunHPTPure]
+
+runRandomTransformations :: Exp -> IO (Exp, [Transformation])
+runRandomTransformations exp = do
+  permutation <- generate randomTransformations
+  transformed <- runTransformations exp permutation
+  return (transformed, permutation)
 
 confluenceTest :: Int -> PipelineM (Either Int ())
 confluenceTest iter = use psExp >>= \exp -> liftIO $ if iter <= 0 then (return $ Right ()) else do
-  (exps@(e1:e2:_), (t1:t2:_)) <- unzip <$> replicateM 2 (randomTransform exp)
+  (exps@(e1:e2:_), (t1:t2:_)) <- unzip <$> replicateM 2 (runRandomTransformations exp)
   if (mangleNames e1 == mangleNames e2) then (return $ Left (iter - 1)) else do
     let (lines1:lines2:_) = (lines . show . plain . pretty) <$> exps
     putStrLn $ "\nDiff between transformed codes:"
