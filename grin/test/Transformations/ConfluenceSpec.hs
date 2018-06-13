@@ -67,11 +67,11 @@ spec = do
                     p14_2 <- store (CInt n7'_2)
                     sum p14_2 p13_2
       |]
-    let opts = defaultOpts { _poLogging = False }
+    let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
     property $ do
       forAllShrink ((,) <$> randomTransformations <*> randomTransformations) shrinkPermutations $ \(permutation1, permutation2) -> monadicIO $ do
         transformed1 <- run $ optimizeWith opts exp [] permutation1 []
-        transformed2 <- run $ optimizeWith opts exp [] permutation1 []
+        transformed2 <- run $ optimizeWith opts exp [] permutation2 []
         pure $ mangleNames transformed1 `sameAs` mangleNames transformed2
 
 shrinkPermutations :: ([Transformation], [Transformation]) -> [([Transformation], [Transformation])]
