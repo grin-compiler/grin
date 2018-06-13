@@ -66,7 +66,10 @@ spec = do
                     p14_2 <- store (CInt n7'_2)
                     sum p14_2 p13_2
       |]
+    pending
+    {-
     property $ do
       forAll (replicateM 2 randomTransformations) $ \permutations -> monadicIO $ do
         [transformed1,transformed2] <- run . forM permutations $ runTransformations exp
         pure $ mangleNames transformed1 `sameAs` mangleNames transformed2
+    -}
