@@ -18,7 +18,7 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  it "transformation concluence" $ do
+  it "transformation confluence" $ do
     let exp = [prog|
         grinMain =
           p1 <- store (CInt 0)
