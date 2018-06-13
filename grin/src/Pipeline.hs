@@ -206,12 +206,14 @@ pattern DebugTransformation t <- DebugTransformationH (H t)
 data PipelineOpts = PipelineOpts
   { _poOutputDir  :: FilePath
   , _poFailOnLint :: Bool
+  , _poLogging    :: Bool
   }
 
 defaultOpts :: PipelineOpts
 defaultOpts = PipelineOpts
   { _poOutputDir  = "./"
   , _poFailOnLint = True
+  , _poLogging    = True
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -242,12 +244,17 @@ _ExpChanged :: Traversal' PipelineEff ()
 _ExpChanged f ExpChanged = const ExpChanged <$> f ()
 _ExpChanged _ rest       = pure rest
 
+pipelineLog :: String -> PipelineM ()
+pipelineLog str = do
+  shouldLog <- view poLogging
+  when shouldLog $ liftIO $ putStrLn str
+
 pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
   case p of
     T{}     -> pure ()
     Pass{}  -> pure () -- each pass step will be printed anyway
-    _       -> liftIO $ putStrLn $ printf "PipelineStep: %-35s" (show p)
+    _       -> pipelineLog $ printf "PipelineStep: %-35s" (show p)
   before <- use psExp
   case p of
     HPT hptStep -> case hptStep of
@@ -274,7 +281,7 @@ pipelineStep p = do
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
-    T{} -> liftIO $ putStrLn $ printf "PipelineStep: %-35s has effect: %s" (show p) (show eff)
+    T{} -> pipelineLog $ printf "PipelineStep: %-35s has effect: %s" (show p) (show eff)
     _   -> pure ()
   -- TODO: Test this only for development mode.
   return eff
@@ -289,7 +296,7 @@ printEffectMap :: PipelineM ()
 printEffectMap = do
   grin <- use psExp
   env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
-  liftIO $ print $ pretty env0
+  pipelineLog $ show $ pretty env0
 
 compileHPT :: PipelineM ()
 compileHPT = do
@@ -313,16 +320,16 @@ printHPTCode :: PipelineM ()
 printHPTCode = do
   hptProgram <- use psHPTProgram
   let printHPT a = do
-        print . HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
-        putStrLn $ printf "memory size    %d" $ HPT.hptMemoryCounter a
-        putStrLn $ printf "register count %d" $ HPT.hptRegisterCounter a
-        putStrLn $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
-  maybe (pure ()) (liftIO . printHPT) hptProgram
+        pipelineLog $ show $ HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
+        pipelineLog $ printf "memory size    %d" $ HPT.hptMemoryCounter a
+        pipelineLog $ printf "register count %d" $ HPT.hptRegisterCounter a
+        pipelineLog $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
+  maybe (pure ()) printHPT hptProgram
 
 printHPTResult :: PipelineM ()
 printHPTResult = use psHPTResult >>= \case
   Nothing -> pure ()
-  Just result -> liftIO $ print . pretty $ result
+  Just result -> pipelineLog $ show $ pretty $ result
 
 runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
@@ -340,19 +347,19 @@ runHPTPure = use psHPTProgram >>= \case
 printTypeEnv :: PipelineM ()
 printTypeEnv = do
   Just typeEnv <- use psTypeEnv
-  liftIO $ print . pretty $ typeEnv
+  pipelineLog $ show $ pretty $ typeEnv
 
 preconditionCheck :: Transformation -> PipelineM ()
 preconditionCheck t = do
   exp <- use psExp
   forM_ (checks Nothing (precondition t) exp) $ \case
-    (c, r) -> liftIO . putStrLn $ unwords ["The", show c, "precondition of", show t, ": ", show r]
+    (c, r) -> pipelineLog $ unwords ["The", show c, "precondition of", show t, ": ", show r]
 
 postconditionCheck :: Transformation -> PipelineM ()
 postconditionCheck t = do
   exp <- use psExp
   forM_ (checks Nothing (postcondition t) exp) $ \case
-    (c, r) -> liftIO . putStrLn $ unwords ["The", show c, "postcondition of", show t, ": ", show r]
+    (c, r) -> pipelineLog $ unwords ["The", show c, "postcondition of", show t, ": ", show r]
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
@@ -370,20 +377,20 @@ transformationM t = do
 pureEval :: PipelineM ()
 pureEval = do
   e <- use psExp
-  liftIO (print =<< pretty <$> evalProgram PureReducer e)
+  val <- liftIO $ evalProgram PureReducer e
+  pipelineLog $ show $ pretty val
 
 printGrinM :: (Doc -> Doc) -> PipelineM ()
 printGrinM color = do
   e <- use psExp
-  liftIO . print . color $ pretty e
+  pipelineLog $ show $ color $ pretty e
 
 jitLLVM :: PipelineM ()
 jitLLVM = do
   e <- use psExp
   Just typeEnv <- use psTypeEnv
-  liftIO $ do
-    val <- JITLLVM.eagerJit (CGLLVM.codeGen typeEnv e) "grinMain"
-    print $ pretty val
+  val <- liftIO $ JITLLVM.eagerJit (CGLLVM.codeGen typeEnv e) "grinMain"
+  pipelineLog $ show $ pretty val
 
 printAST :: PipelineM ()
 printAST = do
@@ -429,7 +436,7 @@ debugTransformation t = do
 statistics :: PipelineM ()
 statistics = do
   e <- use psExp
-  liftIO . print $ Statistics.statistics e
+  pipelineLog $ show $ Statistics.statistics e
 
 lintGrin :: Maybe String -> PipelineM ()
 lintGrin mPhaseName = do
@@ -446,11 +453,11 @@ lintGrin mPhaseName = do
   unless (Prelude.null errors) $ void $ do
     failOnLintError <- view poFailOnLint
     when failOnLintError $ void $ do
-      liftIO . print $ prettyLintExp lintExp
+      pipelineLog $ show $ prettyLintExp lintExp
       pipelineStep $ HPT PrintHPTResult
     case mPhaseName of
-      Just phaseName  -> liftIO . putStrLn $ printf "error after %s:\n%s" phaseName (unlines errors)
-      Nothing         -> liftIO . putStrLn $ printf "error:\n%s" (unlines errors)
+      Just phaseName  -> pipelineLog $ printf "error after %s:\n%s" phaseName (unlines errors)
+      Nothing         -> pipelineLog $ printf "error:\n%s" (unlines errors)
 
     failOnLintError <- view poFailOnLint
     when failOnLintError $ do
@@ -481,16 +488,10 @@ randomTransformations = shuffle transformationWhitelist where
     , LateInlining
     ]
 
-runTransformations :: Exp -> [Transformation] -> IO Exp
-runTransformations exp transformations = do
-  let fillPass = Pass [T BindNormalisation, Lint, HPT CompileHPT, HPT RunHPTPure]
-      ppl = fillPass : concat [[T t, fillPass] | t <- transformations]
-  snd <$> pipeline defaultOpts exp ppl
-
 runRandomTransformations :: Exp -> IO (Exp, [Transformation])
 runRandomTransformations exp = do
   permutation <- generate randomTransformations
-  transformed <- runTransformations exp permutation
+  transformed <- optimizeWith defaultOpts exp [] permutation []
   pure (transformed, permutation)
 
 confluenceTest :: Int -> PipelineM (Either Int ())
@@ -513,9 +514,9 @@ check :: PipelineM ()
 check = do
   e <- use psExp
   let nonUnique = nonUniqueNames e
-  liftIO $ putStrLn $ unwords ["Non unique names:", show nonUnique]
+  pipelineLog $ unwords ["Non unique names:", show nonUnique]
   let nonDefined = nonDefinedNames e
-  liftIO . putStrLn $ unwords ["Non defined names:", show nonDefined]
+  pipelineLog $ unwords ["Non defined names:", show nonDefined]
 
 
 -- | Runs the pipeline and returns the last version of the given

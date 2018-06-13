@@ -18,7 +18,7 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  xit "transformation concluence" $ do
+  it "transformation concluence" $ do
     let exp = [prog|
         grinMain =
           p1 <- store (CInt 0)
@@ -67,10 +67,11 @@ spec = do
                     p14_2 <- store (CInt n7'_2)
                     sum p14_2 p13_2
       |]
+    let opts = defaultOpts { _poLogging = False }
     property $ do
       forAllShrink ((,) <$> randomTransformations <*> randomTransformations) shrinkPermutations $ \(permutation1, permutation2) -> monadicIO $ do
-        transformed1 <- run $ runTransformations exp permutation1
-        transformed2 <- run $ runTransformations exp permutation2
+        transformed1 <- run $ optimizeWith opts exp [] permutation1 []
+        transformed2 <- run $ optimizeWith opts exp [] permutation1 []
         pure $ mangleNames transformed1 `sameAs` mangleNames transformed2
 
 shrinkPermutations :: ([Transformation], [Transformation]) -> [([Transformation], [Transformation])]
