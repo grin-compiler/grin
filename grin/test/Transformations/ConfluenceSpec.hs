@@ -8,6 +8,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import GrinTH
 import Assertions
+import Data.List ( (\\) )
 
 import Transformations.MangleNames
 import Control.Monad
@@ -17,7 +18,7 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  it "transformation concluence" $ do
+  xit "transformation concluence" $ do
     let exp = [prog|
         grinMain =
           p1 <- store (CInt 0)
@@ -66,10 +67,14 @@ spec = do
                     p14_2 <- store (CInt n7'_2)
                     sum p14_2 p13_2
       |]
-    pending
-    {-
     property $ do
-      forAll (replicateM 2 randomTransformations) $ \permutations -> monadicIO $ do
-        [transformed1,transformed2] <- run . forM permutations $ runTransformations exp
+      forAllShrink ((,) <$> randomTransformations <*> randomTransformations) shrinkPermutations $ \(permutation1, permutation2) -> monadicIO $ do
+        transformed1 <- run $ runTransformations exp permutation1
+        transformed2 <- run $ runTransformations exp permutation2
         pure $ mangleNames transformed1 `sameAs` mangleNames transformed2
-    -}
+
+shrinkPermutations :: ([Transformation], [Transformation]) -> [([Transformation], [Transformation])]
+shrinkPermutations ([x], [y]) = []
+shrinkPermutations (xs, ys) = do
+  x <- xs
+  return (xs \\ [x], ys \\ [x])
