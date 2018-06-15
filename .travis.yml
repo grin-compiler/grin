@@ -40,3 +40,7 @@ script:
   - stack exec grin -- grin/grin/sum_simple.grin
   - stack exec idris -- frontend-test/idris/Hello.idr -i frontend-test/idris --codegen grin -o hello.grin
   - stack --no-terminal test --coverage
+
+after_script:
+  - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj
+  - ./shc grin grin-test
