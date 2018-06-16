@@ -10,8 +10,13 @@ import GrinTH
 import Assertions
 import Data.List ( (\\) )
 
+import Pretty (PP(..))
 import Test (genProg)
 import Transformations.MangleNames
+import Transformations.SingleStaticAssignment
+import Transformations.Optimising.DeadParameterElimination
+import Transformations.Optimising.DeadProcedureElimination
+import Transformations.SingleStaticAssignment
 import Control.Monad
 
 runTests :: IO ()
@@ -77,10 +82,13 @@ spec = do
     print pipeline2
     mangleNames transformed1 `sameAs` mangleNames transformed2
 
-  -- Illegal code :(
+  -- Needs better code generation.
   xit "Random pipeline, random expression" $ property $
-    forAll genProg $ \prog -> monadicIO $ run $ do
-      let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
+    forAll (PP <$> genProg) $ \(PP prog0) -> monadicIO $ run $ do
+      let prog = deadProcedureElimination $
+                 deadParameterElimination $
+                 singleStaticAssignment prog0
+      let opts = defaultOpts { _poLogging = True, _poOutputDir = "/tmp" }
       (pipeline1, transformed1) <- runPipeline opts prog randomPipeline
       (pipeline2, transformed2) <- runPipeline opts prog randomPipeline
       mangleNames transformed1 `sameAs` mangleNames transformed2
