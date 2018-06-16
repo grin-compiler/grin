@@ -74,6 +74,7 @@ import Test.QuickCheck.Monadic
 import Data.Algorithm.Diff
 import Data.Algorithm.DiffOutput
 import Control.Monad.Extra
+import System.Random
 
 type RenameVariablesMap = Map String String
 
@@ -465,9 +466,38 @@ lintGrin mPhaseName = do
 
 -- confluence testing
 
+-- Generate random pipeline based on the transformationWhitelist, the pipeline reaches a fixpoint
+-- and returns the list of transformation that helped to reach the fixpoint.
+randomPipeline :: PipelineM [Transformation]
+randomPipeline = do
+  mapM_ pipelineStep
+    [ HPT CompileHPT
+    , HPT RunHPTPure
+    , Eff CalcEffectMap
+    ]
+  go transformationWhitelist []
+  where
+    go :: [Transformation] -> [Transformation] -> PipelineM [Transformation]
+    go [] result = pure $ reverse result
+    go available res = do
+      t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
+      eff <- pipelineStep (T t)
+      case eff of
+        None -> go (available Data.List.\\ [t]) res
+        ExpChanged -> do
+          lintGrin . Just $ show t
+          mapM_ pipelineStep
+            [ HPT CompileHPT
+            , HPT RunHPTPure
+            , Eff CalcEffectMap
+            ]
+          go transformationWhitelist (t:res)
+
 randomTransformations :: Gen [Transformation]
-randomTransformations = shuffle transformationWhitelist where
-  transformationWhitelist =
+randomTransformations = shuffle transformationWhitelist
+
+transformationWhitelist :: [Transformation]
+transformationWhitelist =
     -- Misc
     [ UnitPropagation
     -- Optimizations
@@ -518,27 +548,25 @@ check = do
   let nonDefined = nonDefinedNames e
   pipelineLog $ unwords ["Non defined names:", show nonDefined]
 
+runPipeline :: PipelineOpts -> Exp -> PipelineM a -> IO (a, Exp)
+runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
+  start = PState
+    { _psExp        = e
+    , _psTransStep  = 0
+    , _psSaveIdx    = 0
+    , _psHPTProgram = Nothing
+    , _psHPTResult  = Nothing
+    , _psTypeEnv    = Nothing
+    , _psEffectMap  = Nothing
+    , _psErrors     = []
+    }
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
 pipeline :: PipelineOpts -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
 pipeline o e ps = do
   print ps
-  fmap (second _psExp) .
-    flip runStateT start .
-    flip runReaderT o $
-    mapM (\p -> (,) p <$> pipelineStep p) ps
-  where
-    start = PState
-      { _psExp        = e
-      , _psTransStep  = 0
-      , _psSaveIdx    = 0
-      , _psHPTProgram = Nothing
-      , _psHPTResult  = Nothing
-      , _psTypeEnv    = Nothing
-      , _psEffectMap  = Nothing
-      , _psErrors     = []
-      }
+  runPipeline o e $ mapM (\p -> (,) p <$> pipelineStep p) ps
 
 -- | Run the pipeline with the given set of transformations, till
 -- it reaches a fixpoint where none of the pipeline transformations
@@ -584,7 +612,7 @@ optimize o e pre post = optimizeWith o e pre optimizations post where
     ]
 
 optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> IO Exp
-optimizeWith o e pre optimizations post = fmap fst $ flip runStateT start $ flip runReaderT o $ do
+optimizeWith o e pre optimizations post = fmap snd $ runPipeline o e $ do
   lintGrin $ Just "init"
 
   mapM_ pipelineStep pre
@@ -597,16 +625,3 @@ optimizeWith o e pre optimizations post = fmap fst $ flip runStateT start $ flip
     ]
   optimizeWithPM o e $ fmap T optimizations
   mapM_ pipelineStep post
-
-  use psExp
-  where
-    start = PState
-      { _psExp        = e
-      , _psTransStep  = 0
-      , _psSaveIdx    = 0
-      , _psHPTProgram = Nothing
-      , _psHPTResult  = Nothing
-      , _psTypeEnv    = Nothing
-      , _psEffectMap  = Nothing
-      , _psErrors     = []
-      }

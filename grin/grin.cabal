@@ -137,7 +137,8 @@ library
     idris,
     neat-interpolation,
     template-haskell,
-    Diff
+    Diff,
+    random
 
   default-language:    Haskell2010
 
