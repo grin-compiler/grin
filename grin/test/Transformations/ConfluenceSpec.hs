@@ -10,6 +10,7 @@ import GrinTH
 import Assertions
 import Data.List ( (\\) )
 
+import Test (genProg)
 import Transformations.MangleNames
 import Control.Monad
 
@@ -75,6 +76,14 @@ spec = do
     print pipeline1
     print pipeline2
 
+  -- Illegal code :(
+  xit "Random pipeline, random expression" $ property $
+    forAll genProg $ \prog -> monadicIO $ run $ do
+      let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
+      (pipeline1, transformed1) <- runPipeline opts prog randomPipeline
+      (pipeline2, transformed2) <- runPipeline opts prog randomPipeline
+      mangleNames transformed1 `sameAs` mangleNames transformed2
+    
   it "Random optimization configuration" $ do
     let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
     property $
