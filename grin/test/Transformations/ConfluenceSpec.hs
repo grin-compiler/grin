@@ -69,12 +69,13 @@ spec = do
   |]
 
   it "Random pipeline" $ do
+    -- NOTE: This is a random test. This could make fail the build non-related to code changes.
     let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
     (pipeline1, transformed1) <- runPipeline opts exp randomPipeline
     (pipeline2, transformed2) <- runPipeline opts exp randomPipeline
-    mangleNames transformed1 `sameAs` mangleNames transformed2
     print pipeline1
     print pipeline2
+    mangleNames transformed1 `sameAs` mangleNames transformed2
 
   -- Illegal code :(
   xit "Random pipeline, random expression" $ property $
