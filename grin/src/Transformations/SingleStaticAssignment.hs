@@ -18,6 +18,14 @@ singleStaticAssignment :: Exp -> Exp
 singleStaticAssignment e = evalState (anaM build (mempty, e)) (mempty, 1) where
   build :: (Map.Map Name Int, Exp) -> VarM (ExpF (Map.Map Name Int, Exp))
   build (subst, e) = case e of
+
+    Def name names body -> do
+      (name0:names0, subst0) <- first reverse <$> foldM
+        (\(names1, subst1) name1 -> first (:names1) <$> calcName (name1, subst1))
+        ([], subst)
+        (name:names)
+      pure $ DefF name0 names0 (subst0, body)
+
     EBind lhs v@(Var nm) rhs -> do
       (nm', subst') <- calcName (nm, subst)
       pure $ EBindF (subst', lhs) (Var nm') (subst', rhs)
