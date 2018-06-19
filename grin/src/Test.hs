@@ -45,6 +45,9 @@ import Test.Hspec
 import Control.Monad
 import Data.List
 
+import Transformations.Optimising.DeadProcedureElimination
+import Transformations.Optimising.DeadParameterElimination
+import Transformations.SingleStaticAssignment
 
 type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
 
@@ -420,7 +423,7 @@ sampleProg = sample $ fmap PP $ genProg
 
 genProgWith :: GoalM G.Exp -> Gen Exp
 genProgWith gexp =
-  fmap head $
+  fmap (deadProcedureElimination . deadParameterElimination . singleStaticAssignment . head) $
   G.asExp <$$>
   (runGoalM gexp $
     withADTs 10 $

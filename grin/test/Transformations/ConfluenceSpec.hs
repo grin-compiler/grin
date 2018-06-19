@@ -13,10 +13,6 @@ import Data.List ( (\\) )
 import Pretty (PP(..))
 import Test (genProg)
 import Transformations.MangleNames
-import Transformations.SingleStaticAssignment
-import Transformations.Optimising.DeadParameterElimination
-import Transformations.Optimising.DeadProcedureElimination
-import Transformations.SingleStaticAssignment
 import Control.Monad
 
 runTests :: IO ()
@@ -84,10 +80,7 @@ spec = do
 
   -- Needs better code generation.
   xit "Random pipeline, random expression" $ property $
-    forAll (PP <$> genProg) $ \(PP prog0) -> monadicIO $ run $ do
-      let prog = deadProcedureElimination $
-                 deadParameterElimination $
-                 singleStaticAssignment prog0
+    forAll (PP <$> genProg) $ \(PP prog) -> monadicIO $ run $ do
       let opts = defaultOpts { _poLogging = True, _poOutputDir = "/tmp" }
       (pipeline1, transformed1) <- runPipeline opts prog randomPipeline
       (pipeline2, transformed2) <- runPipeline opts prog randomPipeline
