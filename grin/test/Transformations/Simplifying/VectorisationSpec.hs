@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings, LambdaCase, QuasiQuotes #-}
 module Transformations.Simplifying.VectorisationSpec where
 
-import AbstractInterpretation.AbstractRunGrin
-import AbstractInterpretation.HPTResult
 import Transformations.Simplifying.Vectorisation (vectorisation)
 
 import Data.Monoid
@@ -21,6 +19,7 @@ spec :: Spec
 spec = do
   testExprContextE $ \ctx -> do
     it "Example from Figure 4.9" $ do
+      {-
       let hpt = Computer
                   mempty
                   (Map.fromList
@@ -35,7 +34,7 @@ spec = do
                                (V (BAS T_Int64))))
                     ])
                   mempty
-
+      -}
       let before = [expr|
               l0 <- store (CNone)
               v  <- pure (Cq p1 p2)
@@ -48,6 +47,7 @@ spec = do
               l1         <- store (v0 v1 v2)
               pure 1
             |]
+      let hpt = undefined
       pending
       vectorisation hpt (ctx before) `sameAs` (ctx after)
 

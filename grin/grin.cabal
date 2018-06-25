@@ -76,8 +76,6 @@ library
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.ConstantFolding
     Transformations.Optimising.GeneralizedUnboxing
-    AbstractInterpretation.AbstractRunGrin
-    AbstractInterpretation.HPTResult
     AbstractInterpretation.HPTResultNew
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.Pretty

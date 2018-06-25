@@ -18,35 +18,7 @@ import qualified Data.Vector as V
 
 import Grin (Tag, Name)
 import Pretty
-import AbstractInterpretation.HPTResult
 import qualified AbstractInterpretation.HPTResultNew as R
-
--- HPT Result
-instance Pretty Step where
-  pretty = \case
-    StepExp exp             -> pretty exp
-    StepAssign name varset  -> ondullblack $ text name <+> text ":=" <+> pretty varset
-
-instance Pretty RTLocVal where
-  pretty = \case
-    RTLoc l     -> int l
-    bas@BAS{}   -> text $ show bas
-    RTVar name  -> ondullblack $ red $ text name
-
-instance Pretty RTNode where
-  pretty (RTNode tag args) = pretty tag <> list (map pretty args)
-
-instance Pretty RTVar where
-  pretty = \case
-    V value -> pretty value
-    N node  -> pretty node
-
-instance Pretty Computer where
-  pretty Computer{..} = vsep
-    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ IntMap.toList storeMap)
-    , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList envMap)
-    , yellow (text "Steps") <$$> indent 4 (foldl (\a b -> a <$$> b <$$> text "--------") empty $ map (pretty) (reverse steps))
-    ]
 
 -- HPT Result NEW
 

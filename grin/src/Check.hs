@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, BangPatterns #-}
 module Check where
 
-import AbstractInterpretation.HPTResult
+import AbstractInterpretation.HPTResultNew
 import Control.Arrow
 import Data.Functor.Foldable
 import Data.Maybe
@@ -66,14 +66,16 @@ allowedBindStoreValues = getAll . bindStoreValues (\case
   Loc _ -> All True
   _     -> All False)
 
+{-
 onlyExplicitNodes :: HPTResult -> Exp -> Result
 onlyExplicitNodes hpt e = result . Set.toList $ cata (usedNames Set.singleton) e `Set.intersection` varsOfTagNodes hpt
 
 varsOfTagNodes :: HPTResult -> Set Name
-varsOfTagNodes = Set.fromList . Map.keys . Map.filter (not . Set.null . Set.filter isNode) . envMap
+varsOfTagNodes = Set.fromList . Map.keys . Map.filter (not . Set.null . Set.filter isNode) . undefined -- envMap
   where
     isNode (N _) = True
     isNode (V _) = False
+-}
 
 bindStoreValues :: Monoid m => (Val -> m) -> Exp -> m
 bindStoreValues f = para $ \case
