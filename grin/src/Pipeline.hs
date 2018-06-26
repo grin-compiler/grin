@@ -184,7 +184,7 @@ data PipelineStep
   | PureEval
   | JITLLVM
   | PrintAST
-  | SaveLLVM FilePath
+  | SaveLLVM Bool FilePath
   | SaveGrin FilePath
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
@@ -268,7 +268,7 @@ pipelineStep p = do
     PrintGrin d     -> printGrinM d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
-    SaveLLVM path   -> saveLLVM path
+    SaveLLVM relPath path -> saveLLVM relPath path
     SaveGrin path   -> saveGrin path
     PrintAST        -> printAST
     PrintTypeEnv    -> printTypeEnv
@@ -407,14 +407,14 @@ saveGrin fn = do
     createDirectoryIfMissing True outputDir
     writeFile (outputDir </> fname) content
 
-saveLLVM :: FilePath -> PipelineM ()
-saveLLVM fname' = do
+saveLLVM :: Bool -> FilePath -> PipelineM ()
+saveLLVM relPath fname' = do
   e <- use psExp
   psSaveIdx %= succ
   n <- use psSaveIdx
   Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
-  let fname = o </> printf "%03d.%s" n fname'
+  let fname = if relPath then o </> printf "%03d.%s" n fname' else fname'
       code = CGLLVM.codeGen typeEnv e
       llName = printf "%s.ll" fname
       sName = printf "%s.s" fname

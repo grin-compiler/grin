@@ -22,6 +22,8 @@ import Transformations.SingleStaticAssignment
 import Transformations.BindNormalisation
 import Pipeline
 import Text.PrettyPrint.ANSI.Leijen (ondullblack)
+import System.Process (callCommand)
+import System.Directory (removeFile)
 
 import Frontend.Idris.PrimOps
 
@@ -32,6 +34,40 @@ TODO:
  * Implement String primitives
 -}
 
+{-
+llc-5.0 -O3 -relocation-model=pic -filetype=obj ${OPT}.ll
+gcc -O3 test.c ${OPT}.o -s -o opt
+./opt
+-}
+
+generateRuntime :: IO ()
+generateRuntime =
+  writeFile "runtime.c" $ unlines
+    [ "#include <stdio.h>"
+    , "#include <stdlib.h>"
+    , "#include <inttypes.h>"
+    , ""
+    , "extern int64_t _heap_ptr_;"
+    , "int64_t grinMain();"
+    , ""
+    , "int64_t _prim_int_print(int64_t i) {"
+    , "  printf(\"%ld\\n\", i);"
+    , "  return i;"
+    , "}"
+    , ""
+    , "int main() {"
+    , "  int64_t* heap = malloc(100*1024*1024);"
+    , "  _heap_ptr_ = (int64_t)heap;"
+    , "  grinMain();"
+    , "  printf(\"used memory: %ld bytes\\n\", (uint64_t)_heap_ptr_ - (uint64_t)heap);"
+    , "  free(heap);"
+    , "  return 0;"
+    , "}"
+    ]
+
+removeRuntime :: IO ()
+removeRuntime = removeFile "runtime.c"
+
 codegenGrin :: CodegenInfo -> IO ()
 codegenGrin CodegenInfo{..} = do
   optimizeWith
@@ -40,7 +76,13 @@ codegenGrin CodegenInfo{..} = do
     preparation
     idrisOptimizations
     (postProcessing outputFile)
-  putStrLn ""
+  generateRuntime
+  callCommand $ printf "llc-5.0 -O3 -relocation-model=pic -filetype=obj %s.ll" outputFile
+  callCommand $ printf "gcc -O3 runtime.c %s.o -s -o %s" outputFile outputFile
+  removeFile $ printf "%s.ll" outputFile
+  removeFile $ printf "%s.o" outputFile
+  removeFile $ printf "%s.s" outputFile
+  removeRuntime
 
 program :: [(Idris.Name, SDecl)] -> Exp
 program defs =
@@ -303,6 +345,6 @@ postProcessing outputFile =
   , HPT CompileHPT
   , HPT RunHPTPure
   , HPT PrintHPTResult
-  , SaveLLVM outputFile
-  , JITLLVM
+  , SaveLLVM False outputFile
+--  , JITLLVM
   ]

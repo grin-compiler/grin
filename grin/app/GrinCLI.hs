@@ -65,7 +65,7 @@ pipelineOpts =
   <|> flg PureEval "eval" "Evaluate the grin program (pure)"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
-  <|> (SaveLLVM <$> (strOption (mconcat
+  <|> (SaveLLVM True <$> (strOption (mconcat
         [ long "save-llvm"
         , help "Save the generated llvm"
         ])))
@@ -120,7 +120,7 @@ prePipeline =
 
 postPipeline :: [PipelineStep]
 postPipeline =
-  [ SaveLLVM "high-level-opt-code"
+  [ SaveLLVM True "high-level-opt-code"
   , JITLLVM -- TODO: Remove this.
   , PrintTypeEnv
   , PrintGrin ondullblack
