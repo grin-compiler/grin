@@ -52,6 +52,7 @@ import Data.Map as Map
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
 
+import Control.Monad.State as MonadState (get, put)
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Strict
 import Control.Monad.IO.Class
@@ -67,8 +68,6 @@ import Data.List
 
 import Lint
 
-import Test.QuickCheck
-import Test.QuickCheck.Monadic
 import Data.Algorithm.Diff
 import Data.Algorithm.DiffOutput
 import Control.Monad.Extra
@@ -191,7 +190,7 @@ data PipelineStep
   | Statistics
   | PrintTypeEnv
   | Lint
-  | ConfluenceTest Int
+  | ConfluenceTest
   deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
@@ -276,7 +275,7 @@ pipelineStep p = do
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
-    ConfluenceTest n -> void $ loopM confluenceTest n
+    ConfluenceTest  -> confluenceTest
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
@@ -491,52 +490,50 @@ randomPipeline = do
             ]
           go transformationWhitelist (t:res)
 
-randomTransformations :: Gen [Transformation]
-randomTransformations = shuffle transformationWhitelist
+    transformationWhitelist :: [Transformation]
+    transformationWhitelist =
+        -- Misc
+        [ UnitPropagation
+        -- Optimizations
+        , EvaluatedCaseElimination
+        , TrivialCaseElimination
+        , SparseCaseOptimisation
+        , UpdateElimination
+        , CopyPropagation
+        , ConstantPropagation
+        , DeadProcedureElimination
+        , DeadParameterElimination
+        , DeadVariableElimination
+        , CommonSubExpressionElimination
+        , CaseCopyPropagation
+        , CaseHoisting
+        , GeneralizedUnboxing
+        , ArityRaising
+        , LateInlining
+        ]
 
-transformationWhitelist :: [Transformation]
-transformationWhitelist =
-    -- Misc
-    [ UnitPropagation
-    -- Optimizations
-    , EvaluatedCaseElimination
-    , TrivialCaseElimination
-    , SparseCaseOptimisation
-    , UpdateElimination
-    , CopyPropagation
-    , ConstantPropagation
-    , DeadProcedureElimination
-    , DeadParameterElimination
-    , DeadVariableElimination
-    , CommonSubExpressionElimination
-    , CaseCopyPropagation
-    , CaseHoisting
-    , GeneralizedUnboxing
-    , ArityRaising
-    , LateInlining
-    ]
-
-runRandomTransformations :: Exp -> IO (Exp, [Transformation])
-runRandomTransformations exp = do
-  permutation <- generate randomTransformations
-  transformed <- optimizeWith defaultOpts exp [] permutation []
-  pure (transformed, permutation)
-
-confluenceTest :: Int -> PipelineM (Either Int ())
-confluenceTest iter | iter <= 0 = pure $ Right ()
-confluenceTest iter = use psExp >>= \exp -> liftIO $ do
-  (exps@[exp1, exp2], [pipeline1, pipeline2]) <- unzip <$> replicateM 2 (runRandomTransformations exp)
-  if mangleNames exp1 == mangleNames exp2
-    then pure . Left $ pred iter
-    else do
-      let [lines1, lines2] = lines . show . plain . pretty <$> exps
-      putStrLn "\nDiff between transformed codes:"
-      putStrLn . ppDiff $ getGroupedDiff lines1 lines2
-      putStrLn "First tranformation permutation:"
-      putStrLn $ show pipeline1
-      putStrLn "\nSecond transformation permutation:"
-      putStrLn $ show pipeline2
-      pure $ Right ()
+confluenceTest :: PipelineM ()
+confluenceTest = do
+  pipelineLog "Confluence test"
+  pipelineLog "Random pipeline #1"
+  state <- MonadState.get
+  pipeline1 <- randomPipeline
+  pipelineLog "Random pipeline #2"
+  exp1 <- use psExp
+  MonadState.put state
+  pipeline2 <- randomPipeline
+  exp2 <- use psExp
+  if (mangleNames exp1 /= mangleNames exp2)
+    then do
+      let [lines1, lines2] = lines . show . plain . pretty <$> [exp1, exp2]
+      pipelineLog "\nDiff between transformed codes:"
+      pipelineLog $ ppDiff $ getGroupedDiff lines1 lines2
+    else
+      pipelineLog "The calculated fixpoint is the same for the pipelines:"
+  pipelineLog "First tranformation permutation:"
+  pipelineLog $ show pipeline1
+  pipelineLog "\nSecond transformation permutation:"
+  pipelineLog $ show pipeline2
 
 check :: PipelineM ()
 check = do

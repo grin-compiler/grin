@@ -74,10 +74,7 @@ pipelineOpts =
         , help "Save the generated grin"
         ])))
   <|> (T <$> transformOpts)
-  <|> (ConfluenceTest <$> (option auto (mconcat
-        [ long "confluence-test"
-        , help "Checks transformation confluence by generating ARG number of testcases"
-        ])))
+  <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
 
 options :: IO Options
 options = execParser $ info
