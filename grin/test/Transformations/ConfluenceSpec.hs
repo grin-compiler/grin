@@ -85,17 +85,3 @@ spec = do
       (pipeline1, transformed1) <- runPipeline opts prog randomPipeline
       (pipeline2, transformed2) <- runPipeline opts prog randomPipeline
       mangleNames transformed1 `sameAs` mangleNames transformed2
-    
-  it "Random optimization configuration" $ do
-    let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
-    property $
-      forAllShrink ((,) <$> randomTransformations <*> randomTransformations) shrinkPermutations $ \(permutation1, permutation2) -> monadicIO $ do
-        transformed1 <- run $ optimizeWith opts exp [] permutation1 []
-        transformed2 <- run $ optimizeWith opts exp [] permutation2 []
-        pure $ mangleNames transformed1 `sameAs` mangleNames transformed2
-
-shrinkPermutations :: ([Transformation], [Transformation]) -> [([Transformation], [Transformation])]
-shrinkPermutations ([x], [y]) = []
-shrinkPermutations (xs, ys) = do
-  x <- xs
-  return (xs \\ [x], ys \\ [x])
