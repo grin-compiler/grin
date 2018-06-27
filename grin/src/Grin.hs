@@ -63,11 +63,6 @@ isSimpleExp = \case
   SBlock  _   -> True
   _           -> False
 
-selectNodeItem :: Maybe Int -> Val -> Val
-selectNodeItem Nothing val = val
-selectNodeItem (Just 0) (ConstTagNode tag args) = ValTag tag
-selectNodeItem (Just i) (ConstTagNode tag args) = args !! (i - 1)
-
 type LPat = Val -- ConstTagNode, VarTagNode, ValTag, Unit, Lit, Var
 type SimpleVal = Val
 -- TODO: use data types a la carte style to build different versions of Val?
@@ -79,9 +74,6 @@ data Val
   -- simple val
   | Lit Lit                        -- HIGH level GRIN
   | Var Name                       -- HIGH level GRIN
-  -- extra
-  | Loc Int   -- TODO: remove ASAP!
-  | Undefined -- TODO: remove ASAP!
   deriving (Generic, NFData, Eq, Ord, Show)
 
 isBasicValue :: Val -> Bool
@@ -103,9 +95,6 @@ instance FoldNames Val where
     -- simple val
     Lit lit                 -> mempty
     Var name                -> f name
-    -- extra
-    Loc int                 -> mempty
-    Undefined               -> mempty
 
 match :: Traversal' a b -> a -> Bool
 match t x = isJust $ x ^? t
@@ -219,9 +208,6 @@ data ValF a
   -- simple val
   | LitF Lit
   | VarF Name
-  -- extra
-  | LocF Int
-  | UndefinedF
   deriving (Generic, NFData, Eq, Show, Functor, Foldable, Traversable)
 
 instance Recursive Val where
@@ -234,9 +220,6 @@ instance Recursive Val where
     Lit lit    -> LitF lit
     Var name   -> VarF name
 
-    Loc int    -> LocF int
-    Undefined  -> UndefinedF
-
 instance Corecursive Val where
   embed = \case
     ConstTagNodeF  tag  as -> ConstTagNode tag  as
@@ -246,9 +229,6 @@ instance Corecursive Val where
 
     LitF lit   -> Lit lit
     VarF name  -> Var name
-
-    LocF int   -> Loc int
-    UndefinedF -> Undefined
 
 data NamesInExpF e a = NamesInExpF
   { namesExp   :: ExpF e

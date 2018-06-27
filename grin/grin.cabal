@@ -27,6 +27,7 @@ library
     PrettyLint
     PrimOps
     ParseGrin
+    Reducer.Base
     Reducer.PrimOps
     Reducer.Pure
     Reducer.IO

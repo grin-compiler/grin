@@ -1,14 +1,16 @@
 module Reducer.PrimOps (evalPrimOp) where
 
+import Reducer.Base
+
 import Grin
 import Data.Map.Strict as Map
 import Control.Monad.IO.Class
 
 -- primitive functions
-primIntPrint [Lit (LInt64 a)] = liftIO (print a) >> pure Unit
+primIntPrint [Val (Lit (LInt64 a))] = liftIO (print a) >> pure Unit
 primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
-evalPrimOp name args = case name of
+evalPrimOp name args = Val <$> case name of
   "_prim_int_print" -> primIntPrint args
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
@@ -55,17 +57,17 @@ evalPrimOp name args = case name of
   bool  x = pure . Lit . LBool $ x
 
   int_bin_op retTy fn = case args of
-    [Lit (LInt64 a), Lit (LInt64 b)] -> retTy $ fn a b
+    [Val (Lit (LInt64 a)), Val (Lit (LInt64 b))] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
 
   word_bin_op retTy fn = case args of
-    [Lit (LWord64 a), Lit (LWord64 b)] -> retTy $ fn a b
+    [Val (Lit (LWord64 a)), Val (Lit (LWord64 b))] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
 
   float_bin_op retTy fn = case args of
-    [Lit (LFloat a), Lit (LFloat b)] -> retTy $ fn a b
+    [Val (Lit (LFloat a)), Val (Lit (LFloat b))] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
 
   bool_bin_op retTy fn = case args of
-    [Lit (LBool a), Lit (LBool b)] -> retTy $ fn a b
+    [Val (Lit (LBool a)), Val (Lit (LBool b))] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name

@@ -3,7 +3,8 @@
 
 module Reducer.LLVM.JIT where
 
-import Grin
+import Grin (Val(..))
+import Reducer.Base (RTVal(..))
 import Data.String
 
 import LLVM.Target
@@ -50,7 +51,7 @@ failInIO = either fail return <=< runExceptT
 grinHeapSize :: Int
 grinHeapSize = 100 * 1024 * 1024
 
-eagerJit :: AST.Module -> String -> IO Grin.Val
+eagerJit :: AST.Module -> String -> IO RTVal
 eagerJit amod mainName =
     withTestModule amod $ \mod ->
       withHostTargetMachine $ \tm ->
@@ -74,4 +75,4 @@ eagerJit amod mainName =
                 -- TODO: read back the result and build the haskell value represenation
                 -- free GRIN heap
                 free heapPointer
-                return $ Unit
+                return $ Val Unit

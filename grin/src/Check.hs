@@ -21,7 +21,7 @@ data Check
   | OnlyBasicValuesInCases
   | OnlyTagsInAlts
   | OnlyUniqueNames
-  | AllowedBindStoreValues
+--  | AllowedBindStoreValues
   | SimpleExpOnLHS
   deriving (Enum, Eq, Show)
 
@@ -48,7 +48,7 @@ check hpt = \case
   OnlyBasicValuesInCases -> boolResult . getAll . valuesInCases (All . isBasicValue)
   OnlyTagsInAlts         -> boolResult . getAll . patsInAlts    (All . isBasicCPat)
   OnlyUniqueNames        -> result . nonUniqueNames
-  AllowedBindStoreValues -> boolResult . allowedBindStoreValues
+--  AllowedBindStoreValues -> boolResult . allowedBindStoreValues
   SimpleExpOnLHS         -> boolResult . simpleExpOnLHS
 
 result :: Show a => [a] -> Result
@@ -60,12 +60,12 @@ boolResult :: Bool -> Result
 boolResult = \case
   True  -> Ok
   False -> Failed ""
-
+{-
 allowedBindStoreValues :: Exp -> Bool
 allowedBindStoreValues = getAll . bindStoreValues (\case
   Loc _ -> All True
   _     -> All False)
-
+-}
 {-
 onlyExplicitNodes :: HPTResult -> Exp -> Result
 onlyExplicitNodes hpt e = result . Set.toList $ cata (usedNames Set.singleton) e `Set.intersection` varsOfTagNodes hpt

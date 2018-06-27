@@ -70,9 +70,6 @@ instance Pretty Val where
     -- simple val
     Lit lit     -> pretty lit
     Var name    -> text name
-    -- extra
-    Loc a       -> keyword "loc" <+> int a
-    Undefined   -> keyword "undefined"
 
 instance Pretty Lit where
   pretty = \case

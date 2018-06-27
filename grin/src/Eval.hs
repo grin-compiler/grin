@@ -5,6 +5,7 @@ import Text.Megaparsec
 import Grin
 import TypeCheck
 import ParseGrin
+import Reducer.Base (RTVal)
 import qualified Reducer.IO
 import qualified Reducer.Pure
 import qualified Reducer.LLVM.JIT as LLVM
@@ -18,7 +19,7 @@ data Reducer
   | LLVMReducer
   deriving (Eq, Show)
 
-eval' :: Reducer -> String -> IO Val
+eval' :: Reducer -> String -> IO RTVal
 eval' reducer fname = do
   content <- readFile fname
   case parseGrin fname content of
@@ -32,7 +33,7 @@ eval' reducer fname = do
           hptResult   = HPT.toHPTResult <$> hptProgram <*> (HPT.evalHPT <$> hptProgram)
           hptProgram  = HPT.codeGen program
 
-evalProgram :: Reducer -> Program -> IO Val
+evalProgram :: Reducer -> Program -> IO RTVal
 evalProgram reducer program =
   case reducer of
     PureReducer -> Reducer.Pure.reduceFun program "grinMain"

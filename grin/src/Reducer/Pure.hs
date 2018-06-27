@@ -12,6 +12,7 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Text.Printf
 
+import Reducer.Base
 import Reducer.PrimOps
 import Grin
 import Pretty
@@ -22,53 +23,19 @@ prettyDebug = show . plain . pretty
 -- models computer memory
 data StoreMap
   = StoreMap
-  { storeMap  :: IntMap Val
+  { storeMap  :: IntMap RTVal
   , storeSize :: !Int
   }
 
 emptyStore = StoreMap mempty 0
 
--- models cpu registers
-type Env = Map Name Val
 type Prog = Map Name Def
 type GrinM = ReaderT Prog (StateT StoreMap IO)
 
-bindPatMany :: Env -> [Val] -> [LPat] -> Env
-bindPatMany env [] [] = env
-bindPatMany env (val : vals) (lpat : lpats) = bindPatMany (bindPat env val lpat) vals lpats
-bindPatMany env [] (lpat : lpats) = bindPatMany (bindPat env Undefined lpat) [] lpats
-bindPatMany _ vals lpats = error $ printf "bindPatMany - pattern mismatch: %s %s" (prettyDebug vals) (prettyDebug lpats)
-
-bindPat :: Env -> Val -> LPat -> Env
-bindPat env !val lpat = case lpat of
-  Var n -> Map.insert n val env
-  ConstTagNode ptag pargs   | ConstTagNode vtag vargs <- val, ptag == vtag -> bindPatMany env vargs pargs
-  VarTagNode varname pargs  | ConstTagNode vtag vargs <- val               -> bindPatMany (Map.insert varname (ValTag vtag) env) vargs pargs
-  Unit -> env
-  _ -> error $ printf "bindPat - pattern mismatch %s %s" (prettyDebug val) (prettyDebug lpat)
-
-lookupEnv :: Name -> Env -> Val
-lookupEnv n env = Map.findWithDefault (error $ printf "missing variable: %s" n) n env
-
-lookupStore :: Int -> StoreMap -> Val
+lookupStore :: Int -> StoreMap -> RTVal
 lookupStore i s = IntMap.findWithDefault (error $ printf "missing location: %d" i) i $ storeMap s
 
-evalVal :: Env -> Val -> Val
-evalVal env = \case
-  v@Lit{}     -> v
-  Var n       -> lookupEnv n env
-  ConstTagNode t a -> ConstTagNode t $ map (evalVal env) a
-  VarTagNode n a -> case lookupEnv n env of
-                  -- NOTE: must be impossible (I guess)
-                  -- Var n     -> VarTagNode n $ map (evalVal env) a
-                  ValTag t  -> ConstTagNode t $ map (evalVal env) a
-                  x -> error $ printf "evalVal - invalid VarTagNode tag: %s" (prettyDebug x)
-  v@ValTag{}  -> v
-  v@Unit      -> v
-  v@Loc{}     -> v
-  x -> error $ printf "evalVal: %s" (prettyDebug x)
-
-evalSimpleExp :: Env -> SimpleExp -> GrinM Val
+evalSimpleExp :: Env -> SimpleExp -> GrinM RTVal
 evalSimpleExp env = \case
   SApp n a -> do
               let args = map (evalVal env) a
@@ -95,7 +62,7 @@ evalSimpleExp env = \case
               case lookupEnv n env of
                 Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
                             False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
-                            True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> return Unit
+                            True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> return (Val Unit)
                 x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (prettyDebug x)
   SBlock a -> evalExp env a
 
@@ -103,7 +70,7 @@ evalSimpleExp env = \case
 
   x -> error $ printf "invalid simple expression %s" (prettyDebug x)
 
-evalExp :: Env -> Exp -> GrinM Val
+evalExp :: Env -> Exp -> GrinM RTVal
 evalExp env = \case
   EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
   ECase v alts ->
@@ -112,18 +79,18 @@ evalExp env = \case
                         then error "multiple default case alternative"
                         else take 1 defaultAlts
     in case evalVal env v of
-      ConstTagNode t l ->
+      Val (ConstTagNode t l) ->
                      let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error (printf "evalExp - missing Case Node alternative for: %s" (prettyDebug t))
                          go a [] [] = a
-                         go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
+                         go a (x:xs) (y:ys) = go (Map.insert x (Val y) a) xs ys
                          go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
                      in  evalExp (go env vars l) exp
-      ValTag t    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
-      Lit l       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
+      Val (ValTag t)    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
+      Val (Lit l)       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp env exp
 
-reduceFun :: Program -> Name -> IO Val
+reduceFun :: Program -> Name -> IO RTVal
 reduceFun (Program l) n = evalStateT (runReaderT (evalExp mempty e) m) emptyStore where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
   e = case Map.lookup n m of
