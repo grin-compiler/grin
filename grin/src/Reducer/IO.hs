@@ -99,12 +99,12 @@ evalSimpleExp env = \case
                 else do
                   Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ n) n) <$> getProg
                   evalExp (go env vars args) body
-  SReturn v -> return $ evalVal env v
+  SReturn v -> pure $ evalVal env v
   SStore v -> do
               let v' = evalVal env v
               l <- insertStore v'
               -- modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
-              return $ RT_Loc l
+              pure $ RT_Loc l
   SFetchI n index -> case lookupEnv n env of
               RT_Loc l -> selectNodeItem index <$> lookupStore l
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
@@ -112,7 +112,7 @@ evalSimpleExp env = \case
   SUpdate n v -> do
               let v' = evalVal env v
               case lookupEnv n env of
-                RT_Loc l -> updateStore l v' >> return v'
+                RT_Loc l -> updateStore l v' >> pure v'
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
   SBlock a -> evalExp env a
   x -> error $ "evalSimpleExp: " ++ show x
@@ -121,7 +121,7 @@ reduceFun :: Program -> Name -> IO RTVal
 reduceFun (Program l) n = do
   store <- emptyStore1
   (val, _, _) <- runRWST (evalExp mempty e) m store
-  return val
+  pure val
   where
     m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
     e = case Map.lookup n m of

@@ -47,12 +47,12 @@ evalSimpleExp env = \case
                 else do
                   Def _ vars body <- reader $ Map.findWithDefault (error $ printf "unknown function: %s" n) n
                   evalExp (go env vars args) body
-  SReturn v -> return $ evalVal env v
+  SReturn v -> pure $ evalVal env v
   SStore v -> do
               l <- gets storeSize
               let v' = evalVal env v
               modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
-              return $ RT_Loc l
+              pure $ RT_Loc l
   SFetchI n index -> case lookupEnv n env of
               RT_Loc l -> gets $ (selectNodeItem index . lookupStore l)
               x -> error $ printf "evalSimpleExp - Fetch expected location, got: %s" (prettyDebug x)
