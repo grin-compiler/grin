@@ -76,14 +76,14 @@ evalExp env exp = case {-pprint-} exp of
                         then error "multiple default case alternative"
                         else Prelude.take 1 defaultAlts
     in case evalVal env v of
-      Val (ConstTagNode t l) ->
+      RT_ConstTagNode t l ->
                      let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
                          go a [] [] = a
-                         go a (x:xs) (y:ys) = go (Map.insert x (Val y) a) xs ys
+                         go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                          go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
                      in  evalExp (go env vars l) exp
-      Val (ValTag t)  -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
-      Val (Lit l)     -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
+      RT_ValTag t -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
+      RT_Lit l    -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
       x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
   exp -> evalSimpleExp env exp
 
@@ -104,15 +104,15 @@ evalSimpleExp env = \case
               let v' = evalVal env v
               l <- insertStore v'
               -- modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
-              return $ Loc l
+              return $ RT_Loc l
   SFetchI n index -> case lookupEnv n env of
-              Loc l -> selectNodeItem index <$> lookupStore l
+              RT_Loc l -> selectNodeItem index <$> lookupStore l
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
 --  | FetchI  Name Int -- fetch node component
   SUpdate n v -> do
               let v' = evalVal env v
               case lookupEnv n env of
-                Loc l -> updateStore l v' >> return v'
+                RT_Loc l -> updateStore l v' >> return v'
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
   SBlock a -> evalExp env a
   x -> error $ "evalSimpleExp: " ++ show x

@@ -7,10 +7,10 @@ import Data.Map.Strict as Map
 import Control.Monad.IO.Class
 
 -- primitive functions
-primIntPrint [Val (Lit (LInt64 a))] = liftIO (print a) >> pure Unit
+primIntPrint [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
 primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
-evalPrimOp name args = Val <$> case name of
+evalPrimOp name args = case name of
   "_prim_int_print" -> primIntPrint args
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
@@ -51,23 +51,23 @@ evalPrimOp name args = Val <$> case name of
 
   _ -> error $ "unknown primitive operation: " ++ name
  where
-  int   x = pure . Lit . LInt64 $ x
-  word  x = pure . Lit . LWord64 $ x
-  float x = pure . Lit . LFloat $ x
-  bool  x = pure . Lit . LBool $ x
+  int   x = pure . RT_Lit . LInt64 $ x
+  word  x = pure . RT_Lit . LWord64 $ x
+  float x = pure . RT_Lit . LFloat $ x
+  bool  x = pure . RT_Lit . LBool $ x
 
   int_bin_op retTy fn = case args of
-    [Val (Lit (LInt64 a)), Val (Lit (LInt64 b))] -> retTy $ fn a b
+    [RT_Lit (LInt64 a), RT_Lit (LInt64 b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
 
   word_bin_op retTy fn = case args of
-    [Val (Lit (LWord64 a)), Val (Lit (LWord64 b))] -> retTy $ fn a b
+    [RT_Lit (LWord64 a), RT_Lit (LWord64 b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
 
   float_bin_op retTy fn = case args of
-    [Val (Lit (LFloat a)), Val (Lit (LFloat b))] -> retTy $ fn a b
+    [RT_Lit (LFloat a), RT_Lit (LFloat b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
 
   bool_bin_op retTy fn = case args of
-    [Val (Lit (LBool a)), Val (Lit (LBool b))] -> retTy $ fn a b
+    [RT_Lit (LBool a), RT_Lit (LBool b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name

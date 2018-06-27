@@ -39,14 +39,14 @@ resolver intPrint compileLayer symbol
   | symbol == intPrint = do
       funPtr <- wrapIntPrint myIntPrintImpl
       let addr = ptrToWordPtr (castFunPtrToPtr funPtr)
-      return (JITSymbol addr (JITSymbolFlags False True))
+      pure (JITSymbol addr (JITSymbolFlags False True))
   | otherwise = findSymbol compileLayer symbol True
 
 nullResolver :: MangledSymbol -> IO JITSymbol
-nullResolver s = return (JITSymbol 0 (JITSymbolFlags False False))
+nullResolver s = pure (JITSymbol 0 (JITSymbolFlags False False))
 
 failInIO :: ExceptT String IO a -> IO a
-failInIO = either fail return <=< runExceptT
+failInIO = either fail pure <=< runExceptT
 
 grinHeapSize :: Int
 grinHeapSize = 100 * 1024 * 1024
@@ -75,4 +75,4 @@ eagerJit amod mainName =
                 -- TODO: read back the result and build the haskell value represenation
                 -- free GRIN heap
                 free heapPointer
-                return $ Val Unit
+                pure RT_Unit

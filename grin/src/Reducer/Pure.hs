@@ -52,17 +52,17 @@ evalSimpleExp env = \case
               l <- gets storeSize
               let v' = evalVal env v
               modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
-              return $ Loc l
+              return $ RT_Loc l
   SFetchI n index -> case lookupEnv n env of
-              Loc l -> gets $ (selectNodeItem index . lookupStore l)
+              RT_Loc l -> gets $ (selectNodeItem index . lookupStore l)
               x -> error $ printf "evalSimpleExp - Fetch expected location, got: %s" (prettyDebug x)
 --  | FetchI  Name Int -- fetch node component
   SUpdate n v -> do
               let v' = evalVal env v
               case lookupEnv n env of
-                Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
+                RT_Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
                             False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
-                            True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> return (Val Unit)
+                            True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> pure RT_Unit
                 x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (prettyDebug x)
   SBlock a -> evalExp env a
 
@@ -79,14 +79,14 @@ evalExp env = \case
                         then error "multiple default case alternative"
                         else take 1 defaultAlts
     in case evalVal env v of
-      Val (ConstTagNode t l) ->
+      RT_ConstTagNode t l ->
                      let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error (printf "evalExp - missing Case Node alternative for: %s" (prettyDebug t))
                          go a [] [] = a
-                         go a (x:xs) (y:ys) = go (Map.insert x (Val y) a) xs ys
+                         go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                          go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
                      in  evalExp (go env vars l) exp
-      Val (ValTag t)    -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
-      Val (Lit l)       -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
+      RT_ValTag t -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
+      RT_Lit l    -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp env exp
 
