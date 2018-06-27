@@ -48,7 +48,6 @@ library
     Transformations.BindNormalisation
     Transformations.SingleStaticAssignment
     Transformations.Rename
-    Transformations.Substitution
     Transformations.Names
     Transformations.Util
     Transformations.UnitPropagation
