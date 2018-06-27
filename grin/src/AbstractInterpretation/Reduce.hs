@@ -109,7 +109,7 @@ evalInstruction = \case
           register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet filteredTagMap)
 
   Extend {..} -> do
-    -- TODO
+    -- TODO: support all selectors
     value <- use $ register.ix (regIndex srcReg).simpleType
     let NodeItem tag itemIndex = dstSelector
     register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
