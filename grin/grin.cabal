@@ -47,7 +47,6 @@ library
     Transformations.GenerateEval
     Transformations.BindNormalisation
     Transformations.SingleStaticAssignment
-    Transformations.Rename
     Transformations.Names
     Transformations.Util
     Transformations.UnitPropagation
@@ -56,7 +55,6 @@ library
     Transformations.Simplifying.SplitFetch
     Transformations.Simplifying.CaseSimplification
     Transformations.Simplifying.RegisterIntroduction
-    Transformations.Simplifying.RightHoistFetch
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Optimising.EvaluatedCaseElimination
     Transformations.Optimising.TrivialCaseElimination

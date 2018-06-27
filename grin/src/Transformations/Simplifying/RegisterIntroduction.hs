@@ -6,7 +6,6 @@ import Data.Function
 import Data.Map (Map)
 import Data.Maybe
 import Grin
-import Transformations.Rename
 import Data.List (intercalate, foldl')
 import qualified Data.Map as Map
 import qualified Data.List as List

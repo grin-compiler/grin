@@ -26,7 +26,6 @@ import qualified Lint
 import PrettyLint
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
-import Transformations.Simplifying.RightHoistFetch
 import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
 import Transformations.UnitPropagation
 import Transformations.MangleNames
