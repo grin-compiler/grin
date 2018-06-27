@@ -32,9 +32,9 @@ import Transformations.MangleNames
 import Transformations.EffectMap
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
-import qualified AbstractInterpretation.HPTResultNew as HPT
+import qualified AbstractInterpretation.HPTResult as HPT
 import AbstractInterpretation.PrettyHPT
-import qualified AbstractInterpretation.Pretty as HPT
+import qualified AbstractInterpretation.PrettyIR as HPT
 import qualified AbstractInterpretation.IR as HPT
 import qualified AbstractInterpretation.CodeGen as HPT
 import qualified AbstractInterpretation.Reduce as HPT

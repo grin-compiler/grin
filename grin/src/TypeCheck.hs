@@ -18,7 +18,7 @@ import Grin (Tag, Exp)
 import Pretty
 import AbstractInterpretation.PrettyHPT
 
-import AbstractInterpretation.HPTResultNew
+import AbstractInterpretation.HPTResult
 import qualified TypeEnv
 
 import qualified AbstractInterpretation.CodeGen as HPT

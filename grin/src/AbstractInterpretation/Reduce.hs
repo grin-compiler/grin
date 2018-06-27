@@ -19,7 +19,7 @@ import Lens.Micro.Platform
 
 import AbstractInterpretation.IR
 import AbstractInterpretation.CodeGen
-import qualified AbstractInterpretation.HPTResultNew as R
+import qualified AbstractInterpretation.HPTResult as R
 
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
 

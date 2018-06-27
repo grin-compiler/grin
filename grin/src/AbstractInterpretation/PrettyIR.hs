@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractInterpretation.Pretty where
+module AbstractInterpretation.PrettyIR where
 
 import Data.Int
 import qualified Data.Bimap as Bimap
@@ -12,7 +12,7 @@ import Pretty ()
 import Grin (Name)
 import qualified Grin
 import AbstractInterpretation.IR
-import AbstractInterpretation.HPTResultNew (toSimpleType)
+import AbstractInterpretation.HPTResult (toSimpleType)
 import AbstractInterpretation.PrettyHPT ()
 
 data IRMap

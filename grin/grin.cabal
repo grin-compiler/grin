@@ -72,9 +72,9 @@ library
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.ConstantFolding
     Transformations.Optimising.GeneralizedUnboxing
-    AbstractInterpretation.HPTResultNew
+    AbstractInterpretation.HPTResult
     AbstractInterpretation.PrettyHPT
-    AbstractInterpretation.Pretty
+    AbstractInterpretation.PrettyIR
     AbstractInterpretation.IR
     AbstractInterpretation.CodeGen
     AbstractInterpretation.Reduce

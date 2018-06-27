@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving #-}
-module AbstractInterpretation.HPTResultNew where
+module AbstractInterpretation.HPTResult where
 
 import Data.Int
 import Data.Set (Set)
