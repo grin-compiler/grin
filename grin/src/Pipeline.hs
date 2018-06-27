@@ -33,7 +33,6 @@ import Transformations.MangleNames
 import Transformations.EffectMap
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
-import Transformations.Playground
 import qualified AbstractInterpretation.HPTResultNew as HPT
 import AbstractInterpretation.PrettyHPT
 import qualified AbstractInterpretation.Pretty as HPT

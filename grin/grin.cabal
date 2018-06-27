@@ -49,7 +49,6 @@ library
     Transformations.SingleStaticAssignment
     Transformations.Rename
     Transformations.Substitution
-    Transformations.Playground
     Transformations.Names
     Transformations.Util
     Transformations.UnitPropagation
