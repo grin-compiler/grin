@@ -18,7 +18,6 @@ import Optimizations
 import qualified Statistics
 import Pretty()
 import Transformations.CountVariableUse
-import Transformations.AssignStoreIDs
 import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
 import Transformations.Simplifying.Vectorisation

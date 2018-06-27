@@ -44,7 +44,6 @@ library
     Transformations.EffectMap
     Transformations.MangleNames
     Transformations.CountVariableUse
-    Transformations.AssignStoreIDs
     Transformations.GenerateEval
     Transformations.BindNormalisation
     Transformations.SingleStaticAssignment
