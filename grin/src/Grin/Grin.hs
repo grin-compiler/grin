@@ -11,23 +11,6 @@ import Data.Maybe
 
 import Grin.Syntax
 
-isSimpleExp :: Exp -> Bool
-isSimpleExp = \case
-  SApp    _ _ -> True
-  SReturn _   -> True
-  SStore  _   -> True
-  SFetchI _ _ -> True
-  SUpdate _ _ -> True
-  SBlock  _   -> True
-  _           -> False
-
-isBasicValue :: Val -> Bool
-isBasicValue = \case
-  ValTag _ -> True
-  Unit     -> True
-  Lit _    -> True
-  _        -> False
-
 class FoldNames n where
   foldNames :: (Monoid m) => (Name -> m) -> n -> m
 
@@ -40,6 +23,19 @@ instance FoldNames Val where
     -- simple val
     Lit lit                 -> mempty
     Var name                -> f name
+
+instance FoldNames CPat where
+  foldNames f = \case
+    NodePat _ names -> mconcat (map f names)
+    TagPat _    -> mempty
+    LitPat _    -> mempty
+    DefaultPat  -> mempty
+
+dCoAlg :: (a -> String) -> (a -> ExpF b) -> (a -> ExpF b)
+dCoAlg dbg f = f . (\x -> trace (dbg x) x)
+
+dAlg :: (b -> String) -> (ExpF a -> b) -> (ExpF a -> b)
+dAlg dbg f = (\x -> trace (dbg x) x) . f
 
 match :: Traversal' a b -> a -> Bool
 match t x = isJust $ x ^? t
@@ -61,46 +57,6 @@ isBasicCPat = \case
   LitPat _ -> True
   _        -> False
 
-instance FoldNames CPat where
-  foldNames f = \case
-    NodePat _ names -> mconcat (map f names)
-    TagPat _    -> mempty
-    LitPat _    -> mempty
-    DefaultPat  -> mempty
-
-data NamesInExpF e a = NamesInExpF
-  { namesExp   :: ExpF e
-  , namesNameF :: Name -> a
-  } deriving (Functor)
-
-instance Foldable (NamesInExpF Exp) where
-  foldr f b (NamesInExpF expf fn) = case expf of
-    ProgramF  _            -> b
-    DefF      name names _ -> foldr f b $ map fn (name:names)
-    -- Exp
-    EBindF    se lPat _  -> foldr f (foldr f b (NamesInExpF (project se) fn)) $ namesInVal lPat
-    ECaseF    val _      -> foldr f b $ namesInVal val
-    -- Simple Expr
-
-    -- Does not collect function names in application
-    SAppF     _name simpleVals -> foldr f b $ (map fn $ concatMap (foldNames list) simpleVals)
-    SReturnF  val -> foldr f b $ namesInVal val
-    SStoreF   val -> foldr f b $ namesInVal val
-    SFetchIF  name mpos -> f (fn name) b
-    SUpdateF  name val  -> foldr f b (fn name : namesInVal val)
-    SBlockF   _ -> b
-    -- Alt
-    AltF cPat _ -> foldr f b $ map fn $ foldNames list cPat
-    where
-      namesInVal = map fn . foldNames list
-      list x = [x]
-
-dCoAlg :: (a -> String) -> (a -> ExpF b) -> (a -> ExpF b)
-dCoAlg dbg f = f . (\x -> trace (dbg x) x)
-
-dAlg :: (b -> String) -> (ExpF a -> b) -> (ExpF a -> b)
-dAlg dbg f = (\x -> trace (dbg x) x) . f
-
 isConstant :: Val -> Bool
 isConstant = cata $ \case
   ConstTagNodeF  tag params -> and params
@@ -108,7 +64,6 @@ isConstant = cata $ \case
   UnitF                     -> True
   LitF lit                  -> True
   _                         -> False
-
 hasConstant :: Val -> Bool
 hasConstant = cata $ \case
   ValTagF{} -> True
@@ -121,3 +76,20 @@ isAllVar = cata $ \case
   ConstTagNodeF _ params  -> and params
   VarF{}                  -> True
   _                       -> False
+
+isBasicValue :: Val -> Bool
+isBasicValue = \case
+  ValTag _ -> True
+  Unit     -> True
+  Lit _    -> True
+  _        -> False
+
+isSimpleExp :: Exp -> Bool
+isSimpleExp = \case
+  SApp    _ _ -> True
+  SReturn _   -> True
+  SStore  _   -> True
+  SFetchI _ _ -> True
+  SUpdate _ _ -> True
+  SBlock  _   -> True
+  _           -> False
