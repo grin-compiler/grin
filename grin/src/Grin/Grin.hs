@@ -1,57 +1,15 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
-{-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
-{-# LANGUAGE LambdaCase, RankNTypes, ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleInstances #-}
-module Grin.Grin where
+{-# LANGUAGE FlexibleInstances, DeriveFunctor, RankNTypes, LambdaCase #-}
+module Grin.Grin
+  ( module Grin.Grin
+  , module Grin.Syntax
+  ) where
 
 import Data.Functor.Foldable as Foldable
-import Control.DeepSeq
-import Data.Map (Map)
-import GHC.Generics (Generic)
 import Debug.Trace (trace)
-import Data.Int
-import Data.Word
-import Data.Text (Text)
-import Data.List (isPrefixOf)
 import Lens.Micro.Platform
 import Data.Maybe
-import qualified Data.ByteString.Short as B
 
-data Name2
-  = Name        B.ShortByteString
-  | DerivedName B.ShortByteString Int
-  | NewName     Name2 Int -- Block scope with shadowing support
-  deriving (Ord, Eq, Show)
-
-type Name = String
-
-type SimpleExp = Exp
-type Alt = Exp
-type Def = Exp
-type Program = Exp
-
-isPrimName :: Name -> Bool
-isPrimName = isPrefixOf "_prim_"
-
-data Exp
-  = Program     [Def]
-  | Def         Name [Name] Exp
-  -- Exp
-  | EBind       SimpleExp LPat Exp
-  | ECase       Val [Alt]
-  -- Simple Exp
-  | SApp        Name [SimpleVal]
-  | SReturn     Val
-  | SStore      Val
-  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
-  | SUpdate     Name Val
-  | SBlock      Exp
-  -- Alt
-  | Alt CPat Exp
-  deriving (Generic, NFData, Eq, Ord, Show)
-
-pattern SFetch name = SFetchI name Nothing
-pattern SFetchF name = SFetchIF name Nothing
+import Grin.Syntax
 
 isSimpleExp :: Exp -> Bool
 isSimpleExp = \case
@@ -62,19 +20,6 @@ isSimpleExp = \case
   SUpdate _ _ -> True
   SBlock  _   -> True
   _           -> False
-
-type LPat = Val -- ConstTagNode, VarTagNode, ValTag, Unit, Lit, Var
-type SimpleVal = Val
--- TODO: use data types a la carte style to build different versions of Val?
-data Val
-  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
-  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
-  | ValTag        Tag
-  | Unit                           -- HIGH level GRIN
-  -- simple val
-  | Lit Lit                        -- HIGH level GRIN
-  | Var Name                       -- HIGH level GRIN
-  deriving (Generic, NFData, Eq, Ord, Show)
 
 isBasicValue :: Val -> Bool
 isBasicValue = \case
@@ -110,20 +55,6 @@ _Var :: Traversal' Val Name
 _Var f (Var name) = Var <$> f name
 _Var _ rest       = pure rest
 
-data Lit
-  = LInt64  Int64
-  | LWord64 Word64
-  | LFloat  Float
-  | LBool   Bool
-  deriving (Generic, NFData, Eq, Ord, Show)
-
-data CPat
-  = NodePat Tag [Name]  -- HIGH level GRIN
-  | LitPat  Lit         -- HIGH level GRIN
-  | DefaultPat          -- HIGH level GRIN
-  | TagPat  Tag
-  deriving (Generic, NFData, Eq, Show, Ord)
-
 isBasicCPat :: CPat -> Bool
 isBasicCPat = \case
   TagPat _ -> True
@@ -136,99 +67,6 @@ instance FoldNames CPat where
     TagPat _    -> mempty
     LitPat _    -> mempty
     DefaultPat  -> mempty
-
-data TagType = C | F | P Int {-missing parameter count-}
-  deriving (Generic, NFData, Eq, Ord, Show)
-
-data Tag = Tag
-  { tagType :: TagType
-  , tagName :: Name
-  }
-  deriving (Generic, NFData, Eq, Ord, Show)
-
--- * shape functors
-
-data ExpF a
-  = ProgramF  [a]
-  | DefF      Name [Name] a
-  -- Exp
-  | EBindF    a LPat a
-  | ECaseF    Val [a]
-  -- Simple Expr
-  | SAppF     Name [SimpleVal]
-  | SReturnF  Val
-  | SStoreF   Val
-  | SFetchIF  Name (Maybe Int)
-  | SUpdateF  Name Val
-  | SBlockF   a
-  -- Alt
-  | AltF CPat a
-  deriving (Generic, NFData, Eq, Show, Functor, Foldable, Traversable)
-
-type instance Base Exp = ExpF
-instance Recursive Exp where
-  project (Program  defs) = ProgramF defs
-  project (Def      name args exp) = DefF name args exp
-  -- Exp
-  project (EBind    simpleExp lpat exp) = EBindF simpleExp lpat exp
-  project (ECase    val alts) = ECaseF val alts
-  -- Simple Expr
-  project (SApp     name simpleVals) = SAppF name simpleVals
-  project (SReturn  val) = SReturnF val
-  project (SStore   val) = SStoreF val
-  project (SFetchI  name index) = SFetchIF name index
-  project (SUpdate  name val) = SUpdateF name val
-  project (SBlock   exp) = SBlockF exp
-  -- Alt
-  project (Alt cpat exp) = AltF cpat exp
-
-instance Corecursive Exp where
-  embed (ProgramF  defs) = Program defs
-  embed (DefF      name args exp) = Def name args exp
-  -- Exp
-  embed (EBindF    simpleExp lpat exp) = EBind simpleExp lpat exp
-  embed (ECaseF    val alts) = ECase val alts
-  -- Simple Expr
-  embed (SAppF     name simpleVals) = SApp name simpleVals
-  embed (SReturnF  val) = SReturn val
-  embed (SStoreF   val) = SStore val
-  embed (SFetchIF  name index) = SFetchI name index
-  embed (SUpdateF  name val) = SUpdate name val
-  embed (SBlockF   exp) = SBlock exp
-  -- Alt
-  embed (AltF cpat exp) = Alt cpat exp
-
-type instance Base Val = ValF
-
-data ValF a
-  = ConstTagNodeF  Tag  [a] -- complete node (constant tag)
-  | VarTagNodeF    Name [a] -- complete node (variable tag)
-  | ValTagF        Tag
-  | UnitF
-  -- simple val
-  | LitF Lit
-  | VarF Name
-  deriving (Generic, NFData, Eq, Show, Functor, Foldable, Traversable)
-
-instance Recursive Val where
-  project = \case
-    ConstTagNode  tag  simpleVals -> ConstTagNodeF tag simpleVals
-    VarTagNode    name simpleVals -> VarTagNodeF name simpleVals
-    ValTag        tag             -> ValTagF tag
-    Unit                          -> UnitF
-
-    Lit lit    -> LitF lit
-    Var name   -> VarF name
-
-instance Corecursive Val where
-  embed = \case
-    ConstTagNodeF  tag  as -> ConstTagNode tag  as
-    VarTagNodeF    name as -> VarTagNode   name as
-    ValTagF        tag     -> ValTag       tag
-    UnitF                  -> Unit
-
-    LitF lit   -> Lit lit
-    VarF name  -> Var name
 
 data NamesInExpF e a = NamesInExpF
   { namesExp   :: ExpF e
