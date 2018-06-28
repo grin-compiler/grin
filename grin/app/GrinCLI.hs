@@ -9,7 +9,7 @@ import qualified Text.Megaparsec as M
 import Options.Applicative
 
 import Grin.Grin
-import Grin.ParseGrin hiding (value)
+import Grin.Parse hiding (value)
 import Pipeline.Pipeline
 
 data Options = Options

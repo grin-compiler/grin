@@ -4,7 +4,7 @@ module Transformations.BindNormalisationSpec where
 import Transformations.BindNormalisation
 
 import Test.Test
-import Grin.GrinTH
+import Grin.TH
 import Test.Hspec
 import Test.Assertions
 

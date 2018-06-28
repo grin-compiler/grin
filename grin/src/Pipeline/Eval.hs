@@ -4,7 +4,7 @@ import Text.Megaparsec
 
 import Grin.Grin
 import Grin.TypeCheck
-import Grin.ParseGrin
+import Grin.Parse
 import Reducer.Base (RTVal)
 import qualified Reducer.IO
 import qualified Reducer.Pure

@@ -7,7 +7,7 @@ import Test.Test hiding (asVal)
 import Test.QuickCheck.Property
 
 import Grin.Grin
-import Grin.GrinTH
+import Grin.TH
 import Test.Test
 import Test.Assertions
 import Transformations.Simplifying.SplitFetch

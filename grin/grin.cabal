@@ -32,9 +32,9 @@ library
     Frontend.Lambda.PrimOps
     Frontend.Lambda.Syntax
     Grin.Grin
-    Grin.GrinTH
+    Grin.TH
     Grin.Lint
-    Grin.ParseGrin
+    Grin.Parse
     Grin.Pretty
     Grin.PrettyLint
     Grin.Statistics

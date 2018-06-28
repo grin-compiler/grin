@@ -39,7 +39,7 @@ import Data.List
 import Debug.Trace
 import Data.Text (pack)
 import Grin.Pretty
-import Grin.GrinTH
+import Grin.TH
 import Grin.TypeEnv (TypeEnv, emptyTypeEnv)
 import Test.Hspec
 import Control.Monad

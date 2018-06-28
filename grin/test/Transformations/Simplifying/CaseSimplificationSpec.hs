@@ -10,7 +10,7 @@ import Test.Test
 
 import Test.Check
 import Grin.Grin
-import Grin.GrinTH
+import Grin.TH
 import Test.Assertions
 
 

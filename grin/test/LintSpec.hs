@@ -3,7 +3,7 @@ module LintSpec where
 
 import Test.Hspec
 import Grin.Grin
-import Grin.GrinTH
+import Grin.TH
 import Grin.Lint
 import Grin.TypeEnv
 import qualified Data.Map as Map

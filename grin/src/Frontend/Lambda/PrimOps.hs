@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Frontend.Lambda.PrimOps where
 
-import Grin.GrinTH
+import Grin.TH
 
 lambdaPrimOps = [prog|
   {-

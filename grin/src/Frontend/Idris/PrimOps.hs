@@ -2,7 +2,7 @@
 module Frontend.Idris.PrimOps where
 
 import Grin.Grin
-import Grin.GrinTH
+import Grin.TH
 
 
 idrisPrimOps = [prog|

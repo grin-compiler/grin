@@ -4,7 +4,7 @@ module Transformations.Optimising.CopyPropagationSpec where
 import Transformations.Optimising.CopyPropagation
 
 import Test.Hspec
-import Grin.GrinTH
+import Grin.TH
 import Test.Test hiding (newVar)
 import Test.Assertions
 

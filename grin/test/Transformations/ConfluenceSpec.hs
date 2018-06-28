@@ -6,7 +6,7 @@ import Pipeline.Pipeline
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import Grin.GrinTH
+import Grin.TH
 import Test.Assertions
 import Data.List ( (\\) )
 

@@ -4,7 +4,7 @@ module Transformations.SingleStaticAssignmentSpec where
 import Transformations.SingleStaticAssignment
 
 import Test.Test
-import Grin.GrinTH
+import Grin.TH
 import Test.Hspec
 import Test.Assertions
 

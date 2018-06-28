@@ -4,7 +4,7 @@ module Transformations.Optimising.ConstantPropagationSpec where
 import Transformations.Optimising.ConstantPropagation
 
 import Test.Hspec
-import Grin.GrinTH
+import Grin.TH
 import Test.Test hiding (newVar)
 import Test.Assertions
 

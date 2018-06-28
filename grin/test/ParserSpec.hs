@@ -6,8 +6,8 @@ import Test.QuickCheck
 
 import Grin.Pretty
 import Grin.Grin
-import Grin.GrinTH
-import Grin.ParseGrin
+import Grin.TH
+import Grin.Parse
 import Test.Test
 import Test.Assertions
 

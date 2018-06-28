@@ -4,7 +4,7 @@ module Transformations.Optimising.TrivialCaseEliminationSpec where
 import Transformations.Optimising.TrivialCaseElimination
 
 import Test.Hspec
-import Grin.GrinTH
+import Grin.TH
 import Test.Test hiding (newVar)
 import Test.Assertions
 

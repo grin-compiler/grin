@@ -7,7 +7,7 @@ import Test.QuickCheck
 import Transformations.Optimising.ConstantFolding
 import Test.Check
 import Grin.Grin
-import Grin.GrinTH
+import Grin.TH
 import Test.Test
 import Test.Assertions
 

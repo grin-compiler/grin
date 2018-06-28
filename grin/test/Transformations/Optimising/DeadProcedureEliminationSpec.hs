@@ -4,7 +4,7 @@ module Transformations.Optimising.DeadProcedureEliminationSpec where
 import Transformations.Optimising.DeadProcedureElimination
 
 import Test.Hspec
-import Grin.GrinTH
+import Grin.TH
 import Test.Test hiding (newVar)
 import Test.Assertions
 

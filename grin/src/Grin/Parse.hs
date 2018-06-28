@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections, LambdaCase #-}
 
-module Grin.ParseGrin (parseGrin, parseProg, parseDef, parseExpr) where
+module Grin.Parse (parseGrin, parseProg, parseDef, parseExpr) where
 
 import Data.Void
 import Control.Applicative (empty)

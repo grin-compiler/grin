@@ -7,7 +7,7 @@ import Transformations.Simplifying.RegisterIntroduction
 import Test.QuickCheck.Property
 
 import Grin.Grin
-import Grin.GrinTH
+import Grin.TH
 import Test.Assertions
 import Test.Test hiding (asVal)
 

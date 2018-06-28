@@ -4,7 +4,7 @@ module Transformations.Optimising.CaseCopyPropagationSpec where
 import Transformations.Optimising.CaseCopyPropagation
 
 import Test.Hspec
-import Grin.GrinTH
+import Grin.TH
 import Test.Test hiding (newVar)
 import Test.Assertions
 import Grin.TypeEnv
