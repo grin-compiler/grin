@@ -56,7 +56,6 @@ library
     Test.Assertions
     Test.Check
     Test.Grammar
-    Test.Gspec
     Test.PrimOps
     Test.Test
     Transformations.BindNormalisation
