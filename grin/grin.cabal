@@ -59,7 +59,6 @@ library
     Test.Gspec
     Test.PrimOps
     Test.Test
-    Test.VarGen
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap

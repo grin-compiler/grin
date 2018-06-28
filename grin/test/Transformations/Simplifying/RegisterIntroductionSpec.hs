@@ -42,7 +42,8 @@ spec = do
               pure 2
             |]
       pending
-      registerIntroduction 0 (ctx before) `sameAs` (ctx after)
+      pure ()
+      --registerIntroduction 0 (ctx before) `sameAs` (ctx after)
 
   forM_ programGenerators $ \(name, gen) -> do
     describe name $ do
