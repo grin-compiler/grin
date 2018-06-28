@@ -9,7 +9,7 @@ import Data.Functor.Foldable as Foldable
 
 import Text.Printf
 
-import Grin
+import Grin.Grin
 {-
 import AbstractInterpretation.HPTResult (HPTResult(..), Computer(..), RTVar(..), RTNode(..))
 

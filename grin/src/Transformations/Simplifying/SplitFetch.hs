@@ -2,7 +2,7 @@
 module Transformations.Simplifying.SplitFetch where
 
 import Data.Functor.Foldable as Foldable
-import Grin
+import Grin.Grin
 
 splitFetch :: Exp -> Exp
 splitFetch = ana builder where

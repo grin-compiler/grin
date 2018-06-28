@@ -8,9 +8,9 @@ import qualified Data.Set as Set
 
 import Text.PrettyPrint.ANSI.Leijen
 
-import Pretty ()
-import Grin (Name)
-import qualified Grin
+import Grin.Pretty ()
+import Grin.Grin (Name)
+import qualified Grin.Grin as Grin
 import AbstractInterpretation.IR
 import AbstractInterpretation.HPTResult (toSimpleType)
 import AbstractInterpretation.PrettyHPT ()

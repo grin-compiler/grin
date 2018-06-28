@@ -4,12 +4,12 @@ module Transformations.Optimising.ArityRaisingSpec where
 import Transformations.Optimising.ArityRaising
 
 import Test.Hspec
-import Grin
-import GrinTH
-import Test hiding (newVar)
-import Assertions
-import TypeEnv
-import TypeCheck
+import Grin.Grin
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
+import Grin.TypeEnv
+import Grin.TypeCheck
 import Data.Monoid
 import Control.Arrow
 import qualified Data.Map.Strict as Map

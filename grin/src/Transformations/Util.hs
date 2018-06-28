@@ -9,7 +9,7 @@ import Control.Comonad
 import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
 
-import Grin
+import Grin.Grin
 
 {-
   HINT: Name usage in Exp

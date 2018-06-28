@@ -5,10 +5,10 @@ import Transformations.Optimising.Inlining
 
 import qualified Data.Set as Set
 import Test.Hspec
-import GrinTH
-import Test hiding (newVar)
-import Assertions
-import TypeCheck
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
+import Grin.TypeCheck
 
 
 runTests :: IO ()

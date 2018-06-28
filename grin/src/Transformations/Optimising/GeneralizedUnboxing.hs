@@ -22,9 +22,9 @@ import Debug.Trace
 import Transformations.Util (anaM, apoM)
 import Transformations.Names
 
-import Grin
-import TypeEnv
-import Pretty
+import Grin.Grin
+import Grin.TypeEnv
+import Grin.Pretty
 
 
 generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)

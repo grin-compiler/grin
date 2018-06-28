@@ -3,7 +3,7 @@ module Main where
 import Criterion
 import Criterion.Main
 
-import Eval
+import Pipeline.Eval
 
 hs_sum_opt :: IO Float
 hs_sum_opt = do

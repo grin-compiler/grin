@@ -2,7 +2,7 @@
 module Transformations.Optimising.TrivialCaseElimination where
 
 import Data.Functor.Foldable as Foldable
-import Grin
+import Grin.Grin
 import Transformations.Util
 
 trivialCaseElimination :: Exp -> Exp

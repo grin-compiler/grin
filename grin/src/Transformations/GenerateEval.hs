@@ -2,7 +2,7 @@
 module Transformations.GenerateEval where
 
 import Text.Printf
-import Grin
+import Grin.Grin
 
 {-
   done - collect all functions + arity

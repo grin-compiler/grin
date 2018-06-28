@@ -1,10 +1,10 @@
-module Eval where
+module Pipeline.Eval where
 
 import Text.Megaparsec
 
-import Grin
-import TypeCheck
-import ParseGrin
+import Grin.Grin
+import Grin.TypeCheck
+import Grin.ParseGrin
 import Reducer.Base (RTVal)
 import qualified Reducer.IO
 import qualified Reducer.Pure

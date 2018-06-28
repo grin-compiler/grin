@@ -1,9 +1,9 @@
 {-# LANGUAGE LambdaCase #-}
-module Statistics where
+module Grin.Statistics where
 
 import Data.Monoid
-import Grin
 import Data.Functor.Foldable
+import Grin.Grin
 
 
 data Statistics = Statistics

@@ -11,7 +11,7 @@ import qualified Data.Set as Set
 import Control.Monad.State
 import Data.Functor.Foldable as Foldable
 
-import Grin
+import Grin.Grin
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (HPTProgram(..), emptyHPTProgram)
 

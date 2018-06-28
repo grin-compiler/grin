@@ -6,12 +6,12 @@ import Data.Monoid hiding (Alt)
 import Transformations.Simplifying.CaseSimplification
 import Test.Hspec
 import Test.QuickCheck hiding (generate)
-import Test
+import Test.Test
 
-import Check
-import Grin
-import GrinTH
-import Assertions
+import Test.Check
+import Grin.Grin
+import Grin.GrinTH
+import Test.Assertions
 
 
 runTests :: IO ()

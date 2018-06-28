@@ -9,7 +9,7 @@ import qualified Data.Vector as V
 
 import Data.Functor.Foldable as Foldable
 
-import Grin
+import Grin.Grin
 import Transformations.Util
 
 caseSimplification :: Exp -> Exp

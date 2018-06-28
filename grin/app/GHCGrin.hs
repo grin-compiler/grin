@@ -22,7 +22,7 @@ import qualified Frontend.Lambda.FromSTG as STG
 import qualified Frontend.Lambda.FromCore as Core
 import Frontend.Lambda.CodeGen
 import Frontend.Lambda.Pretty
-import Pipeline
+import Pipeline.Pipeline
 
 data Opts
   = Opts

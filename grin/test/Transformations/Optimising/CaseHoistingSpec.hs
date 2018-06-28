@@ -4,10 +4,10 @@ module Transformations.Optimising.CaseHoistingSpec where
 import Transformations.Optimising.CaseHoisting
 
 import Test.Hspec
-import GrinTH
-import Test hiding (newVar)
-import Assertions
-import TypeCheck
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
+import Grin.TypeCheck
 
 
 runTests :: IO ()

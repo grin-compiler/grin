@@ -8,9 +8,9 @@ import qualified Text.Megaparsec as M
 
 import Options.Applicative
 
-import Grin
-import ParseGrin hiding (value)
-import Pipeline
+import Grin.Grin
+import Grin.ParseGrin hiding (value)
+import Pipeline.Pipeline
 
 data Options = Options
   { optFiles     :: [FilePath]

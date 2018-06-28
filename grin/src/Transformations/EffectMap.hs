@@ -8,13 +8,14 @@ import qualified Data.Map as Map
 import Data.Monoid
 
 import Data.Functor.Foldable as Foldable
-import Grin
-import TypeEnv
-import Transformations.Util
 import qualified Data.Foldable
 import Lens.Micro
 import Data.Maybe
 import Debug.Trace
+
+import Grin.Grin
+import Grin.TypeEnv
+import Transformations.Util
 
 
 effectMap :: (TypeEnv, Exp) -> Map Name (Set Effect)

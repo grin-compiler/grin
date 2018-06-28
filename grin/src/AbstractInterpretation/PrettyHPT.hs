@@ -16,8 +16,8 @@ import qualified Data.IntMap as IntMap
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
-import Grin (Tag, Name)
-import Pretty
+import Grin.Grin (Tag, Name)
+import Grin.Pretty
 import qualified AbstractInterpretation.HPTResult as R
 
 -- HPT Result NEW

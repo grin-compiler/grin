@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module Pretty
+module Grin.Pretty
   ( pretty
   , printGrin
   , PP(..)
@@ -21,8 +21,8 @@ import qualified Data.Vector as V
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
-import Grin
-import TypeEnv
+import Grin.Grin
+import Grin.TypeEnv
 
 printGrin :: Exp -> IO ()
 printGrin = putDoc . pretty

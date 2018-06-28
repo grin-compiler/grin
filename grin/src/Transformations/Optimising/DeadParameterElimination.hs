@@ -9,7 +9,7 @@ import Data.Maybe (mapMaybe)
 
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
-import Grin
+import Grin.Grin
 import Transformations.Util
 
 collectUsedNames :: Exp -> Set Name

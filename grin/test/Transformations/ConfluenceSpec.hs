@@ -1,17 +1,17 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Transformations.ConfluenceSpec where
 
-import Pipeline
+import Pipeline.Pipeline
 
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import GrinTH
-import Assertions
+import Grin.GrinTH
+import Test.Assertions
 import Data.List ( (\\) )
 
-import Pretty (PP(..))
-import Test (genProg)
+import Grin.Pretty (PP(..))
+import Test.Test (genProg)
 import Transformations.MangleNames
 import Control.Monad
 

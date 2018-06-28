@@ -4,12 +4,12 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
-module VarGen where
+module Test.VarGen where
 
 import Data.List
 import Numeric.Natural
 
-import Grin
+import Grin.Grin
 
 
 type V = String

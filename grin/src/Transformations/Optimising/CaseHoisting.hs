@@ -13,8 +13,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Vector as Vector
 
-import Grin
-import TypeEnv
+import Grin.Grin
+import Grin.TypeEnv
 import Transformations.Util
 import Transformations.Names
 

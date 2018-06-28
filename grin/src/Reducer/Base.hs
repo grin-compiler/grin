@@ -6,8 +6,8 @@ import qualified Data.Map as Map
 
 import Text.PrettyPrint.ANSI.Leijen
 
-import Grin
-import Pretty
+import Grin.Grin
+import Grin.Pretty
 
 -- models cpu registers
 type Env = Map Name RTVal

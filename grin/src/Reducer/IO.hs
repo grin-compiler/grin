@@ -17,7 +17,7 @@ import Control.Monad.RWS.Strict hiding (Alt)
 
 import Reducer.Base
 import Reducer.PrimOps
-import Grin
+import Grin.Grin
 
 -- models computer memory
 data IOStore = IOStore {

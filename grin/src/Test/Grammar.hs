@@ -1,7 +1,7 @@
 {-# LANGUAGE StandaloneDeriving, DeriveGeneric, LambdaCase #-}
-module Grammar where
+module Test.Grammar where
 
-import qualified Grin
+import qualified Grin.Grin as Grin
 import Test.QuickCheck (NonEmptyList(..))
 import GHC.Generics
 

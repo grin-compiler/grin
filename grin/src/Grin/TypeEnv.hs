@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
-module TypeEnv where
+module Grin.TypeEnv where
 
 import Text.Printf
 import Data.Int
@@ -12,7 +12,7 @@ import Data.Monoid
 
 import Lens.Micro.Platform
 
-import Grin
+import Grin.Grin
 
 data SimpleType
   = T_Int64

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, PatternSynonyms #-}
-module Pipeline where
+module Pipeline.Pipeline where
 
 import Prelude
 import Control.Monad
@@ -9,21 +9,20 @@ import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
 import qualified Text.Show.Pretty as PP
 
-import Check hiding (check)
-import Eval
-import Grin
-import TypeEnv
-import TypeCheck
-import Optimizations
-import qualified Statistics
-import Pretty()
+import Pipeline.Eval
+import Grin.Grin
+import Grin.TypeEnv
+import Grin.TypeCheck
+import Pipeline.Optimizations
+import qualified Grin.Statistics as Statistics
+import Grin.Pretty()
 import Transformations.CountVariableUse
 import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
 import Transformations.Simplifying.Vectorisation
 import Transformations.BindNormalisation
-import qualified Lint
-import PrettyLint
+import qualified Grin.Lint as Lint
+import Grin.PrettyLint
 import Transformations.Simplifying.SplitFetch
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
@@ -63,7 +62,7 @@ import Debug.Trace
 import Lens.Micro
 import Data.List
 
-import Lint
+import Grin.Lint
 
 import Data.Algorithm.Diff
 import Data.Algorithm.DiffOutput
@@ -144,13 +143,6 @@ transformation n = \case
   ArityRaising                    -> noEffectMap arityRaising
   LateInlining                    -> noEffectMap lateInlining
   UnitPropagation                 -> noEffectMap unitPropagation
-
--- TODO
-precondition :: Transformation -> [Check]
-precondition _ = []
-
-postcondition :: Transformation -> [Check]
-postcondition _ = []
 
 newtype Hidden a = H a
 
@@ -344,21 +336,9 @@ printTypeEnv = do
   Just typeEnv <- use psTypeEnv
   pipelineLog $ show $ pretty $ typeEnv
 
-preconditionCheck :: Transformation -> PipelineM ()
-preconditionCheck t = do
-  exp <- use psExp
-  forM_ (checks Nothing (precondition t) exp) $ \case
-    (c, r) -> pipelineLog $ unwords ["The", show c, "precondition of", show t, ": ", show r]
-
-postconditionCheck :: Transformation -> PipelineM ()
-postconditionCheck t = do
-  exp <- use psExp
-  forM_ (checks Nothing (postcondition t) exp) $ \case
-    (c, r) -> pipelineLog $ unwords ["The", show c, "postcondition of", show t, ": ", show r]
-
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
-  preconditionCheck t
+  --preconditionCheck t
   env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
   effs0 <- fromMaybe (traceShow "emptyEffectMap is used" mempty) <$> use psEffectMap
   n    <- use psTransStep
@@ -367,7 +347,7 @@ transformationM t = do
   psTypeEnv .= Just env1
   psExp     .= exp1
   psTransStep %= (+1)
-  postconditionCheck t
+  --postconditionCheck t
 
 pureEval :: PipelineM ()
 pureEval = do
@@ -531,14 +511,6 @@ confluenceTest = do
   pipelineLog $ show pipeline1
   pipelineLog "\nSecond transformation permutation:"
   pipelineLog $ show pipeline2
-
-check :: PipelineM ()
-check = do
-  e <- use psExp
-  let nonUnique = nonUniqueNames e
-  pipelineLog $ unwords ["Non unique names:", show nonUnique]
-  let nonDefined = nonDefinedNames e
-  pipelineLog $ unwords ["Non defined names:", show nonDefined]
 
 runPipeline :: PipelineOpts -> Exp -> PipelineM a -> IO (a, Exp)
 runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where

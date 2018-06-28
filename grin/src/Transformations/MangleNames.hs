@@ -12,7 +12,7 @@ import Control.Monad.State
 import Transformations.Util
 import Transformations.Names
 
-import Grin
+import Grin.Grin
 
 data Env
   = Env

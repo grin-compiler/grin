@@ -1,4 +1,4 @@
-module Optimizations
+module Pipeline.Optimizations
   ( constantFolding
   , evaluatedCaseElimination
   , trivialCaseElimination

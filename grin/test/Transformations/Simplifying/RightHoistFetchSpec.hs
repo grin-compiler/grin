@@ -3,12 +3,12 @@ module Transformations.Simplifying.RightHoistFetchSpec where
 
 import Control.Monad
 import Test.Hspec
-import Test hiding (asVal)
+import Test.Test hiding (asVal)
 import Test.QuickCheck.Property
 
-import Grin
-import GrinTH
-import Assertions
+import Grin.Grin
+import Grin.GrinTH
+import Test.Assertions
 import Transformations.Simplifying.RightHoistFetch2
 
 spec :: Spec

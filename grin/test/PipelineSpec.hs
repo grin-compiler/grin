@@ -5,10 +5,10 @@ import Data.List ((\\), nub)
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import Pipeline
-import Test
-import Eval
-import Pretty
+import Pipeline.Pipeline
+import Test.Test
+import Pipeline.Eval
+import Grin.Pretty
 import Debug.Trace
 
 

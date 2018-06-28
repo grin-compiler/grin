@@ -4,12 +4,12 @@ module ParserSpec where
 import Test.Hspec
 import Test.QuickCheck
 
-import Pretty
-import Grin
-import GrinTH
-import ParseGrin
-import Test
-import Assertions
+import Grin.Pretty
+import Grin.Grin
+import Grin.GrinTH
+import Grin.ParseGrin
+import Test.Test
+import Test.Assertions
 
 runTests :: IO ()
 runTests = hspec spec

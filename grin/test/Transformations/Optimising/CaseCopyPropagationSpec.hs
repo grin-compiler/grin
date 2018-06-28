@@ -4,10 +4,10 @@ module Transformations.Optimising.CaseCopyPropagationSpec where
 import Transformations.Optimising.CaseCopyPropagation
 
 import Test.Hspec
-import GrinTH
-import Test hiding (newVar)
-import Assertions
-import TypeEnv
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
+import Grin.TypeEnv
 import Data.Monoid
 
 ctxs :: [TestExpContext]

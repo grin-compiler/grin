@@ -10,8 +10,8 @@ import Frontend.Lambda.Syntax
 import Frontend.Lambda.Parse
 import Frontend.Lambda.Pretty
 import Frontend.Lambda.CodeGen
-import Pretty
-import Pipeline
+import Grin.Pretty
+import Pipeline.Pipeline
 
 import Text.PrettyPrint.ANSI.Leijen (ondullblack)
 

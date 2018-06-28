@@ -3,10 +3,10 @@ module Transformations.SingleStaticAssignmentSpec where
 
 import Transformations.SingleStaticAssignment
 
-import Test
-import GrinTH
+import Test.Test
+import Grin.GrinTH
 import Test.Hspec
-import Assertions
+import Test.Assertions
 
 
 runTests :: IO ()

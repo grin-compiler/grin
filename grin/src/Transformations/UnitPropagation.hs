@@ -7,8 +7,8 @@ import Data.Functor.Foldable
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-import Grin
-import TypeEnv
+import Grin.Grin
+import Grin.TypeEnv
 
 
 unitPropagation :: (TypeEnv, Exp) -> (TypeEnv, Exp)

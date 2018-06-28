@@ -4,11 +4,11 @@ module Transformations.Optimising.CSESpec where
 import Transformations.Optimising.CSE
 
 import Test.Hspec
-import GrinTH
-import Test hiding (newVar)
-import Assertions
-import TypeEnv
-import TypeCheck
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
+import Grin.TypeEnv
+import Grin.TypeCheck
 
 
 runTests :: IO ()

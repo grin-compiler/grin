@@ -14,7 +14,7 @@ import qualified Data.Foldable
 
 import Lens.Micro.Platform
 
-import Grin
+import Grin.Grin
 import Transformations.Util
 
 -- path tracking

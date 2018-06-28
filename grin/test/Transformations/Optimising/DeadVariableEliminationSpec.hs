@@ -4,9 +4,9 @@ module Transformations.Optimising.DeadVariableEliminationSpec where
 import Transformations.Optimising.DeadVariableElimination
 
 import Test.Hspec
-import GrinTH
-import Test hiding (newVar)
-import Assertions
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
 
 
 runTests :: IO ()

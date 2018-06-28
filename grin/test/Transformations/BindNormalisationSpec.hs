@@ -3,10 +3,10 @@ module Transformations.BindNormalisationSpec where
 
 import Transformations.BindNormalisation
 
-import Test
-import GrinTH
+import Test.Test
+import Grin.GrinTH
 import Test.Hspec
-import Assertions
+import Test.Assertions
 
 
 runTests :: IO ()

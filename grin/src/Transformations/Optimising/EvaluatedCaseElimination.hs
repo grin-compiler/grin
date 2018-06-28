@@ -2,7 +2,7 @@
 module Transformations.Optimising.EvaluatedCaseElimination where
 
 import Data.Functor.Foldable as Foldable
-import Grin
+import Grin.Grin
 
 evaluatedCaseElimination :: Exp -> Exp
 evaluatedCaseElimination = ana builder where

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
-module Lint (lint, Error) where
+module Grin.Lint (lint, Error) where
 
 import Text.Printf
 
@@ -16,8 +16,8 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import Grin
-import TypeEnv hiding (typeOfVal)
+import Grin.Grin
+import Grin.TypeEnv hiding (typeOfVal)
 import Transformations.Util
 
 {-

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module PrettyLint (prettyLintExp) where
+module Grin.PrettyLint (prettyLintExp) where
 
 import qualified Control.Comonad.Trans.Cofree as CCTC
 import Data.Map (Map)
@@ -9,9 +9,9 @@ import Data.Functor.Foldable as Foldable
 
 import Text.PrettyPrint.ANSI.Leijen
 
-import Grin
-import Pretty
-import Lint
+import Grin.Grin
+import Grin.Pretty
+import Grin.Lint
 
 keyword :: String -> Doc
 keyword = yellow . text

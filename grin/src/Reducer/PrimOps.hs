@@ -2,7 +2,7 @@ module Reducer.PrimOps (evalPrimOp) where
 
 import Reducer.Base
 
-import Grin
+import Grin.Grin
 import Data.Map.Strict as Map
 import Control.Monad.IO.Class
 

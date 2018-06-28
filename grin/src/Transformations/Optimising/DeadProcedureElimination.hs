@@ -8,7 +8,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
-import Grin
+import Grin.Grin
 
 deadProcedureElimination :: Program -> Program
 deadProcedureElimination (Program defs) = Program [def | def@(Def name _ _) <- defs, Set.member name liveDefs] where

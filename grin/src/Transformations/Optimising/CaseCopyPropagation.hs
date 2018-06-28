@@ -2,16 +2,18 @@
 module Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation) where
 
 import Control.Arrow
-import Grin
 import Data.Functor.Foldable
 import Data.Monoid hiding (Alt)
 import Debug.Trace
 import Data.Maybe
 import Data.List (find)
 import Lens.Micro.Platform hiding (zoom)
-import TypeEnv
 import qualified Data.Vector
 import qualified Data.Map as Map
+
+import Grin.Grin
+import Grin.TypeEnv
+
 import Transformations.BindNormalisation (bindNormalisation)
 
 {-

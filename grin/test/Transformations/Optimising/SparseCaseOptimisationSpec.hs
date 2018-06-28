@@ -4,11 +4,11 @@ module Transformations.Optimising.SparseCaseOptimisationSpec where
 import Transformations.Optimising.SparseCaseOptimisation
 
 import Test.Hspec
-import Grin
-import GrinTH
-import Test hiding (newVar)
-import Assertions
-import TypeEnv
+import Grin.Grin
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
+import Grin.TypeEnv
 import qualified Data.Map as Map
 import qualified Data.Vector as Vector
 

@@ -2,10 +2,10 @@
 module LintSpec where
 
 import Test.Hspec
-import Grin
-import GrinTH
-import Lint
-import TypeEnv
+import Grin.Grin
+import Grin.GrinTH
+import Grin.Lint
+import Grin.TypeEnv
 import qualified Data.Map as Map
 
 

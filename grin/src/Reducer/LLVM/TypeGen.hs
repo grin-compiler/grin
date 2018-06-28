@@ -23,9 +23,9 @@ import LLVM.AST.Type hiding (Type, void)
 import qualified LLVM.AST.Type as LLVM
 
 import Reducer.LLVM.Base
-import Grin
-import TypeEnv
-import Pretty
+import Grin.Grin as Grin
+import Grin.TypeEnv
+import Grin.Pretty
 
 typeGenSimpleType :: SimpleType -> LLVM.Type
 typeGenSimpleType = \case

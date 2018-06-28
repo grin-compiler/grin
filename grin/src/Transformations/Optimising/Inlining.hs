@@ -10,8 +10,8 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
-import Grin
-import TypeEnv
+import Grin.Grin
+import Grin.TypeEnv
 import Transformations.Util
 import Transformations.Names
 

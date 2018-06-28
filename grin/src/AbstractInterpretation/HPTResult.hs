@@ -11,8 +11,8 @@ import qualified Data.Vector as V
 
 import Lens.Micro.Platform
 
-import Grin (Name, Tag)
-import qualified TypeEnv
+import Grin.Grin (Name, Tag)
+import qualified Grin.TypeEnv as TypeEnv
 
 data SimpleType
   = T_Int64

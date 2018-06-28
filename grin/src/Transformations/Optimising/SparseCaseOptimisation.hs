@@ -5,8 +5,8 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Functor.Foldable as Foldable
-import Grin
-import TypeEnv
+import Grin.Grin
+import Grin.TypeEnv
 
 sparseCaseOptimisation :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 sparseCaseOptimisation (typeEnv, exp) = (typeEnv, ana builder exp) where

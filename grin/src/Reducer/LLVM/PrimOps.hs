@@ -8,7 +8,7 @@ import LLVM.AST.Type as LLVM
 import LLVM.AST.AddrSpace
 import qualified LLVM.AST.Constant as C
 
-import TypeEnv hiding (function)
+import Grin.TypeEnv hiding (function)
 import Reducer.LLVM.Base
 import Reducer.LLVM.TypeGen
 

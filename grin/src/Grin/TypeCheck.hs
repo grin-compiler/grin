@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
-module TypeCheck where
+module Grin.TypeCheck where
 
 import Text.Printf
 
@@ -14,12 +14,12 @@ import qualified Data.Vector as V
 import Control.Monad.Except
 import Lens.Micro.Platform
 
-import Grin (Tag, Exp)
-import Pretty
+import Grin.Grin (Tag, Exp)
+import Grin.Pretty
 import AbstractInterpretation.PrettyHPT
 
 import AbstractInterpretation.HPTResult
-import qualified TypeEnv
+import qualified Grin.TypeEnv as TypeEnv
 
 import qualified AbstractInterpretation.CodeGen as HPT
 import qualified AbstractInterpretation.Reduce as HPT

@@ -6,10 +6,10 @@ import Transformations.Simplifying.Vectorisation (vectorisation)
 import Data.Monoid
 import Data.Map
 import Test.Hspec
-import Grin
-import GrinTH
-import Assertions
-import Test
+import Grin.Grin
+import Grin.GrinTH
+import Test.Assertions
+import Test.Test
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set

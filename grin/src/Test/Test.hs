@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
 {-# LANGUAGE QuasiQuotes, ViewPatterns #-}
-module Test where
+module Test.Test where
 
 import Prelude hiding (GT)
 
@@ -23,14 +23,14 @@ import Data.Maybe (fromJust, maybeToList)
 import Data.Semigroup
 import qualified Data.Text as Text
 import GHC.Generics
-import Grin hiding (Def)
-import qualified Grin
-import qualified PrimOps
+import Grin.Grin hiding (Def)
+import qualified Grin.Grin as Grin
+import qualified Test.PrimOps as PrimOps
 import Test.QuickCheck
 import Generic.Random.Generic
 import Lens.Micro
 import Lens.Micro.Mtl
-import qualified Grammar as G
+import qualified Test.Grammar as G
 
 import Data.Set (Set); import qualified Data.Set as Set
 import Data.Map (Map); import qualified Data.Map as Map
@@ -38,9 +38,9 @@ import Data.List
 
 import Debug.Trace
 import Data.Text (pack)
-import Pretty
-import GrinTH
-import TypeEnv (TypeEnv, emptyTypeEnv)
+import Grin.Pretty
+import Grin.GrinTH
+import Grin.TypeEnv (TypeEnv, emptyTypeEnv)
 import Test.Hspec
 import Control.Monad
 import Data.List

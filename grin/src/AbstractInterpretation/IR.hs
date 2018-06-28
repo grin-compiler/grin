@@ -8,8 +8,8 @@ import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
 import Data.Set (Set)
 
-import qualified Grin
-import Grin (Name)
+import qualified Grin.Grin as Grin
+import Grin.Grin (Name)
 
 newtype Reg = Reg Word32 deriving (Eq, Ord, Show)
 newtype Mem = Mem Word32 deriving (Eq, Ord, Show)

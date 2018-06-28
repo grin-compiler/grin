@@ -13,9 +13,9 @@ import Control.Monad.State
 import Lens.Micro.Platform
 
 import Reducer.LLVM.Base
-import Grin
-import TypeEnv hiding (typeOfVal)
-import Pretty
+import Grin.Grin
+import Grin.TypeEnv hiding (typeOfVal)
+import Grin.Pretty
 
 -- TODO: replace this module with a more generic one that could be used by other components also
 

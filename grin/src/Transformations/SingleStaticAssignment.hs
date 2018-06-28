@@ -1,15 +1,15 @@
 {-# LANGUAGE LambdaCase #-}
 module Transformations.SingleStaticAssignment where
 
-import Grin
 import Control.Arrow (first)
 import Data.Functor.Foldable
 import Data.Monoid hiding (Alt)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-
-import Transformations.Util
 import Control.Monad.State
+
+import Grin.Grin
+import Transformations.Util
 
 type VarM a = State (Set.Set Name, Int) a
 

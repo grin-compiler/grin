@@ -3,7 +3,7 @@
 
 module Reducer.LLVM.JIT where
 
-import Grin (Val(..))
+import Grin.Grin (Val(..))
 import Reducer.Base (RTVal(..))
 import Data.String
 

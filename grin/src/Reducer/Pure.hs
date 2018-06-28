@@ -14,8 +14,8 @@ import Text.Printf
 
 import Reducer.Base
 import Reducer.PrimOps
-import Grin
-import Pretty
+import Grin.Grin
+import Grin.Pretty
 
 prettyDebug :: Pretty a => a -> String
 prettyDebug = show . plain . pretty

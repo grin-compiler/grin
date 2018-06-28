@@ -1,13 +1,13 @@
 {-# LANGUAGE LambdaCase, BangPatterns #-}
-module Check where
+module Test.Check where
 
 import AbstractInterpretation.HPTResult
 import Control.Arrow
 import Data.Functor.Foldable
 import Data.Maybe
 import Data.Monoid
-import Grin
-import PrimOps
+import Grin.Grin
+import Test.PrimOps
 
 import Data.List       as List
 import Data.Map.Strict as Map

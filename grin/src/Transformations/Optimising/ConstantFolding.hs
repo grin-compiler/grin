@@ -8,8 +8,7 @@ import Data.Functor.Foldable
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 
-import Grin
-import Pretty
+import Grin.Grin
 
 {-
 HINT:

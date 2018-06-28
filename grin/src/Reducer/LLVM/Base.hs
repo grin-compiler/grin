@@ -13,8 +13,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Vector (Vector)
 
-import Grin
-import qualified TypeEnv
+import Grin.Grin as Grin
+import qualified Grin.TypeEnv as TypeEnv
 
 import LLVM.AST as LLVM hiding (callingConvention)
 import LLVM.AST.Type as LLVM

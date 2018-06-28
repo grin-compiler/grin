@@ -1,11 +1,11 @@
 module TestSpec where
 
-import Test
+import Test.Test
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Control.DeepSeq
-import Check
+import Test.Check
 
 import Data.List (nub)
 import qualified Data.Set as Set

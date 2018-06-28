@@ -5,7 +5,6 @@ import Control.Arrow ((***), second)
 import Data.Function
 import Data.Map (Map)
 import Data.Maybe
-import Grin
 import Data.List (intercalate, foldl')
 import qualified Data.Map as Map
 import qualified Data.List as List
@@ -13,9 +12,10 @@ import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Data.Functor.Infix
 import Control.Monad.State
-import VarGen
+import Test.VarGen
 import Test.Hspec
 
+import Grin.Grin
 
 
 type FreshM a = State Int a

@@ -7,7 +7,7 @@ import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
 import Frontend.Lambda.Syntax
-import Grin (isPrimName)
+import Grin.Grin (isPrimName)
 
 printLambda :: Exp -> IO ()
 printLambda exp = putDoc (pretty exp) >> putStrLn ""

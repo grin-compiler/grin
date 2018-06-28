@@ -1,4 +1,4 @@
-module PrimOps where
+module Test.PrimOps where
 
 import Data.Map.Strict as Map
 

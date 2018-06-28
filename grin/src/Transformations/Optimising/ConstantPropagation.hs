@@ -5,8 +5,7 @@ import Text.Printf
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable as Foldable
-import Grin
-import Pretty
+import Grin.Grin
 import Transformations.Util
 
 type Env = Map Val Val

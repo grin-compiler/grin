@@ -1,4 +1,4 @@
-module Gspec where
+module Test.Gspec where
 
 import Control.Monad (zipWithM_)
 import Test.QuickCheck hiding (generate, sample)

@@ -1,10 +1,10 @@
-module Assertions where
+module Test.Assertions where
 
 import Test.Hspec
 
-import Grin
-import Pretty
-import TypeEnv
+import Grin.Grin
+import Grin.Pretty
+import Grin.TypeEnv
 
 class SameAs a where
   sameAs :: a -> a -> IO ()

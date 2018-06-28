@@ -5,11 +5,11 @@ import Control.Monad
 import Test.Hspec
 import Test.QuickCheck
 import Transformations.Optimising.ConstantFolding
-import Check
-import Grin
-import GrinTH
-import Test
-import Assertions
+import Test.Check
+import Grin.Grin
+import Grin.GrinTH
+import Test.Test
+import Test.Assertions
 
 
 spec :: Spec

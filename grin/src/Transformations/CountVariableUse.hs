@@ -10,7 +10,7 @@ import qualified Data.Foldable
 
 import Transformations.Util
 
-import Grin
+import Grin.Grin
 
 
 countVariableUse :: Exp -> Map Name Int

@@ -12,8 +12,8 @@ import Control.Monad.State
 
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
-import Grin
 
+import Grin.Grin
 import Transformations.Util
 
 -- name monad

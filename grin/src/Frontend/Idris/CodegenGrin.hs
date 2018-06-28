@@ -9,21 +9,22 @@ import Text.Printf
 import IRTS.CodegenCommon
 import IRTS.Simplified as Idris
 import IRTS.Lang as Idris
-import Grin as Grin
 import Data.Functor.Foldable
 import qualified Data.Text as Text
 import qualified Idris.Core.TT as Idris
 import Data.List
-import Pretty
 import Control.Exception
 import Control.Monad
 import Debug.Trace
 import Transformations.SingleStaticAssignment
 import Transformations.BindNormalisation
-import Pipeline
 import Text.PrettyPrint.ANSI.Leijen (ondullblack)
 import System.Process (callCommand)
 import System.Directory (removeFile)
+
+import Grin.Pretty
+import Grin.Grin as Grin
+import Pipeline.Pipeline
 
 import Frontend.Idris.PrimOps
 

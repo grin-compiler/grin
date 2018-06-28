@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE LambdaCase, RankNTypes, ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Grin where
+module Grin.Grin where
 
 import Data.Functor.Foldable as Foldable
 import Control.DeepSeq

@@ -1,8 +1,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Frontend.Idris.PrimOps where
 
-import Grin
-import GrinTH
+import Grin.Grin
+import Grin.GrinTH
 
 
 idrisPrimOps = [prog|

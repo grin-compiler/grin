@@ -2,7 +2,7 @@
 module Transformations.Optimising.UpdateElimination where
 
 import Data.Functor.Foldable as Foldable
-import Grin
+import Grin.Grin
 
 updateElimination :: Exp -> Exp
 updateElimination = ana builder where

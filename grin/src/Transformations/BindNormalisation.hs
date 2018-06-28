@@ -3,7 +3,7 @@ module Transformations.BindNormalisation where
 
 import Data.Functor.Foldable as Foldable
 
-import Grin
+import Grin.Grin
 
 -- Bind normalisation (EXTREMELY UGLY first version, REFACTORING NEEDED!)
 bindNormalisation :: Exp -> Exp

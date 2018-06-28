@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections, LambdaCase #-}
 
-module ParseGrin (parseGrin, parseProg, parseDef, parseExpr) where
+module Grin.ParseGrin (parseGrin, parseProg, parseDef, parseExpr) where
 
 import Data.Void
 import Control.Applicative (empty)
@@ -9,7 +9,7 @@ import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
-import Grin
+import Grin.Grin
 
 keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "#True", "#False"]
 

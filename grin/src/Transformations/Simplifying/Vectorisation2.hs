@@ -14,8 +14,8 @@ import Text.PrettyPrint.ANSI.Leijen (pretty)
 
 import Text.Printf
 
-import Grin
-import TypeEnv
+import Grin.Grin
+import Grin.TypeEnv
 
 import Control.Monad.State
 

@@ -16,81 +16,81 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
-    Check
-    Eval
-    Grin
-    GrinTH
-    TypeEnv
-    TypeCheck
-    Optimizations
-    Pretty
-    PrettyLint
-    PrimOps
-    ParseGrin
+    AbstractInterpretation.CodeGen
+    AbstractInterpretation.HPTResult
+    AbstractInterpretation.IR
+    AbstractInterpretation.PrettyHPT
+    AbstractInterpretation.PrettyIR
+    AbstractInterpretation.Reduce
+    Frontend.Idris.CodegenGrin
+    Frontend.Idris.PrimOps
+    Frontend.Lambda.CodeGen
+    Frontend.Lambda.FromCore
+    Frontend.Lambda.FromSTG
+    Frontend.Lambda.Parse
+    Frontend.Lambda.Pretty
+    Frontend.Lambda.PrimOps
+    Frontend.Lambda.Syntax
+    Grin.Grin
+    Grin.GrinTH
+    Grin.Lint
+    Grin.ParseGrin
+    Grin.Pretty
+    Grin.PrettyLint
+    Grin.Statistics
+    Grin.TypeCheck
+    Grin.TypeEnv
+    Pipeline.Eval
+    Pipeline.Optimizations
+    Pipeline.Pipeline
     Reducer.Base
-    Reducer.PrimOps
-    Reducer.Pure
     Reducer.IO
     Reducer.LLVM.Base
-    Reducer.LLVM.InferType
-    Reducer.LLVM.TypeGen
     Reducer.LLVM.CodeGen
-    Reducer.LLVM.PrimOps
+    Reducer.LLVM.InferType
     Reducer.LLVM.JIT
-    Test
-    Gspec
-    Statistics
-    Lint
-    Transformations.EffectMap
-    Transformations.MangleNames
-    Transformations.CountVariableUse
-    Transformations.GenerateEval
+    Reducer.LLVM.PrimOps
+    Reducer.LLVM.TypeGen
+    Reducer.PrimOps
+    Reducer.Pure
+    Test.Assertions
+    Test.Check
+    Test.Grammar
+    Test.Gspec
+    Test.PrimOps
+    Test.Test
+    Test.VarGen
     Transformations.BindNormalisation
-    Transformations.SingleStaticAssignment
+    Transformations.CountVariableUse
+    Transformations.EffectMap
+    Transformations.GenerateEval
+    Transformations.MangleNames
     Transformations.Names
-    Transformations.Util
+    Transformations.SingleStaticAssignment
     Transformations.UnitPropagation
-    Transformations.Simplifying.Vectorisation
-    Transformations.Simplifying.Vectorisation2
-    Transformations.Simplifying.SplitFetch
+    Transformations.Util
+    Transformations.Optimising.ArityRaising
+    Transformations.Optimising.CaseCopyPropagation
+    Transformations.Optimising.CaseHoisting
+    Transformations.Optimising.ConstantFolding
+    Transformations.Optimising.ConstantPropagation
+    Transformations.Optimising.CopyPropagation
+    Transformations.Optimising.CSE
+    Transformations.Optimising.DeadParameterElimination
+    Transformations.Optimising.DeadProcedureElimination
+    Transformations.Optimising.DeadVariableElimination
+    Transformations.Optimising.EvaluatedCaseElimination
+    Transformations.Optimising.GeneralizedUnboxing
+    Transformations.Optimising.Inlining
+    Transformations.Optimising.SparseCaseOptimisation
+    Transformations.Optimising.TrivialCaseElimination
+    Transformations.Optimising.UpdateElimination
     Transformations.Simplifying.CaseSimplification
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch2
-    Transformations.Optimising.EvaluatedCaseElimination
-    Transformations.Optimising.TrivialCaseElimination
-    Transformations.Optimising.SparseCaseOptimisation
-    Transformations.Optimising.UpdateElimination
-    Transformations.Optimising.CaseHoisting
-    Transformations.Optimising.CaseCopyPropagation
-    Transformations.Optimising.CopyPropagation
-    Transformations.Optimising.ConstantPropagation
-    Transformations.Optimising.DeadProcedureElimination
-    Transformations.Optimising.DeadVariableElimination
-    Transformations.Optimising.DeadParameterElimination
-    Transformations.Optimising.CSE
-    Transformations.Optimising.Inlining
-    Transformations.Optimising.ArityRaising
-    Transformations.Optimising.ConstantFolding
-    Transformations.Optimising.GeneralizedUnboxing
-    AbstractInterpretation.HPTResult
-    AbstractInterpretation.PrettyHPT
-    AbstractInterpretation.PrettyIR
-    AbstractInterpretation.IR
-    AbstractInterpretation.CodeGen
-    AbstractInterpretation.Reduce
-    Frontend.Lambda.Syntax
-    Frontend.Lambda.Parse
-    Frontend.Lambda.Pretty
-    Frontend.Lambda.CodeGen
-    Frontend.Lambda.PrimOps
-    Frontend.Lambda.FromSTG
-    Frontend.Lambda.FromCore
-    Frontend.Idris.CodegenGrin
-    Frontend.Idris.PrimOps
-    VarGen
-    Pipeline
-    Assertions
-    Grammar
+    Transformations.Simplifying.SplitFetch
+    Transformations.Simplifying.Vectorisation
+    Transformations.Simplifying.Vectorisation2
 
   build-depends:
     base,

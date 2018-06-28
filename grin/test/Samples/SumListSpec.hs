@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Samples.SumListSpec where
 
-import Pipeline
+import Pipeline.Pipeline
 
 import Test.Hspec
-import GrinTH
-import Test hiding (newVar)
-import Assertions
+import Grin.GrinTH
+import Test.Test hiding (newVar)
+import Test.Assertions
 
 runTests :: IO ()
 runTests = hspec spec

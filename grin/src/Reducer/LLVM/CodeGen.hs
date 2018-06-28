@@ -37,10 +37,10 @@ import LLVM.Module
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
-import Grin
-import Pretty
-import TypeEnv hiding (Type, typeOfVal)
-import qualified TypeEnv
+import Grin.Grin
+import Grin.Pretty
+import Grin.TypeEnv hiding (Type, typeOfVal)
+import qualified Grin.TypeEnv as TypeEnv
 import Reducer.LLVM.Base
 import Reducer.LLVM.PrimOps
 import Reducer.LLVM.TypeGen

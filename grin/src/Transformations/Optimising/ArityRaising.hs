@@ -11,8 +11,6 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
-import Grin
-import TypeEnv
 import Debug.Trace
 import Lens.Micro.Platform
 import qualified Data.Vector as Vector
@@ -23,6 +21,9 @@ import Data.List as List
 import Control.Monad.State
 import Transformations.Util (apoM)
 import Transformations.BindNormalisation (bindNormalisation)
+
+import Grin.Grin
+import Grin.TypeEnv
 
 
 type VarM a = State (Int, TypeEnv) a
