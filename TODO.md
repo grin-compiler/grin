@@ -2,13 +2,10 @@
 
 - distinguish Val constuctors (LambdaPattern ConstansPattern SimpleValue Value)
 - rename Val types to a more descriptive names; see above
-- GRIN AST gen EDSL
 - better name representation instead of strings
 - generate unique names when branching (unique name A + branching direction = unique name B)
 - efficient substitution
 - type safer and easy to use AST
-- add simple frontend language with grin conversion (GHC/STG -> GRIN)
-- generate apply
 
 
 # CodeGen
