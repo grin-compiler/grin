@@ -84,12 +84,17 @@ isBasicValue = \case
   Lit _    -> True
   _        -> False
 
-isSimpleExp :: Exp -> Bool
-isSimpleExp = \case
+isPrimitiveExp :: Exp -> Bool
+isPrimitiveExp = \case
   SApp    _ _ -> True
   SReturn _   -> True
   SStore  _   -> True
   SFetchI _ _ -> True
   SUpdate _ _ -> True
+  _           -> False
+
+isSimpleExp :: Exp -> Bool
+isSimpleExp e | isPrimitiveExp e = True
+isSimpleExp e = case e of
   SBlock  _   -> True
   _           -> False

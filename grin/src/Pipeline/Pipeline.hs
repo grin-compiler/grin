@@ -137,7 +137,7 @@ transformation n = \case
   SparseCaseOptimisation          -> noEffectMap sparseCaseOptimisation
   DeadVariableElimination         -> deadVariableElimination
   CommonSubExpressionElimination  -> noEffectMap commonSubExpressionElimination
-  CaseCopyPropagation             -> noEffectMap caseCopyPropagation
+  CaseCopyPropagation             -> noEffectMap $ noTypeEnv caseCopyPropagation
   CaseHoisting                    -> noEffectMap caseHoisting
   GeneralizedUnboxing             -> noEffectMap generalizedUnboxing
   ArityRaising                    -> noEffectMap arityRaising
