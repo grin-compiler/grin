@@ -51,6 +51,14 @@ _Var :: Traversal' Val Name
 _Var f (Var name) = Var <$> f name
 _Var _ rest       = pure rest
 
+_CNode :: Traversal' Val (Tag, [Val])
+_CNode f (ConstTagNode tag params) = uncurry ConstTagNode <$> f (tag, params)
+_CNode _ rest = pure rest
+
+_VarNode :: Traversal' Val (Name, [Val])
+_VarNode f (VarTagNode name params) = uncurry VarTagNode <$> f (name, params)
+_VarNode _ rest = pure rest
+
 isBasicCPat :: CPat -> Bool
 isBasicCPat = \case
   TagPat _ -> True

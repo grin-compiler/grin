@@ -22,6 +22,7 @@ library
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
     AbstractInterpretation.Reduce
+    AbstractInterpretation.Model
     Frontend.Idris.CodegenGrin
     Frontend.Idris.PrimOps
     Frontend.Lambda.CodeGen
