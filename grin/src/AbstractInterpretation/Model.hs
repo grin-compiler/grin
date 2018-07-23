@@ -20,15 +20,6 @@ import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import AbstractInterpretation.PrettyHPT
 
 
--- The abstract environment contains the varaibles of the GRIN program, plus one variable for each procedure,
--- which denotes the return value of such a call.
-
-{-
-TODO
- * Change Equations to a command of a program, as they are just copying information from one register to another.
- * Change the order of computation calls, set the partial computation after the local one.
--}
-
 type Loc = Int
 
 data FParam = FParam Name Int deriving (Show, Eq, Ord)
@@ -40,21 +31,25 @@ data VE = VE Name   (Ref TypeSet)
         | FP FParam (Ref TypeSet)
         | FR Name   (Ref TypeSet)
         | Access Name (Name, Tag, Int)
+        deriving (Show, Eq)
+data HE = HE Int (Ref NodeSet)
         | Fetch Name (Ref NodeSet)
         | Update Name (Ref NodeSet)
         deriving (Show, Eq)
-data HE = HE Int (Ref NodeSet) deriving (Show, Eq)
 
-data Equations = Equations
-  { _env  :: [VE]
-  , _heap :: [HE]
-  } deriving (Show, Eq)
+data Equation = Env VE | Heap HE deriving (Show, Eq)
+
+newtype Equations = Equations { _equationL :: [Equation] }
+  deriving (Show, Eq)
 
 makeLenses ''Equations
 makeLenses ''NodeSet
 
 deriveEquations :: Exp -> Equations
-deriveEquations = snd . flip execState (0, mempty) . para buildEquations
+deriveEquations
+  = snd
+  . flip execState (0, mempty)
+  . para buildEquations
 
 testDeriveEquations :: Doc
 testDeriveEquations = pretty $ deriveEquations testExp
@@ -62,7 +57,7 @@ testDeriveEquations = pretty $ deriveEquations testExp
 type BuildState = (Int, Equations)
 
 maxLoc = _1
-equations = _2
+equations = _2 . equationL
 
 class SetEquation lhs rhs where
   setEq :: lhs -> rhs -> State BuildState ()
@@ -114,7 +109,7 @@ buildEquations = \case
       | match _CNode pat || match _Var pat -> do
           clhs >> crhs
           case pat of
-            Var var -> equations . env %= (:) (Fetch var (Ind name))
+            Var var -> equations %= (:) (Heap $ Fetch var $ Ind name)
             (ConstTagNode tag ps) -> todo
       | otherwise -> do
           clhs >> crhs
@@ -140,8 +135,8 @@ buildEquations = \case
 
     SUpdateF var val ->
       case val of
-        Var ref -> equations . env %= (:) (Update var (Ind ref))
-        (ConstTagNode t ps) -> equations . env %= (:) (Update var $ Dir $ valToNodeSet val)
+        Var ref -> equations %= (:) (Heap $ Update var $ Ind ref)
+        (ConstTagNode t ps) -> equations  %= (:) (Heap $ Update var $ Dir $ valToNodeSet val)
         _ -> warning $ "Invalid value for an update: " ++ show val
 
     SAppF name params ->
@@ -172,8 +167,8 @@ isValueNode :: Tag -> Bool
 isValueNode (Tag t _) = t == C
 
 instance Monoid Equations where
-  mempty = Equations mempty mempty
-  mappend (Equations e1 h1) (Equations e2 h2) = Equations (e1 `mappend` e2) (h1 `mappend` h2)
+  mempty = Equations mempty
+  mappend (Equations e1) (Equations e2) = Equations (e1 `mappend` e2)
 
 instance Monoid NodeSet where
   mempty = NodeSet mempty
@@ -185,14 +180,14 @@ instance Monoid TypeSet where
 
 instance SetEquation Name Loc where setEq n l = setEq n (T_Location l)
 instance SetEquation Name SimpleType where setEq n t = setEq n (typeSet t)
-instance SetEquation Name TypeSet where setEq n ts = equations . env  %= (:) (VE n (Dir ts))
-instance SetEquation Name Name    where setEq n nr = equations . env  %= (:) (VE n (Ind nr))
-instance SetEquation Name (Name, Tag, Int) where setEq n nti = equations. env %= (:) (Access n nti)
-instance SetEquation Name FParam where setEq n fp = equations . env %= (:) (VE n (IndFP fp))
-instance SetEquation FParam Name  where setEq fp nr = equations . env %= (:) (FP fp (Ind nr))
-instance SetEquation FParam TypeSet where setEq fp ts = equations . env %= (:) (FP fp (Dir ts))
-instance SetEquation Loc  Name    where setEq l n  = equations . heap %= (:) (HE l (Ind n))
-instance SetEquation Loc  Val     where setEq l val = equations . heap %= (:) (HE l $ Dir $ valToNodeSet val)
+instance SetEquation Name TypeSet where setEq n ts = equations %= (:) (Env $ VE n $ Dir ts)
+instance SetEquation Name Name    where setEq n nr = equations %= (:) (Env $ VE n $ Ind nr)
+instance SetEquation Name (Name, Tag, Int) where setEq n nti = equations%= (:) (Env $ Access n nti)
+instance SetEquation Name FParam where setEq n fp = equations %= (:) (Env $ VE n $ IndFP fp)
+instance SetEquation FParam Name  where setEq fp nr = equations %= (:) (Env $ FP fp $ Ind nr)
+instance SetEquation FParam TypeSet where setEq fp ts = equations %= (:) (Env $ FP fp $ Dir ts)
+instance SetEquation Loc  Name    where setEq l n  = equations %= (:) (Heap $ HE l $ Ind n)
+instance SetEquation Loc  Val     where setEq l val = equations %= (:) (Heap $ HE l $ Dir $ valToNodeSet val)
 
 warning :: String -> State BuildState ()
 warning _ = pure ()
@@ -307,6 +302,8 @@ instance Pretty TypeSet where
 instance Pretty HE where
   pretty = \case
     HE loc ref -> mconcat [pretty loc, text " := ", pretty ref]
+    Fetch name val -> mconcat [pretty name, text " := ", text "FETCH ", pretty val]
+    Update name val -> mconcat [text "UPDATE ", pretty name, text " ", pretty val]
 
 instance Pretty VE where
   pretty = \case
@@ -314,14 +311,14 @@ instance Pretty VE where
     FP param val -> mconcat [pretty param, text " := ", pretty val]
     FR name  val -> mconcat [pretty name, text " := ", pretty val]
     Access name (nm1,t,i) -> mconcat [pretty name, text " := ", text nm1 , text "|", pretty t, text "|", text $ show i]
-    Fetch name val -> mconcat [pretty name, text " := ", text "FETCH ", pretty val]
-    Update name val -> mconcat [text "UPDATE ", pretty name, text " ", pretty val]
+
+instance Pretty Equation where
+  pretty = \case
+    Env e  -> pretty e
+    Heap e -> pretty e
 
 instance Pretty Equations where
-  pretty (Equations env heap) = vsep
-    [ text "Environment" <$$> vsep (fmap pretty env)
-    , text "Heap" <$$> vsep (fmap pretty heap)
-    ]
+  pretty (Equations env) = vsep (fmap pretty env)
 
 -- * Test
 
