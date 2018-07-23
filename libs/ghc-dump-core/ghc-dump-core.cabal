@@ -1,0 +1,42 @@
+name:                ghc-dump-core
+version:             0.1.0.0
+synopsis:            An AST and compiler plugin for dumping GHC's Core representation.
+description:
+  @ghc-dump@ is a library, GHC plugin, and set of tools for recording and
+  analysing GHC's Core representation. The plugin is compatible with GHC 7.10
+  through 8.3, exporting a consistent (albeit somewhat lossy) representation
+  across these versions. The AST is encoded as CBOR, which is small and easy to
+  deserialise.
+  .
+  This package provides the AST and compiler plugin. See the @ghc-dump-util@
+  package for a useful command-line tool for working with dumps produced by this
+  plugin.
+  .
+  = Usage
+  .
+  "GhcDump.Plugin" provides a Core-to-Core plugin which dumps a representation
+  of the Core AST to a file after every Core-to-Core pass. To use it, simply
+  install this package and add @-fplugin GhcDump.Plugin@ to your GHC
+  command-line. See the [README](https://github.com/bgamari/ghc-dump)
+  for further analysis tips.
+
+license:             BSD3
+license-file:        LICENSE
+author:              Ben Gamari
+maintainer:          ben@well-typed.com
+copyright:           (c) 2017 Ben Gamari
+category:            Development
+build-type:          Simple
+tested-with:         GHC==7.10.3, GHC==8.0.2, GHC==8.2.2
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     GhcDump_Convert, GhcDump_Ast
+  ghc-options:         -Wall
+  other-extensions:    GeneralizedNewtypeDeriving
+  build-depends:       base,
+                       bytestring,
+                       filepath,
+                       binary,
+                       ghc
+  default-language:    Haskell2010
