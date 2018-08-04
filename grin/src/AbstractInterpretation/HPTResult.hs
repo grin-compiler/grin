@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies #-}
 module AbstractInterpretation.HPTResult where
 
 import Data.Int
@@ -10,6 +10,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 
 import Lens.Micro.Platform
+import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
 import qualified Grin.TypeEnv as TypeEnv
@@ -71,3 +72,13 @@ toSimpleType ty | ty < 0 = case ty of
   -5 -> T_Bool
   _ -> error $ "unknown type code " ++ show ty
 toSimpleType l = T_Location $ fromIntegral l
+
+type instance Index   (Vector a) = Int
+type instance IxValue (Vector a) = a
+
+instance At (Vector a) where
+  at k = lens (V.!? k) (\v -> maybe v (\a -> v V.// [(k, a)]))
+
+_T_Location :: Traversal' SimpleType Int
+_T_Location f (T_Location l) = T_Location <$> f l
+_T_Location _ rest           = pure rest
