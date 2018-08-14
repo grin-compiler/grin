@@ -26,6 +26,7 @@ library
     Frontend.Idris.CodegenGrin
     Frontend.Idris.PrimOps
     Frontend.Lambda.CodeGen
+    Frontend.Lambda.FromDumpCore
     Frontend.Lambda.FromCore
     Frontend.Lambda.FromSTG
     Frontend.Lambda.Parse
@@ -128,6 +129,8 @@ library
     extra,
     logict,
     QuickCheck,
+    ghc-dump-core,
+    ghc-dump-util,
     ghc,
     idris,
     neat-interpolation,
@@ -240,6 +243,18 @@ executable lambda-grin
                      , megaparsec
                      , ansi-wl-pprint
                      , grin
+  default-language:    Haskell2010
+
+executable ghc-core-grin
+  hs-source-dirs:      app
+  main-is:             GHCCoreGrin.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , mtl
+                     , megaparsec
+                     , ansi-wl-pprint
+                     , grin
+                     , ghc-dump-util
   default-language:    Haskell2010
 
 executable ghc-grin

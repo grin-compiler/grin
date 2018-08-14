@@ -72,6 +72,8 @@ stack build
 ```
 stack exec -- grin grin/grin/opt-stages-high-level/stage-00.grin
 ```
+## How to Contribute
+See: [Issues / Tasks for new contributors](https://github.com/grin-tech/grin/issues/3)
 
 ## Example Front-End
 

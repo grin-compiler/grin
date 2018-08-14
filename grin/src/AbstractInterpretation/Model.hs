@@ -1,16 +1,17 @@
 {-# LANGUAGE TemplateHaskell, LambdaCase, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, QuasiQuotes #-}
+{-# LANGUAGE DeriveFunctor, RankNTypes #-}
 module AbstractInterpretation.Model where
 
 import Grin.Grin
 import Grin.TH
-import AbstractInterpretation.HPTResult (SimpleType(..))
+import AbstractInterpretation.HPTResult (SimpleType(..), HPTResult(..))
+import qualified AbstractInterpretation.HPTResult as HPT
 
 import Data.Functor.Foldable
 import Lens.Micro.Platform
 import Data.Map as Map
--- import Control.Comonad.Trans.Env
-import Control.Monad.Identity hiding (fix)
-import Debug.Trace
+import Data.Monoid ((<>))
+import Control.Monad.Identity
 import Control.Monad.State
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -18,51 +19,199 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import AbstractInterpretation.PrettyHPT
-
-
--- The abstract environment contains the varaibles of the GRIN program, plus one variable for each procedure,
--- which denotes the return value of such a call.
+import Data.Maybe as Maybe
+import Data.List as List (foldl', nub)
+import Data.Bifunctor
+import Debug.Trace
 
 {-
-TODO
- * Change Equations to a command of a program, as they are just copying information from one register to another.
- * Change the order of computation calls, set the partial computation after the local one.
+TODO:
+[ ] Context sensitive indirection handling
+[ ] Handle VarTagNodes
+[ ] Handle updates
+[ ] Sharing analysis
+[ ] Implement warnings
+[ ] Check emptyness of nodeset and simpletypes when converting from TypeSet
+[ ] Create test case
+[ ] Implement Created-by-analysis
 -}
 
 type Loc = Int
 
+data Ind = IN Name | IF Name | IFP FParam deriving (Show, Eq, Ord)
+
+data Ref i a = Ind i | Dir a deriving (Show, Eq, Ord, Functor) -- TODO: Improve indirection
+
+newtype FName = FName { unFName :: Name } deriving (Show, Eq, Ord)
+
 data FParam = FParam Name Int deriving (Show, Eq, Ord)
-data Ref a = Ind Name | IndFP FParam | Dir a deriving (Show, Eq, Ord)
-type PrimitiveTypeSet = Set.Set (Ref SimpleType)
-data TypeSet = TypeSet { _simpleTypes :: PrimitiveTypeSet , _nodes :: NodeSet } deriving (Show, Eq)
-newtype NodeSet = NodeSet { _nodeSet :: Map.Map Tag [PrimitiveTypeSet] } deriving (Show, Eq)
-data VE = VE Name   (Ref TypeSet)
-        | FP FParam (Ref TypeSet)
-        | FR Name   (Ref TypeSet)
-        | Access Name (Name, Tag, Int)
-        | Fetch Name (Ref NodeSet)
-        | Update Name (Ref NodeSet)
-        deriving (Show, Eq)
-data HE = HE Int (Ref NodeSet) deriving (Show, Eq)
 
-data Equations = Equations
-  { _env  :: [VE]
-  , _heap :: [HE]
-  } deriving (Show, Eq)
+type PrimitiveTypeSet = Set.Set (Ref Ind SimpleType)
 
-makeLenses ''Equations
+data TypeSet = TypeSet { _simpleTypes :: PrimitiveTypeSet , _nodes :: NodeSet } deriving (Show, Eq, Ord)
+
+newtype NodeSet = NodeSet { _nodeSet :: Map.Map Tag [PrimitiveTypeSet] } deriving (Show, Eq, Ord)
+
+data FetchTo
+  = FetchName Name
+  | FetchNode Name Tag Int
+  | FetchFunc Name
+  deriving (Show, Eq, Ord)
+
+data Equation
+  = VVar   Name   (Ref Ind TypeSet)
+  | Param  FParam (Ref Ind TypeSet)
+  | Fun    Name   (Ref Ind TypeSet)
+  | Access Name   (Ref Ind TypeSet, Tag, Int)
+  -- Heap
+  | Store  Int  (Ref Ind NodeSet)
+  | Fetch  FetchTo (Ref Ind TypeSet) -- Fetches from pointer variables
+  | Update Name (Ref Ind NodeSet)
+  deriving (Show, Eq, Ord)
+
+data BuildState = BuildState
+  { _maxLoc :: Int
+  , _equations :: [Equation]
+  , _functions :: Map.Map Name Int -- Arity of the function
+  , _nonLinearVars :: Set.Set Name
+  }
+  deriving (Show)
+
+isDir :: Ref i a -> Bool
+isDir = \case
+  Dir _ -> True
+  _     -> False
+
 makeLenses ''NodeSet
+makeLenses ''BuildState
 
-deriveEquations :: Exp -> Equations
-deriveEquations = snd . flip execState (0, mempty) . para buildEquations
+computeResult :: BuildState -> HPTResult
+computeResult (BuildState maxLoc equations functions _nonLinearVars) =
+    snd $ until (traceShow "HPT Step" . uncurry (==)) (onPair smallStep) (zeroResult, startResult)
+  where
+    registers = Set.fromList $ flip Maybe.mapMaybe (traceShow (pretty equations) equations) $ \case
+      VVar   n _ -> Just n
+      Access n _ -> Just n
+      Fetch  (FetchName n) _ -> Just n
+      Fetch  (FetchNode n  _ _) _ -> Just n
+      Update n _ -> Just n
+      _          -> Nothing
+    primitiveFunctions (n, (ps, r)) = Fun n (Dir r) : fmap (\(i, p) -> Param (FParam n i) (Dir p)) ([1..] `zip` ps)
+    primitiveFunctionEquations =
+      concatMap primitiveFunctions
+      $ catMaybes
+      $ Map.elems
+      $ Map.mapWithKey (\k v -> (,) k <$> primitive k) functions
+    zeroResult = HPTResult mempty mempty mempty
+    startResult = HPTResult
+      (V.replicate maxLoc mempty)
+      (Map.fromSet (const mempty) registers)
+      (Map.map (\n -> (mempty, V.replicate n mempty)) functions)
+    onPair f (_, b) = (b, f b)
+    smallStep res = List.foldl' oneStep res (equations <> primitiveFunctionEquations)
 
-testDeriveEquations :: Doc
+    oneStep :: HPTResult -> Equation -> HPTResult
+    oneStep r = \case
+      VVar var ts ->
+        r & HPT.register . at var . _Just %~ mappend (calcTypeSet r ts)
+
+      Param (FParam n i) ts -> r & HPT.function . at n . _Just . _2 . at (i - 1) . _Just %~ mappend (calcTypeSet r ts)
+
+      Fun n ts ->
+        r & HPT.function . at n . _Just . _1 %~ mappend (calcTypeSet r ts)
+
+      Access var (ref, tag, i) ->
+        let (HPT.TypeSet _ (HPT.NodeSet nodeSet)) = calcTypeSet r ref -- TODO: Check if simpletypeset is empty
+            node = Map.lookup tag nodeSet
+            mith  = node >>= (V.!? (i - 1))
+        in r & (maybe id (\simpleTypeSet -> HPT.register . at var . _Just %~ mappend (HPT.TypeSet simpleTypeSet mempty)) mith)
+
+      Store l ns -> r & HPT.memory . at l . _Just %~ mappend (HPT._nodeSet (calcNodeSet r ns)) -- TODO: check if typeset is not empty
+
+      Fetch val ts0 ->
+        let HPT.TypeSet ts1 _ = calcTypeSet r ts0
+            setVar = case val of
+              FetchName n -> HPT.register . at n . _Just
+              FetchNode n _ _ -> HPT.register . at n . _Just
+              FetchFunc n -> HPT.function . at n . _Just . _1
+            locations = Set.filter (match HPT._T_Location) ts1
+            fetch r l = fromMaybe mempty $ r ^. HPT.memory . at l
+            fetchTypeName r l = HPT.TypeSet mempty (fetch r l)
+            fetchTypeNode tag i r l = (HPT.TypeSet (fromMaybe mempty $ Map.lookup tag (HPT._nodeTagMap (fetch r l)) >>= (V.!? (i - 1))) mempty)
+            fetchTypeFunc r l = HPT.TypeSet mempty (fetch r l)
+            fetchTypeSet = case val of
+              FetchName n -> fetchTypeName
+              FetchNode _ tag i -> fetchTypeNode tag i
+              FetchFunc n -> fetchTypeFunc
+        in Set.foldl' (\r1 (T_Location l) -> r1 & setVar %~ mappend (fetchTypeSet r1 l))
+                      r
+                      locations
+
+
+      -- TODO: Sharing analysis is required to not to bloat the heap with unrelated nodes.
+      Update n ns0 -> r
+{-
+        let (HPT.TypeSet ts1 _) = valuesOfTypeSet [] r (Ind n)
+            locations = Set.filter (match HPT._T_Location) ts1
+            (HPT.TypeSet _ ns1) = valuesOfNodeSet [] r ns0
+        in Set.foldl' (\r1 (T_Location l) -> r1 & HPT.memory . at l . _Just %~ mappend ns1) r locations
+-}
+    isFunction :: Name -> HPTResult -> Bool
+    isFunction n (HPTResult _ _ fs) = isJust $ Map.lookup n fs
+
+calcNodeSet :: HPTResult -> Ref Ind NodeSet -> HPT.TypeSet
+calcTypeSet :: HPTResult -> Ref Ind TypeSet -> HPT.TypeSet
+(calcNodeSet, calcTypeSet) = (valuesOfNodeSet [], valuesOfTypeSet [])
+  where
+    valuesOfSimpleTypeSet :: [Ref Ind ()] -> HPTResult -> Ref Ind SimpleType -> HPT.TypeSet
+    valuesOfSimpleTypeSet ps r p | void p `elem` ps = traceShow ("Circle simple type set: " ++ show ps) mempty
+    valuesOfSimpleTypeSet ps r p = case p of
+      Dir t -> HPT.TypeSet (Set.singleton t) mempty
+      rest  -> valuesOfTypeSet ps r (const mempty <$> rest)
+
+    valuesOfNodeSet :: [Ref Ind ()] -> HPTResult -> Ref Ind NodeSet -> HPT.TypeSet
+    valuesOfNodeSet ps r p | void p `elem` ps = traceShow ("Circle node set: " ++ show ps) mempty
+    valuesOfNodeSet ps r p = case p of
+      Dir (NodeSet nodeSet1) ->
+        let nodeSet3 = Map.map (fmap (Set.map (valuesOfSimpleTypeSet ps r))) nodeSet1
+            nodeSet4 = Map.map (V.fromList . fmap (joinSet . Set.map HPT._simpleType)) nodeSet3
+        in HPT.TypeSet mempty (HPT.NodeSet nodeSet4)
+      Ind (IN n) -> fromMaybe mempty $ Map.lookup n $ _register r
+      Ind (IF n) -> maybe mempty fst $ Map.lookup n $ _function r
+      Ind (IFP (FParam n i)) -> fromMaybe mempty $ do -- simpletype should be empty
+        (_, params) <- Map.lookup n $ _function r
+        pure (params V.! (i - 1))
+      where
+        joinSet :: (Ord a) => Set.Set (Set.Set a) -> Set.Set a
+        joinSet = Set.unions . Set.toList
+
+    valuesOfTypeSet :: [Ref Ind ()] -> HPTResult -> Ref Ind TypeSet -> HPT.TypeSet
+    valuesOfTypeSet ps r p | void p `elem` ps = traceShow ("Circle type set: " ++ show ps) mempty
+    valuesOfTypeSet ps r p = case p of
+      Dir (TypeSet simpleTypeSet nodeSet1) ->
+        let (simpleTypeSetDir, simpleTypeSetInd1) = first (Set.map (\(Dir d) -> d)) $ Set.partition isDir simpleTypeSet
+            -- NodeSet2 should be empty
+            (HPT.TypeSet simpleTypeSetInd2 _nodeSet) = mconcat $ Set.toList $ Set.map (valuesOfSimpleTypeSet ps r) simpleTypeSetInd1
+            nodeSet2 = valuesOfNodeSet ps r (Dir nodeSet1)
+        in HPT.TypeSet (simpleTypeSetDir <> simpleTypeSetInd2) mempty <> nodeSet2
+      Ind (IN n) -> fromMaybe mempty $ Map.lookup n $ _register r
+      Ind (IF n) -> maybe mempty fst $ Map.lookup n $ _function r
+      Ind (IFP (FParam n i)) -> fromMaybe mempty $ do
+        (_, params) <- Map.lookup n $ _function r
+        pure (params V.! (i - 1))
+
+-- deriveEquations :: Exp -> Equations
+deriveEquations exp = id
+  $ computeResult
+--  $ (\x -> traceShow (pretty $ reverse $ _equations x) x)
+  $ flip execState (BuildState 0 mempty mempty mempty)
+  $ do para buildEquations exp
+       pure ()
+
+--testDeriveEquations :: Doc
 testDeriveEquations = pretty $ deriveEquations testExp
 
-type BuildState = (Int, Equations)
-
-maxLoc = _1
-equations = _2
+test1 = deriveEquations testExp
 
 class SetEquation lhs rhs where
   setEq :: lhs -> rhs -> State BuildState ()
@@ -75,28 +224,55 @@ n ~> p = setEq n p
 n ||: t = \i -> (n,t,i)
 
 fNode :: Val -> State BuildState ()
-fNode (ConstTagNode (Tag F name) params) = todo
+fNode (ConstTagNode (Tag F name) params) = forM_ ([1..] `zip` params) $ \(i, p) -> case p of
+  Var var -> FParam name i ~> var
+  rest    -> FParam name i ~> typeSet rest
 fNode _ = pure ()
 
-deriveFunctionType :: Name -> ExpF (State BuildState ()) -> State BuildState ()
-deriveFunctionType name = \case
+deriveFunctionType :: FName -> Exp -> State BuildState ()
+deriveFunctionType name = cata $ \case
   EBindF _ _ rhs -> rhs
   SUpdateF _ _ -> name ~> T_Unit
-  SAppF n _    -> name ~> n
-  SFetchIF _ _ -> todo
-  SStoreF _    -> todo
+  SAppF n _    -> name ~> FName n
+  SFetchIF n _ -> equations %= (:) (Fetch (FetchFunc (unFName name)) $ Ind (IN n))
+  SStoreF _    -> name ~> T_Unit
   SReturnF v -> case v of
     Var w -> name ~> w
     _     -> name ~> typeSet v
   rest         -> sequence_ rest
 
+calcNonLinearVariables :: Exp -> State BuildState ()
+calcNonLinearVariables exp = nonLinearVars .= Set.fromList (Map.keys $ Map.filter (>1) $ cata collect exp)
+  where
+    unions = Map.unionsWith (+)
+    collect = \case
+      ECaseF val alts -> unions (seen val : alts)
+      SStoreF val -> seen val
+      SFetchIF var _ -> seen (Var var)
+      SUpdateF var val -> unions $ fmap seen [Var var, val]
+      SReturnF val -> seen val
+      SAppF _ ps -> unions $ fmap seen ps
+      rest -> foldMap id rest
+
+    seen = \case
+      Var v -> Map.singleton v 1
+      ConstTagNode _ ps -> unions $ fmap seen ps
+      VarTagNode v ps -> unions $ fmap seen (Var v : ps)
+      _ -> Map.empty
+
 buildEquations :: ExpF (Exp, State BuildState ()) -> State BuildState ()
 buildEquations = \case
 
+    ProgramF defs -> do
+      mapM_ snd defs
+      equations %= (Set.toList . Set.fromList)
+
     DefF name params (body, cbody) -> do
-      forM_ ([1..] `zip` params) $ \(i,p) -> p ~> (FParam name i)
+      forM_ ([1..] `zip` params) $ \(i,p) -> p ~> FParam name i
+      functions %= Map.insert name (length params)
       cbody
-      cata (deriveFunctionType name) body
+      deriveFunctionType (FName name) body
+      calcNonLinearVariables body
 
     EBindF (SStore val, clhs) (Var storeVar) (rhs, crhs)
       | match _CNode val || match _Var val -> do
@@ -114,8 +290,13 @@ buildEquations = \case
       | match _CNode pat || match _Var pat -> do
           clhs >> crhs
           case pat of
-            Var var -> equations . env %= (:) (Fetch var (Ind name))
-            (ConstTagNode tag ps) -> todo
+            Var var -> equations %= (:) (Fetch (FetchName var) $ Ind (IN name))
+            (ConstTagNode tag params) ->
+              forM_ ([1..] `zip` params) $ \case
+                (i, Var pv) -> equations %= (:) (Fetch (FetchNode pv tag i) (Ind (IN name)))
+                rest        -> warning $ "Invalid parameter in fetch:" ++ show rest
+            (VarTagNode tagVar params) ->
+              warning $ "Variable tag node is not supported in HPT:" ++ show pat
       | otherwise -> do
           clhs >> crhs
           warning $ "Invalid fetch pattern: " ++ show pat
@@ -127,24 +308,51 @@ buildEquations = \case
     
     EBindF (SApp name params, clhs) pat (rhs, crhs) -> do
       case pat of
-        Var appVar -> appVar ~> name
+        Var appVar -> appVar ~> (FName name)
         val@(ConstTagNode tag params) -> do
           forM_ ([1..] `zip` params) $ \(i,p) -> case p of
             Var np -> np ~> (name ||: tag $ i)
             _ -> warning $ "Invalid pattern for app const tag binding: " ++ show (name, params, pat)
           fNode val
+        (VarTagNode tagVar params) -> todo
         _ -> warning $ "Invalid pattern for app: " ++ show (name, params, pat)
+      clhs >> crhs
+
+    EBindF (SReturn val, clhs) pat (rhs, crhs) -> do
+      case (pat, val) of
+        (Var appVar, Var valVar)
+          -> appVar ~> valVar
+        (Var appVar, val) | match _CNode val || match _Lit val
+          -> appVar ~> typeSet val
+        (Var appVar, rest)
+          -> warning $ "Invalid pattern for return: " ++ show pat
+
+        (ConstTagNode tag params, Var valVar) -> forM_ ([1..] `zip` params) $ \case
+          (i, Var pv) -> equations %= (:) (Access pv (Ind (IN valVar), tag, i))
+          rest -> warning $ "Invalid pattern for return: " ++ show rest
+        (ConstTagNode tag params, val) | match _CNode val || match _Lit val
+          -> forM_ ([1..] `zip` params) $ \case
+            (i, Var pv) -> equations %= (:) (Access pv (Dir $ typeSet val, tag, i))
+            rest -> warning $ "Invalid pattern for return: " ++ show rest
+        (ConstTagNode tag params, rest)
+          -> warning $ "Invalid pattern for return: " ++ show pat
+
+        (VarTagNode tagVar params, _) -> warning $ "Variable tag node is not supported by HPT" ++ show pat
+
       clhs >> crhs
 
     SStoreF val -> fNode val
 
     SUpdateF var val ->
       case val of
-        Var ref -> equations . env %= (:) (Update var (Ind ref))
-        (ConstTagNode t ps) -> equations . env %= (:) (Update var $ Dir $ valToNodeSet val)
+        Var ref -> equations %= (:) (Update var $ Ind (IN ref))
+        (ConstTagNode t ps) -> equations  %= (:) (Update var $ Dir $ valToNodeSet val)
         _ -> warning $ "Invalid value for an update: " ++ show val
 
-    SAppF name params ->
+    SAppF name params -> do
+      forM_ (primitive name) $ \(params, ret) ->
+        functions %= Map.insert name (length params)
+
       forM_ ([1 ..] `zip` params) $ \(i, p) -> case p of
         Lit l -> FParam name i ~> typeSet l
         Var n -> FParam name i ~> n
@@ -171,10 +379,6 @@ buildEquations = \case
 isValueNode :: Tag -> Bool
 isValueNode (Tag t _) = t == C
 
-instance Monoid Equations where
-  mempty = Equations mempty mempty
-  mappend (Equations e1 h1) (Equations e2 h2) = Equations (e1 `mappend` e2) (h1 `mappend` h2)
-
 instance Monoid NodeSet where
   mempty = NodeSet mempty
   mappend (NodeSet a) (NodeSet b) = NodeSet $ Map.unionWith (zipWith Set.union) a b
@@ -185,14 +389,19 @@ instance Monoid TypeSet where
 
 instance SetEquation Name Loc where setEq n l = setEq n (T_Location l)
 instance SetEquation Name SimpleType where setEq n t = setEq n (typeSet t)
-instance SetEquation Name TypeSet where setEq n ts = equations . env  %= (:) (VE n (Dir ts))
-instance SetEquation Name Name    where setEq n nr = equations . env  %= (:) (VE n (Ind nr))
-instance SetEquation Name (Name, Tag, Int) where setEq n nti = equations. env %= (:) (Access n nti)
-instance SetEquation Name FParam where setEq n fp = equations . env %= (:) (VE n (IndFP fp))
-instance SetEquation FParam Name  where setEq fp nr = equations . env %= (:) (FP fp (Ind nr))
-instance SetEquation FParam TypeSet where setEq fp ts = equations . env %= (:) (FP fp (Dir ts))
-instance SetEquation Loc  Name    where setEq l n  = equations . heap %= (:) (HE l (Ind n))
-instance SetEquation Loc  Val     where setEq l val = equations . heap %= (:) (HE l $ Dir $ valToNodeSet val)
+instance SetEquation Name TypeSet where setEq n ts = equations %= (:) (VVar n $ Dir ts)
+instance SetEquation Name Name    where setEq n nr = equations %= (:) (VVar n $ Ind (IN nr))
+instance SetEquation Name (Name, Tag, Int) where setEq n (tn, t, i) = equations%= (:) (Access n (Ind (IN tn), t, i))
+instance SetEquation Name FParam where setEq n fp = equations %= (:) (VVar n $ Ind (IFP fp))
+instance SetEquation Name FName where setEq n (FName fn) = equations %= (:) (VVar n $ Ind (IF fn))
+instance SetEquation FName  SimpleType where setEq (FName fn) t = equations %= (:) (Fun fn (Dir (typeSet t)))
+instance SetEquation FName  TypeSet where setEq (FName fn) ts = equations %= (:) (Fun fn (Dir ts))
+instance SetEquation FName  Name where setEq (FName fn) v = equations %= (:) (Fun fn (Ind (IN v)))
+instance SetEquation FName FName where setEq (FName fnt) (FName fnf) = equations %= (:) (Fun fnt (Ind (IF fnf)))
+instance SetEquation FParam Name  where setEq fp nr = equations %= (:) (Param fp $ Ind (IN nr))
+instance SetEquation FParam TypeSet where setEq fp ts = equations %= (:) (Param fp $ Dir ts)
+instance SetEquation Loc  Name    where setEq l n  = equations %= (:) (Store l $ Ind (IN n))
+instance SetEquation Loc  Val     where setEq l val = equations %= (:) (Store l $ Dir $ valToNodeSet val)
 
 warning :: String -> State BuildState ()
 warning _ = pure ()
@@ -204,7 +413,7 @@ class ToTypeSet t where typeSet :: t -> TypeSet
 
 instance ToTypeSet SimpleType where typeSet t = mempty { _simpleTypes = Set.singleton (Dir t) }
 instance ToTypeSet Lit where typeSet = typeSet . typeOfLiteral
-instance ToTypeSet Val where typeSet = valToTypeSet
+instance ToTypeSet Val where typeSet = litOrConstTagNodeToTypeSet
 
 typeOfLiteral :: Lit -> SimpleType
 typeOfLiteral = \case
@@ -213,8 +422,8 @@ typeOfLiteral = \case
   LFloat  _ -> T_Float
   LBool   _ -> T_Bool
 
-valToTypeSet :: Val -> TypeSet
-valToTypeSet = \case
+litOrConstTagNodeToTypeSet :: Val -> TypeSet
+litOrConstTagNodeToTypeSet = \case
   c@(ConstTagNode t ps) -> mempty { _nodes = valToNodeSet c }
   VarTagNode _ _ -> mempty
   ValTag _ -> mempty
@@ -227,10 +436,10 @@ valToNodeSet = \case
   ConstTagNode t ps -> NodeSet $ Map.singleton t (fmap valToSimpleTypeSet ps)
   _ -> mempty
 
-valToSimpleTypeSet :: Val -> Set.Set (Ref SimpleType)
+valToSimpleTypeSet :: Val -> Set.Set (Ref Ind SimpleType)
 valToSimpleTypeSet = \case
   Lit l -> Set.singleton $ Dir $ typeOfLiteral l
-  Var v -> Set.singleton $ Ind v
+  Var v -> Set.singleton $ Ind (IN v)
   _     -> Set.empty
 
 -- * Primitive operations
@@ -287,11 +496,15 @@ primitive name = case name of
 
 -- * Pretty
 
-instance (Pretty a) => Pretty (Ref a) where
+instance (Pretty a) => Pretty (Ref Ind a) where
   pretty = \case
-    Ind   n -> pretty n
-    IndFP p -> pretty p
-    Dir   t -> pretty t
+    Ind (IN n)  -> pretty n
+    Ind (IF n)  -> pretty n
+    Ind (IFP p) -> pretty p
+    Dir t       -> pretty t
+
+instance Pretty FName where
+  pretty (FName n) = pretty n
 
 instance Pretty FParam where
   pretty (FParam n i) = mconcat [pretty n, text $ "[" ++ show i ++ "]"]
@@ -304,24 +517,21 @@ instance Pretty NodeSet where
 instance Pretty TypeSet where
   pretty (TypeSet ts (NodeSet ns)) = encloseSep lbrace rbrace comma ((prettyHPTNode1 <$> Map.toList ns) ++ fmap pretty (Set.toList ts))
 
-instance Pretty HE where
+instance Pretty FetchTo where
   pretty = \case
-    HE loc ref -> mconcat [pretty loc, text " := ", pretty ref]
+    FetchName n -> pretty n
+    FetchNode v t i -> pretty (v, t, i)
+    FetchFunc n -> pretty n
 
-instance Pretty VE where
+instance Pretty Equation where
   pretty = \case
-    VE name  val -> mconcat [pretty name, text " := ", pretty val]
-    FP param val -> mconcat [pretty param, text " := ", pretty val]
-    FR name  val -> mconcat [pretty name, text " := ", pretty val]
-    Access name (nm1,t,i) -> mconcat [pretty name, text " := ", text nm1 , text "|", pretty t, text "|", text $ show i]
+    Store loc ref -> mconcat [pretty loc, text " := ", pretty ref]
     Fetch name val -> mconcat [pretty name, text " := ", text "FETCH ", pretty val]
     Update name val -> mconcat [text "UPDATE ", pretty name, text " ", pretty val]
-
-instance Pretty Equations where
-  pretty (Equations env heap) = vsep
-    [ text "Environment" <$$> vsep (fmap pretty env)
-    , text "Heap" <$$> vsep (fmap pretty heap)
-    ]
+    VVar name  val -> mconcat [pretty name, text " := ", pretty val]
+    Param param val -> mconcat [pretty param, text " := ", pretty val]
+    Fun name  val -> mconcat [pretty name, text " := ", pretty val]
+    Access name (ts,t,i) -> mconcat [pretty name, text " := ", pretty ts , text "|", pretty t, text "|", text $ show i]
 
 -- * Test
 
@@ -332,7 +542,12 @@ testExp = [prog|
              t3 <- store (Fupto t1 t2) -- t3 := {Loc 3}, m := t1, n := t2, 3 := { FUpto [ t1, t2] }, upto_p1 := t1, upto_p2 := t2
              t4 <- store (Fsum t3)     -- t4 := {Loc 4}, l := t3, sum_p1 := t3
              (CInt r') <- eval t4      -- r' := eval :| CInt 1, eval_p1 := t4
+             (Fupto t5 t6) <- fetch t3
+             (Fupto t7 t8) <- pure (Fupto t1 t2)
              _prim_int_print r'        -- grinMain := {BAS}, r' := {BAS}
+
+  fetchTest = t9 <- store (CInt 10000)
+              fetch t9
 
   upto m n = (CInt m') <- eval m      -- m' := eval :| CInt 1
              (CInt n') <- eval n      -- n' := eval :| CInt 1
