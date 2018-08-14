@@ -86,6 +86,7 @@ library
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.UpdateElimination
     Transformations.Simplifying.CaseSimplification
+    Transformations.Simplifying.NodeNaming
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Simplifying.SplitFetch
@@ -286,5 +287,3 @@ executable idris-codegen-grin
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
-
-

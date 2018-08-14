@@ -191,6 +191,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
       body >>= \case
         Z   -> emit $ IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit $ IR.Move {srcReg = r, dstReg = funResultReg}
+      -- QUESTION: why do we reverse?
       modify' $ \s@HPTProgram{..} -> s {hptInstructions = reverse hptInstructions ++ instructions}
       pure Z
 
@@ -205,6 +206,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
           _ -> throwE $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
+          -- NOTE: I think this is okay. Could be optimised though (since we already know the result)?
           Lit{} -> pure () -- TODO: is this ok? or error?
           Var name -> addReg name r
           ConstTagNode tag args -> do
@@ -216,6 +218,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
                 pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
               Lit {} -> pure []
               _ -> throwE $ "illegal node pattern component " ++ show arg
+            -- QUESTION: In HPTProgram the instructions are in reverse order, here they are in regular order, isn't this inconsistent?
             emit $ IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
@@ -228,7 +231,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
       valReg <- codeGenVal val
       caseResultReg <- newReg
 
-      -- save scruinee register mapping
+      -- save scrutinee register mapping
       scrutRegMapping <- case val of
         Var name -> Just . (name,) <$> getReg name
         _ -> pure Nothing
@@ -254,6 +257,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
               flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
                 altScrutReg <- newReg
                 addReg name altScrutReg
+                -- NOTE: We just create a new empty register, and associate it with the scrutinee in this alternative. Then we annotate the register with restricted properties of the scrutinee.
                 emit $ IR.Project
                   { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists irTag
                   , srcReg = valReg
@@ -278,6 +282,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
                   , srcReg = valReg
                   , dstReg = altScrutReg
                   }
+            -- QUESTION: Redundant IF. Just for consistency?
             emit $ IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
 
           DefaultPat -> do
@@ -292,6 +297,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
                   , srcReg = valReg
                   , dstReg = altScrutReg
                   }
+            -- QUESTION: Redundant IF. Just for consistency?
             emit $ IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
           _ -> throwE $ "HPT does not support the following case pattern: " ++ show cpat

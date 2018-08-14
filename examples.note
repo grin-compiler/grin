@@ -1,0 +1,22 @@
+x <- case v of
+       CCon1 -> do
+                v1 <- unit (CCon1 0)
+                unit v1
+       CCon2 -> do
+                v2 <- unit (CCon2 0)
+                unit v2
+
+t x <- case w of
+  CCon1 -> do
+    t1 <- unit CCon1
+    x1 <- unit 5
+    y1 <- unit (t1 x1)
+    unit y1 (producer 1)
+  CCon2 -> do
+    t2 <- unit CCon2
+    x2 <- unit 5
+    y2 <- unit (t2 x2)
+    unit y2 (producer 2)
+z <- case t of
+  CCon1 -> ... x ... (x is created by 1)
+  CCon2 -> ... x ... (x is created by 2)

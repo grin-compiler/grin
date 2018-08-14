@@ -28,7 +28,7 @@ data Condition
   | NotIn             (Set Tag)
   deriving Show
 
--- TODO: error checking + validation ; DECISION: catch syntactical error on compile time ; the analyis will not be restrictive ; there will not be runtime checks
+-- TODO: error checking + validation ; DECISION: catch syntactical error at compile time ; the analyis will not be restrictive ; there will not be runtime checks
 
 data Instruction
   = If
@@ -37,7 +37,7 @@ data Instruction
     , instructions  :: [Instruction]
     }
   | Project -- ^ projects from the tag specific SRC's node part to DST reg simple type and location set
-    { srcSelector   :: Selector -- ^ the seleced tag must exist
+    { srcSelector   :: Selector -- ^ the selected tag must exist
     , srcReg        :: Reg
     , dstReg        :: Reg
     }

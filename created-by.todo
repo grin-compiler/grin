@@ -1,0 +1,56 @@
+IR:
+  - data Analysis = PointsTo | CreatedBy
+  - new Constant value: Producer Int
+  - change mapping of registers: (Name of variabel, Name of analysis) -> Reg
+  - change mapping of funArgs_ (Name of function, Name of analysis) -> (Reg, [Reg])
+CodeGen:
+  - add ReaderT [Analysis] layer to CG
+  - modify getOrAddFunregs, so that it will get the analysis as a parameter as well
+  - add utility function getOrAddAllFunRegs :: Name -> Int -> CG ([IR.Reg], [[IR.Reg]]), this will make emits more mappable
+  - modify addReg :: Name -> Analysis -> IR.Reg -> CG ()
+  - same for getReg
+  - emit' :: (Analysis -> Instruction) -> CG ()
+    emit' f = ask >>= mapM_ f
+    use: emit' \case
+           PointsTo -> ...
+           CreatedBy -> ...
+  - helper function for generating a register for each individual analysis
+    - more precisely a mapping from analysis name to register
+  - have to change R ctor of Result to R (Map Analysis Reg)
+  - introduce helper functions for emitting instructions for (analysis, regMapping) pairs (it would select the appropriate registers)
+    - probably introduce new data type for this to keep the readability of the code (record syntax is easier to read)
+
+analysis:
+  - preconditions: - run after register introduction and case simplification
+                   - run before any dead code elimination
+  - cata -> para
+  - Val: Var -> getReg
+         _   -> do nothing (values don't have producers)
+  - ProgramF: same
+  - DefF: same, but if result is Z of the body, do nothing
+  - EBindF:
+    leftExp was Val:
+      introduce a new producer with the name of variable inside the binding
+    general case:
+      Z -> same, just Move in case of Var lpat
+      R -> after reg intro, only Vars van be on the RHS of a bind (this case is OK)
+
+questions:
+  - Does codeGenVal fail after register introduction? (and on ValTags as well)
+    - define ValTag case: CNodeItem tag 0 _ (the 0th item of a node is its tag, its type is "tag" - does not really matter)
+    - define VarTag case: - use current number of arguments as arity?
+                          -
+  - Can case alternatives have differently typed return values? (Lit <-> Node)
+  - can a tag be applied to different number of arguments?
+  - completely define Extend interpretation
+  - define new Selector: AllTags Int (which selects the nth field of all tags, and unions all information about them)
+  - We need tag information (arity) during the analysis to define codeGenVal for VarTag
+    - create all possible
+
+
+does bind normalisation work as intended?
+
+  > nameNodes . parseExpr $ "y <- pure (t x)\npure y"
+  EBind (EBind (SReturn (VarTagNode "t" [Var "x"])) (Var "node.0") (SReturn (Var "node.0"))) (Var "y") (SReturn (Var "y"))
+  > bindNormalisation . nameNodes . parseExpr $ "y <- pure (t x)\npure y"
+  EBind (EBind (SReturn (VarTagNode "t" [Var "x"])) (Var "node.0") (SReturn (Var "node.0"))) (Var "y") (SReturn (Var "y"))
