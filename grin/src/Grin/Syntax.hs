@@ -48,8 +48,8 @@ type LPat = Val -- ConstTagNode, VarTagNode, ValTag, Unit, Lit, Var
 type SimpleVal = Val
 
 data Val
-  = ConstTagNode  Tag  [{-Simple-}Val] -- complete node (constant tag) ; HIGH level GRIN
-  | VarTagNode    Name [{-Simple-}Val] -- complete node (variable tag)
+  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
+  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
   | ValTag        Tag
   | Unit                           -- HIGH level GRIN
   -- simple val
@@ -77,11 +77,11 @@ type Def = Exp
 type Program = Exp
 
 data Exp
-  = Program     [{-Def-}Exp]
+  = Program     [Def]
   | Def         Name [Name] Exp
   -- Exp
-  | EBind       {-Simple-}Exp LPat Exp
-  | ECase       Val [{-Alt-}Exp]
+  | EBind       SimpleExp LPat Exp
+  | ECase       Val [Alt]
   -- Simple Exp
   | SApp        Name [SimpleVal]
   | SReturn     Val
