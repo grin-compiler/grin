@@ -13,26 +13,13 @@ import Grin.Parse
 import Grin.Pretty
 import Transformations.BindNormalisation
 
-anaM :: (Corecursive t, Traversable (Base t), Monad m) => (a -> m (Base t a)) -> a -> m t
-anaM coalg = x where x = (return . embed) <=< traverse x <=< coalg
-
 newNodeName :: NameM Name
 newNodeName = deriveNewName "node"
-
--- EBind can never have an EBind node as its left-hand side argument
--- this function enforces this invariant
-normalizeLeftBinds :: Exp -> Exp
-normalizeLeftBinds = ana coalg where
-  coalg :: Exp -> ExpF Exp
-  coalg e = case e of
-    EBind lhs1@(EBind lhs2 pat2 rhs2) pat1 rhs1 -> EBindF lhs2 pat2 (EBind rhs2 pat1 rhs1)
-    e -> project e
-
 
 -- this transformation can invalidate the "no left bind" invariant
 -- so we have to normalize these incorrect bindings
 nameNodes :: Exp -> Exp
-nameNodes e = normalizeLeftBinds . evalNameM e . cata alg $ e where
+nameNodes e = evalNameM e . cata alg $ e where
   alg :: ExpF (NameM Exp) -> NameM Exp
   alg e = case e of
     SStoreF    x@VarTagNode{}   -> bindVal SStore x
@@ -47,4 +34,4 @@ nameNodes e = normalizeLeftBinds . evalNameM e . cata alg $ e where
   bindVal :: (Val -> Exp) -> Val -> NameM Exp
   bindVal context val = do
     nodeVar <- fmap Var newNodeName
-    return $ EBind (SReturn val) nodeVar (context nodeVar)
+    return $ SBlock $ EBind (SReturn val) nodeVar (context nodeVar)

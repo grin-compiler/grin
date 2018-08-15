@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 module AbstractInterpretation.IR where
 
 import Data.Int
@@ -73,7 +73,23 @@ data Constant
   | CHeapLocation Mem
   | CNodeType     Tag Int {-arity-}
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type or location-}
+  | CProducer     Int     {- ID of the producer -}
   deriving Show
+
+type RegMapping    = Map.Map Name Reg
+type FunArgMapping = Map.Map Name (Reg, [Reg])
+
+data AnalysisRegMapping
+  = AnalysisRegMapping
+  { pointsTo  :: RegMapping
+  , createdBy :: RegMapping
+  }
+
+data AnalysisFunArgMapping
+  = AnalysisFunArgMapping
+  { pointsTo  :: FunArgMapping
+  , createdBy :: FunArgMapping
+  }
 
 data HPTProgram
   = HPTProgram
