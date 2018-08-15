@@ -10,7 +10,7 @@ import qualified Reducer.IO
 import qualified Reducer.Pure
 import qualified Reducer.LLVM.JIT as LLVM
 import qualified Reducer.LLVM.CodeGen as LLVM
-import qualified AbstractInterpretation.CodeGen as HPT
+import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.Reduce as HPT
 
 data Reducer

@@ -5,25 +5,25 @@ IR:
   X change mapping of registers: (Name of variable, Name of analysis) -> Reg
   X change mapping of funArgs_ (Name of function, Name of analysis) -> (Reg, [Reg])
   - change reg mappings to records
-CodeGen:
+
+CodeGen (alternative implementation - multiple analyses in a single module):
   - modify insertions function for reg mappings
-  X add ReaderT [Analysis] layer to CG
-  X modify run for the CG monad
+  - modify run for the CG monad
   - modify getOrAddFunregs, so that it will get the analysis as a parameter as well
   - modify all call sites as well
   - add utility function getOrAddAllFunRegs :: Name -> Int -> CG ([IR.Reg], [[IR.Reg]]), this will make emits more mappable
-  X modify addReg :: Name -> Analysis -> IR.Reg -> CG ()
-  X modify all relevant call sites (whenever a new variable is bound, a register is introduced for it for each analysis)
-  X same for getReg
+  - modify addReg :: Name -> Analysis -> IR.Reg -> CG ()
+  - modify all relevant call sites (whenever a new variable is bound, a register is introduced for it for each analysis)
+  - same for getReg
   - modify getRegs
-  ? modify call sites accordingly
-  X emit' :: (Analysis -> [Instruction]) -> CG ()
+  - modify call sites accordingly
+  - emit' :: (Analysis -> [Instruction]) -> CG ()
     use: emit' \case
            PointsTo -> ...
            CreatedBy -> ...
   - helper function for generating a register for each individual analysis
     - more precisely a mapping from analysis name to register
-  X have to change R ctor of Result to R (Map Analysis Reg)
+  - have to change R ctor of Result to R (Map Analysis Reg)
   - modify all construction sites as well
   - introduce helper functions for emitting instructions for (analysis, regMapping) pairs (it would select the appropriate registers)
     - probably introduce new data type for this to keep the readability of the code (record syntax is easier to read)
@@ -57,14 +57,7 @@ questions:
     - create all possible
 
 
-does bind normalisation work as intended?
-
-  > nameNodes . parseExpr $ "y <- pure (t x)\npure y"
-  EBind (EBind (SReturn (VarTagNode "t" [Var "x"])) (Var "node.0") (SReturn (Var "node.0"))) (Var "y") (SReturn (Var "y"))
-  > bindNormalisation . nameNodes . parseExpr $ "y <- pure (t x)\npure y"
-  EBind (EBind (SReturn (VarTagNode "t" [Var "x"])) (Var "node.0") (SReturn (Var "node.0"))) (Var "y") (SReturn (Var "y"))
-
-modifications:
-  - whenever a new variable is bound, a register is introduced for it for each analysis
-
 bind normalisation: cata . ana // hylo
+
+TESTS:
+  - write tests for nodeNaming

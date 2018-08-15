@@ -21,7 +21,7 @@ import AbstractInterpretation.PrettyHPT
 import AbstractInterpretation.HPTResult
 import qualified Grin.TypeEnv as TypeEnv
 
-import qualified AbstractInterpretation.CodeGen as HPT
+import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.Reduce as HPT
 
 {-
