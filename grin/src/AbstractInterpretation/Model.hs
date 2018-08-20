@@ -29,6 +29,9 @@ import Data.Foldable
 TODO:
 [ ] Handle VarTagNodes
 [ ] Handle updates
+    [ ] Create two phases, the first phase should run before eval inlining, the second after
+    [ ] First phase ignores updates
+    [ ] Second phase handles update
 [x] Sharing analysis
     [x] Collect non-linear variables
     [x] Add sharing heap
@@ -36,7 +39,7 @@ TODO:
         [x] Pointed by a non-linear variable: Mit jelent az, hogy pointed:
         [x] From another shared location
     [x] In the abstract heap the return value part of the location is only unioned if the same abstract location becomes shared
-[ ] Implement warnings
+[x] Implement warnings
 [ ] Check emptyness of nodeset and simpletypes when converting from TypeSet
 [ ] Create test case
 -}
@@ -74,25 +77,30 @@ data Equation
   | Update Name (Ref Ind NodeSet)
   deriving (Show, Eq, Ord)
 
+type Warning = String
+
 data BuildState = BuildState
   { _maxLoc :: Int
   , _equations :: [Equation]
   , _functions :: Map.Map Name Int -- Arity of the function
   , _nonLinearVars :: Set.Set Name
+  , _warnings :: [Warning]
   }
   deriving (Show)
 
 makeLenses ''BuildState
 
-heapPointsTo :: Exp -> HPTResult
+heapPointsTo :: Exp -> (HPTResult, [Warning])
 heapPointsTo exp =
   computeResult
-  $ flip execState (BuildState 0 mempty mempty mempty)
+  $ flip execState (BuildState 0 mempty mempty mempty mempty)
   $ para buildEquations exp
 
-computeResult :: BuildState -> HPTResult
-computeResult (BuildState maxLoc equations functions nonLinearVars) =
-    snd $ until (uncurry (==)) (onPair smallStep) (zeroResult, startResult)
+computeResult :: BuildState -> (HPTResult, [Warning])
+computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
+    ( snd $ until (uncurry (==)) (onPair smallStep) (zeroResult, startResult)
+    , warnings
+    )
   where
     registers = Set.fromList $ flip Maybe.mapMaybe equations $ \case
       VVar   n _ -> Just n
@@ -501,8 +509,8 @@ instance SetEquation Loc    Name              where setEq l n  = equations %= (:
 instance SetEquation Loc    Val               where setEq l val = equations %= (:) (Store l $ Dir $ valToNodeSet val)
 instance SetEquation Loc    FName             where setEq l (FName fn) = equations %= (:) (Store l $ Ind (IF fn))
 
-warning :: String -> State BuildState ()
-warning _ = pure ()
+warning :: Warning -> State BuildState ()
+warning msg = warnings %= (:) msg
 
 class ToTypeSet t where typeSet :: t -> TypeSet
 
