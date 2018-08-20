@@ -15,13 +15,15 @@ import Lens.Micro.Internal
 import Grin.Grin (Name, Tag)
 import qualified Grin.TypeEnv as TypeEnv
 
+type Loc = Int
+
 data SimpleType
   = T_Int64
   | T_Word64
   | T_Float
   | T_Bool
   | T_Unit
-  | T_Location Int
+  | T_Location Loc
   deriving (Eq, Ord, Show)
 
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set SimpleType))} deriving (Eq, Ord, Show)
@@ -58,6 +60,7 @@ data HPTResult
   { _memory   :: Vector NodeSet
   , _register :: Map Name TypeSet
   , _function :: Map Name (TypeSet, Vector TypeSet)
+  , _sharing  :: Set Loc
   }
   deriving (Eq, Show)
 
