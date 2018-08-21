@@ -34,6 +34,7 @@ data Computer
   = Computer
   { _memory    :: Vector NodeSet
   , _register  :: Vector Value
+--  , _shared    :: Set Loc
   }
   deriving (Eq, Show)
 
@@ -156,7 +157,7 @@ toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
   { R._memory   = V.map convertNodeSet _memory
   , R._register = Map.map convertReg hptRegisterMap
   , R._function = Map.map convertFunctionRegs hptFunctionArgMap
-
+  , R._sharing  = mempty
   }
   where
     convertReg :: Reg -> R.TypeSet
