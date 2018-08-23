@@ -1,36 +1,38 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections #-}
-module AbstractInterpretation.HeapPointsTo
-  ( codeGen, unitType, litToSimpleType, codeGenPrimOp ) where
+{-# LANGUAGE LambdaCase, TupleSections #-}
+module AbstractInterpretation.CreatedBy
+  ( codeGen ) where
 
 import Control.Monad.Trans.Except
 import Control.Monad.State
 
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 import Data.Functor.Foldable as Foldable
 
 import Grin.Grin
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), HPTProgram(..), emptyHPTProgram)
+import AbstractInterpretation.HeapPointsTo (unitType, litToSimpleType, codeGenPrimOp)
 
 
-unitType :: IR.SimpleType
-unitType = -1
+-- type CreatedByProdMap = Map.Map Name Name
+-- type CreatedByProgram = (CreatedByProdMap, HPTProgram)
 
-litToSimpleType :: Lit -> IR.SimpleType
-litToSimpleType = \case
-  LInt64  {}  -> -2
-  LWord64 {}  -> -3
-  LFloat  {}  -> -4
-  LBool   {}  -> -5
+addProducer :: Name -> CG ()
+addProducer = undefined
+
+registerToProducer :: IR.Reg -> IR.Producer
+registerToProducer (IR.Reg r) = fromIntegral r
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
     irTag <- getTag tag
-    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals)}
-    forM_ (zip [0..] vals) $ \(idx, val) -> case val of
+    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals + 1)}
+    emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag 0 (registerToProducer r)}
+    forM_ (zip [1..] vals) $ \(idx, val) -> case val of
       Var name -> do
         valReg <- getReg name
         emit IR.Extend {srcReg = valReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
@@ -51,76 +53,26 @@ codeGenVal = \case
   Var name -> getReg name
   val -> throwE $ "unsupported value " ++ show val
 
-codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> CG ()
-codeGenPrimOp name funResultReg funArgRegs = do
-  let op argTypes resultTy = do
-        emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
-        zipWithM_ (\argReg argTy -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
-
-      unit  = -1
-      int   = litToSimpleType $ LInt64 0
-      word  = litToSimpleType $ LWord64 0
-      float = litToSimpleType $ LFloat 0
-      bool  = litToSimpleType $ LBool False
-
-  case name of
-    "_prim_int_print" -> op [int] unit
-    -- Int
-    "_prim_int_add"   -> op [int, int] int
-    "_prim_int_sub"   -> op [int, int] int
-    "_prim_int_mul"   -> op [int, int] int
-    "_prim_int_div"   -> op [int, int] int
-    "_prim_int_eq"    -> op [int, int] bool
-    "_prim_int_ne"    -> op [int, int] bool
-    "_prim_int_gt"    -> op [int, int] bool
-    "_prim_int_ge"    -> op [int, int] bool
-    "_prim_int_lt"    -> op [int, int] bool
-    "_prim_int_le"    -> op [int, int] bool
-    -- Word
-    "_prim_word_add"  -> op [word, word] word
-    "_prim_word_sub"  -> op [word, word] word
-    "_prim_word_mul"  -> op [word, word] word
-    "_prim_word_div"  -> op [word, word] word
-    "_prim_word_eq"   -> op [word, word] bool
-    "_prim_word_ne"   -> op [word, word] bool
-    "_prim_word_gt"   -> op [word, word] bool
-    "_prim_word_ge"   -> op [word, word] bool
-    "_prim_word_lt"   -> op [word, word] bool
-    "_prim_word_le"   -> op [word, word] bool
-    -- Float
-    "_prim_float_add" -> op [float, float] float
-    "_prim_float_sub" -> op [float, float] float
-    "_prim_float_mul" -> op [float, float] float
-    "_prim_float_div" -> op [float, float] float
-    "_prim_float_eq"  -> op [float, float] bool
-    "_prim_float_ne"  -> op [float, float] bool
-    "_prim_float_gt"  -> op [float, float] bool
-    "_prim_float_ge"  -> op [float, float] bool
-    "_prim_float_lt"  -> op [float, float] bool
-    "_prim_float_le"  -> op [float, float] bool
-    -- Bool
-    "_prim_bool_eq"   -> op [bool, bool] bool
-    "_prim_bool_ne"   -> op [bool, bool] bool
-
-
 codeGen :: Exp -> Either String HPTProgram
-codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cata folder where
-  folder :: ExpF (CG Result) -> CG Result
+codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . para folder where
+  folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
-    ProgramF defs -> sequence_ defs >> pure Z
+    ProgramF defs -> (sequence_ . fmap snd $ defs) >> pure Z
 
-    DefF name args body -> do
-      instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
+    DefF name args (_,body) -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
-      -- QUESTION: why do we reverse?
-      modify' $ \s@HPTProgram{..} -> s {hptInstructions = reverse hptInstructions ++ instructions}
       pure Z
 
-    EBindF leftExp lpat rightExp -> do
+    EBindF (SReturn ConstTagNode{},leftExp) (Var v) (_,rightExp) -> do
+      R r <- leftExp
+      addReg v r
+      addProducer v
+      rightExp
+    EBindF (_,leftExp) lpat (_,rightExp) -> do
       leftExp >>= \case
         Z -> case lpat of
           Unit -> pure ()
@@ -128,7 +80,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
             addReg name r
-          _ -> throwE $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
+          _ -> throwE $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
           -- NOTE: I think this is okay. Could be optimised though (since we already know the result)?
@@ -165,13 +117,13 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
           - create scope monadic combinator to handle scopes
           - set scrutinee value to the case alternative pattern value in the alternative scope
       -}
-      alts <- sequence alts_
+      alts <- sequence . fmap snd $ alts_
 
       forM_ alts $ \(A cpat altM) -> do
         let codeGenAlt bindM = codeGenBlock $ do
               bindM
               altM >>= \case
-                Z -> emit IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}
+                Z -> emit IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}   -- pure ()
                 R altResultReg -> emit IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
 
         case cpat of
@@ -196,6 +148,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
                   emit IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
             emit IR.If {condition = IR.NodeTypeExists irTag, srcReg = valReg, instructions = altInstructions}
 
+          -- QUESTION: should we store simple types to have more information?
           LitPat lit -> do
             altInstructions <- codeGenAlt $
               -- restrict scrutinee to alternative's domain
@@ -232,7 +185,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
 
       pure $ R caseResultReg
 
-    AltF cpat exp -> pure $ A cpat exp
+    AltF cpat (_,exp) -> pure $ A cpat exp
 
     SAppF name args -> do -- copy args to definition's variables ; read function result register
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
@@ -253,7 +206,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
       pure $ R r
 
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> throwE "HPT codegen does not support indexed fetch"
+      Just {} -> throwE "CBy codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         r <- newReg
@@ -266,105 +219,4 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cat
       emit IR.Update {srcReg = valReg, addressReg = addressReg}
       pure Z
 
-    SBlockF exp -> exp
-
-{-
-  Unit      -1
-  Int       -2
-  Word      -3
-  Float     -4
-  Bool      -5
-  Undefined -9999
--}
-
-{-
- CONSTANT value building operations (from compile time constants)
-  add simple type
-  add heap location
-  add node type (tag + arity)
-  add node item (index + location or simple type)
--}
-
-{-
-  >>= LPAT
-    (Tag b c d)               - node only check, arity check, tag check, copy node items to registers for a specific tag
-    Unit                      - specific simple type only check
-    Literal with simple type  - specific simple type only check
-    variable                  - copy to reg
-
-  case >>= LPAT ()
-  return >>= LPAT ()
-  store >>= LPAT
-  fetch >>= LPAT
-  update >>= LPAT
-
-  LPAT / VAL
-  T a - select items of specific tag
-  Unit- NOP ; optional check
-  Lit - NOP ; optional check
-  a   - copy all
-
-
- bind COMPILE TIME CHECK:
-  VAL / LPAT
-  T a - T a   OK      (node)
-      - Unit  FAIL
-      - Lit   FAIL
-      - a     OK
-
-  Unit- T a   FAIL    (simple type)
-      - Unit  OK
-      - Lit   FAIL
-      - a     OK
-
-  Lit - T a   FAIL    (simple type)
-      - Unit  FAIL
-      - Lit   OK ; if matches
-      - a     OK
-
-  a   - T a   OK      (any)
-      - Unit  OK
-      - Lit   OK
-      - a     OK
-
-  LOC - T a   FAIL    (heap location)
-      - Unit  FAIL
-      - Lit   FAIL
-      - a     OK
-
-  compilation:
-    store (the only valid expression): store VAL >>= var
-      emits:
-        one time constant register setup for var
-        memory copy or one time setup
-        VAL validation
-    update DST VAL >>= (var | Unit)
-      VAL validation
-      DST validaton
-      var: emits one time setup for var ; fill with Unit type
-      Unit: nothing to do
-    fetch SRC >>= (var | (T a) | (t a))
-      SRC validation
-      var: CopyMemReg
-      (T a):
-
--}
-
-{-
- case COMPILE TIME CHECK:
-  VAL / CPAT
-  T a - T a   OK      (node)
-      - Lit   FAIL
-
-  Unit- T a   FAIL    (simple type)
-      - Lit   FAIL
-
-  Lit - T a   FAIL    (simple type)
-      - Lit   OK ; if matches
-
-  a   - T a   OK      (any)
-      - Lit   OK
-
-  LOC - T a   FAIL    (heap location)
-      - Lit   FAIL
--}
+    SBlockF (_,exp) -> exp

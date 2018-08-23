@@ -21,6 +21,7 @@ data Selector
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
 type SimpleType = Int32
+type Producer   = Int32
 
 data Condition
   = NodeTypeExists    Tag
@@ -72,24 +73,8 @@ data Constant
   = CSimpleType   SimpleType
   | CHeapLocation Mem
   | CNodeType     Tag Int {-arity-}
-  | CNodeItem     Tag Int {-node item index-} Int32 {-simple type or location-}
-  | CProducer     Int     {- ID of the producer -}
+  | CNodeItem     Tag Int {-node item index-} Int32 {-simple type, location, or incase of Cby: producer-}
   deriving Show
-
-type RegMapping    = Map.Map Name Reg
-type FunArgMapping = Map.Map Name (Reg, [Reg])
-
-data AnalysisRegMapping
-  = AnalysisRegMapping
-  { pointsTo  :: RegMapping
-  , createdBy :: RegMapping
-  }
-
-data AnalysisFunArgMapping
-  = AnalysisFunArgMapping
-  { pointsTo  :: FunArgMapping
-  , createdBy :: FunArgMapping
-  }
 
 data HPTProgram
   = HPTProgram
