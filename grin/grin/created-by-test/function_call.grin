@@ -1,0 +1,14 @@
+grinMain =
+  a1 <- pure (CInt 5)
+  a2 <- pure a1
+  a3 <- f 5
+  a4 <- g 5
+  pure 5
+
+f x =
+  x1 <- pure (CInt 5)
+  pure x1
+
+g y =
+  y1 <- f y
+  pure y1

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Transformations.Simplifying.NodeNaming where
+module Transformations.Simplifying.NodeNameIntroduction where
 
 import Control.Monad
 import Data.Functor.Foldable as Foldable
@@ -18,8 +18,8 @@ newNodeName = deriveNewName "node"
 
 -- this transformation can invalidate the "no left bind" invariant
 -- so we have to normalize these incorrect bindings
-nameNodes :: Exp -> Exp
-nameNodes e = evalNameM e . cata alg $ e where
+nodeNameIntroduction :: Exp -> Exp
+nodeNameIntroduction e = evalNameM e . cata alg $ e where
   alg :: ExpF (NameM Exp) -> NameM Exp
   alg e = case e of
     SStoreF    x@VarTagNode{}         -> bindVal SStore x

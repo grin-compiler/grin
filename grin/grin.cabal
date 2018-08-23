@@ -89,7 +89,7 @@ library
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.UpdateElimination
     Transformations.Simplifying.CaseSimplification
-    Transformations.Simplifying.NodeNaming
+    Transformations.Simplifying.NodeNameIntroduction
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Simplifying.SplitFetch

@@ -20,7 +20,7 @@ import AbstractInterpretation.HeapPointsTo (unitType, litToSimpleType, codeGenPr
 -- type CreatedByProgram = (CreatedByProdMap, HPTProgram)
 
 addProducer :: Name -> CG ()
-addProducer = undefined
+addProducer x = pure ()
 
 registerToProducer :: IR.Reg -> IR.Producer
 registerToProducer (IR.Reg r) = fromIntegral r

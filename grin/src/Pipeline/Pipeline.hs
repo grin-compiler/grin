@@ -31,11 +31,13 @@ import Transformations.MangleNames
 import Transformations.EffectMap
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
+import Transformations.Simplifying.NodeNameIntroduction
 import qualified AbstractInterpretation.HPTResult as HPT
 import AbstractInterpretation.PrettyHPT
 import qualified AbstractInterpretation.PrettyIR as HPT
 import qualified AbstractInterpretation.IR as HPT
 import qualified AbstractInterpretation.HeapPointsTo as HPT
+import qualified AbstractInterpretation.CreatedBy as CBy
 import qualified AbstractInterpretation.Reduce as HPT
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
@@ -74,6 +76,7 @@ type RenameVariablesMap = Map String String
 data Transformation
   -- Simplifying
   = RegisterIntroduction
+  | NodeNameIntroduction
   | Vectorisation
   | SplitFetch
   | CaseSimplification
@@ -118,6 +121,7 @@ transformation n = \case
   CaseSimplification              -> noEffectMap $ noTypeEnv caseSimplification
   SplitFetch                      -> noEffectMap $ noTypeEnv splitFetch
   RegisterIntroduction            -> noEffectMap $ noTypeEnv $ registerIntroductionI n
+  NodeNameIntroduction            -> noEffectMap $ noTypeEnv nodeNameIntroduction
   RightHoistFetch                 -> noEffectMap $ noTypeEnv RHF.rightHoistFetch
   -- misc
   MangleNames                     -> noEffectMap $ noTypeEnv mangleNames
@@ -288,7 +292,7 @@ printEffectMap = do
 compileHPT :: PipelineM ()
 compileHPT = do
   grin <- use psExp
-  case HPT.codeGen grin of
+  case CBy.codeGen grin of
     Right hptProgram -> do
       psHPTProgram .= Just hptProgram
     Left e -> do
