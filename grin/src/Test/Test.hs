@@ -688,14 +688,14 @@ gEffs = do
     ]
 
 -- TODO: Effects
--- TODO: Always succedd with a trivial function
+-- TODO: Always succeeds with a trivial function
 -- TODO: Self Recursive
 gDef :: Type -> GoalM (G.Def, ([Type], Type, [Eff]))
 gDef retType = do
   effs <- gEffs
   n <- gen $ choose (1, 5)
   ptypes <- replicateM n $ mfreq [ (90, simpleType), (10, definedAdt) ]
-  (fname:pnames) <- newNames (n+1)
+  (fname:pnames) <- newNames n
   CMR.local
 --    TODO: Self recursive: Generate eval creates in infinite loop
 --    kahe ya = kahe ya
