@@ -136,7 +136,7 @@ spec = do
       before `shouldBe` after
 
   describe "generated" $ do
-    xit "parse . pretty print == id" $ property $
+    it "parse . pretty print == id" $ property $
       forAll (PP <$> genProg) $ \p ->
         let p' = parseGrin "" (show p)
         in (fmap PP p') `shouldBe` (Right p)
