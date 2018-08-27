@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, DeriveFunctor #-}
 module AbstractInterpretation.HPTResult where
 
 import Data.Int
@@ -24,7 +24,9 @@ data SimpleType
   | T_Location Int
   deriving (Eq, Ord, Show)
 
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set SimpleType))} deriving (Eq, Ord, Show)
+type    Node    = Vector (Set SimpleType)
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag Node}
+  deriving (Eq, Ord, Show)
 
 data TypeSet
   = TypeSet

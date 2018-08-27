@@ -11,7 +11,6 @@ import qualified Reducer.Pure
 import qualified Reducer.LLVM.JIT as LLVM
 import qualified Reducer.LLVM.CodeGen as LLVM
 import qualified AbstractInterpretation.HeapPointsTo as HPT
-import qualified AbstractInterpretation.CreatedBy as CBy
 import qualified AbstractInterpretation.Reduce as HPT
 
 data Reducer
@@ -32,7 +31,7 @@ eval' reducer fname = do
         LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
           typeEnv     = either error id $ typeEnvFromHPTResult =<< hptResult
           hptResult   = HPT.toHPTResult <$> hptProgram <*> (HPT.evalHPT <$> hptProgram)
-          hptProgram  = CBy.codeGen program
+          hptProgram  = HPT.codeGen program
 
 evalProgram :: Reducer -> Program -> IO RTVal
 evalProgram reducer program =

@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     AbstractInterpretation.CodeGen
+    AbstractInterpretation.CByResult
     AbstractInterpretation.CreatedBy
     AbstractInterpretation.HeapPointsTo
     AbstractInterpretation.HPTResult

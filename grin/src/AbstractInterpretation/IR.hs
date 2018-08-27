@@ -87,6 +87,8 @@ data HPTProgram
   }
   deriving Show
 
+type CByProgram = HPTProgram
+
 emptyHPTProgram = HPTProgram
   { hptMemoryCounter    = 0
   , hptRegisterCounter  = 0

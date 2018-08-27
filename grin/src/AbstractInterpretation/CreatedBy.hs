@@ -53,7 +53,7 @@ codeGenVal = \case
   Var name -> getReg name
   val -> throwE $ "unsupported value " ++ show val
 
-codeGen :: Exp -> Either String HPTProgram
+codeGen :: Exp -> Either String IR.CByProgram
 codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . para folder where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
