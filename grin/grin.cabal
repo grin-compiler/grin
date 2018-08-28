@@ -22,6 +22,7 @@ library
     AbstractInterpretation.HeapPointsTo
     AbstractInterpretation.HPTResult
     AbstractInterpretation.IR
+    AbstractInterpretation.PrettyCBy
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
     AbstractInterpretation.Reduce

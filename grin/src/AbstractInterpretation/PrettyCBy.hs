@@ -1,0 +1,28 @@
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
+module AbstractInterpretation.PrettyCBy where
+
+import Data.Functor.Foldable as Foldable
+import Text.PrettyPrint.ANSI.Leijen
+
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+import Grin.Pretty
+import Grin.Grin (Tag, Name)
+
+import AbstractInterpretation.CByResult
+import AbstractInterpretation.PrettyHPT
+
+prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
+prettySimplePair (x, y) = pretty x <> pretty y
+
+instance Pretty ProducerSet where
+  pretty (ProducerSet ps) = prettyBracedList
+                          . map prettySimplePair
+                          . Map.toList $ ps
+
+instance Pretty CByResult where
+  pretty CByResult{..} = vsep
+    [ pretty _hptResult
+    , yellow (text "Producers") <$$> indent 4 (prettyKeyValue $ Map.toList  _producers)
+    ]

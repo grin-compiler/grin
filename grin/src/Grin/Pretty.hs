@@ -4,6 +4,7 @@ module Grin.Pretty
   , printGrin
   , PP(..)
   , prettyKeyValue
+  , prettyBracedList
   ) where
 
 import Data.Set (Set)
@@ -127,3 +128,5 @@ instance Pretty TypeEnv where
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
 
+prettyBracedList :: [Doc] -> Doc
+prettyBracedList = encloseSep lbrace rbrace comma

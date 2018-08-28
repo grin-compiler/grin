@@ -34,10 +34,10 @@ prettyHPTFunction :: (Name, (R.TypeSet, Vector R.TypeSet)) -> Doc
 prettyHPTFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 instance Pretty R.NodeSet where
-  pretty (R.NodeSet m) = encloseSep lbrace rbrace comma (map prettyHPTNode $ Map.toList m)
+  pretty (R.NodeSet m) = prettyBracedList (map prettyHPTNode $ Map.toList m)
 
 instance Pretty R.TypeSet where
-  pretty (R.TypeSet ty (R.NodeSet ns)) = encloseSep lbrace rbrace comma (map prettyHPTNode (Map.toList ns) ++ map pretty (Set.toList ty))
+  pretty (R.TypeSet ty (R.NodeSet ns)) = prettyBracedList (map prettyHPTNode (Map.toList ns) ++ map pretty (Set.toList ty))
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
@@ -45,4 +45,3 @@ instance Pretty R.HPTResult where
     , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList  _register)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyHPTFunction $ Map.toList _function)
     ]
-

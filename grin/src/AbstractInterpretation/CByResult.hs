@@ -21,10 +21,13 @@ import AbstractInterpretation.IR (Reg(..))
 type HPTResultP = HPTResult
 type Producer   = Int
 
+-- possible producers grouped by tags
+newtype ProducerSet = ProducerSet { _producerSet :: Map Tag (Set Name)}
+
 data CByResult
   = CByResult
   { _hptResult :: HPTResult
-  , _procuders :: Map Name (Map Tag (Set Name)) -- possible producers grouped by tags
+  , _producers :: Map Name ProducerSet
   }
 
 -- node with its possible producers in its first field
@@ -79,7 +82,7 @@ toCByResult regMap HPTResult{..} = CByResult hptResult producers
         hptResult = HPTResult mem regs funs
 
         revRegMap = reverseRegMap regMap
-        producers = M.map getNamedProducer' _register
+        producers = M.map (ProducerSet . getNamedProducer') _register
 
         getNamedProducer' :: TypeSet -> Map Tag (Set Name)
         getNamedProducer' = M.map (getNamedProducer revRegMap)
