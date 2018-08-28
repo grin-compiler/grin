@@ -11,8 +11,9 @@ import Data.Functor.Foldable as Foldable
 import Grin.Grin
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), HPTProgram(..), emptyHPTProgram)
+import AbstractInterpretation.IR (Instruction(..), HPTProgram(..), emptyHPTProgram, HasDataFlowInfo(..))
 
+type ResultHPT = Result HPTProgram
 
 unitType :: IR.SimpleType
 unitType = -1
@@ -24,7 +25,7 @@ litToSimpleType = \case
   LFloat  {}  -> -4
   LBool   {}  -> -5
 
-codeGenVal :: Val -> CG IR.Reg
+codeGenVal :: Val -> CG HPTProgram IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
@@ -51,7 +52,7 @@ codeGenVal = \case
   Var name -> getReg name
   val -> throwE $ "unsupported value " ++ show val
 
-codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> CG ()
+codeGenPrimOp :: HasDataFlowInfo s => Name -> IR.Reg -> [IR.Reg] -> CG s ()
 codeGenPrimOp name funResultReg funArgRegs = do
   let op argTypes resultTy = do
         emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
@@ -105,7 +106,7 @@ codeGenPrimOp name funResultReg funArgRegs = do
 
 codeGen :: Exp -> Either String HPTProgram
 codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cata folder where
-  folder :: ExpF (CG Result) -> CG Result
+  folder :: ExpF (CG HPTProgram ResultHPT) -> CG HPTProgram ResultHPT
   folder = \case
     ProgramF defs -> sequence_ defs >> pure Z
 

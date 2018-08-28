@@ -16,6 +16,8 @@ import Lens.Micro.Platform
 import Grin.Grin (Name, Tag)
 import AbstractInterpretation.HPTResult
 import AbstractInterpretation.IR (Reg(..))
+import AbstractInterpretation.Reduce (Computer)
+import AbstractInterpretation.CreatedBy (CByProgram(..), HPTWProducerInfo(..))
 
 -- HPTResult with producer info
 type HPTResultP = HPTResult
@@ -41,12 +43,8 @@ mapSnd f (x,y) = (x, f y)
 regToProd :: Reg -> Producer
 regToProd (Reg i) = fromIntegral i
 
--- the register mapping is always injective
--- (two different variables will always be stored in different registers)
-reverseRegMap :: Map Name Reg -> Map Int Name
-reverseRegMap = M.fromList
-              . map (swap . mapSnd regToProd)
-              . M.toList
+toProdMap :: Map Reg Name -> Map Producer Name
+toProdMap = M.mapKeys regToProd
 
 toProducer :: SimpleType -> Producer
 toProducer (T_Location n) = n
@@ -74,17 +72,20 @@ extractProducer :: NodeP -> (Set Producer, Node)
 extractProducer nodeP = (S.map toProducer ps, node)
   where (ps,node) = unsafeUncons nodeP
 
-toCByResult :: Map Name Reg -> HPTResult -> CByResult
-toCByResult regMap HPTResult{..} = CByResult hptResult producers
-  where mem  = V.map (over nodeTagMap (M.map dropProducer)) _memory
+toCByResult :: CByProgram -> Computer -> CByResult
+toCByResult cbyProg comp = CByResult hptResult producers
+  where prodMap = toProdMap . _producerMap $ cbyProg
+        hptProg = _hptProg . _hptProgWProd $ cbyProg
+        hptProdResult@HPTResult{..} = toHPTResult hptProg comp
+
+        mem  = V.map (over nodeTagMap (M.map dropProducer)) _memory
         regs = M.map simplifyTypeSet _register
         funs = M.map (over _2 (V.map simplifyTypeSet)) _function
         hptResult = HPTResult mem regs funs
 
-        revRegMap = reverseRegMap regMap
         producers = M.map (ProducerSet . getNamedProducer') _register
 
         getNamedProducer' :: TypeSet -> Map Tag (Set Name)
-        getNamedProducer' = M.map (getNamedProducer revRegMap)
+        getNamedProducer' = M.map (getNamedProducer prodMap)
                           . _nodeTagMap
                           . _nodeSet

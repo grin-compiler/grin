@@ -33,12 +33,14 @@ import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Simplifying.NodeNameIntroduction
 import qualified AbstractInterpretation.HPTResult as HPT
+import qualified AbstractInterpretation.CByResult as CBy
+import AbstractInterpretation.PrettyCBy
 import AbstractInterpretation.PrettyHPT
 import qualified AbstractInterpretation.PrettyIR as HPT
 import qualified AbstractInterpretation.IR as HPT
 import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.CreatedBy as CBy
-import qualified AbstractInterpretation.Reduce as HPT
+import qualified AbstractInterpretation.Reduce as R
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -163,6 +165,13 @@ data HPTStep
   | PrintHPTResult
   deriving (Eq, Show)
 
+data CByStep
+  = CompileCBy
+  | PrintCByCode
+  | RunCByPure
+  | PrintCByResult
+  deriving (Eq, Show)
+
 data EffectStep
   = CalcEffectMap
   | PrintEffectMap
@@ -170,6 +179,7 @@ data EffectStep
 
 data PipelineStep
   = HPT HPTStep
+  | CBy CByStep
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
@@ -214,6 +224,8 @@ data PState = PState
     , _psSaveIdx    :: Int
     , _psHPTProgram :: Maybe HPT.HPTProgram
     , _psHPTResult  :: Maybe HPT.HPTResult
+    , _psCByProgram :: Maybe CBy.CByProgram
+    , _psCByResult  :: Maybe CBy.CByResult
     , _psTypeEnv    :: Maybe TypeEnv
     , _psEffectMap  :: Maybe EffectMap
     , _psErrors     :: [String]
@@ -253,6 +265,11 @@ pipelineStep p = do
       PrintHPTCode    -> printHPTCode
       RunHPTPure      -> runHPTPure
       PrintHPTResult  -> printHPTResult
+    CBy cbyStep -> case cbyStep of
+      CompileCBy      -> compileCBy
+      PrintCByCode    -> printCByCode
+      RunCByPure      -> runCByPure
+      PrintCByResult  -> printCByResult
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -292,8 +309,8 @@ printEffectMap = do
 compileHPT :: PipelineM ()
 compileHPT = do
   grin <- use psExp
-  case CBy.codeGen grin of
-    Right hptProgram -> do
+  case HPT.codeGen grin of
+    Right hptProgram ->
       psHPTProgram .= Just hptProgram
     Left e -> do
       psErrors %= (e:)
@@ -307,29 +324,63 @@ compileHPT = do
   liftIO $ print . pretty $ nonlinearSet
   -}
 
+printHPT a = do
+  pipelineLog $ show $ HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
+  pipelineLog $ printf "memory size    %d" $ HPT.hptMemoryCounter a
+  pipelineLog $ printf "register count %d" $ HPT.hptRegisterCounter a
+  pipelineLog $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
+
 printHPTCode :: PipelineM ()
 printHPTCode = do
   hptProgram <- use psHPTProgram
-  let printHPT a = do
-        pipelineLog $ show $ HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
-        pipelineLog $ printf "memory size    %d" $ HPT.hptMemoryCounter a
-        pipelineLog $ printf "register count %d" $ HPT.hptRegisterCounter a
-        pipelineLog $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
   maybe (pure ()) printHPT hptProgram
 
 printHPTResult :: PipelineM ()
 printHPTResult = use psHPTResult >>= \case
   Nothing -> pure ()
-  Just result -> pipelineLog $ show $ pretty $ result
+  Just result -> pipelineLog $ show $ pretty result
 
 runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
   Just hptProgram -> do
-    let hptResult = HPT.evalHPT hptProgram
+    let hptResult = R.evalDataFlowInfo hptProgram
         result = HPT.toHPTResult hptProgram hptResult
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
+      Right te  -> psTypeEnv .= Just te
+      Left err  -> do
+        psErrors %= (err :)
+        psTypeEnv .= Nothing
+
+compileCBy :: PipelineM ()
+compileCBy = do
+  grin <- use psExp
+  case CBy.codeGen grin of
+    Right cbyProgram ->
+      psCByProgram .= Just cbyProgram
+    Left e -> do
+      psErrors %= (e:)
+      psCByProgram .= Nothing
+
+printCByCode :: PipelineM ()
+printCByCode = do
+  cbyProgM <- use psCByProgram
+  maybe (pure ()) (printHPT . CBy._hptProg . CBy._hptProgWProd) cbyProgM
+
+printCByResult :: PipelineM ()
+printCByResult = use psCByResult >>= \case
+  Nothing -> pure ()
+  Just result -> pipelineLog $ show $ pretty result
+
+runCByPure :: PipelineM ()
+runCByPure = use psCByProgram >>= \case
+  Nothing -> psCByResult .= Nothing
+  Just cbyProgram -> do
+    let cbyResult = R.evalDataFlowInfo cbyProgram
+        result = CBy.toCByResult cbyProgram cbyResult
+    psCByResult .= Just result
+    case typeEnvFromHPTResult (CBy._hptResult result) of
       Right te  -> psTypeEnv .= Just te
       Left err  -> do
         psErrors %= (err :)

@@ -8,12 +8,15 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import qualified Data.Bimap as Bimap
 
 import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
+import AbstractInterpretation.IR as IR hiding (Tag, SimpleType)
 import qualified Grin.TypeEnv as TypeEnv
+import qualified AbstractInterpretation.Reduce as R
 
 data SimpleType
   = T_Int64
@@ -84,3 +87,26 @@ instance At (Vector a) where
 _T_Location :: Traversal' SimpleType Int
 _T_Location f (T_Location l) = T_Location <$> f l
 _T_Location _ rest           = pure rest
+
+toHPTResult :: HPTProgram -> R.Computer -> HPTResult
+toHPTResult HPTProgram{..} R.Computer{..} = HPTResult
+  { _memory   = V.map convertNodeSet _memory
+  , _register = Map.map convertReg hptRegisterMap
+  , _function = Map.map convertFunctionRegs hptFunctionArgMap
+
+  }
+  where
+    convertReg :: Reg -> TypeSet
+    convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
+
+    convertNodeSet :: R.NodeSet -> NodeSet
+    convertNodeSet (R.NodeSet a) = NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
+
+    convertSimpleType :: Set Int32 -> Set SimpleType
+    convertSimpleType = Set.map toSimpleType
+
+    convertValue :: R.Value -> TypeSet
+    convertValue (R.Value ty ns) = TypeSet (convertSimpleType ty) (convertNodeSet ns)
+
+    convertFunctionRegs :: (Reg, [Reg]) -> (TypeSet, Vector TypeSet)
+    convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])

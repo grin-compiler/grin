@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, RankNTypes, ViewPatterns #-}
 module AbstractInterpretation.CodeGen where
 
 import Control.Monad.Trans.Except
@@ -10,61 +10,70 @@ import Control.Monad.State
 
 import Grin.Grin
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (HPTProgram(..))
+import AbstractInterpretation.IR (HPTProgram(..), HasDataFlowInfo(..), DataFlowInfo)
 
-type CG = ExceptT String (State HPTProgram)
+type CG s a = ExceptT String (State s) a
 
-data Result
+data Result s
   = R IR.Reg
   | Z
-  | A CPat (CG Result)
+  | A CPat (CG s (Result s))
 
+emit :: HasDataFlowInfo s => IR.Instruction -> CG s ()
+emit inst = modify' $ modifyInfo $ \dfi@HPTProgram{..} -> dfi {hptInstructions = inst : hptInstructions}
 
-emit :: IR.Instruction -> CG ()
-emit inst = modify' $ \s@HPTProgram{..} -> s {hptInstructions = inst : hptInstructions}
+getsDfi :: (HasDataFlowInfo s, MonadState s m) => (DataFlowInfo -> a) -> m a
+getsDfi f = gets (f . getDataFlowInfo)
+
+stateDfi :: (HasDataFlowInfo s, MonadState s m) =>
+            (DataFlowInfo -> (a, DataFlowInfo)) -> m a
+stateDfi f = do
+  (res, dfi) <- getsDfi f
+  modify $ modifyInfo $ const dfi
+  return res
 
 -- creates regsiters for function arguments and result
-getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])
+getOrAddFunRegs :: HasDataFlowInfo s => Name -> Int -> CG s (IR.Reg, [IR.Reg])
 getOrAddFunRegs name arity = do
-  funMap <- gets hptFunctionArgMap
+  funMap <- getsDfi hptFunctionArgMap
   case Map.lookup name funMap of
     Just x  -> pure x
     Nothing -> do
       resReg <- newReg
       argRegs <- replicateM arity newReg
       let funRegs = (resReg, argRegs)
-      modify' $ \s@HPTProgram{..} -> s {hptFunctionArgMap = Map.insert name funRegs hptFunctionArgMap}
+      modify' $ modifyInfo $ \s@HPTProgram{..} -> s {hptFunctionArgMap = Map.insert name funRegs hptFunctionArgMap}
       pure funRegs
 
-newReg :: CG IR.Reg
-newReg = state $ \s@HPTProgram{..} -> (IR.Reg hptRegisterCounter, s {hptRegisterCounter = succ hptRegisterCounter})
+newReg :: HasDataFlowInfo s => CG s IR.Reg
+newReg = stateDfi $ \s@HPTProgram{..} -> (IR.Reg hptRegisterCounter, s {hptRegisterCounter = succ hptRegisterCounter})
 
-newMem :: CG IR.Mem
-newMem = state $ \s@HPTProgram{..} -> (IR.Mem hptMemoryCounter, s {hptMemoryCounter = succ hptMemoryCounter})
+newMem :: HasDataFlowInfo s => CG s IR.Mem
+newMem = stateDfi $ \s@HPTProgram{..} -> (IR.Mem hptMemoryCounter, s {hptMemoryCounter = succ hptMemoryCounter})
 
-addReg :: Name -> IR.Reg -> CG ()
-addReg name reg = modify' $ \s@HPTProgram{..} -> s {hptRegisterMap = Map.insert name reg hptRegisterMap}
+addReg :: HasDataFlowInfo s => Name -> IR.Reg -> CG s ()
+addReg name reg = modify' $ modifyInfo $ \s@HPTProgram{..} -> s {hptRegisterMap = Map.insert name reg hptRegisterMap}
 
-getReg :: Name -> CG IR.Reg
+getReg :: HasDataFlowInfo s => Name -> CG s IR.Reg
 getReg name = do
-  regMap <- gets hptRegisterMap
+  regMap <- getsDfi hptRegisterMap
   case Map.lookup name regMap of
     Nothing   -> throwE $ "unknown variable " ++ name
     Just reg  -> pure reg
 
-getTag :: Tag -> CG IR.Tag
+getTag :: HasDataFlowInfo s => Tag -> CG s IR.Tag
 getTag tag = do
-  tagMap <- gets hptTagMap
+  tagMap <- getsDfi hptTagMap
   case Bimap.lookup tag tagMap of
     Just t  -> pure t
     Nothing -> do
       let t = IR.Tag . fromIntegral $ Bimap.size tagMap
-      modify' $ \s -> s {hptTagMap = Bimap.insert tag t tagMap}
+      modify' $ modifyInfo $ \s -> s {hptTagMap = Bimap.insert tag t tagMap}
       pure t
 
-codeGenBlock :: CG () -> CG [IR.Instruction]
+codeGenBlock :: HasDataFlowInfo s => CG s () -> CG s [IR.Instruction]
 codeGenBlock genM = do
-  instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
+  instructions <- stateDfi $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
   genM
-  blockInstructions <- state $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
+  blockInstructions <- stateDfi $ \s@HPTProgram{..} -> (reverse hptInstructions, s {hptInstructions = instructions})
   pure blockInstructions

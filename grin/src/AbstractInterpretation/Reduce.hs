@@ -1,8 +1,5 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
-module AbstractInterpretation.Reduce
-  ( evalHPT
-  , toHPTResult
-  ) where
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, ViewPatterns #-}
+module AbstractInterpretation.Reduce where
 
 import Data.Int
 import Data.Set (Set)
@@ -19,7 +16,6 @@ import Lens.Micro.Platform
 
 import AbstractInterpretation.IR
 import AbstractInterpretation.CodeGen
-import qualified AbstractInterpretation.HPTResult as R
 
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
 
@@ -142,34 +138,11 @@ evalInstruction = \case
     CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-evalHPT :: HPTProgram -> Computer
-evalHPT HPTProgram{..} = run emptyComputer where
+evalDataFlowInfo :: HasDataFlowInfo s => s -> Computer
+evalDataFlowInfo (getDataFlowInfo -> HPTProgram{..}) = run emptyComputer where
   emptyComputer = Computer
     { _memory   = V.replicate (fromIntegral hptMemoryCounter) mempty
     , _register = V.replicate (fromIntegral hptRegisterCounter) mempty
     }
   run computer = if computer == nextComputer then computer else run nextComputer
     where nextComputer = execState (mapM_ evalInstruction hptInstructions) computer
-
-toHPTResult :: HPTProgram -> Computer -> R.HPTResult
-toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
-  { R._memory   = V.map convertNodeSet _memory
-  , R._register = Map.map convertReg hptRegisterMap
-  , R._function = Map.map convertFunctionRegs hptFunctionArgMap
-
-  }
-  where
-    convertReg :: Reg -> R.TypeSet
-    convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
-
-    convertNodeSet :: NodeSet -> R.NodeSet
-    convertNodeSet (NodeSet a) = R.NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
-
-    convertSimpleType :: Set Int32 -> Set R.SimpleType
-    convertSimpleType s = Set.map R.toSimpleType s
-
-    convertValue :: Value -> R.TypeSet
-    convertValue (Value ty ns) = R.TypeSet (convertSimpleType ty) (convertNodeSet ns)
-
-    convertFunctionRegs :: (Reg, [Reg]) -> (R.TypeSet, Vector R.TypeSet)
-    convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])

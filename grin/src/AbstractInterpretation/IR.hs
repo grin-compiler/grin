@@ -76,6 +76,20 @@ data Constant
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type, location, or incase of Cby: producer-}
   deriving Show
 
+class HasDataFlowInfo a where
+  getDataFlowInfo :: a -> DataFlowInfo
+
+  modifyInfo :: (DataFlowInfo -> DataFlowInfo) -> a -> a
+
+  setInfo :: DataFlowInfo -> a -> a
+  setInfo dfi = modifyInfo (const dfi)
+
+instance HasDataFlowInfo HPTProgram where
+  getDataFlowInfo = id
+  modifyInfo f    = f
+
+type DataFlowInfo = HPTProgram
+
 data HPTProgram
   = HPTProgram
   { hptMemoryCounter    :: Word32
@@ -86,8 +100,6 @@ data HPTProgram
   , hptTagMap           :: Bimap.Bimap Grin.Tag Tag
   }
   deriving Show
-
-type CByProgram = HPTProgram
 
 emptyHPTProgram = HPTProgram
   { hptMemoryCounter    = 0

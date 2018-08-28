@@ -21,8 +21,10 @@ import AbstractInterpretation.PrettyHPT
 import AbstractInterpretation.HPTResult
 import qualified Grin.TypeEnv as TypeEnv
 
+import AbstractInterpretation.IR (HasDataFlowInfo(..))
 import qualified AbstractInterpretation.HeapPointsTo as HPT
-import qualified AbstractInterpretation.Reduce as HPT
+import qualified AbstractInterpretation.HPTResult as HPT
+import qualified AbstractInterpretation.Reduce as R
 
 {-
   validate HPT result
@@ -84,5 +86,5 @@ typeEnvFromHPTResult hptResult = typeEnv where
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where
   hptProgram = HPT.codeGen exp
-  hptResult = HPT.evalHPT <$> hptProgram
+  hptResult = (R.evalDataFlowInfo . getDataFlowInfo) <$> hptProgram
   result = HPT.toHPTResult <$>  hptProgram <*> hptResult

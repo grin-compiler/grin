@@ -1,6 +1,5 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
-module AbstractInterpretation.CreatedBy
-  ( codeGen ) where
+{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell #-}
+module AbstractInterpretation.CreatedBy where
 
 import Control.Monad.Trans.Except
 import Control.Monad.State
@@ -9,23 +8,43 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Functor.Foldable as Foldable
 
+import Lens.Micro.Platform
+import Lens.Micro.Internal
+
 import Grin.Grin
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), HPTProgram(..), emptyHPTProgram)
+import AbstractInterpretation.IR (Instruction(..), HPTProgram(..), emptyHPTProgram, HasDataFlowInfo(..))
 import AbstractInterpretation.HeapPointsTo (unitType, litToSimpleType, codeGenPrimOp)
 
 
--- type CreatedByProdMap = Map.Map Name Name
--- type CreatedByProgram = (CreatedByProdMap, HPTProgram)
+-- HPT program with producer information about nodes
+-- for each node, it contains the node's possible producers in the first field
+newtype HPTWProducerInfo = HPTProducerInfo { _hptProg :: HPTProgram }
 
-addProducer :: Name -> CG ()
-addProducer x = pure ()
+data CByProgram =
+  CByProgram
+  { _producerMap :: Map.Map IR.Reg Name
+  , _hptProgWProd :: HPTWProducerInfo
+  }
+
+emptyCByProgram = CByProgram Map.empty (HPTProducerInfo emptyHPTProgram)
+
+concat <$> mapM makeLenses [''CByProgram, ''HPTWProducerInfo]
+
+instance HasDataFlowInfo CByProgram where
+  getDataFlowInfo = getDataFlowInfo . _hptProg . _hptProgWProd
+  modifyInfo      = over (hptProgWProd.hptProg)
+
+type ResultCBy = Result CByProgram
+
+addProducer :: IR.Reg -> Name -> CG CByProgram ()
+addProducer r v = producerMap %= Map.insert r v
 
 registerToProducer :: IR.Reg -> IR.Producer
 registerToProducer (IR.Reg r) = fromIntegral r
 
-codeGenVal :: Val -> CG IR.Reg
+codeGenVal :: Val -> CG CByProgram IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
@@ -53,9 +72,9 @@ codeGenVal = \case
   Var name -> getReg name
   val -> throwE $ "unsupported value " ++ show val
 
-codeGen :: Exp -> Either String IR.CByProgram
-codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . para folder where
-  folder :: ExpF (Exp, CG Result) -> CG Result
+codeGen :: Exp -> Either String CByProgram
+codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para folder where
+  folder :: ExpF (Exp, CG CByProgram ResultCBy) -> CG CByProgram ResultCBy
   folder = \case
     ProgramF defs -> (sequence_ . fmap snd $ defs) >> pure Z
 
@@ -70,7 +89,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . par
     EBindF (SReturn ConstTagNode{},leftExp) (Var v) (_,rightExp) -> do
       R r <- leftExp
       addReg v r
-      addProducer v
+      addProducer r v
       rightExp
     EBindF (_,leftExp) lpat (_,rightExp) -> do
       leftExp >>= \case
