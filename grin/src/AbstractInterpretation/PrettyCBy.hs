@@ -21,8 +21,11 @@ instance Pretty ProducerSet where
                           . map prettySimplePair
                           . Map.toList $ ps
 
+instance Pretty ProducerMap where
+  pretty (ProducerMap pm) = prettyKeyValue $ Map.toList pm
+
 instance Pretty CByResult where
   pretty CByResult{..} = vsep
     [ pretty _hptResult
-    , yellow (text "Producers") <$$> indent 4 (prettyKeyValue $ Map.toList  _producers)
+    , yellow (text "Producers") <$$> indent 4 (pretty _producers)
     ]

@@ -24,7 +24,7 @@ newtype HPTWProducerInfo = HPTProducerInfo { _hptProg :: HPTProgram }
 
 data CByProgram =
   CByProgram
-  { _producerMap :: Map.Map IR.Reg Name
+  { _producerMap  :: Map.Map IR.Reg Name
   , _hptProgWProd :: HPTWProducerInfo
   }
 concat <$> mapM makeLenses [''CByProgram, ''HPTWProducerInfo]

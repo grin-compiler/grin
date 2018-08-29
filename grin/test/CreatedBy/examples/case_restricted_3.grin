@@ -1,0 +1,28 @@
+grinMain =
+  a0 <- f 1
+  a1 <- pure (CWord 3)
+  r0 <- case a0 of
+    (CInt c0)  -> b0 <- g a0
+                  pure b0
+    (CBool c1) -> b1 <- g a1
+                  pure b1
+    (CNope c2) -> b2 <- pure (CNope 1)
+                  pure b2
+  pure r0
+
+
+f x =
+ case x of
+  0 -> x0 <- pure (CInt 5)
+       pure x0
+  1 -> x1 <- pure (CBool 0)
+       pure x1
+
+g y =
+ case y of
+  (CInt n)  -> y0 <- pure (CInt 5)
+               pure y0
+  (CBool b) -> y1 <- pure (CBool 0)
+               pure y1
+  (CWord w) -> y2 <- pure (CWord 3)
+               pure y2

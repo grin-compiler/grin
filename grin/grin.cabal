@@ -63,6 +63,7 @@ library
     Test.Assertions
     Test.Check
     Test.Grammar
+    Test.IO
     Test.PrimOps
     Test.Test
     Transformations.BindNormalisation
