@@ -37,7 +37,7 @@ import qualified AbstractInterpretation.CByResult as CBy
 import AbstractInterpretation.PrettyCBy
 import AbstractInterpretation.PrettyHPT
 import qualified AbstractInterpretation.PrettyIR as HPT
-import qualified AbstractInterpretation.IR as HPT
+import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.CreatedBy as CBy
 import qualified AbstractInterpretation.Reduce as R
@@ -324,16 +324,16 @@ compileHPT = do
   liftIO $ print . pretty $ nonlinearSet
   -}
 
-printHPT a = do
-  pipelineLog $ show $ HPT.prettyInstructions (Just a) . HPT.hptInstructions $ a
-  pipelineLog $ printf "memory size    %d" $ HPT.hptMemoryCounter a
-  pipelineLog $ printf "register count %d" $ HPT.hptRegisterCounter a
-  pipelineLog $ printf "variable count %d" $ Map.size $ HPT.hptRegisterMap a
+printAbsProg a = do
+  pipelineLog $ show $ HPT.prettyInstructions (Just a) . IR.absInstructions $ a
+  pipelineLog $ printf "memory size    %d" $ IR.absMemoryCounter a
+  pipelineLog $ printf "register count %d" $ IR.absRegisterCounter a
+  pipelineLog $ printf "variable count %d" $ Map.size $ IR.absRegisterMap a
 
 printHPTCode :: PipelineM ()
 printHPTCode = do
   hptProgram <- use psHPTProgram
-  maybe (pure ()) printHPT hptProgram
+  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) hptProgram
 
 printHPTResult :: PipelineM ()
 printHPTResult = use psHPTResult >>= \case
@@ -366,7 +366,7 @@ compileCBy = do
 printCByCode :: PipelineM ()
 printCByCode = do
   cbyProgM <- use psCByProgram
-  maybe (pure ()) (printHPT . CBy._hptProg . CBy._hptProgWProd) cbyProgM
+  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) cbyProgM
 
 printCByResult :: PipelineM ()
 printCByResult = use psCByResult >>= \case
@@ -575,6 +575,8 @@ runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o
     , _psSaveIdx    = 0
     , _psHPTProgram = Nothing
     , _psHPTResult  = Nothing
+    , _psCByProgram = Nothing
+    , _psCByResult  = Nothing
     , _psTypeEnv    = Nothing
     , _psEffectMap  = Nothing
     , _psErrors     = []

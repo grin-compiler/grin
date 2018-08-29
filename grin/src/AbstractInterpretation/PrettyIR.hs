@@ -119,10 +119,10 @@ prettyInstruction mirm = \case
     ppS = prettySelector mirm
     arr = text "-->"
 
-prettyInstructions :: Maybe HPTProgram -> [Instruction] -> Doc
-prettyInstructions mhpt = vsep . map (prettyInstruction mirm) where
-  mirm = fmap toIRMap mhpt
+prettyInstructions :: HasDataFlowInfo a => Maybe a -> [Instruction] -> Doc
+prettyInstructions mDfi = vsep . map (prettyInstruction mirm) where
+  mirm = fmap (toIRMap . getDataFlowInfo) mDfi
   toIRMap hpt = IRMap
-    { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ hptRegisterMap hpt]
-    , irmTagMap       = hptTagMap hpt
+    { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ absRegisterMap hpt]
+    , irmTagMap       = absTagMap hpt
     }

@@ -77,35 +77,30 @@ data Constant
   deriving Show
 
 class HasDataFlowInfo a where
-  getDataFlowInfo :: a -> DataFlowInfo
+  getDataFlowInfo :: a -> AbstractProgram
+  modifyInfo :: (AbstractProgram -> AbstractProgram) -> a -> a
 
-  modifyInfo :: (DataFlowInfo -> DataFlowInfo) -> a -> a
 
-  setInfo :: DataFlowInfo -> a -> a
-  setInfo dfi = modifyInfo (const dfi)
-
-instance HasDataFlowInfo HPTProgram where
+instance HasDataFlowInfo AbstractProgram where
   getDataFlowInfo = id
   modifyInfo f    = f
 
-type DataFlowInfo = HPTProgram
-
-data HPTProgram
-  = HPTProgram
-  { hptMemoryCounter    :: Word32
-  , hptRegisterCounter  :: Word32
-  , hptRegisterMap      :: Map.Map Name Reg
-  , hptInstructions     :: [Instruction]
-  , hptFunctionArgMap   :: Map.Map Name (Reg, [Reg])
-  , hptTagMap           :: Bimap.Bimap Grin.Tag Tag
+data AbstractProgram
+  = AbstractProgram
+  { absMemoryCounter    :: Word32
+  , absRegisterCounter  :: Word32
+  , absRegisterMap      :: Map.Map Name Reg
+  , absInstructions     :: [Instruction]
+  , absFunctionArgMap   :: Map.Map Name (Reg, [Reg])
+  , absTagMap           :: Bimap.Bimap Grin.Tag Tag
   }
   deriving Show
 
-emptyHPTProgram = HPTProgram
-  { hptMemoryCounter    = 0
-  , hptRegisterCounter  = 0
-  , hptRegisterMap      = Map.empty
-  , hptInstructions     = []
-  , hptFunctionArgMap   = Map.empty
-  , hptTagMap           = Bimap.empty
+emptyAbstractProgram = AbstractProgram
+  { absMemoryCounter    = 0
+  , absRegisterCounter  = 0
+  , absRegisterMap      = Map.empty
+  , absInstructions     = []
+  , absFunctionArgMap   = Map.empty
+  , absTagMap           = Bimap.empty
   }

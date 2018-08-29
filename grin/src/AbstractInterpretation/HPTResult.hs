@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, DeriveFunctor #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, DeriveFunctor, ViewPatterns #-}
 module AbstractInterpretation.HPTResult where
 
 import Data.Int
@@ -14,6 +14,7 @@ import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
+import AbstractInterpretation.HeapPointsTo (HPTProgram(..))
 import AbstractInterpretation.IR as IR hiding (Tag, SimpleType)
 import qualified Grin.TypeEnv as TypeEnv
 import qualified AbstractInterpretation.Reduce as R
@@ -89,10 +90,10 @@ _T_Location f (T_Location l) = T_Location <$> f l
 _T_Location _ rest           = pure rest
 
 toHPTResult :: HPTProgram -> R.Computer -> HPTResult
-toHPTResult HPTProgram{..} R.Computer{..} = HPTResult
+toHPTResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = HPTResult
   { _memory   = V.map convertNodeSet _memory
-  , _register = Map.map convertReg hptRegisterMap
-  , _function = Map.map convertFunctionRegs hptFunctionArgMap
+  , _register = Map.map convertReg absRegisterMap
+  , _function = Map.map convertFunctionRegs absFunctionArgMap
 
   }
   where
@@ -100,7 +101,7 @@ toHPTResult HPTProgram{..} R.Computer{..} = HPTResult
     convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
 
     convertNodeSet :: R.NodeSet -> NodeSet
-    convertNodeSet (R.NodeSet a) = NodeSet $ Map.fromList [(hptTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
+    convertNodeSet (R.NodeSet a) = NodeSet $ Map.fromList [(absTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
 
     convertSimpleType :: Set Int32 -> Set SimpleType
     convertSimpleType = Set.map toSimpleType

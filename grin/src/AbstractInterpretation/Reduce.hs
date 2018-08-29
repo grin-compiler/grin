@@ -139,10 +139,10 @@ evalInstruction = \case
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
 evalDataFlowInfo :: HasDataFlowInfo s => s -> Computer
-evalDataFlowInfo (getDataFlowInfo -> HPTProgram{..}) = run emptyComputer where
+evalDataFlowInfo (getDataFlowInfo -> AbstractProgram{..}) = run emptyComputer where
   emptyComputer = Computer
-    { _memory   = V.replicate (fromIntegral hptMemoryCounter) mempty
-    , _register = V.replicate (fromIntegral hptRegisterCounter) mempty
+    { _memory   = V.replicate (fromIntegral absMemoryCounter) mempty
+    , _register = V.replicate (fromIntegral absRegisterCounter) mempty
     }
   run computer = if computer == nextComputer then computer else run nextComputer
-    where nextComputer = execState (mapM_ evalInstruction hptInstructions) computer
+    where nextComputer = execState (mapM_ evalInstruction absInstructions) computer

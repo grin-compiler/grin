@@ -1,6 +1,5 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections #-}
-module AbstractInterpretation.HeapPointsTo
-  ( codeGen, unitType, litToSimpleType, codeGenPrimOp ) where
+{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, TemplateHaskell #-}
+module AbstractInterpretation.HeapPointsTo where
 
 import Control.Monad.Trans.Except
 import Control.Monad.State
@@ -8,10 +7,23 @@ import Control.Monad.State
 import qualified Data.Set as Set
 import Data.Functor.Foldable as Foldable
 
+import Lens.Micro.Platform
+import Lens.Micro.Internal
+
 import Grin.Grin
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), HPTProgram(..), emptyHPTProgram, HasDataFlowInfo(..))
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
+
+data HPTProgram = HPTProgram { _absProg :: AbstractProgram }
+concat <$> mapM makeLenses [''HPTProgram]
+
+instance HasDataFlowInfo HPTProgram where
+  getDataFlowInfo = _absProg
+  modifyInfo      = over absProg
+
+emptyHPTProgram :: HPTProgram
+emptyHPTProgram = HPTProgram emptyAbstractProgram
 
 type ResultHPT = Result HPTProgram
 
@@ -105,20 +117,20 @@ codeGenPrimOp name funResultReg funArgRegs = do
 
 
 codeGen :: Exp -> Either String HPTProgram
-codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cata folder where
+codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata folder where
   folder :: ExpF (CG HPTProgram ResultHPT) -> CG HPTProgram ResultHPT
   folder = \case
     ProgramF defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
-      instructions <- state $ \s@HPTProgram{..} -> (hptInstructions, s {hptInstructions = []})
+      instructions <- stateDfi $ \s@AbstractProgram{..} -> (absInstructions, s {absInstructions = []})
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       -- QUESTION: why do we reverse?
-      modify' $ \s@HPTProgram{..} -> s {hptInstructions = reverse hptInstructions ++ instructions}
+      modify' $ modifyInfo $ \s@AbstractProgram{..} -> s {absInstructions = reverse absInstructions ++ instructions}
       pure Z
 
     EBindF leftExp lpat rightExp -> do

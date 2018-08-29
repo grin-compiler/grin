@@ -14,8 +14,8 @@ import Lens.Micro.Internal
 import Grin.Grin
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), HPTProgram(..), emptyHPTProgram, HasDataFlowInfo(..))
-import AbstractInterpretation.HeapPointsTo (unitType, litToSimpleType, codeGenPrimOp)
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataFlowInfo(..))
+import AbstractInterpretation.HeapPointsTo hiding (codeGenVal, codeGen)
 
 
 -- HPT program with producer information about nodes
@@ -27,14 +27,14 @@ data CByProgram =
   { _producerMap :: Map.Map IR.Reg Name
   , _hptProgWProd :: HPTWProducerInfo
   }
-
-emptyCByProgram = CByProgram Map.empty (HPTProducerInfo emptyHPTProgram)
-
 concat <$> mapM makeLenses [''CByProgram, ''HPTWProducerInfo]
 
 instance HasDataFlowInfo CByProgram where
   getDataFlowInfo = getDataFlowInfo . _hptProg . _hptProgWProd
-  modifyInfo      = over (hptProgWProd.hptProg)
+  modifyInfo f    = over (hptProgWProd.hptProg) (modifyInfo f)
+
+emptyCByProgram :: CByProgram
+emptyCByProgram = CByProgram Map.empty (HPTProducerInfo emptyHPTProgram)
 
 type ResultCBy = Result CByProgram
 
