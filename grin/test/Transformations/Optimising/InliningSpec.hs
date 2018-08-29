@@ -39,3 +39,16 @@ spec = do
       |]
     let inlineSet = Set.fromList ["funA"]
     snd (inlining inlineSet (inferTypeEnv before, before)) `sameAs` after
+
+  it "no-inline grinMain" $ do
+    let before = [prog|
+        grinMain =
+          x <- pure 22
+          pure x
+      |]
+    let after = [prog|
+        grinMain =
+          x <- pure 22
+          pure x
+      |]
+    snd (lateInlining (inferTypeEnv before, before)) `sameAs` after

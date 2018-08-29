@@ -47,7 +47,7 @@ selectInlineSet prog@(Program defs) = inlineSet where
   leafSet       = Set.fromList [name | (name, callMap) <- callTrees, Map.null callMap]
 
   -- keep only the leaves of the candidate call tree
-  inlineSet     = Data.Foldable.foldr stripCallers candidateSet candidateSet
+  inlineSet     = Set.delete "grinMain" $ Data.Foldable.foldr stripCallers candidateSet candidateSet
 
   -- remove intermediate nodes from the call tree
   stripCallers name set = set Set.\\ (Map.keysSet $ Map.findWithDefault mempty name defCallTree)
