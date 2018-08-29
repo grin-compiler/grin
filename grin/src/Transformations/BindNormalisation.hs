@@ -13,6 +13,10 @@ bindNormalisation = hylo alg coalg where
 
   coalg :: Exp -> ExpF Exp
   coalg (EBind lhs1 pat1 rhs1)
-    | SBlock (EBind lhs2 pat2 rhs2) <- lhs1
-    = SBlockF $ EBind lhs2 pat2 (EBind rhs2 pat1 rhs1)
+    | EBind lhs2 pat2 rhs2 <- rmBlocks lhs1
+    = SBlockF $ EBind lhs2 pat2 (EBind (SBlock rhs2) pat1 rhs1)
   coalg e = project e
+
+  rmBlocks :: Exp -> Exp
+  rmBlocks (SBlock e) = rmBlocks e
+  rmBlocks e          = e

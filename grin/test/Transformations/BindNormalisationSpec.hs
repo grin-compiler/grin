@@ -47,6 +47,13 @@ spec = do
             pure 1
           pure 0
         pure x0
+
+      test5 =
+        a <- do
+          b <- pure 1
+          c <- pure 2
+          pure b
+        pure a
       |]
     let after = [prog|
       test1 =
@@ -70,6 +77,12 @@ spec = do
         x1 <- pure 1
         x0 <- pure 0
         pure x0
+
+      test5 =
+        b <- pure 1
+        c <- pure 2
+        a <- pure b
+        pure a
       |]
     (bindNormalisation before) `sameAs` after
 
