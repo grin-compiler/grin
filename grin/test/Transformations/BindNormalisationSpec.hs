@@ -38,6 +38,15 @@ spec = do
                 pure 2
               pure (CPair i1 i2)
           pure p
+
+      test4 =
+        x0 <- do
+          x1 <- do
+            x2 <- do
+              pure 2
+            pure 1
+          pure 0
+        pure x0
       |]
     let after = [prog|
       test1 =
@@ -55,6 +64,12 @@ spec = do
         i2 <- pure 2
         p <- pure (CPair i1 i2)
         pure p
+
+      test4 =
+        x2 <- pure 2
+        x1 <- pure 1
+        x0 <- pure 0
+        pure x0
       |]
     (bindNormalisation before) `sameAs` after
 
