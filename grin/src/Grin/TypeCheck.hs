@@ -21,7 +21,7 @@ import AbstractInterpretation.PrettyHPT
 import AbstractInterpretation.HPTResult
 import qualified Grin.TypeEnv as TypeEnv
 
-import qualified AbstractInterpretation.CodeGen as HPT
+import qualified AbstractInterpretation.CodeGenMain as HPT
 import qualified AbstractInterpretation.Reduce as HPT
 
 {-
@@ -79,7 +79,8 @@ typeEnvFromHPTResult hptResult = typeEnv where
   typeEnv = TypeEnv.TypeEnv <$>
     mapM convertNodeSet  (_memory hptResult) <*>
     mapM convertTypeSet  (_register hptResult) <*>
-    mapM convertFunction (_function hptResult)
+    mapM convertFunction (_function hptResult) -- <*>
+--    pure (_sharing hptResult)
 
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where

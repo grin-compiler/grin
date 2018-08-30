@@ -1,6 +1,11 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TupleSections #-}
 module AbstractInterpretation.CodeGen
-  ( codeGen
+  ( codeGenPhases
+  , CG
+  , newReg
+  , getReg
+  , emit
+  , hptCodeGen
   ) where
 
 import Control.Monad.Trans.Except
@@ -177,9 +182,11 @@ codeGenPrimOp name funResultReg funArgRegs = do
     "_prim_bool_eq"   -> op [bool, bool] bool
     "_prim_bool_ne"   -> op [bool, bool] bool
 
+codeGenPhases :: [Exp -> CG ()] -> Exp -> Either String HPTProgram
+codeGenPhases phases e = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT $ mapM_ ($e) phases
 
-codeGen :: Exp -> Either String HPTProgram
-codeGen = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT . cata folder where
+hptCodeGen :: Exp -> CG ()
+hptCodeGen = void . cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
     ProgramF defs -> sequence_ defs >> pure Z

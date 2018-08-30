@@ -17,11 +17,13 @@ library
   hs-source-dirs:      src
   exposed-modules:
     AbstractInterpretation.CodeGen
+    AbstractInterpretation.CodeGenMain
     AbstractInterpretation.HPTResult
     AbstractInterpretation.IR
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
     AbstractInterpretation.Reduce
+    AbstractInterpretation.Sharing
     AbstractInterpretation.Model
     Grin.Grin
     Grin.Syntax

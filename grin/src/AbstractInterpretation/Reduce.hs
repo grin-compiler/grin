@@ -21,6 +21,8 @@ import AbstractInterpretation.IR
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.HPTResult as R
 
+import Debug.Trace
+
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
 
 data Value
@@ -34,7 +36,7 @@ data Computer
   = Computer
   { _memory    :: Vector NodeSet
   , _register  :: Vector Value
---  , _shared    :: Set Loc
+  , _shared    :: Set Mem
   }
   deriving (Eq, Show)
 
@@ -89,6 +91,15 @@ evalInstruction = \case
       value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex
       register.ix (regIndex dstReg).simpleType %= (mappend value)
 
+    Locations -> do
+      typeSet <- use $ register . ix (regIndex srcReg) . simpleType
+      let locSet = Set.filter (>= 0) typeSet
+      register . ix (regIndex dstReg) .= mempty { _simpleType = locSet }
+
+    NodeLocations -> do
+      nodes <- use $ register . ix (regIndex srcReg) . nodeSet . nodeTagMap . to Map.elems
+      register . ix (regIndex dstReg) .= mempty { _simpleType = Set.fromList (concatMap (concatMap (Set.toList . Set.filter (>=0)) . V.toList) nodes) }
+
     ConditionAsSelector cond -> case cond of
       NodeTypeExists tag -> do
         tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
@@ -110,7 +121,7 @@ evalInstruction = \case
           register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet filteredTagMap)
 
   Extend {..} -> do
-    -- TODO: support all selectors
+    -- TODO: support all selectors, except Locations and NodeLocations, which are specific for sharing.
     value <- use $ register.ix (regIndex srcReg).simpleType
     let NodeItem tag itemIndex = dstSelector
     register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
@@ -143,11 +154,21 @@ evalInstruction = \case
     CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
+  SetShared {..} -> do
+    addressSet <- use $ register . ix (regIndex addressReg) . simpleType
+    forM_ addressSet $ \address -> when (address >= 0) $ do
+      shared %= Set.insert (Mem (fromIntegral address))
+
+  GetShared {..} -> do
+    sharedSet <- use shared
+    register . ix (regIndex dstReg) .= mempty { _simpleType = Set.map (fromIntegral . memIndex) sharedSet }
+
 evalHPT :: HPTProgram -> Computer
 evalHPT HPTProgram{..} = run emptyComputer where
   emptyComputer = Computer
     { _memory   = V.replicate (fromIntegral hptMemoryCounter) mempty
     , _register = V.replicate (fromIntegral hptRegisterCounter) mempty
+    , _shared   = mempty
     }
   run computer = if computer == nextComputer then computer else run nextComputer
     where nextComputer = execState (mapM_ evalInstruction hptInstructions) computer
@@ -157,7 +178,7 @@ toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
   { R._memory   = V.map convertNodeSet _memory
   , R._register = Map.map convertReg hptRegisterMap
   , R._function = Map.map convertFunctionRegs hptFunctionArgMap
-  , R._sharing  = mempty
+  , R._sharing  = Set.map (\(Mem m) -> fromIntegral m) _shared
   }
   where
     convertReg :: Reg -> R.TypeSet

@@ -35,7 +35,7 @@ import qualified AbstractInterpretation.HPTResult as HPT
 import AbstractInterpretation.PrettyHPT
 import qualified AbstractInterpretation.PrettyIR as HPT
 import qualified AbstractInterpretation.IR as HPT
-import qualified AbstractInterpretation.CodeGen as HPT
+import qualified AbstractInterpretation.CodeGenMain as HPT
 import qualified AbstractInterpretation.Reduce as HPT
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM

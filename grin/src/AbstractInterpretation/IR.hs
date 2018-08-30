@@ -17,6 +17,8 @@ newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
 data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
+  | Locations
+  | NodeLocations
   deriving Show
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
@@ -65,6 +67,12 @@ data Instruction
   | Set -- ^ copy compile time constant to DST register (one time setup)
     { dstReg      :: Reg
     , constant    :: Constant
+    }
+  | SetShared
+    { addressReg :: Reg
+    }
+  | GetShared
+    { dstReg :: Reg
     }
   deriving Show
 

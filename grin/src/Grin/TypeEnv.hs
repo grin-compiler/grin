@@ -14,13 +14,15 @@ import Lens.Micro.Platform
 
 import Grin.Grin
 
+type Loc = Int
+
 data SimpleType
   = T_Int64
   | T_Word64
   | T_Float
   | T_Bool
   | T_Unit
-  | T_Location {_locations :: [Int]}
+  | T_Location {_locations :: [Loc]}
   | T_Dead
   deriving (Eq, Ord, Show)
 
@@ -93,6 +95,7 @@ data TypeEnv
   { _location :: Vector NodeSet
   , _variable :: Map Name Type
   , _function :: Map Name (Type, Vector Type)
+--  , _sharing  :: Set Loc
   }
   deriving (Eq, Show)
 
