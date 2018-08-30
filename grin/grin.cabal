@@ -175,6 +175,7 @@ test-suite grin-test
   main-is:             Spec.hs
   build-depends:       base
                      , containers
+                     , filepath
                      , functor-infix
                      , grin
                      , hspec
@@ -182,7 +183,8 @@ test-suite grin-test
                      , QuickCheck
                      , deepseq
                      , vector
-  other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
+  other-modules:     CreatedBy.CreatedBySpec
+                     , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
                      , Transformations.Simplifying.RightHoistFetchSpec

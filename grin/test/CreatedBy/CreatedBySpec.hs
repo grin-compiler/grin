@@ -20,6 +20,9 @@ import AbstractInterpretation.CByResult
 
 type SpecWithProg = Exp -> Spec
 
+spec :: Spec
+spec = runIO runTests
+
 runTests :: IO ()
 runTests = do
   puresFound           <- calcProducersIO puresSrc
@@ -27,6 +30,7 @@ runTests = do
   caseSimpleFound      <- calcProducersIO caseSimpleSrc
   heapFound            <- calcProducersIO heapSrc
   heapFound            <- calcProducersIO heapSrc
+  pointerInNodeFound   <- calcProducersIO pointerInNodeSrc
   caseRestricted1Found <- calcProducersIO caseRestricted1Src
   caseRestricted2Found <- calcProducersIO caseRestricted2Src
   caseRestricted3Found <- calcProducersIO caseRestricted3Src
@@ -35,12 +39,13 @@ runTests = do
   hspec $ funCallSpec         funCallFound
   hspec $ caseSimpleSpec      caseSimpleFound
   hspec $ heapSpec            heapFound
+  hspec $ pointerInNodeSpec   pointerInNodeFound
   hspec $ caseRestricted1Spec caseRestricted1Found
   hspec $ caseRestricted2Spec caseRestricted2Found
   hspec $ caseRestricted3Spec caseRestricted3Found
 
 cbyExamples :: FilePath
-cbyExamples = ".." </> "test" </> "CreatedBy" </> "examples"
+cbyExamples = "test" </> "CreatedBy" </> "examples"
 
 calcProducersIO :: FilePath -> IO ProducerMap
 calcProducersIO fp = calcProducers <$> readProgram fp
@@ -243,3 +248,24 @@ caseRestricted3Expected = ProducerMap $
 
 caseRestricted3Spec :: ProducerMap -> Spec
 caseRestricted3Spec found = it "case_restricted_3" $ found `sameAs` caseRestricted3Expected
+
+
+
+pointerInNodeSrc :: FilePath
+pointerInNodeSrc = cbyExamples </> "pointer_in_node.grin"
+
+pointerInNodeExpected :: ProducerMap
+pointerInNodeExpected = ProducerMap $
+  M.fromList [ ("n0",  producerN0)
+             , ("p0",  emptyProducerSet)
+             , ("n1",  producerN1)
+             , ("x",   emptyProducerSet)
+             , ("pxs", emptyProducerSet)
+             , ("xs",  producerXS)
+             ]
+  where producerN0 = mkProducerSet [(Tag C "Nil",  ["n0"])]
+        producerN1 = mkProducerSet [(Tag C "Cons", ["n1"])]
+        producerXS = producerN0
+
+pointerInNodeSpec :: ProducerMap -> Spec
+pointerInNodeSpec found = it "pointer_in_node" $ found `sameAs` pointerInNodeExpected

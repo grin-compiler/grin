@@ -47,7 +47,7 @@ data CByResult
 concat <$> mapM makeLenses [''ProducerMap, ''ProducerSet, ''CByResult]
 
 -- node with its possible producers in its first field
-type NodeP    = Vector (Set SimpleType)
+type NodeP    = Node
 -- typeSet with producer info for its nodeSet
 type TypeSetP = TypeSet
 

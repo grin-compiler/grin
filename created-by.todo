@@ -1,63 +1,20 @@
-IR:
-  X data Analysis = PointsTo | CreatedBy
-  X new Constant value: CProducer Int
-  - add reduction step for CProducer
-  X change mapping of registers: (Name of variable, Name of analysis) -> Reg
-  X change mapping of funArgs_ (Name of function, Name of analysis) -> (Reg, [Reg])
-  - change reg mappings to records
-
 created by analysis:
   - preconditions: - run after node naming
                    - run before case simplification (currently run before all simplyfing transformations - except node naming)
                    - run before any dead code elimination
   - producer id <=> id of the register the value was produced into
-  - maintain a register id -> variable name mapping (so that producer names can be looked up after reduction) --- can the current regMapping fulfill this purpose?
+  - maintain a register id -> variable name mapping (so that producer names can be looked up after reduction)
   - reinterpret "NodeSet" : map Tags to singleton Vector (Set Int32)s
-    - a register will have its producers' ids grouped by tags (will be much easier to Project with NodeTypeExists)
-    - or the first vector element could store the producer ids of the node, and the nth vector element could store the producers of the nth node item
+    - each node will have its producer info stored in its first field
     - repr: Word32 reg <--> Int32 producer, could this be a problem?
-  - should store simple types as well, just to have more information?
-  - cata -> para
-  - Val: Var -> getReg
-         _   -> do nothing (values don't have producers)
-  - ProgramF: same
-  - DefF: same, but if result is Z of the body, do nothing
   - EBindF:
     leftExp was Val:
       introduce a new producer with the name of variable inside the binding
       (make sure lpat can only be a variable name) IMPORTANT!!!
-    general case:
-      Z -> do nothing,
-      R -> do we actually need reg intro? IMPORTANT!!! after reg intro, only Vars van be on the RHS of a bind (this case is OK)
+    general case: same
 
 TESTS:
   - write tests for nodeNaming
-
-REFACTOR:
-  - rename "HPT" identities to something more general (right now everything AbstractInterpretation related stuff is called HPT)
-  - rename "simpleType" field of Value in Reduce.hs to something more general (simpleAbsVal?)
-
-CodeGen (alternative implementation - multiple analyses in a single module):
-  - modify insertions function for reg mappings
-  - modify run for the CG monad
-  - modify getOrAddFunregs, so that it will get the analysis as a parameter as well
-  - modify all call sites as well
-  - add utility function getOrAddAllFunRegs :: Name -> Int -> CG ([IR.Reg], [[IR.Reg]]), this will make emits more mappable
-  - modify addReg :: Name -> Analysis -> IR.Reg -> CG ()
-  - modify all relevant call sites (whenever a new variable is bound, a register is introduced for it for each analysis)
-  - same for getReg
-  - modify getRegs
-  - modify call sites accordingly
-  - emit' :: (Analysis -> [Instruction]) -> CG ()
-    use: emit' \case
-           PointsTo -> ...
-           CreatedBy -> ...
-  - helper function for generating a register for each individual analysis
-    - more precisely a mapping from analysis name to register
-  - have to change R ctor of Result to R (Map Analysis Reg)
-  - modify all construction sites as well
-  - introduce helper functions for emitting instructions for (analysis, regMapping) pairs (it would select the appropriate registers)
-    - probably introduce new data type for this to keep the readability of the code (record syntax is easier to read)
 
 questions:
   - Does codeGenVal fail after register introduction? (and on ValTags as well)
@@ -67,6 +24,4 @@ questions:
   - Can case alternatives have differently typed return values? (Lit <-> Node)
   - can a tag be applied to different number of arguments?
   - completely define Extend interpretation
-  - define new Selector: AllTags Int (which selects the nth field of all tags, and unions all information about them)
-  - We need tag information (arity) during the analysis to define codeGenVal for VarTag
-    - create all possible
+  - We need tag information (arity) during the analysis to define codeGenVal for

@@ -161,7 +161,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
                   }
 
               -- bind pattern variables
-              forM_ (zip [0..] vars) $ \(idx, name) -> do
+              forM_ (zip [1..] vars) $ \(idx, name) -> do
                   argReg <- newReg
                   addReg name argReg
                   emit IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
