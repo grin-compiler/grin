@@ -1,5 +1,0 @@
-grinMain =
-  a <- pure (CInt 5)
-  b <- pure a
-  c <- pure b
-  pure c

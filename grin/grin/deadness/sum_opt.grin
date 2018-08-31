@@ -1,0 +1,106 @@
+grinMain =
+  n13 <- sum 0 1 100000
+  _prim_int_print n13
+
+sum n29 n30 n31 =
+  b2 <- _prim_int_gt n30 n31
+  if b2 then
+    pure n29
+  else
+    n18 <- _prim_int_add n30 1
+    n28 <- _prim_int_add n29 n30
+    sum n28 n18 n31
+
+
+First iteration:
+
+if (sum / res <case>) then
+
+  case:
+
+    b2         :-> res <case>
+    res <alt1> :-> res <case>
+    res <alt0> :-> res <case>
+
+    if (res <case>) then
+    {
+      alt1:
+        sum :-> res <alt1>
+        n28 :-> sum[0] / n29
+        n18 :-> sum[1] / n30
+        n31 :-> sum[2] / n31
+
+        n29 :-> n28
+        n30 :-> n28
+
+      alt0:
+        n29 :-> res <alt0>
+    }
+
+  n30 :-> b2
+  n31 :-> b2
+
+n13 :-> res <grinMain>
+n13 is used
+sum :-> n13
+
+Notes: sum    == res <case>
+       sum[0] == n29
+       sum[1] == n30
+       sum[2] == n31
+
+Start:
+  res <gMain> - O
+  sum         - _
+  b2          - _
+  res <case>  - _
+  res <alt1>  - _
+  res <alt0>  - _
+  n13         - _
+  n18         - _
+  n28         - _
+  n29         - _
+  n30         - _
+  n31         - _
+
+First iteration:
+  res <gMain> - O
+  sum         - O
+  b2          - _
+  res <case>  - O
+  res <alt1>  - _
+  res <alt0>  - _
+  n13         - O
+  n18         - _
+  n28         - _
+  n29         - _
+  n30         - _
+  n31         - _
+
+Second iteration:
+  res <gMain> - O
+  sum         - O
+  b2          - O
+  res <case>  - O
+  res <alt1>  - O
+  res <alt0>  - O
+  n13         - O
+  n18         - _
+  n28         - _
+  n29         - O
+  n30         - O
+  n31         - O
+
+Third iteration:
+  res <gMain> - O
+  sum         - O
+  b2          - O
+  res <case>  - O
+  res <alt1>  - O
+  res <alt0>  - O
+  n13         - O
+  n18         - O
+  n28         - O
+  n29         - O
+  n30         - O
+  n31         - O
