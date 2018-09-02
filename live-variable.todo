@@ -151,4 +151,12 @@ forall tag in t . sel tag 1 (res <lhs>) :-> a
 Extend { srcReg = a, dstSelector = allFieldsAt 1, dstReg = R}
 
 
-TODO: PrettyIR -> new instructions
+Critique:
+CodeGen:
+  - are the new instrucions necessary?
+  - marking grinMain result reg LIVE, propagating info into bodyResultReg from funResultReg
+  - two-way information flow in case
+  - storing heap information AND liveness information for pointers
+  - Setting ConstTagNodes instead of just defining information flow
+LVAResult:
+  - DEAD heap locations represented as DEAD basic values
