@@ -1,0 +1,3 @@
+grinMain =
+  (CNode 0 b) <- pure (CNode 0 1)
+  pure 5

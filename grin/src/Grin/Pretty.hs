@@ -5,6 +5,8 @@ module Grin.Pretty
   , PP(..)
   , prettyKeyValue
   , prettyBracedList
+  , prettySimplePair
+  , prettyFunction
   ) where
 
 import Data.Set (Set)
@@ -113,9 +115,6 @@ instance Pretty SimpleType where
 prettyNode :: (Tag, Vector SimpleType) -> Doc
 prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
 
-prettyFunction :: (Name, (Type, Vector Type)) -> Doc
-prettyFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
-
 instance Pretty Type where
   pretty = \case
     T_SimpleType ty -> pretty ty
@@ -130,3 +129,9 @@ instance Pretty TypeEnv where
 
 prettyBracedList :: [Doc] -> Doc
 prettyBracedList = encloseSep lbrace rbrace comma
+
+prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
+prettySimplePair (x, y) = pretty x <> pretty y
+
+prettyFunction :: Pretty a => (Name, (a, Vector a)) -> Doc
+prettyFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))

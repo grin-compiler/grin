@@ -34,12 +34,15 @@ import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Simplifying.NodeNameIntroduction
 import qualified AbstractInterpretation.HPTResult as HPT
 import qualified AbstractInterpretation.CByResult as CBy
+import qualified AbstractInterpretation.LVAResult as LVA
 import AbstractInterpretation.PrettyCBy
 import AbstractInterpretation.PrettyHPT
+import AbstractInterpretation.PrettyLVA
 import qualified AbstractInterpretation.PrettyIR as HPT
 import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo as HPT
-import qualified AbstractInterpretation.CreatedBy as CBy
+import qualified AbstractInterpretation.CreatedBy    as CBy
+import qualified AbstractInterpretation.LiveVariable as LVA
 import qualified AbstractInterpretation.Reduce as R
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
@@ -158,18 +161,11 @@ instance Show (Hidden a) where
 instance Eq (Hidden a) where
   _ == _ = True
 
-data HPTStep
-  = CompileHPT
-  | PrintHPTCode
-  | RunHPTPure
-  | PrintHPTResult
-  deriving (Eq, Show)
-
-data CByStep
-  = CompileCBy
-  | PrintCByCode
-  | RunCByPure
-  | PrintCByResult
+data AbstractComputationStep
+  = CompileToAbstractProgram
+  | PrintAbstractProgram
+  | RunAbstractProgramPure
+  | PrintAbstractResult
   deriving (Eq, Show)
 
 data EffectStep
@@ -178,8 +174,9 @@ data EffectStep
   deriving (Eq, Show)
 
 data PipelineStep
-  = HPT HPTStep
-  | CBy CByStep
+  = HPT AbstractComputationStep
+  | CBy AbstractComputationStep
+  | LVA AbstractComputationStep
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
@@ -226,6 +223,8 @@ data PState = PState
     , _psHPTResult  :: Maybe HPT.HPTResult
     , _psCByProgram :: Maybe CBy.CByProgram
     , _psCByResult  :: Maybe CBy.CByResult
+    , _psLVAProgram :: Maybe LVA.LVAProgram
+    , _psLVAResult  :: Maybe LVA.LVAResult
     , _psTypeEnv    :: Maybe TypeEnv
     , _psEffectMap  :: Maybe EffectMap
     , _psErrors     :: [String]
@@ -260,16 +259,21 @@ pipelineStep p = do
     _       -> pipelineLog $ printf "PipelineStep: %-35s" (show p)
   before <- use psExp
   case p of
-    HPT hptStep -> case hptStep of
-      CompileHPT      -> compileHPT
-      PrintHPTCode    -> printHPTCode
-      RunHPTPure      -> runHPTPure
-      PrintHPTResult  -> printHPTResult
-    CBy cbyStep -> case cbyStep of
-      CompileCBy      -> compileCBy
-      PrintCByCode    -> printCByCode
-      RunCByPure      -> runCByPure
-      PrintCByResult  -> printCByResult
+    HPT step -> case step of
+      CompileToAbstractProgram -> compileHPT
+      PrintAbstractProgram     -> printHPTCode
+      RunAbstractProgramPure   -> runHPTPure
+      PrintAbstractResult      -> printHPTResult
+    CBy step -> case step of
+      CompileToAbstractProgram -> compileCBy
+      PrintAbstractProgram     -> printCByCode
+      RunAbstractProgramPure   -> runCByPure
+      PrintAbstractResult      -> printCByResult
+    LVA step -> case step of
+      CompileToAbstractProgram -> compileLVA
+      PrintAbstractProgram     -> printLVACode
+      RunAbstractProgramPure   -> runLVAPure
+      PrintAbstractResult      -> printLVAResult
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -386,6 +390,41 @@ runCByPure = use psCByProgram >>= \case
         psErrors %= (err :)
         psTypeEnv .= Nothing
 
+
+
+
+compileLVA :: PipelineM ()
+compileLVA = do
+  grin <- use psExp
+  case LVA.codeGen grin of
+    Right lvaProgram ->
+      psLVAProgram .= Just lvaProgram
+    Left e -> do
+      psErrors %= (e:)
+      psCByProgram .= Nothing
+
+printLVACode :: PipelineM ()
+printLVACode = do
+  lvaProgM <- use psLVAProgram
+  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) lvaProgM
+
+printLVAResult :: PipelineM ()
+printLVAResult = use psLVAResult >>= \case
+  Nothing -> pure ()
+  Just result -> pipelineLog $ show $ pretty result
+
+runLVAPure :: PipelineM ()
+runLVAPure = use psLVAProgram >>= \case
+  Nothing -> psLVAResult .= Nothing
+  Just lvaProgram -> do
+    let lvaResult = R.evalDataFlowInfo lvaProgram
+        result = LVA.toLVAResult lvaProgram lvaResult
+    psLVAResult .= Just result
+
+
+
+
+
 printTypeEnv :: PipelineM ()
 printTypeEnv = do
   Just typeEnv <- use psTypeEnv
@@ -470,8 +509,8 @@ statistics = do
 
 lintGrin :: Maybe String -> PipelineM ()
 lintGrin mPhaseName = do
-  pipelineStep $ HPT CompileHPT
-  pipelineStep $ HPT RunHPTPure
+  pipelineStep $ HPT CompileToAbstractProgram
+  pipelineStep $ HPT RunAbstractProgramPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
@@ -484,7 +523,7 @@ lintGrin mPhaseName = do
     failOnLintError <- view poFailOnLint
     when failOnLintError $ void $ do
       pipelineLog $ show $ prettyLintExp lintExp
-      pipelineStep $ HPT PrintHPTResult
+      pipelineStep $ HPT PrintAbstractResult
     case mPhaseName of
       Just phaseName  -> pipelineLog $ printf "error after %s:\n%s" phaseName (unlines errors)
       Nothing         -> pipelineLog $ printf "error:\n%s" (unlines errors)
@@ -500,8 +539,8 @@ lintGrin mPhaseName = do
 randomPipeline :: PipelineM [Transformation]
 randomPipeline = do
   mapM_ pipelineStep
-    [ HPT CompileHPT
-    , HPT RunHPTPure
+    [ HPT CompileToAbstractProgram
+    , HPT RunAbstractProgramPure
     , Eff CalcEffectMap
     ]
   go transformationWhitelist []
@@ -516,8 +555,8 @@ randomPipeline = do
         ExpChanged -> do
           lintGrin . Just $ show t
           mapM_ pipelineStep
-            [ HPT CompileHPT
-            , HPT RunHPTPure
+            [ HPT CompileToAbstractProgram
+            , HPT RunAbstractProgramPure
             , Eff CalcEffectMap
             ]
           go transformationWhitelist (t:res)
@@ -577,6 +616,8 @@ runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o
     , _psHPTResult  = Nothing
     , _psCByProgram = Nothing
     , _psCByResult  = Nothing
+    , _psLVAProgram = Nothing
+    , _psLVAResult  = Nothing
     , _psTypeEnv    = Nothing
     , _psEffectMap  = Nothing
     , _psErrors     = []
@@ -639,8 +680,8 @@ optimizeWith o e pre optimizations post = fmap snd $ runPipeline o e $ do
   mapM_ pipelineStep pre
 
   mapM_ pipelineStep
-    [ HPT CompileHPT
-    , HPT RunHPTPure
+    [ HPT CompileToAbstractProgram
+    , HPT RunAbstractProgramPure
     , T UnitPropagation
     , Eff CalcEffectMap
     ]

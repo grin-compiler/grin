@@ -1,8 +1,15 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
+{-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
 module AbstractInterpretation.IR where
 
 import Data.Int
 import Data.Word
+
+import Data.Functor.Foldable.TH
+import Control.DeepSeq
+import GHC.Generics (Generic)
 
 import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
@@ -11,23 +18,27 @@ import Data.Set (Set)
 import qualified Grin.Grin as Grin
 import Grin.Grin (Name)
 
-newtype Reg = Reg Word32 deriving (Eq, Ord, Show)
-newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
+newtype Reg = Reg Word32 deriving (Generic, NFData, Eq, Ord, Show)
+newtype Mem = Mem Word32 deriving (Generic, NFData, Eq, Ord, Show)
 
 data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
-  deriving Show
+  | AllFields
+  deriving (Generic, NFData, Eq, Ord, Show)
 
-newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
+newtype Tag = Tag Word32 deriving (Generic, NFData, Eq, Ord, Show)
+
 type SimpleType = Int32
 type Producer   = Int32
+type Liveness   = Int32
 
 data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
   | NotIn             (Set Tag)
-  deriving Show
+  | NotEmpty
+  deriving (Generic, NFData, Eq, Ord, Show)
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error at compile time ; the analyis will not be restrictive ; there will not be runtime checks
 
@@ -51,6 +62,10 @@ data Instruction
     { srcReg        :: Reg
     , dstReg        :: Reg
     }
+  | RestrictedMove
+    { srcReg        :: Reg
+    , dstReg        :: Reg
+    }
   | Fetch -- ^ copy mem (node) content addressed by SRC reg location part to DST register node part
     { addressReg  :: Reg
     , dstReg      :: Reg
@@ -67,14 +82,16 @@ data Instruction
     { dstReg      :: Reg
     , constant    :: Constant
     }
-  deriving Show
+  deriving (Generic, NFData, Eq, Ord, Show)
 
 data Constant
   = CSimpleType   SimpleType
   | CHeapLocation Mem
   | CNodeType     Tag Int {-arity-}
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type, location, or incase of Cby: producer-}
-  deriving Show
+  deriving (Generic, NFData, Eq, Ord, Show)
+
+makeBaseFunctor ''Instruction
 
 class HasDataFlowInfo a where
   getDataFlowInfo :: a -> AbstractProgram

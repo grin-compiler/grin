@@ -312,13 +312,13 @@ preparation =
   [ SaveGrin "FromIdris"
   , T DeadProcedureElimination
   , PrintGrin ondullblack
-  , HPT CompileHPT
-  , HPT RunHPTPure
-  , HPT PrintHPTResult
-  , HPT PrintHPTCode
+  , HPT CompileToAbstractProgram
+  , HPT RunAbstractProgramPure
+  , HPT PrintAbstractResult
+  , HPT PrintAbstractProgram
   , SaveGrin "high-level-code.grin"
   ]
-  
+
 idrisOptimizations :: [Transformation]
 idrisOptimizations =
   [ BindNormalisation
@@ -343,9 +343,9 @@ postProcessing :: String -> [PipelineStep]
 postProcessing outputFile =
   [ SaveGrin "high-level-opt-code.grin"
   , PureEval
-  , HPT CompileHPT
-  , HPT RunHPTPure
-  , HPT PrintHPTResult
+  , HPT CompileToAbstractProgram
+  , HPT RunAbstractProgramPure
+  , HPT PrintAbstractResult
   , SaveLLVM False outputFile
 --  , JITLLVM
   ]

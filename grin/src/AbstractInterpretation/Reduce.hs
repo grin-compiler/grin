@@ -35,7 +35,7 @@ data Computer
 
 concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer]
 
-type HPT = State Computer
+type AbstractComputation = State Computer
 
 instance Monoid NodeSet where
   mempty  = NodeSet mempty
@@ -63,86 +63,117 @@ regIndex (Reg i) = fromIntegral i
 memIndex :: Mem -> Int
 memIndex (Mem i) = fromIntegral i
 
-evalInstruction :: Instruction -> HPT ()
+selectReg r = register.ix (regIndex r)
+
+selectTagMap r = selectReg r.nodeSet.nodeTagMap
+
+move :: Reg -> Reg -> AbstractComputation ()
+move srcReg dstReg = do
+  value <- use $ selectReg srcReg
+  selectReg dstReg %= (mappend value)
+
+evalInstruction :: Instruction -> AbstractComputation ()
 evalInstruction = \case
   If {..} -> do
     satisfy <- case condition of
       NodeTypeExists tag -> do
-        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
+        tagMap <- use $ selectTagMap srcReg
         pure $ Map.member tag tagMap
       SimpleTypeExists ty -> do
-        typeSet <- use $ register.ix (regIndex srcReg).simpleType
+        typeSet <- use $ selectReg srcReg.simpleType
         pure $ Set.member ty typeSet
       NotIn tags -> do
-        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
-        typeSet <- use $ register.ix (regIndex srcReg).simpleType
-        pure $ not (Set.null typeSet) || Data.Foldable.any (flip Set.notMember tags) (Map.keysSet tagMap)
+        tagMap <- use $ selectTagMap srcReg
+        typeSet <- use $ selectReg srcReg.simpleType
+        pure $ not (Set.null typeSet) || Data.Foldable.any (`Set.notMember` tags) (Map.keysSet tagMap)
+      NotEmpty -> do
+        typeSet <- use $ selectReg srcReg.simpleType
+        tagMap  <- use $ selectTagMap srcReg
+        let hasAnyInfo = any (any (not . Set.null))
+        pure $ not (Set.null typeSet) || hasAnyInfo tagMap
     when satisfy $ mapM_ evalInstruction instructions
 
   Project {..} -> case srcSelector of
     NodeItem tag itemIndex -> do
-      value <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex
-      register.ix (regIndex dstReg).simpleType %= (mappend value)
+      value <- use $ selectTagMap srcReg.at tag.non mempty.ix itemIndex
+      selectReg dstReg.simpleType %= (mappend value)
 
     ConditionAsSelector cond -> case cond of
       NodeTypeExists tag -> do
-        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
+        tagMap <- use $ selectTagMap srcReg
         case Map.lookup tag tagMap of
           Nothing -> pure ()
-          Just v  -> register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet $ Map.singleton tag v)
+          Just v  -> selectReg dstReg.nodeSet %= (mappend $ NodeSet $ Map.singleton tag v)
 
       SimpleTypeExists ty -> do
-        typeSet <- use $ register.ix (regIndex srcReg).simpleType
+        typeSet <- use $ selectReg srcReg.simpleType
         when (Set.member ty typeSet) $ do
-          register.ix (regIndex dstReg).simpleType %= (Set.insert ty)
+          selectReg dstReg.simpleType %= (Set.insert ty)
 
       NotIn tags -> do
-        value <- use $ register.ix (regIndex srcReg)
-        tagMap <- use $ register.ix (regIndex srcReg).nodeSet.nodeTagMap
-        typeSet <- use $ register.ix (regIndex srcReg).simpleType
+        value <- use $ selectReg srcReg
+        tagMap <- use $ selectTagMap srcReg
+        typeSet <- use $ selectReg srcReg.simpleType
         let filteredTagMap = Data.Foldable.foldr Map.delete tagMap tags
         when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
-          register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet filteredTagMap)
+          selectReg dstReg.nodeSet %= (mappend $ NodeSet filteredTagMap)
+
+      NotEmpty -> move srcReg dstReg
 
   Extend {..} -> do
     -- TODO: support all selectors
-    value <- use $ register.ix (regIndex srcReg).simpleType
-    let NodeItem tag itemIndex = dstSelector
-    register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
+    value <- use $ selectReg srcReg.simpleType
+    case dstSelector of
+      NodeItem tag itemIndex -> selectTagMap dstReg.at tag.non mempty.ix itemIndex %= (mappend value)
+      AllFields -> selectTagMap dstReg %= (Map.map (V.map (mappend value)))
 
-  Move {..} -> do
-    value <- use $ register.ix (regIndex srcReg)
-    register.ix (regIndex dstReg) %= (mappend value)
+  Move {..} -> move srcReg dstReg
+
+  RestrictedMove {..} -> do
+    typeSet <- use $ selectReg srcReg.simpleType
+    selectReg dstReg.simpleType %= (mappend typeSet)
+
+    srcTagMap <- use $ selectTagMap srcReg
+    dstTagMap <- use $ selectTagMap dstReg
+
+    let restrictedSrcTagMap = Map.intersection srcTagMap dstTagMap
+    selectTagMap dstReg %= (Map.union restrictedSrcTagMap)
+
 
   Fetch {..} -> do
     addressSet <- use $ register.ix (regIndex addressReg).simpleType
     forM_ addressSet $ \address -> when (address >= 0) $ do
       value <- use $ memory.ix (fromIntegral address)
-      register.ix (regIndex dstReg).nodeSet %= (mappend value)
+      selectReg dstReg.nodeSet %= (mappend value)
 
   Store {..} -> do
-    value <- use $ register.ix (regIndex srcReg).nodeSet
+    value <- use $ selectReg srcReg.nodeSet
     memory.ix (memIndex address) %= (mappend value)
 
   Update {..} -> do
-    value <- use $ register.ix (regIndex srcReg).nodeSet
+    value <- use $ selectReg srcReg.nodeSet
     addressSet <- use $ register.ix (regIndex addressReg).simpleType
     forM_ addressSet $ \address -> when (address >= 0) $ do
       memory.ix (fromIntegral address) %= (mappend value)
 
   Set {..} -> case constant of
-    CSimpleType ty        -> register.ix (regIndex dstReg).simpleType %= (mappend $ Set.singleton ty)
-    CHeapLocation (Mem l) -> register.ix (regIndex dstReg).simpleType %= (mappend $ Set.singleton $ fromIntegral l)
-    CNodeType tag arity   -> register.ix (regIndex dstReg).nodeSet %=
+    CSimpleType ty        -> selectReg dstReg.simpleType %= (mappend $ Set.singleton ty)
+    CHeapLocation (Mem l) -> selectReg dstReg.simpleType %= (mappend $ Set.singleton $ fromIntegral l)
+    CNodeType tag arity   -> selectReg dstReg.nodeSet %=
                                 (mappend $ NodeSet . Map.singleton tag $ V.replicate arity mempty)
-    CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
+    CNodeItem tag idx val -> selectReg dstReg.nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-evalDataFlowInfo :: HasDataFlowInfo s => s -> Computer
-evalDataFlowInfo (getDataFlowInfo -> AbstractProgram{..}) = run emptyComputer where
-  emptyComputer = Computer
-    { _memory   = V.replicate (fromIntegral absMemoryCounter) mempty
-    , _register = V.replicate (fromIntegral absRegisterCounter) mempty
-    }
+evalDataFlowInfoWith :: HasDataFlowInfo s => Computer -> s -> Computer
+evalDataFlowInfoWith comp (getDataFlowInfo -> AbstractProgram{..}) = run comp where
   run computer = if computer == nextComputer then computer else run nextComputer
     where nextComputer = execState (mapM_ evalInstruction absInstructions) computer
+
+evalDataFlowInfo :: HasDataFlowInfo s => s -> Computer
+evalDataFlowInfo dfi@(getDataFlowInfo -> AbstractProgram{..}) =
+  evalDataFlowInfoWith emptyComputer dfi
+  where
+    emptyComputer = Computer
+      { _memory   = V.replicate (fromIntegral absMemoryCounter) mempty
+      , _register = V.replicate (fromIntegral absRegisterCounter) mempty
+      }

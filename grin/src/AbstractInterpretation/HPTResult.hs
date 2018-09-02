@@ -94,7 +94,6 @@ toHPTResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = HPTResult
   { _memory   = V.map convertNodeSet _memory
   , _register = Map.map convertReg absRegisterMap
   , _function = Map.map convertFunctionRegs absFunctionArgMap
-
   }
   where
     convertReg :: Reg -> TypeSet

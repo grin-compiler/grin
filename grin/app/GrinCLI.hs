@@ -53,20 +53,24 @@ transformOpts =
 
 pipelineOpts :: Parser PipelineStep
 pipelineOpts =
-      flg (HPT CompileHPT) "compile-hpt" "Compiles heap-points-to analysis machine"
-  <|> flg (HPT PrintHPTCode) "print-hpt-code" "Prints the heap-points-to analysis machine"
-  <|> flg (HPT RunHPTPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
-  <|> flg (HPT PrintHPTResult) "print-hpt-result" "Prints the heap-points-to analysis result"
-  <|> flg (CBy CompileCBy) "compile-cby" "Compiles created-by analysis machine"
-  <|> flg (CBy PrintCByCode) "print-cby-code" "Prints the created-by analysis machine"
-  <|> flg (CBy RunCByPure) "run-cby-pure" "Runs the created-by analysis machine via pure interpreter"
-  <|> flg (CBy PrintCByResult) "print-cby-result" "Prints the created-by analysis result"
+      flg (HPT CompileToAbstractProgram) "compile-hpt" "Compiles heap-points-to analysis machine"
+  <|> flg (HPT PrintAbstractProgram) "print-hpt-code" "Prints the heap-points-to analysis machine"
+  <|> flg (HPT RunAbstractProgramPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
+  <|> flg (HPT PrintAbstractResult) "print-hpt-result" "Prints the heap-points-to analysis result"
+  <|> flg (CBy CompileToAbstractProgram) "compile-cby" "Compiles created-by analysis machine"
+  <|> flg (CBy PrintAbstractProgram) "print-cby-code" "Prints the created-by analysis machine"
+  <|> flg (CBy RunAbstractProgramPure) "run-cby-pure" "Runs the created-by analysis machine via pure interpreter"
+  <|> flg (CBy PrintAbstractResult) "print-cby-result" "Prints the created-by analysis result"
+  <|> flg (LVA CompileToAbstractProgram) "compile-lva" "Compiles live variable analysis machine"
+  <|> flg (LVA PrintAbstractProgram) "print-lva-code" "Prints thelive variabley analysis machine"
+  <|> flg (LVA RunAbstractProgramPure) "run-lva-pure" "Runs the live variable analysis machine via pure interpreter"
+  <|> flg (LVA PrintAbstractResult) "print-lva-result" "Prints the live variable analysis result"
   <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
   <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code"
   <|> flg PrintTypeEnv "te" "Prints type env"
-  <|> flg' (Pass [HPT CompileHPT, HPT RunHPTPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
+  <|> flg' (Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
   <|> flg PureEval "eval" "Evaluate the grin program (pure)"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
@@ -113,11 +117,11 @@ main = do
 
 prePipeline :: [PipelineStep]
 prePipeline =
-  [ HPT CompileHPT
---  , HPT PrintHPTCode
+  [ HPT CompileToAbstractProgram
+--  , HPT PrintAbstractProgram
 --  , PrintGrin ondullblack
-  , HPT RunHPTPure
---  , HPT PrintHPTResult
+  , HPT RunAbstractProgramPure
+--  , HPT PrintAbstractResult
   , T UnitPropagation
 --  , PrintGrin ondullblack
 --  , SaveLLVM "high-level-code"

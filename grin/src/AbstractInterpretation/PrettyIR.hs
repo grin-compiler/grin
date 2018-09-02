@@ -83,12 +83,14 @@ prettySelector :: Maybe IRMap -> Selector -> Doc
 prettySelector mirm = \case
   NodeItem tag idx          -> prettyTag mirm tag <> brackets (pretty idx)
   ConditionAsSelector cond  -> prettyCondition mirm cond
+  AllFields                 -> text "all fields"
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
     NodeTypeExists tag  -> prettyTag mirm tag
     SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty)
-    NotIn tags    -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
+    NotIn tags          -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
+    NotEmpty            -> text "not empty"
 
 prettyConstant :: Maybe IRMap -> Constant -> Doc
 prettyConstant mirm = \case
@@ -110,6 +112,7 @@ prettyInstruction mirm = \case
     Project {..} -> keyword "project" <+> ppS srcSelector <+> ppR srcReg <+> arr <+> ppR dstReg
     Extend  {..} -> keyword "extend" <+> ppR srcReg <+> ppS dstSelector <+> arr <+> ppR dstReg
     Move    {..} -> keyword "move" <+> ppR srcReg <+> arr <+> ppR dstReg
+    RestrictedMove {..} -> keyword "restricted move" <+> ppR srcReg <+> arr <+> ppR dstReg
     Fetch   {..} -> keyword "fetch" <+> ppR addressReg <+> arr <+> ppR dstReg
     Store   {..} -> keyword "store" <+> ppR srcReg <+> arr <+> pretty address
     Update  {..} -> keyword "update" <+> ppR srcReg <+> arr <+> ppR addressReg

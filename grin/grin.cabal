@@ -22,10 +22,14 @@ library
     AbstractInterpretation.HeapPointsTo
     AbstractInterpretation.HPTResult
     AbstractInterpretation.IR
+    AbstractInterpretation.LiveVariable
+    AbstractInterpretation.LVAResult
     AbstractInterpretation.PrettyCBy
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
+    AbstractInterpretation.PrettyLVA
     AbstractInterpretation.Reduce
+    AbstractInterpretation.Util
     AbstractInterpretation.Model
     Frontend.Idris.CodegenGrin
     Frontend.Idris.PrimOps

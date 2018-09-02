@@ -1,0 +1,13 @@
+grinMain =
+  a0 <- pure 0
+  a1 <- pure 1
+  a2 <- pure 2
+  n0 <- f a0 a1 a2
+  case n0 of
+    (CInt  c0) -> pure c0
+    (CBool c1) -> pure 5
+
+f x y z =
+  case x of
+    0 -> pure (CInt  y)
+    1 -> pure (CBool z)

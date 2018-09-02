@@ -1,0 +1,10 @@
+grinMain =
+  n0 <- f 0
+  case n0 of
+    (COne c0 c1) -> pure 5
+    (CTwo c2 c3) -> pure 5
+
+f x =
+  case x of
+    0 -> pure (COne x)
+    1 -> pure (CTwo 0 x)

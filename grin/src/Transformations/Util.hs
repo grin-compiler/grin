@@ -1,10 +1,11 @@
-{-# LANGUAGE LambdaCase, TupleSections, FlexibleContexts #-}
+{-# LANGUAGE LambdaCase, FlexibleContexts #-}
 module Transformations.Util where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Control.Monad
+import Control.Monad.State
 import Control.Comonad
 import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
@@ -165,3 +166,34 @@ skipUnit :: ExpF Exp -> Exp
 skipUnit = \case
   EBindF (SReturn Unit) Unit rightExp -> rightExp
   exp -> embed exp
+
+newtype TagInfo = TagInfo { _tagArityMap :: Map.Map Tag Int }
+  deriving (Eq, Show)
+
+updateTagInfo :: Tag -> Int -> TagInfo -> TagInfo
+updateTagInfo t n ti@(TagInfo m) =
+  case Map.lookup t m of
+    Just arity | arity < n -> TagInfo $ Map.insert t n m
+    Nothing                -> TagInfo $ Map.insert t n m
+    _                      -> ti
+
+collectTagInfo :: Exp -> TagInfo
+collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
+  where
+    alg :: ExpF () -> State TagInfo ()
+    alg = \case
+      ECaseF val _   -> goVal val
+      SReturnF val   -> goVal val
+      SAppF _ vals   -> mapM_ goVal vals
+      SStoreF val    -> goVal val
+      SUpdateF _ val -> goVal val
+      AltF cpat _    -> goCPat cpat
+      _              -> pure ()
+
+    goVal :: Val -> State TagInfo ()
+    goVal (ConstTagNode t args) = modify $ updateTagInfo t (length args)
+    goVal _ = pure ()
+
+    goCPat :: CPat -> State TagInfo ()
+    goCPat (NodePat t args) = modify $ updateTagInfo t (length args)
+    goCPat _ = pure ()

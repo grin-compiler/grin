@@ -13,9 +13,6 @@ import Grin.Grin (Tag, Name)
 import AbstractInterpretation.CByResult
 import AbstractInterpretation.PrettyHPT
 
-prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
-prettySimplePair (x, y) = pretty x <> pretty y
-
 instance Pretty ProducerSet where
   pretty (ProducerSet ps) = prettyBracedList
                           . map prettySimplePair
