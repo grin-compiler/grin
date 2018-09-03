@@ -79,8 +79,8 @@ typeEnvFromHPTResult hptResult = typeEnv where
   typeEnv = TypeEnv.TypeEnv <$>
     mapM convertNodeSet  (_memory hptResult) <*>
     mapM convertTypeSet  (_register hptResult) <*>
-    mapM convertFunction (_function hptResult) -- <*>
---    pure (_sharing hptResult)
+    mapM convertFunction (_function hptResult) <*>
+    pure (_sharing hptResult)
 
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where

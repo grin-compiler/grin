@@ -95,14 +95,14 @@ data TypeEnv
   { _location :: Vector NodeSet
   , _variable :: Map Name Type
   , _function :: Map Name (Type, Vector Type)
---  , _sharing  :: Set Loc
+  , _sharing  :: Set Loc
   }
   deriving (Eq, Show)
 
 concat <$> mapM makeLenses [''TypeEnv, ''Type, ''SimpleType]
 
 emptyTypeEnv :: TypeEnv
-emptyTypeEnv = TypeEnv mempty mempty mempty
+emptyTypeEnv = TypeEnv mempty mempty mempty mempty
 
 newVar :: Name -> Type -> Endo TypeEnv
 newVar n t = Endo (variable %~ (Map.insert n t))
