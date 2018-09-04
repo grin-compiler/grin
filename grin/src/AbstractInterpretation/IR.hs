@@ -24,6 +24,7 @@ newtype Mem = Mem Word32 deriving (Generic, NFData, Eq, Ord, Show)
 data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
+  -- TODO: needed
   | AllFields
   deriving (Generic, NFData, Eq, Ord, Show)
 
@@ -37,6 +38,7 @@ data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
   | NotIn             (Set Tag)
+  -- TODO: redefine with ranges
   | NotEmpty
   deriving (Generic, NFData, Eq, Ord, Show)
 
@@ -62,7 +64,15 @@ data Instruction
     { srcReg        :: Reg
     , dstReg        :: Reg
     }
+  -- TODO: new, more general Move
+  -- NOTE: same as Move, but only considers tags already present in dstReg
+  --       (basically a Move but only for the common tags)
   | RestrictedMove
+    { srcReg        :: Reg
+    , dstReg        :: Reg
+    }
+  -- NOTE: copyies only the structure of srcReg into dstReg
+  | CopyStructure
     { srcReg        :: Reg
     , dstReg        :: Reg
     }
@@ -75,6 +85,11 @@ data Instruction
     , address     :: Mem
     }
   | Update -- ^ copy the node part of the SRC reg to mem addressed by DST reg location part
+    { srcReg      :: Reg
+    , addressReg  :: Reg
+    }
+  -- NOTE: same as RestrictedMove, just for heap locations
+  | RestrictedUpdate
     { srcReg      :: Reg
     , addressReg  :: Reg
     }

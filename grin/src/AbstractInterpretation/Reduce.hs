@@ -63,7 +63,11 @@ regIndex (Reg i) = fromIntegral i
 memIndex :: Mem -> Int
 memIndex (Mem i) = fromIntegral i
 
+selectLoc l = memory.ix (fromIntegral l)
+
 selectReg r = register.ix (regIndex r)
+
+selectSimpleType r = selectReg r.simpleType
 
 selectTagMap r = selectReg r.nodeSet.nodeTagMap
 
@@ -130,8 +134,8 @@ evalInstruction = \case
   Move {..} -> move srcReg dstReg
 
   RestrictedMove {..} -> do
-    typeSet <- use $ selectReg srcReg.simpleType
-    selectReg dstReg.simpleType %= (mappend typeSet)
+    srcTypeSet <- use $ selectSimpleType srcReg
+    selectReg dstReg.simpleType %= (mappend srcTypeSet)
 
     srcTagMap <- use $ selectTagMap srcReg
     dstTagMap <- use $ selectTagMap dstReg
@@ -139,6 +143,10 @@ evalInstruction = \case
     let restrictedSrcTagMap = Map.intersection srcTagMap dstTagMap
     selectTagMap dstReg %= (Map.union restrictedSrcTagMap)
 
+  CopyStructure {..} -> do
+    srcTagMap <- use $ selectTagMap srcReg
+    let emptiedTagMap = Map.map (V.map (const Set.empty)) srcTagMap
+    selectTagMap dstReg %= (flip Map.union emptiedTagMap)
 
   Fetch {..} -> do
     addressSet <- use $ register.ix (regIndex addressReg).simpleType
@@ -155,6 +163,14 @@ evalInstruction = \case
     addressSet <- use $ register.ix (regIndex addressReg).simpleType
     forM_ addressSet $ \address -> when (address >= 0) $ do
       memory.ix (fromIntegral address) %= (mappend value)
+
+  RestrictedUpdate {..} -> do
+    srcTagMap  <- use $ selectTagMap srcReg
+    addressSet <- use $ register.ix (regIndex addressReg).simpleType
+    forM_ addressSet $ \address -> when (address >= 0) $ do
+      locTagMap <- use $ selectLoc address.nodeTagMap
+      let restrictedSrcTagMap = Map.intersection srcTagMap locTagMap
+      selectLoc address.nodeTagMap %= (Map.union restrictedSrcTagMap)
 
   Set {..} -> case constant of
     CSimpleType ty        -> selectReg dstReg.simpleType %= (mappend $ Set.singleton ty)

@@ -18,7 +18,6 @@ import AbstractInterpretation.Reduce
 import AbstractInterpretation.CreatedBy
 import AbstractInterpretation.CByResult
 
-type SpecWithProg = Exp -> Spec
 
 spec :: Spec
 spec = runIO runTests
@@ -89,13 +88,13 @@ funCallSrc = cbyExamples </> "function_call.grin"
 
 funCallExpected :: ProducerMap
 funCallExpected = ProducerMap $
-  M.fromList [ ("a", producerA)
-             , ("b", producerA)
-             , ("c", producerX1)
-             , ("d", producerX1)
-             , ("x", emptyProducerSet)
+  M.fromList [ ("a",  producerA)
+             , ("b",  producerA)
+             , ("c",  producerX1)
+             , ("d",  producerX1)
+             , ("x",  emptyProducerSet)
              , ("x1", producerX1)
-             , ("y", emptyProducerSet)
+             , ("y",  emptyProducerSet)
              , ("y1", producerX1)
              ]
   where producerA  = mkProducerSet [(Tag C "Int", ["a"])]

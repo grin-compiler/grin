@@ -188,6 +188,15 @@ test-suite grin-test
                      , deepseq
                      , vector
   other-modules:     CreatedBy.CreatedBySpec
+                     , LiveVariable.LiveVariableSpec
+                     , LiveVariable.Tests.CaseBackwardPropagation
+                     , LiveVariable.Tests.CaseBackwardPropagationNodes
+                     , LiveVariable.Tests.Fields
+                     , LiveVariable.Tests.FunctionCall1
+                     , LiveVariable.Tests.FunctionCall2
+                     , LiveVariable.Tests.HeapSimple
+                     , LiveVariable.Tests.LitPat
+                     , LiveVariable.Tests.Util
                      , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec

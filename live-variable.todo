@@ -160,3 +160,26 @@ CodeGen:
   - Setting ConstTagNodes instead of just defining information flow
 LVAResult:
   - DEAD heap locations represented as DEAD basic values
+
+
+TODO:
+  - NotEmpty -> Project: undefined
+             -> redefine with ranges
+  - AllFields: NEEDED
+  - RestrictedMove:
+
+run tests with GHCi
+
+
+Two new instructions:
+  RestictedUpdate, CopyStructure
+
+  - restricted Update
+  - structure initializing Move (using this, we can initialize heap location structure for Store by introducing a temporary register)
+  - use RestrictedMove to restrict Fetch by introducing a temporary register
+
+  reverse instruction generation for recently written code
+
+Dead field elimination:
+  - LVA is sufficient for replacing fields with dummies
+  - removing fields requires created-by analysis as well

@@ -49,6 +49,9 @@ import Transformations.Optimising.DeadProcedureElimination
 import Transformations.Optimising.DeadParameterElimination
 import Transformations.SingleStaticAssignment
 
+
+type SpecWithProg = Exp -> Spec
+
 type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
 
 testExprContext :: (((TypeEnv, Exp) -> (TypeEnv, Exp)) -> Spec) -> Spec

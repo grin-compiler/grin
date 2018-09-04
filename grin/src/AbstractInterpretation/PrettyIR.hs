@@ -113,9 +113,11 @@ prettyInstruction mirm = \case
     Extend  {..} -> keyword "extend" <+> ppR srcReg <+> ppS dstSelector <+> arr <+> ppR dstReg
     Move    {..} -> keyword "move" <+> ppR srcReg <+> arr <+> ppR dstReg
     RestrictedMove {..} -> keyword "restricted move" <+> ppR srcReg <+> arr <+> ppR dstReg
+    CopyStructure {..} -> keyword "copy structure" <+> ppR srcReg <+> arr <+> ppR dstReg
     Fetch   {..} -> keyword "fetch" <+> ppR addressReg <+> arr <+> ppR dstReg
     Store   {..} -> keyword "store" <+> ppR srcReg <+> arr <+> pretty address
     Update  {..} -> keyword "update" <+> ppR srcReg <+> arr <+> ppR addressReg
+    RestrictedUpdate  {..} -> keyword "restricted update" <+> ppR srcReg <+> arr <+> ppR addressReg
     Set     {..} -> keyword "set" <+> prettyConstant mirm constant <+> arr <+> ppR dstReg
   where
     ppR = prettyReg mirm

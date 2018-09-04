@@ -115,10 +115,8 @@ codeGen = fmap reverseProgram
       bodyInstructions <- codeGenBlock $
         body >>= \case
           Z   -> doNothing
-          R r | name == grinMain -> do
-                setBasicValLive r
-                setAllFieldsLive r
-              | otherwise -> emit IR.Move {srcReg = funResultReg, dstReg = r}
+          R r -> do emit IR.Move          { srcReg = funResultReg, dstReg = r }
+                    emit IR.CopyStructure { srcReg = r, dstReg = funResultReg }
       emit $ funResultReg `isLiveThen` bodyInstructions
       pure Z
 
@@ -173,16 +171,20 @@ codeGen = fmap reverseProgram
                   -- subset of the information present in the case result register.
                   -- This means, we do not propagate any additional information
                   -- with the second move instruction.
+                  -- It is also needed for propagating node info into the
+                  -- result register.
                   emit IR.RestrictedMove {srcReg = caseResultReg, dstReg = altResultReg}
+
+                  -- this might probably could be replaced by a CopyStructure
+                  -- and a "SimpleTypeCopy"
                   emit IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
 
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
-            codeGenAlt $ do
-              -- setNodeTypeInfo altScrutReg irTag (length vars + 1)
+            codeGenAlt $
+              -- setNodeTypeInfo valReg irTag (length vars)
               -- bind pattern variables
-              setNodeTypeInfo valReg irTag (length vars)
               forM_ (zip [0..] vars) $ \(idx, name) -> do
                 argReg <- newReg
                 addReg name argReg
@@ -205,7 +207,8 @@ codeGen = fmap reverseProgram
     SAppF name args -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       valRegs <- mapM codeGenVal args
-      zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) funArgRegs valRegs
+      zipWithM_ (\src dst -> emit IR.RestrictedMove {srcReg = src, dstReg = dst}) funArgRegs valRegs
+      zipWithM_ (\src dst -> emit IR.CopyStructure {srcReg = src, dstReg = dst}) valRegs funArgRegs
       -- HINT: handle primop here because it does not have definition
       when (isPrimName name) $ codeGenPrimOp name funResultReg funArgRegs
       pure $ R funResultReg
@@ -215,28 +218,59 @@ codeGen = fmap reverseProgram
     -- Store is like an Update, just with a singleton address set
     -- (can only update a single heap location at a time).
     -- The other differnce is that it also creates a new heap location.
+    -- We will initialize this new heap location with structural information.
+    -- Also, we only need information about tags already available
+    -- in valReg, so we restrict the flow of information to those.
     SStoreF val -> do
-      loc <- newMem
-      r <- newReg
+      loc    <- newMem
+      r      <- newReg
+      tmp1   <- newReg
+      tmp2   <- newReg
       valReg <- codeGenVal val
-      emit IR.Set   {dstReg     = r, constant = IR.CHeapLocation loc}
-      emit IR.Fetch {addressReg = r, dstReg   = valReg}
+
+      -- setting pointer information
+      emit IR.Set           { dstReg = r, constant = IR.CHeapLocation loc }
+
+      -- copying structural information to the heap
+      emit IR.CopyStructure { srcReg = valReg, dstReg  = tmp1 }
+      emit IR.Store         { srcReg = tmp1,   address = loc    }
+
+      -- restrictively propagating info from heap
+      emit IR.Fetch          { addressReg = r,    dstReg = tmp2   }
+      emit IR.RestrictedMove { srcReg     = tmp2, dstReg = valReg }
+
       pure $ R r
 
+    -- We want to update each location with only relevant information.
+    -- This means, if a tag is not already present on that location,
+    -- we do not update it.
     SFetchIF name maybeIndex -> case maybeIndex of
       Just {} -> throwE "LVA codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
-        r <- newReg
-        emit IR.Update {srcReg = r, addressReg = addressReg}
+        tmp        <- newReg
+        r          <- newReg
+
+        -- copying structural information from the heap
+        emit IR.Fetch         { addressReg = addressReg, dstReg = tmp   }
+        emit IR.CopyStructure { srcReg     = tmp,        dstReg     = r }
+
+        -- restrictively propagating info from heap
+        emit IR.RestrictedUpdate {srcReg = r, addressReg = addressReg}
+
+        -- setting pointer liveness
         ptrIsLive <- codeGenBlock $ setBasicValLive addressReg
         emit $ r `isLiveThen` ptrIsLive
+
         pure $ R r
 
     SUpdateF name val -> do
       addressReg <- getReg name
-      valReg <- codeGenVal val
-      emit IR.Fetch {addressReg = addressReg, dstReg = valReg}
+      tmp        <- newReg
+      valReg     <- codeGenVal val
+      -- restrictively propagating info from heap
+      emit IR.Fetch          {addressReg = addressReg, dstReg = tmp}
+      emit IR.RestrictedMove {srcReg     = tmp,        dstReg = valReg}
       pure Z
 
     SBlockF exp -> exp

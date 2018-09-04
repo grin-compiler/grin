@@ -8,6 +8,8 @@ import Grin.TypeEnv
 
 import AbstractInterpretation.PrettyCBy
 import AbstractInterpretation.CByResult (ProducerMap)
+import AbstractInterpretation.PrettyLVA
+import AbstractInterpretation.LVAResult (LVAResult)
 
 class SameAs a where
   sameAs :: a -> a -> IO ()
@@ -16,6 +18,9 @@ instance SameAs TypeEnv where
   sameAs found expected = found `shouldBe` expected
 
 instance SameAs ProducerMap where
+  sameAs found expected = (PP found) `shouldBe` (PP expected)
+
+instance SameAs LVAResult where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
 
 instance (SameAs a, SameAs b) => SameAs (a, b) where
