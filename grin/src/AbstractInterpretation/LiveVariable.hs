@@ -53,11 +53,10 @@ setBasicValLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
 setBasicValLive r = emit IR.Set { dstReg = r, constant = IR.CSimpleType live }
 
 
--- NOTE: for backward node type info propagation
 -- In order to Extend a node field, or Project into it, we need that field to exist.
 -- This function initializes a node in the register with a given tag and arity.
-setNodeTypeInfo :: HasDataFlowInfo s => IR.Reg -> IR.Tag -> Int -> CG s ()
-setNodeTypeInfo r t n = emit IR.Set { dstReg = r, constant = IR.CNodeType t n }
+setNodeTypeInfo :: IR.Reg -> IR.Tag -> Int -> Instruction
+setNodeTypeInfo r t n = IR.Set { dstReg = r, constant = IR.CNodeType t n }
 
 grinMain :: Name
 grinMain = "grinMain"
@@ -112,12 +111,11 @@ codeGen = fmap reverseProgram
     DefF name args body -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM_ addReg args funArgRegs
-      bodyInstructions <- codeGenBlock $
-        body >>= \case
-          Z   -> doNothing
-          R r -> do emit IR.Move          { srcReg = funResultReg, dstReg = r }
-                    emit IR.CopyStructure { srcReg = r, dstReg = funResultReg }
-      emit $ funResultReg `isLiveThen` bodyInstructions
+      body >>= \case
+        Z   -> doNothing
+        R r -> do emit IR.Move          { srcReg = funResultReg, dstReg = r }
+                  emit IR.CopyStructure { srcReg = r, dstReg = funResultReg }
+      -- emit $ funResultReg `isLiveThen` bodyInstructions
       pure Z
 
     EBindF leftExp lpat rightExp -> do
@@ -134,8 +132,8 @@ codeGen = fmap reverseProgram
           Var name -> addReg name r
           ConstTagNode tag args -> do
             irTag <- getTag tag
-            setNodeTypeInfo r irTag (length args)
-            forM_ (zip [0..] args) $ \(idx, arg) ->
+            -- emit $ setNodeTypeInfo r irTag (length args)
+            bindInstructions <- codeGenBlock_ $ forM (zip [0..] args) $ \(idx, arg) ->
               case arg of
                 Var name -> do
                   argReg <- newReg
@@ -143,6 +141,11 @@ codeGen = fmap reverseProgram
                   emit IR.Extend { srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r }
                 Lit {} -> emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
                 _ -> throwE $ "illegal node pattern component " ++ show arg
+            emit IR.If
+              { condition     = IR.NodeTypeExists irTag
+              , srcReg        = r
+              , instructions  = bindInstructions
+              }
           _ -> throwE $ "unsupported lpat " ++ show lpat
       rightExp
 
@@ -160,7 +163,7 @@ codeGen = fmap reverseProgram
         -- performs a monadic action (probably binding variables in the CPat)
         -- then generates code for the Alt
         let codeGenAlt bindCPatVarsM = do
-              bindCPatVarsM
+              bindInstructions <- codeGenBlock_ bindCPatVarsM
               altM >>= \case
                 Z -> doNothing
                 R altResultReg -> do
@@ -178,22 +181,38 @@ codeGen = fmap reverseProgram
                   -- this might probably could be replaced by a CopyStructure
                   -- and a "SimpleTypeCopy"
                   emit IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
+              return bindInstructions
 
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
-            codeGenAlt $
-              -- setNodeTypeInfo valReg irTag (length vars)
+            bindInstructions <- codeGenAlt $
               -- bind pattern variables
               forM_ (zip [0..] vars) $ \(idx, name) -> do
                 argReg <- newReg
                 addReg name argReg
                 emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = valReg}
+            emit IR.If
+              { condition    = IR.NodeTypeExists irTag
+              , srcReg       = valReg
+              , instructions = bindInstructions
+              }
 
-          LitPat lit -> codeGenAlt $ setBasicValLive valReg
+          -- NOTE: if we stored type information for basic val,
+          -- we could generate code conditionally here as well
+          LitPat lit -> do
+            bindInstructions <- codeGenAlt $ setBasicValLive valReg
+            mapM_ emit bindInstructions
 
           -- We have no usable information.
-          DefaultPat -> codeGenAlt doNothing
+          DefaultPat -> do
+            bindInstructions <- codeGenAlt doNothing
+            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
+            emit IR.If
+              { condition    = IR.NotIn tags
+              , srcReg       = valReg
+              , instructions = bindInstructions
+              }
 
           _ -> throwE $ "LVA does not support the following case pattern: " ++ show cpat
 
@@ -259,7 +278,7 @@ codeGen = fmap reverseProgram
         emit IR.RestrictedUpdate {srcReg = r, addressReg = addressReg}
 
         -- setting pointer liveness
-        ptrIsLive <- codeGenBlock $ setBasicValLive addressReg
+        ptrIsLive <- codeGenBlock_ $ setBasicValLive addressReg
         emit $ r `isLiveThen` ptrIsLive
 
         pure $ R r
@@ -279,5 +298,5 @@ codeGenPrimOp :: HasDataFlowInfo s => Name -> IR.Reg -> [IR.Reg] -> CG s ()
 codeGenPrimOp name funResultReg funArgRegs
   | name == "_prim_int_print" = mapM_ setBasicValLive funArgRegs
   | otherwise = do
-    allArgsLive <- codeGenBlock $ mapM_ setBasicValLive funArgRegs
+    allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive funArgRegs
     emit $ funResultReg `isLiveThen` allArgsLive

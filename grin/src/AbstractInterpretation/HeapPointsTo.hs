@@ -181,7 +181,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata f
       alts <- sequence alts_
 
       forM_ alts $ \(A cpat altM) -> do
-        let codeGenAlt bindM = codeGenBlock $ do
+        let codeGenAlt bindM = codeGenBlock_ $ do
               bindM
               altM >>= \case
                 Z -> emit IR.Set {dstReg = caseResultReg, constant = IR.CSimpleType unitType}

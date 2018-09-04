@@ -71,9 +71,12 @@ getTag tag = do
       modify' $ modifyInfo $ \s -> s {absTagMap = Bimap.insert tag t tagMap}
       pure t
 
-codeGenBlock :: HasDataFlowInfo s => CG s () -> CG s [IR.Instruction]
+codeGenBlock :: HasDataFlowInfo s => CG s a -> CG s (a,[IR.Instruction])
 codeGenBlock genM = do
   instructions <- stateDfi $ \s@AbstractProgram{..} -> (absInstructions, s {absInstructions = []})
-  genM
+  ret <- genM
   blockInstructions <- stateDfi $ \s@AbstractProgram{..} -> (reverse absInstructions, s {absInstructions = instructions})
-  pure blockInstructions
+  pure (ret, blockInstructions)
+
+codeGenBlock_ :: HasDataFlowInfo s => CG s a -> CG s [IR.Instruction]
+codeGenBlock_ = fmap snd . codeGenBlock
