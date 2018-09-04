@@ -401,7 +401,7 @@ compileLVA = do
       psLVAProgram .= Just lvaProgram
     Left e -> do
       psErrors %= (e:)
-      psCByProgram .= Nothing
+      psLVAProgram .= Nothing
 
 printLVACode :: PipelineM ()
 printLVACode = do

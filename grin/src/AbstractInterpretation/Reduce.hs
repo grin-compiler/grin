@@ -140,8 +140,8 @@ evalInstruction = \case
     srcTagMap <- use $ selectTagMap srcReg
     dstTagMap <- use $ selectTagMap dstReg
 
-    let restrictedSrcTagMap = Map.intersection srcTagMap dstTagMap
-    selectTagMap dstReg %= (Map.union restrictedSrcTagMap)
+    let restrictedSrcNodeSet = NodeSet $ Map.intersection srcTagMap dstTagMap
+    selectReg dstReg.nodeSet %= (mappend restrictedSrcNodeSet)
 
   CopyStructure {..} -> do
     srcTagMap <- use $ selectTagMap srcReg
@@ -169,8 +169,8 @@ evalInstruction = \case
     addressSet <- use $ register.ix (regIndex addressReg).simpleType
     forM_ addressSet $ \address -> when (address >= 0) $ do
       locTagMap <- use $ selectLoc address.nodeTagMap
-      let restrictedSrcTagMap = Map.intersection srcTagMap locTagMap
-      selectLoc address.nodeTagMap %= (Map.union restrictedSrcTagMap)
+      let restrictedSrcNodeSet = NodeSet $ Map.intersection srcTagMap locTagMap
+      selectLoc address %= (mappend restrictedSrcNodeSet)
 
   Set {..} -> case constant of
     CSimpleType ty        -> selectReg dstReg.simpleType %= (mappend $ Set.singleton ty)
