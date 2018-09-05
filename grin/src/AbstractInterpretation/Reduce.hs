@@ -76,6 +76,71 @@ move srcReg dstReg = do
   value <- use $ selectReg srcReg
   selectReg dstReg %= (mappend value)
 
+inRange :: Int32 -> Range -> Bool
+inRange n (Range from to) = from <= n && n < to
+
+notInRange :: Int32 -> Range -> Bool
+notInRange n = not . inRange n
+
+conditionalMoveValue :: Value -> Predicate -> Value -> Value
+conditionalMoveValue (Value st1 ns1) predicate (Value st2 ns2) =
+  let movedSt = conditionalMoveSimpleType st1 predicate st2
+      movedNs = conditionalMoveNodeSet ns1 predicate ns2
+  in Value movedSt movedNs
+
+conditionalMoveSimpleType :: Set Int32 -> Predicate -> Set Int32 -> Set Int32
+conditionalMoveSimpleType srcSet predicate dstSet =
+  case predicate of
+    ValueIn rng ->
+      let filteredSrcSet = Set.filter (`inRange` rng) srcSet
+      in  mappend filteredSrcSet dstSet
+    ValueNotIn rng ->
+      let filteredSrcSet = Set.filter (`notInRange` rng) srcSet
+      in  mappend filteredSrcSet dstSet
+    _ -> mappend srcSet dstSet
+
+conditionalMoveNodeSet :: NodeSet -> Predicate -> NodeSet -> NodeSet
+conditionalMoveNodeSet (NodeSet srcTagMap) predicate dstNS@(NodeSet dstTagMap) =
+  case predicate of
+    TagIn tagSet ->
+      let restrictedSrcNS = NodeSet $ Map.restrictKeys srcTagMap tagSet
+      in  mappend restrictedSrcNS dstNS
+    TagNotIn tagSet ->
+      let restrictedSrcNS = NodeSet $ Map.withoutKeys srcTagMap tagSet
+      in  mappend restrictedSrcNS dstNS
+    ValueIn rng ->
+      let filteredSrcNS = NodeSet $ Map.map (V.map (Set.filter (`inRange` rng))) srcTagMap
+      in mappend filteredSrcNS dstNS
+    ValueNotIn rng ->
+      let filteredSrcNS = NodeSet $ Map.map (V.map (Set.filter (`notInRange` rng))) srcTagMap
+      in mappend filteredSrcNS dstNS
+
+-- NOTE: a ~ Tag
+tagPredicateCondition :: ((a          -> Bool) -> Set a -> Bool)
+                      -> (a -> Set a -> Bool)
+                      -> Map a b
+                      -> Bool
+tagPredicateCondition quantifier predicate tagMap =
+  let tags = Map.keysSet tagMap
+  in quantifier (`predicate` tags) tags
+
+-- Note the existential quantifier for the simpleTypes.
+-- A field only satisfies the predicate
+-- if it actually has a value inside it that satisfies the predicate.
+valPredicateCondition :: ((Set Int32 -> Bool) -> [Set Int32] -> Bool)
+                      -> (Int32 -> Bool)
+                      -> Value
+                      -> Bool
+valPredicateCondition quantifier predicate (Value st ns) =
+  let nsVals = concatMap V.toList . Map.elems . _nodeTagMap $ ns
+      vals   = st : nsVals
+  in quantifier (any predicate) vals
+
+mappendIf :: Monoid m => (m -> Bool) -> m -> m -> m
+mappendIf predicate lhs rhs
+  | predicate rhs = mappend lhs rhs
+  | otherwise     = rhs
+
 evalInstruction :: Instruction -> AbstractComputation ()
 evalInstruction = \case
   If {..} -> do
@@ -90,11 +155,30 @@ evalInstruction = \case
         tagMap <- use $ selectTagMap srcReg
         typeSet <- use $ selectReg srcReg.simpleType
         pure $ not (Set.null typeSet) || Data.Foldable.any (`Set.notMember` tags) (Map.keysSet tagMap)
-      NotEmpty -> do
-        typeSet <- use $ selectReg srcReg.simpleType
-        tagMap  <- use $ selectTagMap srcReg
-        let hasAnyInfo = any (any (not . Set.null))
-        pure $ not (Set.null typeSet) || hasAnyInfo tagMap
+      All (TagIn tagSet) -> do
+        tagMap <- use $ selectTagMap srcReg
+        pure $ tagPredicateCondition all Set.member tagMap
+      All (TagNotIn tagSet) -> do
+        tagMap <- use $ selectTagMap srcReg
+        pure $ tagPredicateCondition all Set.notMember tagMap
+      Any (TagIn tagSet) -> do
+        tagMap <- use $ selectTagMap srcReg
+        pure $ tagPredicateCondition any Set.member tagMap
+      Any (TagNotIn tagSet) -> do
+        tagMap <- use $ selectTagMap srcReg
+        pure $ tagPredicateCondition any Set.notMember tagMap
+      All (ValueIn rng) -> do
+        val <- use $ selectReg srcReg
+        pure $ valPredicateCondition all (`inRange` rng) val
+      All (ValueNotIn rng) -> do
+        val <- use $ selectReg srcReg
+        pure $ valPredicateCondition all (`notInRange` rng) val
+      Any (ValueIn rng) -> do
+        val <- use $ selectReg srcReg
+        pure $ valPredicateCondition any (`inRange` rng) val
+      Any (ValueNotIn rng) -> do
+        val <- use $ selectReg srcReg
+        pure $ valPredicateCondition any (`notInRange` rng) val
     when satisfy $ mapM_ evalInstruction instructions
 
   Project {..} -> case srcSelector of
@@ -122,14 +206,20 @@ evalInstruction = \case
         when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
           selectReg dstReg.nodeSet %= (mappend $ NodeSet filteredTagMap)
 
-      NotEmpty -> move srcReg dstReg
-
   Extend {..} -> do
     -- TODO: support all selectors
     value <- use $ selectReg srcReg.simpleType
     case dstSelector of
       NodeItem tag itemIndex -> selectTagMap dstReg.at tag.non mempty.ix itemIndex %= (mappend value)
       AllFields -> selectTagMap dstReg %= (Map.map (V.map (mappend value)))
+      ConditionAsSelector cond -> case cond of
+        -- selects all fields/simpleType having at least one possible value satisfying the predicate
+        All (ValueIn    rng) -> do
+          selectReg dstReg.simpleType %= (mappendIf (any (`inRange` rng)) value)
+          selectTagMap dstReg %= Map.map (V.map (mappendIf (any (`inRange` rng)) value))
+        All (ValueNotIn rng) -> do
+          selectReg dstReg.simpleType %= (mappendIf (any (`notInRange` rng)) value)
+          selectTagMap dstReg %= Map.map (V.map (mappendIf (any (`notInRange` rng)) value))
 
   Move {..} -> move srcReg dstReg
 
@@ -143,10 +233,9 @@ evalInstruction = \case
     let restrictedSrcNodeSet = NodeSet $ Map.intersection srcTagMap dstTagMap
     selectReg dstReg.nodeSet %= (mappend restrictedSrcNodeSet)
 
-  CopyStructure {..} -> do
-    srcTagMap <- use $ selectTagMap srcReg
-    let emptiedTagMap = Map.map (V.map (const Set.empty)) srcTagMap
-    selectTagMap dstReg %= (flip Map.union emptiedTagMap)
+  ConditionalMove {..} -> do
+    srcVal <- use $ selectReg srcReg
+    selectReg dstReg %= (conditionalMoveValue srcVal predicate)
 
   Fetch {..} -> do
     addressSet <- use $ register.ix (regIndex addressReg).simpleType
@@ -171,6 +260,13 @@ evalInstruction = \case
       locTagMap <- use $ selectLoc address.nodeTagMap
       let restrictedSrcNodeSet = NodeSet $ Map.intersection srcTagMap locTagMap
       selectLoc address %= (mappend restrictedSrcNodeSet)
+
+  ConditionalUpdate {..} -> do
+    srcVal <- use $ selectReg srcReg.nodeSet
+    addressSet <- use $ register.ix (regIndex addressReg).simpleType
+    forM_ addressSet $ \address -> when (address >= 0) $
+      selectLoc address %= (conditionalMoveNodeSet srcVal predicate)
+
 
   Set {..} -> case constant of
     CSimpleType ty        -> selectReg dstReg.simpleType %= (mappend $ Set.singleton ty)

@@ -4,6 +4,8 @@ module AbstractInterpretation.LiveVariable where
 import Control.Monad.Trans.Except
 import Control.Monad.State
 
+import Data.Int
+
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Functor.Foldable as Foldable
@@ -42,15 +44,24 @@ doNothing = pure ()
 emptyReg :: HasDataFlowInfo s => CG s IR.Reg
 emptyReg = newReg
 
+isPointer :: IR.Predicate
+isPointer = IR.ValueIn (IR.Range 0 (maxBound :: Int32))
+
+isNotPointer :: IR.Predicate
+isNotPointer = IR.ValueIn (IR.Range (minBound :: Int32) 0)
+
 -- Tests whether the give register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
-isLiveThen r i = IR.If { condition = IR.NotEmpty, srcReg = r, instructions = i }
+isLiveThen r i = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = i }
 
 live :: IR.Liveness
 live = -1
 
+setBasicValLiveInst :: IR.Reg -> IR.Instruction
+setBasicValLiveInst r = IR.Set { dstReg = r, constant = IR.CSimpleType live }
+
 setBasicValLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
-setBasicValLive r = emit IR.Set { dstReg = r, constant = IR.CSimpleType live }
+setBasicValLive = emit . setBasicValLiveInst
 
 
 -- In order to Extend a node field, or Project into it, we need that field to exist.
@@ -64,14 +75,19 @@ grinMain = "grinMain"
 setMainLive :: HasDataFlowInfo s => CG s ()
 setMainLive = do
   (mainRetReg, _) <- getOrAddFunRegs grinMain 0
-  setBasicValLive mainRetReg
-  setAllFieldsLive mainRetReg
+  setLive mainRetReg
 
-setAllFieldsLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
-setAllFieldsLive r = do
-  tmp <- newReg
-  setBasicValLive tmp
-  emit IR.Extend { srcReg = tmp, dstSelector = IR.AllFields, dstReg = r }
+setLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
+setLive r = do
+  setBasicValLive r
+  emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
+
+copyStructureWithPtrInfo :: IR.Reg -> IR.Reg -> IR.Instruction
+copyStructureWithPtrInfo srcReg dstReg = IR.ConditionalMove
+  { srcReg    = srcReg
+  , predicate = isPointer
+  , dstReg    = dstReg
+  }
 
 codeGenVal :: Val -> CG LVAProgram IR.Reg
 codeGenVal = \case
@@ -113,8 +129,10 @@ codeGen = fmap reverseProgram
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> doNothing
-        R r -> do emit IR.Move          { srcReg = funResultReg, dstReg = r }
-                  emit IR.CopyStructure { srcReg = r, dstReg = funResultReg }
+        R r -> do emit IR.Move { srcReg = funResultReg, dstReg = r }
+                  emit $ copyStructureWithPtrInfo r funResultReg
+      -- NOTE: A function might have side-effects,
+      -- so we have to generate code for it even if its result register is dead.
       -- emit $ funResultReg `isLiveThen` bodyInstructions
       pure Z
 
@@ -132,7 +150,6 @@ codeGen = fmap reverseProgram
           Var name -> addReg name r
           ConstTagNode tag args -> do
             irTag <- getTag tag
-            -- emit $ setNodeTypeInfo r irTag (length args)
             bindInstructions <- codeGenBlock_ $ forM (zip [0..] args) $ \(idx, arg) ->
               case arg of
                 Var name -> do
@@ -180,7 +197,7 @@ codeGen = fmap reverseProgram
 
                   -- this might probably could be replaced by a CopyStructure
                   -- and a "SimpleTypeCopy"
-                  emit IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
+                  emit $ copyStructureWithPtrInfo altResultReg caseResultReg
 
         case cpat of
           NodePat tag vars -> do
@@ -226,7 +243,7 @@ codeGen = fmap reverseProgram
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       valRegs <- mapM codeGenVal args
       zipWithM_ (\src dst -> emit IR.RestrictedMove {srcReg = src, dstReg = dst}) funArgRegs valRegs
-      zipWithM_ (\src dst -> emit IR.CopyStructure {srcReg = src, dstReg = dst}) valRegs funArgRegs
+      zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) valRegs funArgRegs
       -- HINT: handle primop here because it does not have definition
       when (isPrimName name) $ codeGenPrimOp name funResultReg funArgRegs
       pure $ R funResultReg
@@ -250,8 +267,8 @@ codeGen = fmap reverseProgram
       emit IR.Set           { dstReg = r, constant = IR.CHeapLocation loc }
 
       -- copying structural information to the heap
-      emit IR.CopyStructure { srcReg = valReg, dstReg  = tmp1 }
-      emit IR.Store         { srcReg = tmp1,   address = loc  }
+      emit $ copyStructureWithPtrInfo valReg tmp1
+      emit IR.Store          { srcReg = tmp1,   address = loc  }
 
       -- restrictively propagating info from heap
       emit IR.Fetch          { addressReg = r,    dstReg = tmp2   }
@@ -271,14 +288,13 @@ codeGen = fmap reverseProgram
 
         -- copying structural information from the heap
         emit IR.Fetch         { addressReg = addressReg, dstReg = tmp }
-        emit IR.CopyStructure { srcReg     = tmp,        dstReg = r   }
+        emit $ copyStructureWithPtrInfo tmp r
 
         -- restrictively propagating info to heap
         emit IR.RestrictedUpdate {srcReg = r, addressReg = addressReg}
 
         -- setting pointer liveness
-        ptrIsLive <- codeGenBlock_ $ setBasicValLive addressReg
-        emit $ r `isLiveThen` ptrIsLive
+        emit $ r `isLiveThen` [setBasicValLiveInst addressReg]
 
         pure $ R r
 
@@ -289,12 +305,15 @@ codeGen = fmap reverseProgram
       valReg     <- codeGenVal val
 
       -- copying structural information to the heap
-      emit IR.CopyStructure { srcReg = valReg, dstReg     = tmp1 }
-      emit IR.Update        { srcReg = tmp1,   addressReg = addressReg  }
+      emit $ copyStructureWithPtrInfo valReg tmp1
+      emit IR.Update         { srcReg = tmp1, addressReg = addressReg  }
 
       -- restrictively propagating info from heap
-      emit IR.Fetch          {addressReg = addressReg, dstReg = tmp2   }
-      emit IR.RestrictedMove {srcReg     = tmp2,       dstReg = valReg }
+      emit IR.Fetch          { addressReg = addressReg, dstReg = tmp2   }
+      emit IR.RestrictedMove { srcReg     = tmp2,       dstReg = valReg }
+
+      -- setting pointer liveness
+      emit $ valReg `isLiveThen` [setBasicValLiveInst addressReg]
 
       pure Z
 

@@ -65,6 +65,16 @@ instance Pretty Condition where
 instance Pretty Constant where
   pretty = prettyConstant Nothing
 
+instance Pretty Predicate where
+  pretty = flip (prettyPredicate Nothing) False
+
+instance Pretty Range where
+  pretty (Range from to) = lbracket
+                        <> text (show from)
+                        <> comma
+                       <+> text (show to)
+                        <> rparen
+
 prettyName :: Name -> Doc
 prettyName = red . text
 
@@ -87,10 +97,11 @@ prettySelector mirm = \case
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
-    NodeTypeExists tag  -> prettyTag mirm tag
+    NodeTypeExists  tag -> prettyTag mirm tag
     SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty)
-    NotIn tags          -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
-    NotEmpty            -> text "not empty"
+    NotIn          tags -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
+    All       predicate -> text "all" <+> prettyPredicate mirm predicate True
+    Any       predicate -> text "any" <+> prettyPredicate mirm predicate False
 
 prettyConstant :: Maybe IRMap -> Constant -> Doc
 prettyConstant mirm = \case
@@ -106,6 +117,14 @@ prettyConstant mirm = \case
     ppT = prettyTag mirm
     ppS a = prettySimpleType a <> text "#" <> (integer $ fromIntegral a)
 
+prettyPredicate :: Maybe IRMap -> Predicate -> Bool -> Doc
+prettyPredicate mirm predicate plural = case predicate of
+  TagIn     tags -> text ("tag" ++ s ++ "in") <+> list (map (prettyTag mirm) $ Set.toList tags)
+  TagNotIn  tags -> text ("tag" ++ s ++ "not in") <+> list (map (prettyTag mirm) $ Set.toList tags)
+  ValueIn    rng -> text ("value" ++ s ++ "in") <+> pretty rng
+  ValueNotIn rng -> text ("value" ++ s ++ "not in") <+> pretty rng
+  where s = if plural then "s" else ""
+
 prettyInstruction :: Maybe IRMap -> Instruction -> Doc
 prettyInstruction mirm = \case
     If      {..} -> keyword "if" <+> prettyCondition mirm condition <+> keyword "in" <+> ppR srcReg <$$> indent 2 (vsep . map (prettyInstruction mirm) $ instructions)
@@ -113,7 +132,6 @@ prettyInstruction mirm = \case
     Extend  {..} -> keyword "extend" <+> ppR srcReg <+> ppS dstSelector <+> arr <+> ppR dstReg
     Move    {..} -> keyword "move" <+> ppR srcReg <+> arr <+> ppR dstReg
     RestrictedMove {..} -> keyword "restricted move" <+> ppR srcReg <+> arr <+> ppR dstReg
-    CopyStructure {..} -> keyword "copy structure" <+> ppR srcReg <+> arr <+> ppR dstReg
     Fetch   {..} -> keyword "fetch" <+> ppR addressReg <+> arr <+> ppR dstReg
     Store   {..} -> keyword "store" <+> ppR srcReg <+> arr <+> pretty address
     Update  {..} -> keyword "update" <+> ppR srcReg <+> arr <+> ppR addressReg

@@ -54,7 +54,7 @@ heapUpdateFunCallExpectedRegisters = M.fromList
   , ("c2", liveVal)
   , ("c3", deadVal)
   , ("q0", deadVal)
-  , ("x",  liveVal)
+  , ("x",  deadVal)
   , ("y",  livenessN0)
   , ("z",  livenessN1)
   , ("u",  liveVal)
@@ -67,8 +67,8 @@ heapUpdateFunCallExpectedRegisters = M.fromList
 
 heapUpdateFunCallExpectedFunctions :: Map Name (Liveness, Vector Liveness)
 heapUpdateFunCallExpectedFunctions = mkFunctionLivenessMap
-  [ ("f", fun (liveVal, [liveVal, livenessN0, livenessN1]))
-  , ("g", fun (liveVal, [liveVal, livenessN2]))
+  [ ("f", fun (liveVal, [deadVal, livenessN0, livenessN1]))
+  , ("g", fun (deadVal, [liveVal, livenessN2]))
   ]
 
 livenessN0, livenessN1, livenessN2 :: Liveness
