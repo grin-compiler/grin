@@ -10,5 +10,4 @@ grinMain =
 f x =
   case x of
     0 -> pure (CInt  0)
-    1 -> pure (CBool 0)
-    2 -> pure (CWord 0)
+    1 -> pure (CWord 0)

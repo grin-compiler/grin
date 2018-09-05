@@ -34,22 +34,38 @@ heapCaseExpected = LVAResult
 
 heapCaseExpectedHeap :: Vector Liveness
 heapCaseExpectedHeap = V.fromList
-  [ nodeSet [ (cWord, [dead]) ]
-  , nodeSet [ (cBool, [live]) ]
-   ]
+  [ nodeSet [ (cWordH, [dead]) ]
+  , nodeSet [ (cBoolH, [live]) ]
+  , deadLoc -- the heap location is generated, but the instructions aren't executed
+  ]
 
 heapCaseExpectedRegisters :: Map Name Liveness
 heapCaseExpectedRegisters = M.fromList
-  [ ("n0", livenessN0)
+  [ ("n0", livenessFRet)
   , ("p0", liveVal)
   , ("c0", deadVal)
-  , ("a0", liveVal)
   , ("c1", liveVal)
+  , ("c2", deadVal) -- the register is generated, but the instructions aren't executed
+  , ("c3", deadVal)
+  , ("c4", liveVal)
+  , ("c5", deadVal) -- the register is generated, but the instructions aren't executed
+  , ("n1", livenessN1)
+  , ("x",  liveVal)
   ]
-  where livenessN0 = nodeSet [ (cBool, [live]) ]
+  where livenessN1 = nodeSet [ (cBoolH, [live])
+                             , (cWordH, [dead])
+                             ]
 
 heapCaseExpectedFunctions :: Map Name (Liveness, Vector Liveness)
-heapCaseExpectedFunctions = mkFunctionLivenessMap []
+heapCaseExpectedFunctions = mkFunctionLivenessMap
+  [ ("f", fun (livenessFRet,[liveVal])) ]
 
 livenessLoc1 :: Liveness
-livenessLoc1 = nodeSet [ (cBool, [live]) ]
+livenessLoc1 = nodeSet [ (cBoolH, [live])
+                       , (cWordH, [dead])
+                       ]
+
+livenessFRet :: Liveness
+livenessFRet = nodeSet [ (cBool, [live])
+                       , (cWord, [dead])
+                       ]

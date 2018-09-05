@@ -1,7 +1,16 @@
 grinMain =
-  n0 <- pure (CBool 0)
+  n0 <- f 0
   p0 <- case n0 of
-    (CWord c0) -> store (CWord c0)
-    (CBool c1) -> store (CBool c1)
-  (CBool a0) <- fetch p0
-  pure a0
+    (CWord c0) -> store (CWordH c0)
+    (CBool c1) -> store (CBoolH c1)
+    (CNope c2) -> store (CNopeH c2)
+  n1 <- fetch p0
+  case n1 of
+    (CWordH c3) -> pure 5
+    (CBoolH c4) -> pure c4
+    (CNopeH c5) -> pure c5 
+
+f x =
+  case x of
+    0 -> pure (CBool 0)
+    1 -> pure (CWord 0)

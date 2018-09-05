@@ -162,12 +162,12 @@ codeGen = fmap reverseProgram
       forM_ alts $ \(A cpat altM) -> do
         -- performs a monadic action (probably binding variables in the CPat)
         -- then generates code for the Alt
-        let codeGenAlt bindCPatVarsM = do
-              bindInstructions <- codeGenBlock_ bindCPatVarsM
+        let codeGenAlt bindCPatVarsM = codeGenBlock_ $ do
+              bindCPatVarsM
               altM >>= \case
                 Z -> doNothing
                 R altResultReg -> do
-                  --NOTE: We propagateliveness information rom the case result register
+                  --NOTE: We propagate liveness information rom the case result register
                   -- to the alt result register. But we also have to propagate pointer
                   -- information from the alternative into the case result register.
                   -- Any information present in the alt result reg is always a
@@ -181,12 +181,11 @@ codeGen = fmap reverseProgram
                   -- this might probably could be replaced by a CopyStructure
                   -- and a "SimpleTypeCopy"
                   emit IR.Move {srcReg = altResultReg, dstReg = caseResultReg}
-              return bindInstructions
 
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
-            bindInstructions <- codeGenAlt $
+            altInstructions <- codeGenAlt $
               -- bind pattern variables
               forM_ (zip [0..] vars) $ \(idx, name) -> do
                 argReg <- newReg
@@ -195,23 +194,23 @@ codeGen = fmap reverseProgram
             emit IR.If
               { condition    = IR.NodeTypeExists irTag
               , srcReg       = valReg
-              , instructions = bindInstructions
+              , instructions = altInstructions
               }
 
           -- NOTE: if we stored type information for basic val,
           -- we could generate code conditionally here as well
           LitPat lit -> do
-            bindInstructions <- codeGenAlt $ setBasicValLive valReg
-            mapM_ emit bindInstructions
+            altInstructions <- codeGenAlt $ setBasicValLive valReg
+            mapM_ emit altInstructions
 
           -- We have no usable information.
           DefaultPat -> do
-            bindInstructions <- codeGenAlt doNothing
+            altInstructions <- codeGenAlt doNothing
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
             emit IR.If
               { condition    = IR.NotIn tags
               , srcReg       = valReg
-              , instructions = bindInstructions
+              , instructions = altInstructions
               }
 
           _ -> throwE $ "LVA does not support the following case pattern: " ++ show cpat
@@ -252,7 +251,7 @@ codeGen = fmap reverseProgram
 
       -- copying structural information to the heap
       emit IR.CopyStructure { srcReg = valReg, dstReg  = tmp1 }
-      emit IR.Store         { srcReg = tmp1,   address = loc    }
+      emit IR.Store         { srcReg = tmp1,   address = loc  }
 
       -- restrictively propagating info from heap
       emit IR.Fetch          { addressReg = r,    dstReg = tmp2   }
@@ -271,10 +270,10 @@ codeGen = fmap reverseProgram
         r          <- newReg
 
         -- copying structural information from the heap
-        emit IR.Fetch         { addressReg = addressReg, dstReg = tmp   }
-        emit IR.CopyStructure { srcReg     = tmp,        dstReg     = r }
+        emit IR.Fetch         { addressReg = addressReg, dstReg = tmp }
+        emit IR.CopyStructure { srcReg     = tmp,        dstReg = r   }
 
-        -- restrictively propagating info from heap
+        -- restrictively propagating info to heap
         emit IR.RestrictedUpdate {srcReg = r, addressReg = addressReg}
 
         -- setting pointer liveness
@@ -285,11 +284,18 @@ codeGen = fmap reverseProgram
 
     SUpdateF name val -> do
       addressReg <- getReg name
-      tmp        <- newReg
+      tmp1       <- newReg
+      tmp2       <- newReg
       valReg     <- codeGenVal val
+
+      -- copying structural information to the heap
+      emit IR.CopyStructure { srcReg = valReg, dstReg     = tmp1 }
+      emit IR.Update        { srcReg = tmp1,   addressReg = addressReg  }
+
       -- restrictively propagating info from heap
-      emit IR.Fetch          {addressReg = addressReg, dstReg = tmp}
-      emit IR.RestrictedMove {srcReg     = tmp,        dstReg = valReg}
+      emit IR.Fetch          {addressReg = addressReg, dstReg = tmp2   }
+      emit IR.RestrictedMove {srcReg     = tmp2,       dstReg = valReg }
+
       pure Z
 
     SBlockF exp -> exp

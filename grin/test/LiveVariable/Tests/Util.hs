@@ -57,6 +57,12 @@ cBool = Tag C "Bool"
 cWord :: Tag
 cWord = Tag C "Word"
 
+cBoolH :: Tag
+cBoolH = Tag C "BoolH"
+
+cWordH :: Tag
+cWordH = Tag C "WordH"
+
 cOne :: Tag
 cOne = Tag C "One"
 

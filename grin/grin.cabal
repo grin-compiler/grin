@@ -189,13 +189,22 @@ test-suite grin-test
                      , vector
   other-modules:     CreatedBy.CreatedBySpec
                      , LiveVariable.LiveVariableSpec
-                     , LiveVariable.Tests.CaseBackwardPropagation
                      , LiveVariable.Tests.CaseBackwardPropagationNodes
+                     , LiveVariable.Tests.CaseRestricted
                      , LiveVariable.Tests.Fields
                      , LiveVariable.Tests.FunctionCall1
                      , LiveVariable.Tests.FunctionCall2
+                     , LiveVariable.Tests.HeapCaseMin
+                     , LiveVariable.Tests.HeapCase
                      , LiveVariable.Tests.HeapSimple
+                     , LiveVariable.Tests.HeapUpdateComplex
+                     , LiveVariable.Tests.HeapUpdateFunCall
+                     , LiveVariable.Tests.HeapUpdateLocal
                      , LiveVariable.Tests.LitPat
+                     , LiveVariable.Tests.MainNodeRet
+                     , LiveVariable.Tests.NodesSimple
+                     , LiveVariable.Tests.NodesTricky
+                     , LiveVariable.Tests.SumOpt
                      , LiveVariable.Tests.Util
                      , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
