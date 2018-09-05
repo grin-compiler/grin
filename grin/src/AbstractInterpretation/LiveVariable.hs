@@ -172,42 +172,82 @@ codeGen = fmap reverseProgram
 
       -- save scrutinee register mapping
       scrutRegMapping <- case val of
-        Var name -> Just . (name,) <$> getReg name
-        _ -> pure Nothing
+        Var name -> pure (Just name, valReg)
+        _        -> pure (Nothing,   valReg)
+
       alts <- sequence alts_
 
-      forM_ alts $ \(A cpat altM) -> do
-        -- performs a monadic action (probably binding variables in the CPat)
-        -- then generates code for the Alt
-        let codeGenAlt bindCPatVarsM = codeGenBlock_ $ do
-              bindCPatVarsM
-              altM >>= \case
-                Z -> doNothing
-                R altResultReg -> do
-                  --NOTE: We propagate liveness information rom the case result register
-                  -- to the alt result register. But we also have to propagate pointer
-                  -- information from the alternative into the case result register.
-                  -- Any information present in the alt result reg is always a
-                  -- subset of the information present in the case result register.
-                  -- This means, we do not propagate any additional information
-                  -- with the second move instruction.
-                  -- It is also needed for propagating node info into the
-                  -- result register.
-                  emit IR.RestrictedMove {srcReg = caseResultReg, dstReg = altResultReg}
+      let restrictExists tag scrutReg scrutName = do
+            altScrutReg <- newReg
+            addReg scrutName altScrutReg
+            -- restricting scrutinee to alternative's domain
+            emit IR.Project
+              { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists tag
+              , srcReg = scrutReg
+              , dstReg = altScrutReg
+              }
+            pure altScrutReg
 
-                  -- this might probably could be replaced by a CopyStructure
-                  -- and a "SimpleTypeCopy"
-                  emit $ copyStructureWithPtrInfo altResultReg caseResultReg
+          restrictNotIn tags scrutReg scrutName = do
+            altScrutReg <- newReg
+            addReg scrutName altScrutReg
+            -- restricting scrutinee to alternative's domain
+            emit IR.Project
+              { srcSelector = IR.ConditionAsSelector $ IR.NotIn tags
+              , srcReg = scrutReg
+              , dstReg = altScrutReg
+              }
+            pure altScrutReg
+
+          -- caseResultReg is from global scope
+          processAltResult = \case
+            Z -> doNothing
+            R altResultReg -> do
+              --NOTE: We propagate liveness information rom the case result register
+              -- to the alt result register. But we also have to propagate
+              -- structural and pointer information from the alt result register
+              -- into the case result register.
+              emit IR.RestrictedMove {srcReg = caseResultReg, dstReg = altResultReg}
+              emit $ copyStructureWithPtrInfo altResultReg caseResultReg
+
+          restoreScrutReg origScrutReg scrutName = do
+            -- propagating info back to original scrutinee register
+            altScrutReg <- getReg scrutName
+            emit IR.Move
+              { srcReg = altScrutReg
+              , dstReg = origScrutReg
+              }
+            -- restoring scrut reg
+            addReg scrutName origScrutReg
+
+      forM_ alts $ \(A cpat altM) -> do
+
+        let codeGenAltExists tag before = codeGenAlt scrutRegMapping
+                                                     (restrictExists tag)
+                                                     before
+                                                     altM
+                                                     processAltResult
+                                                     restoreScrutReg
+
+            codeGenAltNotIn tags before = codeGenAlt scrutRegMapping
+                                                     (restrictNotIn tags)
+                                                     before
+                                                     altM
+                                                     processAltResult
+                                                     restoreScrutReg
+
+            codeGenAltSimple actionM = codeGenBlock_ $
+              actionM >> (altM >>= processAltResult)
 
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
-            altInstructions <- codeGenAlt $
+            altInstructions <- codeGenAltExists irTag $ \altScrutReg ->
               -- bind pattern variables
               forM_ (zip [0..] vars) $ \(idx, name) -> do
                 argReg <- newReg
                 addReg name argReg
-                emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = valReg}
+                emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = altScrutReg}
             emit IR.If
               { condition    = IR.NodeTypeExists irTag
               , srcReg       = valReg
@@ -217,13 +257,12 @@ codeGen = fmap reverseProgram
           -- NOTE: if we stored type information for basic val,
           -- we could generate code conditionally here as well
           LitPat lit -> do
-            altInstructions <- codeGenAlt $ setBasicValLive valReg
+            altInstructions <- codeGenAltSimple $ setBasicValLive valReg
             mapM_ emit altInstructions
 
-          -- We have no usable information.
           DefaultPat -> do
-            altInstructions <- codeGenAlt doNothing
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
+            altInstructions <- codeGenAltNotIn tags (const doNothing)
             emit IR.If
               { condition    = IR.NotIn tags
               , srcReg       = valReg
@@ -231,10 +270,6 @@ codeGen = fmap reverseProgram
               }
 
           _ -> throwE $ "LVA does not support the following case pattern: " ++ show cpat
-
-      -- restore scrutinee register mapping
-      maybe (pure ()) (uncurry addReg) scrutRegMapping
-
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp

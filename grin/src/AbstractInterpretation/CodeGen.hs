@@ -80,3 +80,19 @@ codeGenBlock genM = do
 
 codeGenBlock_ :: HasDataFlowInfo s => CG s a -> CG s [IR.Instruction]
 codeGenBlock_ = fmap snd . codeGenBlock
+
+codeGenAlt :: HasDataFlowInfo s =>
+              (Maybe Name, IR.Reg) ->
+              (IR.Reg -> Name -> CG s IR.Reg) ->
+              (IR.Reg -> CG s ()) ->
+              CG s (Result s) ->
+              (Result s -> CG s ()) ->
+              (IR.Reg -> Name -> CG s ()) ->
+              CG s [IR.Instruction]
+codeGenAlt (mName, reg) restrict before altM after restore =
+  codeGenBlock_ $ do
+    altReg <- maybe (pure reg) (restrict reg) mName
+    before altReg
+    altResult <- altM
+    after altResult
+    maybe (pure ()) (restore reg) mName

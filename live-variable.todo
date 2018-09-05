@@ -184,6 +184,5 @@ Dead field elimination:
   - LVA is sufficient for replacing fields with dummies
   - removing fields requires created-by analysis as well
 
-Range-based MOVE
-more tests: - pointers, pointers in nodes
-            - case restrictions
+more tests: bind (possible pattern match failure) after case
+restrict case scrutinee in LVA codeGen

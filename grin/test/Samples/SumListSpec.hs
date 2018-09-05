@@ -78,7 +78,7 @@ spec = do
               sum n7'_2 n4' p112
       |]
     let ppln =
-          [ Pass [HPT CompileHPT, HPT RunHPTPure]
+          [ Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T BindNormalisation
           , T ConstantPropagation
           , T BindNormalisation

@@ -12,8 +12,12 @@ import AbstractInterpretation.LiveVariable
 import AbstractInterpretation.LVAResult
 
 import LiveVariable.Tests.Util
-import LiveVariable.Tests.CaseBackwardPropagationNodes
+import LiveVariable.Tests.CaseAnonymous
+import LiveVariable.Tests.CaseMinLit
+import LiveVariable.Tests.CaseMinNodes
+import LiveVariable.Tests.CaseNested
 import LiveVariable.Tests.CaseRestricted
+import LiveVariable.Tests.CaseRestrictedNodes
 import LiveVariable.Tests.Fields
 import LiveVariable.Tests.FunctionCall1
 import LiveVariable.Tests.FunctionCall2
@@ -40,8 +44,12 @@ runTestsGHCi = runTestsFrom stackSrc
 
 runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcLiveness
-  [ caseRestrictedSrc
-  , caseBackwardPropagationNodesSrc
+  [ caseAnonymousSrc
+  , caseMinLitSrc
+  , caseMinNodesSrc
+  , caseNestedSrc
+  , caseRestrictedSrc
+  , caseRestrictedNodesSrc
   , fieldsSrc
   , functionCall1Src
   , functionCall2Src
@@ -57,8 +65,12 @@ runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcLiveness
   , nodesTrickySrc
   , sumOptSrc
   ]
-  [ caseRestrictedSpec
-  , caseBackwardPropagationNodesSpec
+  [ caseAnonymousSpec
+  , caseMinLitSpec
+  , caseMinNodesSpec
+  , caseNestedSpec
+  , caseRestrictedSpec
+  , caseRestrictedNodesSpec
   , fieldsSpec
   , functionCall1Spec
   , functionCall2Spec
