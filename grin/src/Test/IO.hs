@@ -32,5 +32,7 @@ runTestsFromWith fromCurDir calcInfo srcs validators = do
   let validatedResults = zipWith ($) validators foundResults
   mapM_ hspec validatedResults
 
-  where srcs'         = map ((fromCurDir </> stackTest) </>) srcs
+  where srcs' = if fromCurDir == stackTest
+                  then map ("." </>) srcs
+                  else map ((fromCurDir </> stackTest) </>) srcs
         calcInfoIO fp = calcInfo <$> readProgram fp

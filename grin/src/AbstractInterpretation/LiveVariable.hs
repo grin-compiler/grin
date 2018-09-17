@@ -23,9 +23,11 @@ import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataF
 -- NOTE: For a live variable, we could store its type information.
 
 -- Live variable analysis program.
--- For a basic value, a non-empty set represents liveness.
+-- For a basic value, a set containing "live" represents liveness (live is defined below).
 -- The nth field of a node represents the liveness of the nth field.
--- By default, every variable is dead (empty set ~ dead).
+-- By default, every variable is dead.
+-- The data flows in two directions: the liveness information flows backwards,
+-- the structural information flows forward.
 newtype LVAProgram = LVAProgram { _absProg :: AbstractProgram }
 concat <$> mapM makeLenses [''LVAProgram]
 

@@ -40,7 +40,7 @@ runTests :: IO ()
 runTests = runTestsFrom stackRoot
 
 runTestsGHCi :: IO ()
-runTestsGHCi = runTestsFrom stackSrc
+runTestsGHCi = runTestsFrom stackTest
 
 runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcLiveness

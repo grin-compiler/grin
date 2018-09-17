@@ -23,31 +23,34 @@ spec :: Spec
 spec = runIO runTests
 
 runTests :: IO ()
-runTests = do
-  puresFound           <- calcProducersIO puresSrc
-  funCallFound         <- calcProducersIO funCallSrc
-  caseSimpleFound      <- calcProducersIO caseSimpleSrc
-  heapFound            <- calcProducersIO heapSrc
-  heapFound            <- calcProducersIO heapSrc
-  pointerInNodeFound   <- calcProducersIO pointerInNodeSrc
-  caseRestricted1Found <- calcProducersIO caseRestricted1Src
-  caseRestricted2Found <- calcProducersIO caseRestricted2Src
-  caseRestricted3Found <- calcProducersIO caseRestricted3Src
+runTests = runTestsFrom stackRoot
 
-  hspec $ puresSpec           puresFound
-  hspec $ funCallSpec         funCallFound
-  hspec $ caseSimpleSpec      caseSimpleFound
-  hspec $ heapSpec            heapFound
-  hspec $ pointerInNodeSpec   pointerInNodeFound
-  hspec $ caseRestricted1Spec caseRestricted1Found
-  hspec $ caseRestricted2Spec caseRestricted2Found
-  hspec $ caseRestricted3Spec caseRestricted3Found
+runTestsGHCi :: IO ()
+runTestsGHCi = runTestsFrom stackTest
+
+runTestsFrom :: FilePath -> IO ()
+runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcProducers
+  [ puresSrc
+  , funCallSrc
+  , caseSimpleSrc
+  , heapSrc
+  , pointerInNodeSrc
+  , caseRestricted1Src
+  , caseRestricted2Src
+  , caseRestricted3Src
+  ]
+  [ puresSpec
+  , funCallSpec
+  , caseSimpleSpec
+  , heapSpec
+  , pointerInNodeSpec
+  , caseRestricted1Spec
+  , caseRestricted2Spec
+  , caseRestricted3Spec
+  ]
 
 cbyExamples :: FilePath
-cbyExamples = "test" </> "CreatedBy" </> "examples"
-
-calcProducersIO :: FilePath -> IO ProducerMap
-calcProducersIO fp = calcProducers <$> readProgram fp
+cbyExamples = "CreatedBy" </> "examples"
 
 calcProducers :: Exp -> ProducerMap
 calcProducers prog
