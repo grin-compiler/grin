@@ -92,7 +92,7 @@ options = execParser $ info
             [ short 'o'
             , long "output-dir"
             , help "Output directory for generated files"
-            , value "./output"
+            , value "./.output"
             ])
 
 main :: IO ()

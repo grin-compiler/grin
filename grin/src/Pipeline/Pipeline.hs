@@ -198,7 +198,7 @@ data PipelineOpts = PipelineOpts
 
 defaultOpts :: PipelineOpts
 defaultOpts = PipelineOpts
-  { _poOutputDir  = "./"
+  { _poOutputDir  = ".grin-output"
   , _poFailOnLint = True
   , _poLogging    = True
   }
