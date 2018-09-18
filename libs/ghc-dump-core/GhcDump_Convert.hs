@@ -11,6 +11,7 @@ import Id (isFCallId)
 import Module (ModuleName, moduleNameFS, moduleName)
 import Unique (Unique, getUnique, unpkUnique)
 import Name (getOccName, occNameFS, OccName, getName, nameModule_maybe)
+import OccName
 import qualified IdInfo
 import qualified BasicTypes as OccInfo (OccInfo(..), isStrongLoopBreaker)
 #if MIN_VERSION_ghc(8,0,0)
@@ -162,6 +163,10 @@ cvtExpr expr =
                       -> EVarGlobal $ ExternalName (cvtModuleName $ Module.moduleName m)
                                                    (occNameToText $ getOccName x)
                                                    (cvtUnique $ getUnique x)
+                                                   (cvtIdDetails $ Var.idDetails x)
+                                                   (IdInfo.arityInfo      $ Var.idInfo x)
+                                                   (IdInfo.callArityInfo  $ Var.idInfo x)
+                                                   (Var.isTyVar x)
       | otherwise     -> EVar (cvtVar x)
     Lit l             -> ELit (cvtLit l)
     App x y           -> EApp (cvtExpr x) (cvtExpr y)
@@ -180,7 +185,7 @@ cvtAlt :: CoreAlt -> Ast.SAlt
 cvtAlt (con, bs, e) = Alt (cvtAltCon con) (map cvtBinder bs) (cvtExpr e)
 
 cvtAltCon :: CoreSyn.AltCon -> Ast.AltCon
-cvtAltCon (DataAlt altcon) = Ast.AltDataCon $ occNameToText $ getOccName altcon
+cvtAltCon (DataAlt altcon) = Ast.AltDataCon (fastStringToText . moduleNameFS . Module.moduleName <$> (nameModule_maybe $ getName altcon)) $ occNameToText $ getOccName altcon
 cvtAltCon (LitAlt l)       = Ast.AltLit $ cvtLit l
 cvtAltCon DEFAULT          = Ast.AltDefault
 

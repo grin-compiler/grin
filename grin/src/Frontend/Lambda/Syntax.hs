@@ -5,6 +5,7 @@ module Frontend.Lambda.Syntax where
 
 import Data.Int
 import Data.Word
+import Data.ByteString (ByteString)
 import Data.Functor.Foldable as Foldable
 import Data.Functor.Foldable.TH
 
@@ -41,7 +42,11 @@ data Lit
   | LWord64 Word64
   | LFloat  Float
   | LBool   Bool
-  | LError  String
+  | LChar   Char
+  | LString ByteString
+  -- special
+  | LError  String  -- marks an error
+  | LDummy  String  -- should be ignored
   deriving (Eq, Ord, Show)
 
 data Pat

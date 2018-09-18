@@ -2,6 +2,7 @@ module Main where
 
 import Control.Monad
 
+import System.FilePath
 import System.Environment
 import System.Exit
 import qualified Text.Megaparsec as M
@@ -13,6 +14,7 @@ import Frontend.Lambda.Syntax
 import Frontend.Lambda.Parse
 import Frontend.Lambda.Pretty
 import Frontend.Lambda.CodeGen
+import Frontend.Lambda.Lint
 import Grin.Pretty
 import Pipeline.Pipeline
 
@@ -37,12 +39,17 @@ getOpts = do xs <- getArgs
 
 cg_main :: Opts -> IO ()
 cg_main opts = do
-  forM_ (inputs opts) $ \fname -> do
+  defList <- forM (inputs opts) $ \fname -> do
+    putStrLn $ "loading " ++ fname
     coreModule <- readDump fname
-    program <- codegenLambda coreModule
-    putStrLn "\n* Lambda"
-    putDoc (plain $ pretty program) >> putStrLn ""
-    pure ()
+    putStrLn $ "loaded " ++ fname
+    program@(Program defs) <- codegenLambda coreModule
+
+    let lambdaName = replaceExtension fname "lambda"
+    --putStrLn lambdaName
+    writeFile lambdaName . show . plain $ pretty program
+
+    pure defs
     {-
     let lambdaGrin = codegenGrin program
     void $ pipeline pipelineOpts lambdaGrin
@@ -52,6 +59,9 @@ cg_main opts = do
       , PrintGrin ondullblack
       ]
     -}
+  let wholeProgram = Program $ concat defList
+  --writeFile "whole_program.lambda" . show . plain $ pretty wholeProgram
+  lintLambda wholeProgram
 
 main :: IO ()
 main = do opts <- getOpts

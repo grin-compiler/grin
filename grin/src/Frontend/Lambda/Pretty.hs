@@ -32,7 +32,7 @@ instance Pretty Exp where
       LetF binds exp      -> keyword "let"    <+> align (vsep (map prettyBind binds)) <$$> pretty exp
       LetRecF binds exp   -> keyword "letrec" <+> align (vsep (map prettyBind binds)) <$$> pretty exp
       LetSF binds exp     -> keyword "letS"   <+> align (vsep (map prettyBind binds)) <$$> pretty exp
-      ConF tag args       -> parens $ hsep (text tag : map pretty args)
+      ConF tag args       -> brackets $ hsep (text tag : map pretty args)
       -- Atom
       VarF name           -> text name
       LitF lit            -> pretty lit
@@ -47,6 +47,9 @@ instance Pretty Lit where
     LWord64 a -> integer (fromIntegral a) <> text "u"
     LFloat a  -> float a
     LBool a   -> text "#" <> text (show a)
+    LChar a   -> text "#" <> text (show a)
+    LString a -> text "#" <> text (show a)
+    LDummy a  -> red $ text "%" <> text a
     LError a  -> red $ text "!" <> text a
 
 instance Pretty Pat where

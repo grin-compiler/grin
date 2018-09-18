@@ -2,6 +2,7 @@
 
 module Frontend.Lambda.Parse (parseLambda) where
 
+import qualified Data.ByteString.Char8 as BS8
 import Data.Void
 import Control.Applicative (empty)
 import Control.Monad (void, mzero)
@@ -91,7 +92,9 @@ literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
           (try $ LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u')) <|>
           LInt64 . fromIntegral <$> signedInteger <|>
-          LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")
+          LBool <$> (True <$ kw "#True" <|> False <$ kw "#False") <|>
+          LChar <$ char '#' <* char '\'' <* L.charLiteral <*> char '\'' <|>
+          LString . BS8.pack <$ char '#' <*> (char '"' >> manyTill L.charLiteral (char '"'))
 
 
 lambdaModule :: Parser Program

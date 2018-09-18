@@ -184,7 +184,7 @@ pprExpr' opts parens  (EType t)        = maybeParens parens $ "TYPE:" <+> pprTyp
 pprExpr' opts parens  ECoercion        = "CO"
 
 instance Pretty AltCon where
-    pretty (AltDataCon t) = text $ BS.unpack t
+    pretty (AltDataCon m t) = maybe mempty (\n -> text (BS.unpack n) <> ".") m <> text (BS.unpack t)
     pretty (AltLit l) = pretty l
     pretty AltDefault = text "DEFAULT"
 

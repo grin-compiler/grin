@@ -28,6 +28,10 @@ data ExternalName
     { externalModuleName  :: !ModuleName
     , externalName        :: !T_Text
     , externalUnique      :: !Unique
+    , externalIdDetails   :: IdDetails
+    , externalIdArity     :: !Int
+    , externalIdCallArity :: !Int
+    , externalIsTyVar     :: !Bool
     }
   | ForeignCall
   deriving (Eq, Ord, Generic, Show)
@@ -53,9 +57,9 @@ data Binder' bndr var
     , binderType      :: Type' bndr var
     }
   | TyBinder
-    { binderName :: !T_Text
-    , binderId   :: !BinderId
-    , binderKind :: Type' bndr var
+    { binderName      :: !T_Text
+    , binderId        :: !BinderId
+    , binderKind      :: Type' bndr var
     }
   deriving (Eq, Ord, Generic, Show)
 
@@ -108,17 +112,17 @@ data IdDetails
   deriving (Eq, Ord, Generic, Show)
 
 data Lit
-  = MachChar Char
-  | MachStr BS.ByteString
+  = MachChar      Char
+  | MachStr       BS.ByteString
   | MachNullAddr
-  | MachInt Integer
-  | MachInt64 Integer
-  | MachWord Integer
-  | MachWord64 Integer
-  | MachFloat Rational
-  | MachDouble Rational
-  | MachLabel T_Text
-  | LitInteger Integer
+  | MachInt       Integer
+  | MachInt64     Integer
+  | MachWord      Integer
+  | MachWord64    Integer
+  | MachFloat     Rational
+  | MachDouble    Rational
+  | MachLabel     T_Text
+  | LitInteger    Integer
   deriving (Eq, Ord, Generic, Show)
 
 data TyCon
@@ -129,11 +133,11 @@ type SType = Type' SBinder BinderId
 type Type  = Type' Binder Binder
 
 data Type' bndr var
-  = VarTy var
-  | FunTy (Type' bndr var) (Type' bndr var)
-  | TyConApp TyCon [Type' bndr var]
-  | AppTy (Type' bndr var) (Type' bndr var)
-  | ForAllTy bndr (Type' bndr var)
+  = VarTy       var
+  | FunTy       (Type' bndr var) (Type' bndr var)
+  | TyConApp    TyCon [Type' bndr var]
+  | AppTy       (Type' bndr var) (Type' bndr var)
+  | ForAllTy    bndr (Type' bndr var)
   | LitTy
   | CoercionTy
   deriving (Eq, Ord, Generic, Show)
@@ -163,15 +167,15 @@ type SExpr = Expr' SBinder BinderId
 type Expr  = Expr' Binder Binder
 
 data Expr' bndr var
-  = EVar var
-  | EVarGlobal ExternalName
-  | ELit Lit
-  | EApp (Expr' bndr var) (Expr' bndr var)
-  | ETyLam bndr (Expr' bndr var)
-  | ELam bndr (Expr' bndr var)
-  | ELet [(bndr, Expr' bndr var)] (Expr' bndr var)
-  | ECase (Expr' bndr var) bndr [Alt' bndr var]
-  | EType (Type' bndr var)
+  = EVar        var
+  | EVarGlobal  ExternalName
+  | ELit        Lit
+  | EApp        (Expr' bndr var) (Expr' bndr var)
+  | ETyLam      bndr (Expr' bndr var)
+  | ELam        bndr (Expr' bndr var)
+  | ELet        [(bndr, Expr' bndr var)] (Expr' bndr var)
+  | ECase       (Expr' bndr var) bndr [Alt' bndr var]
+  | EType       (Type' bndr var)
   | ECoercion
   deriving (Eq, Ord, Generic, Show)
 
@@ -187,8 +191,8 @@ data Alt' bndr var
   deriving (Eq, Ord, Generic, Show)
 
 data AltCon
-  = AltDataCon !T_Text
-  | AltLit Lit
+  = AltDataCon  !(Maybe T_Text) !T_Text -- module name, data con name
+  | AltLit      Lit
   | AltDefault
   deriving (Eq, Ord, Generic, Show)
 
@@ -196,8 +200,8 @@ type STopBinding = TopBinding' SBinder BinderId
 type TopBinding  = TopBinding' Binder Binder
 
 data TopBinding' bndr var
-  = NonRecTopBinding bndr CoreStats (Expr' bndr var)
-  | RecTopBinding [(bndr, CoreStats, Expr' bndr var)]
+  = NonRecTopBinding  bndr CoreStats (Expr' bndr var)
+  | RecTopBinding     [(bndr, CoreStats, Expr' bndr var)]
   deriving (Generic, Show)
 
 data CoreStats
