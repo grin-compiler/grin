@@ -1,4 +1,0 @@
-ones_global =
-  let box1 = (Int 1)
-  letrec ones = (Cons box1 ones)
-  ones
