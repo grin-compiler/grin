@@ -1,0 +1,62 @@
+name:                idris-grin
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/grin#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Andor Penzes, Csaba Hruska
+maintainer:          andor.penzes@gmail.com
+copyright:           2017 Andor Penzes, Csaba Hruska
+category:            Compiler
+build-type:          Simple
+--extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Frontend.Idris.CodegenGrin
+    Frontend.Idris.PrimOps
+
+  build-depends:
+    base
+
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/grin-tech/grin
+
+executable idris-codegen-grin
+  main-is:        IdrisGrin.hs
+  hs-source-dirs: app
+
+  build-depends:  idris
+                , base
+                , containers
+                , directory
+                , filepath
+                , haskeline >= 0.7
+                , mtl
+                , transformers
+                , grin
+
+  if os(linux)
+     cpp-options:   -DLINUX
+     build-depends: unix < 2.8
+  if os(freebsd)
+     cpp-options:   -DFREEBSD
+     build-depends: unix < 2.8
+  if os(dragonfly)
+     cpp-options:   -DDRAGONFLY
+     build-depends: unix < 2.8
+  if os(darwin)
+     cpp-options:   -DMACOSX
+     build-depends: unix < 2.8
+  if os(windows)
+     cpp-options:   -DWINDOWS
+     build-depends: Win32 < 2.4
+
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields

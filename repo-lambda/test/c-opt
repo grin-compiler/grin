@@ -1,0 +1,16 @@
+reset
+rm 002.sum.grin
+stack exec -- lambda-grin sum2.lam -o sum.grin
+
+#stack exec -- grin 004.sum.grin \
+#  --dpe -t --sco -t -p --print-hpt-result --print-hpt-code --llvm --save-grin run.grin
+
+# compiles to constant
+#stack exec -- grin 002.sum-tweaked.grin
+
+# fix: should compile to constant
+#stack exec -- grin 002.sum-tweaked2.grin
+stack exec -- grin 002.sum.grin
+
+# requires better hpt ; srutinee tracking in case alternatives
+#stack exec -- grin 002.sum-require-precise-hpt.grin

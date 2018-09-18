@@ -1,0 +1,74 @@
+name:                lambda-grin
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/grin#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Andor Penzes, Csaba Hruska
+maintainer:          andor.penzes@gmail.com
+copyright:           2017 Andor Penzes, Csaba Hruska
+category:            Compiler
+build-type:          Simple
+--extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    Lambda.CodeGen
+    Lambda.FromDumpCore
+    Lambda.FromCore
+    Lambda.FromSTG
+    Lambda.Parse
+    Lambda.Pretty
+    Lambda.PrimOps
+    Lambda.Syntax
+    Lambda.Lint
+
+  build-depends:
+    base
+
+  default-language:    Haskell2010
+
+
+source-repository head
+  type:     git
+  location: https://github.com/grin-tech/grin
+
+executable lambda-grin
+  hs-source-dirs:      app
+  main-is:             LambdaGrin.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , mtl
+                     , megaparsec
+                     , ansi-wl-pprint
+                     , grin
+  default-language:    Haskell2010
+
+executable ghc-core-grin
+  hs-source-dirs:      app
+  main-is:             GHCCoreGrin.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , mtl
+                     , filepath
+                     , megaparsec
+                     , ansi-wl-pprint
+                     , grin
+                     , ghc-dump-util
+  default-language:    Haskell2010
+
+executable ghc-grin
+  hs-source-dirs:      app
+  main-is:             GHCGrin.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , mtl
+                     , pretty-simple
+                     , ansi-wl-pprint
+                     , grin
+                     , ghc
+                     , ghc-paths
+  default-language:    Haskell2010

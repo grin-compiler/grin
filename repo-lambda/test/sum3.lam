@@ -1,0 +1,53 @@
+upto m n =
+  let cmp = rts_int_gt m n
+  case cmp of
+    (True)  -> (Nil)
+    (False) -> let box1 = (Int 1)
+               letS succ = rts_int_add m box1
+               let tail = upto succ n
+               (Cons m tail)
+
+sum l1 =
+  case l1 of
+    (Nil)       -> (Int 0)
+    (Cons n1 ns) -> let s1 = sum ns
+                    rts_int_add n1 s1
+
+grinMain =
+  let box2 = (Int 1)
+      box3 = (Int 10)
+      l2 = upto box2 box3
+      s2 = sum l2
+  rts_int_print s2
+
+-- rts
+
+rts_int_gt p0$ p1$ =
+  case p0$ of
+    (Int i0$) ->
+      case p1$ of
+        (Int i1$) ->
+          letS b0$ = _prim_int_gt i0$ i1$
+          case b0$ of
+            #False  -> (False)
+            #True   -> (True)
+
+rts_int_print p2$ =
+  case p2$ of
+    (Int i2$) ->
+      letS u0$ = _prim_int_print i2$
+      (Unit)
+
+rts_int_add p3$ p4$ =
+  case p3$ of
+    (Int i3$) ->
+      case p4$ of
+        (Int i4$) ->
+          letS i5$ = _prim_int_add i3$ i4$
+          (Int i5$)
+
+{-
+  TODO:
+    rethink builtin/primitive operations ; int_gt, int_add, int_print
+      they should generate valid grin code
+-}

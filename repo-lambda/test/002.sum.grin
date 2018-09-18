@@ -1,0 +1,102 @@
+eval p =
+  v <- fetch p
+  case v of
+    #default ->
+      pure v
+    (Fupto upto.1 upto.2) ->
+      upto.whnf <- upto upto.1 upto.2
+      pure upto.whnf
+    (Fsum sum.1 sum.2) ->
+      sum.whnf <- sum sum.1 sum.2
+      pure sum.whnf
+    (Frts_int_gt rts_int_gt.1 rts_int_gt.2) ->
+      rts_int_gt.whnf <- rts_int_gt rts_int_gt.1 rts_int_gt.2
+      pure rts_int_gt.whnf
+    (Frts_int_print rts_int_print.1) ->
+      rts_int_print.whnf <- rts_int_print rts_int_print.1
+      pure rts_int_print.whnf
+    (Frts_int_add rts_int_add.1 rts_int_add.2) ->
+      rts_int_add.whnf <- rts_int_add rts_int_add.1 rts_int_add.2
+      pure rts_int_add.whnf
+
+apply f x =
+  case f of
+    (P2upto) ->
+      pure (P1upto x)
+    (P1upto upto1.1) ->
+      upto upto1.1 x
+    (P2sum) ->
+      pure (P1sum x)
+    (P1sum sum1.1) ->
+      sum sum1.1 x
+    (P2rts_int_gt) ->
+      pure (P1rts_int_gt x)
+    (P1rts_int_gt rts_int_gt1.1) ->
+      rts_int_gt rts_int_gt1.1 x
+    (P1rts_int_print) ->
+      rts_int_print x
+    (P2rts_int_add) ->
+      pure (P1rts_int_add x)
+    (P1rts_int_add rts_int_add1.1) ->
+      rts_int_add rts_int_add1.1 x
+
+upto m n =
+  cmp <- store (Frts_int_gt m n)
+  value.0 <- eval cmp
+  case value.0 of
+    (CTrue) ->
+      pure (CNil)
+    (CFalse) ->
+      box1 <- store (CInt 1)
+      succ <- store (Frts_int_add m box1)
+      tail <- store (Fupto succ n)
+      pure (CCons m tail)
+
+sum a1 l1 =
+  value.1 <- eval l1
+  case value.1 of
+    (CNil) ->
+      eval a1
+    (CCons n1 ns) ->
+      a2 <- store (Frts_int_add n1 a1)
+      sum a2 ns
+
+grinMain =
+  box2 <- store (CInt 1)
+  box3 <- store (CInt 10)
+  box4 <- store (CInt 0)
+  l2 <- store (Fupto box2 box3)
+  s2 <- store (Fsum box4 l2)
+  rts_int_print s2
+
+rts_int_gt p0$ p1$ =
+  value.2 <- eval p0$
+  case value.2 of
+    (CInt i0$) ->
+      value.3 <- eval p1$
+      case value.3 of
+        (CInt i1$) ->
+          b0$ <- _prim_int_gt i0$ i1$
+          value.4 <- pure b0$
+          case value.4 of
+            #False ->
+              pure (CFalse)
+            #True ->
+              pure (CTrue)
+
+rts_int_print p2$ =
+  value.5 <- eval p2$
+  case value.5 of
+    (CInt i2$) ->
+      u0$ <- _prim_int_print i2$
+      pure (CUnit)
+
+rts_int_add p3$ p4$ =
+  value.6 <- eval p3$
+  case value.6 of
+    (CInt i3$) ->
+      value.7 <- eval p4$
+      case value.7 of
+        (CInt i4$) ->
+          i5$ <- _prim_int_add i3$ i4$
+          pure (CInt i5$)

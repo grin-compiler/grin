@@ -23,17 +23,6 @@ library
     AbstractInterpretation.PrettyIR
     AbstractInterpretation.Reduce
     AbstractInterpretation.Model
-    Frontend.Idris.CodegenGrin
-    Frontend.Idris.PrimOps
-    Frontend.Lambda.CodeGen
-    Frontend.Lambda.FromDumpCore
-    Frontend.Lambda.FromCore
-    Frontend.Lambda.FromSTG
-    Frontend.Lambda.Parse
-    Frontend.Lambda.Pretty
-    Frontend.Lambda.PrimOps
-    Frontend.Lambda.Syntax
-    Frontend.Lambda.Lint
     Grin.Grin
     Grin.Syntax
     Grin.TH
@@ -129,10 +118,6 @@ library
     extra,
     logict,
     QuickCheck,
-    ghc-dump-core,
-    ghc-dump-util,
-    ghc,
-    idris,
     neat-interpolation,
     template-haskell,
     Diff,
@@ -219,89 +204,6 @@ benchmark grin-benchmark
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
-executable hpt
-  hs-source-dirs:      app
-  main-is:             HardcodedHPT.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , grin
-                     , recursion-schemes
-                     , ansi-wl-pprint
-                     , containers
-  default-language:    Haskell2010
-
 source-repository head
   type:     git
   location: https://github.com/grin-tech/grin
-
-executable lambda-grin
-  hs-source-dirs:      app
-  main-is:             LambdaGrin.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , mtl
-                     , megaparsec
-                     , ansi-wl-pprint
-                     , grin
-  default-language:    Haskell2010
-
-executable ghc-core-grin
-  hs-source-dirs:      app
-  main-is:             GHCCoreGrin.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , mtl
-                     , filepath
-                     , megaparsec
-                     , ansi-wl-pprint
-                     , grin
-                     , ghc-dump-util
-  default-language:    Haskell2010
-
-executable ghc-grin
-  hs-source-dirs:      app
-  main-is:             GHCGrin.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , mtl
-                     , pretty-simple
-                     , ansi-wl-pprint
-                     , grin
-                     , ghc
-                     , ghc-paths
-  default-language:    Haskell2010
-
-executable idris-codegen-grin
-  main-is:        IdrisGrin.hs
-  hs-source-dirs: app
-
-  build-depends:  idris
-                , base
-                , containers
-                , directory
-                , filepath
-                , haskeline >= 0.7
-                , mtl
-                , transformers
-                , grin
-
-  if os(linux)
-     cpp-options:   -DLINUX
-     build-depends: unix < 2.8
-  if os(freebsd)
-     cpp-options:   -DFREEBSD
-     build-depends: unix < 2.8
-  if os(dragonfly)
-     cpp-options:   -DDRAGONFLY
-     build-depends: unix < 2.8
-  if os(darwin)
-     cpp-options:   -DMACOSX
-     build-depends: unix < 2.8
-  if os(windows)
-     cpp-options:   -DWINDOWS
-     build-depends: Win32 < 2.4
-
-  ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
-
-

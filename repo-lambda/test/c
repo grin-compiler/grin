@@ -1,0 +1,5 @@
+reset
+rm 002.sum.grin
+stack exec -- lambda-grin sum3.lam -o sum.grin
+
+stack exec -- grin 002.sum.grin

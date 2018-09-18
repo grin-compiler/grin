@@ -5,8 +5,6 @@ allow-newer: true
 
 packages:
 - 'grin'
-- 'libs/ghc-dump-core'
-- 'libs/ghc-dump-util'
 
 extra-deps:
   - monad-gen-0.3.0.1
