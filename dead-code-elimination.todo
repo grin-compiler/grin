@@ -1,0 +1,6 @@
+Dead field elimination:
+  - for DFE, we assume that node name introduction has already taken place
+  - for dummy substitution LVA is sufficient
+  - for field deletion, CBy analysis is also required
+    - we have to scrutinize every case expression, and group the overlapping producers together
+    - in order to be able to delete a field (wtih a given tag), that field must be dead (with the given tag) for all producers in the group

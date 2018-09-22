@@ -2,8 +2,6 @@
 
 module AbstractInterpretation.CByResult where
 
-import Data.Tuple (swap)
-
 import Data.Set    (Set)
 import Data.Map    (Map)
 import Data.Vector (Vector)

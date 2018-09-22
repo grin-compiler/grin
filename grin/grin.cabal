@@ -86,6 +86,7 @@ library
     Transformations.Optimising.ConstantPropagation
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.CSE
+    Transformations.Optimising.DeadCodeElimination
     Transformations.Optimising.DeadParameterElimination
     Transformations.Optimising.DeadProcedureElimination
     Transformations.Optimising.DeadVariableElimination
