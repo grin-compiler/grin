@@ -18,6 +18,7 @@ library
   exposed-modules:
     AbstractInterpretation.CodeGen
     AbstractInterpretation.CByResult
+    AbstractInterpretation.CByUtil
     AbstractInterpretation.CreatedBy
     AbstractInterpretation.HeapPointsTo
     AbstractInterpretation.HPTResult
@@ -70,6 +71,7 @@ library
     Test.IO
     Test.PrimOps
     Test.Test
+    Test.Util
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -86,7 +88,7 @@ library
     Transformations.Optimising.ConstantPropagation
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.CSE
-    Transformations.Optimising.DeadCodeElimination
+    Transformations.Optimising.DeadDataElimination
     Transformations.Optimising.DeadParameterElimination
     Transformations.Optimising.DeadProcedureElimination
     Transformations.Optimising.DeadVariableElimination
@@ -190,6 +192,11 @@ test-suite grin-test
                      , vector
 
   other-modules:     CreatedBy.CreatedBySpec
+                     , DeadCodeElimination.DeadCodeEliminationSpec
+                     , DeadCodeElimination.Tests.DeadData.MultipleFields
+                     , DeadCodeElimination.Tests.DeadData.OnlyDummify
+                     , DeadCodeElimination.Tests.ProducerGrouping
+                     , DeadCodeElimination.Tests.Util
                      , LiveVariable.LiveVariableSpec
                      , LiveVariable.Tests.CaseAnonymous
                      , LiveVariable.Tests.CaseMinLit

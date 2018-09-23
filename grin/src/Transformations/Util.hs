@@ -4,6 +4,8 @@ module Transformations.Util where
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import Data.Maybe
+
 import Control.Monad
 import Control.Monad.State
 import Control.Comonad
@@ -197,3 +199,18 @@ collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
     goCPat :: CPat -> State TagInfo ()
     goCPat (NodePat t args) = modify $ updateTagInfo t (length args)
     goCPat _ = pure ()
+
+unsafeLookup :: Ord k => k -> Map k v -> v
+unsafeLookup k = fromJust . Map.lookup k
+
+mapWithDoubleKey :: (Ord k1, Ord k2) =>
+                    (k1 -> k2 -> a -> b) ->
+                    Map k1 (Map k2 a) ->
+                    Map k1 (Map k2 b)
+mapWithDoubleKey f = Map.mapWithKey (\k1 m -> Map.mapWithKey (f k1) m)
+
+lookupWithDoubleKey :: (Ord k1, Ord k2) => k1 -> k2 -> Map k1 (Map k2 v) -> Maybe v
+lookupWithDoubleKey k1 k2 m = Map.lookup k1 m >>= Map.lookup k2
+
+unsafeLookupWithDoubleKey :: (Ord k1, Ord k2) => k1 -> k2 -> Map k1 (Map k2 v) -> v
+unsafeLookupWithDoubleKey k1 k2 = fromJust . lookupWithDoubleKey k1 k2

@@ -52,12 +52,15 @@ runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcProducers
 cbyExamples :: FilePath
 cbyExamples = "CreatedBy" </> "examples"
 
-calcProducers :: Exp -> ProducerMap
-calcProducers prog
+calcCByResult :: Exp -> CByResult
+calcCByResult prog
   | Right cbyProgram <- codeGen prog
   , computer <- evalDataFlowInfo cbyProgram
   , cbyResult <- toCByResult cbyProgram computer
-  = _producers cbyResult
+  = cbyResult
+
+calcProducers :: Exp -> ProducerMap
+calcProducers = _producers . calcCByResult
 
 mkProducerSet :: [(Tag, [Name])] -> ProducerSet
 mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
