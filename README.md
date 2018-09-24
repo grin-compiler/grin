@@ -79,11 +79,11 @@ See: [Issues / Tasks for new contributors](https://github.com/grin-tech/grin/iss
 
 Read about how to <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=64">generate GRIN code</a> from a frontend language.
 
-Also check the corresponding [source code](https://github.com/grin-tech/grin/tree/master/grin/src/Frontend/Lambda).
+Also check the corresponding [source code](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda).
 
 i.e.
-- [Lambda/Syntax.hs](https://github.com/grin-tech/grin/tree/master/grin/src/Frontend/Lambda/Syntax.hs) - front-end language defintion
-- [Lambda/CodeGen.hs](https://github.com/grin-tech/grin/tree/master/grin/src/Frontend/Lambda/CodeGen.hs) - code generator from front-end language to grin
+- [Lambda/Syntax.hs](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda/Syntax.hs) - front-end language defintion
+- [Lambda/CodeGen.hs](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda/CodeGen.hs) - code generator from front-end language to grin
 
 
 ## Simplifying Transformations
