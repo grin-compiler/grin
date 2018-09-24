@@ -13,8 +13,6 @@ Code Optimisation Techniques for Lazy Functional Languages
 </a>.  
 Also check the performance [benchmark](https://rawgit.com/grin-tech/grin/master/grin/grin-benchmark.html) and the GRIN transformation [example](http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=317).
 
-<img src="https://raw.githubusercontent.com/grin-tech/grin/master/images/boq-grin-ghc-inst-count.png" width="500" >
-
 <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=41">
 <img src="https://raw.githubusercontent.com/grin-tech/grin/master/images/grin-syntax.png" width="500" >
 </a>
