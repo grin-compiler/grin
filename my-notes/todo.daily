@@ -1,0 +1,88 @@
+
+- inlining
+  done - name handling
+  - use the filter pass
+  - test
+
+- register introduction
+  - cleanup / reset
+  - rewrite with the new name handling
+  - test
+
+- name handling toolkit
+
+{-
+class FoldableName
+instance Val
+instance CPat
+
+newtype NameDef
+newtype NameUse
+-}
+
+skip - fix: cpatToLPat ; reutrn Maybe LPat ; Nothing = DefaultPat
+- implement FoldableName
+  - cleanup Grin module ; NamesInExpF, ValF
+
+new name handling:
+  - pretty / parser
+  - name structure ; name + derived
+
+may 15
+M: inlining name gen part ; Transformations.Names
+T: inlining ; register introduction ; new name handling
+W:
+T:
+F:
+
+may 21
+M: reading articles ; spmd, monadic/cps/anf/ssa IR
+T: seminar
+W: recover
+T: global heap pointer ; optimizing llvm
+F: dead parameter elimination
+
+may 28
+M:
+T:
+W:
+T:
+F:
+
+misc todo:
+  done - llvm cg: global heap pointer -> better asm code (with opt) ; temporary
+  - machine code unit test
+  - 
+
+entry level:
+  - all unit tests
+  - all transformations
+  - simplified llvm codegen
+  - product type / tagged union type
+  - efficient machine code
+
+basic level:
+  - grin type syntax
+  - linter
+  - codegen test
+
+new level:
+  - source code mapping
+  - parallel transformations
+  - algebra composition
+  - tail call support ; requires SSA IR
+  - compiles standalone binary
+
+proud level:
+  - everything tested
+  - llvm type system
+  - hpt based adaptive inlining
+  - machine code hpt
+  - bidirectional source map
+  - documentation
+
+pro level:
+  - debug support (DWARF)
+  - GC + ASAP
+  - SPMD
+  - beat intel research haskell compiler

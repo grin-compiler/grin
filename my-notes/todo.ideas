@@ -1,0 +1,64 @@
+yale haskell compiler
+  lazy language on top of a strict language
+  https://github.com/haskell-lisp/yale-haskell/blob/master/doc/comparison
+
+CPS vs monadic IR
+
+*  SSA is Functional Programming
+  https://www.cs.princeton.edu/~appel/papers/ssafun.ps
+
+  Contification Using Dominators (mlton - fol language)
+  https://www.cs.rit.edu/~mtf/research/contification/ICFP01/icfp01.pdf
+
+*  Compiling with Continuations, Continued (start here ; 2007)
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.92.5825&rep=rep1&type=pdf
+
+  Compiling Purely Functional Structured Programs
+  https://arxiv.org/pdf/1703.05227.pdf
+
+  Call-by-need and Continuation-passing Style
+  https://pdfs.semanticscholar.org/9e9e/e6fd5705ff0f9a5586e64530eb839a6951e6.pdf
+
+
+*  Whole-Program Compilation in MLton
+  http://mlton.org/References.attachments/060916-mlton.pdf
+
+*  An LLVM Back-end for MLton
+  https://www.cs.rit.edu/~mtf/student-resources/20124_leibig_msproject.pdf
+
+  Programming with Recursion Schemes
+  http://www.cs.cmu.edu/~tom7/papers/wang-murphy-recursion.pdf
+
+  Flattening Tuples in an SSA Intermediate Representation
+  https://www.cse.buffalo.edu//~lziarek/hosc.pdf
+
+mlton
+  http://mlton.org/SSA
+  http://mlton.org/SSASimplify
+  http://mlton.org/SSA2
+  http://mlton.org/SSA2Simplify
+
+Next GRIN: SSA-GRIN
+  MLton has switched from CPS to SSA with benefits:
+    http://mlton.org/pipermail/mlton/2003-January/023054.html
+    http://mlton.org/pipermail/mlton/2007-February/029597.html
+
+  other argument:
+    http://wingolog.org/archives/2011/07/12/static-single-assignment-for-functional-programmers/
+
+  introduction:
+    SSA is Functional Programming
+    https://www.cs.princeton.edu/~appel/papers/ssafun.ps
+
+
+thomas johnsson phd
+*  http://archive.li/4cSXY#selection-411.0-413.2
+
+*  Compiling Lazy Functional Languages: An Introduction.
+  https://pdfs.semanticscholar.org/6a2e/4e46ca398cf3b8d511d13051b1032d60e3e7.pdf
+
+*  Efficient Compilation of Lazy Evaluation
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.47.4238&rep=rep1&type=pdf
+
+*  Code Generation from G-machine code
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.49.3117&rep=rep1&type=pdf

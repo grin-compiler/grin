@@ -1,0 +1,3 @@
+benchmark tool ; instruction counter
+  
+  perf stat -e instructions:u mv

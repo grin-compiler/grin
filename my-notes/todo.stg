@@ -1,0 +1,11 @@
+https://ghc.haskell.org/trac/ghc/wiki/Commentary/Compiler/StgSynType
+https://gist.github.com/jozefg/652f1d7407b7f0266ae9
+
+option A:
+  - first order Core AST
+  - lambda lift STG -> first order Core
+  - first order Core -> Grin, according boquist phd
+
+option B:
+  - STG -> Grin, according boquist phd
+      - includes lambda lifting

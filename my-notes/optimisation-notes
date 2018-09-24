@@ -1,0 +1,8 @@
+sum simple does not optimise to sum opt without update elimination (sharing analysis)
+this means call by name is better to optimise than call by need?
+i.e. an eval without update
+
+question:
+  is there a case when can call by need (with sharing analysis) would block further optimisations that was possible with call by name?
+
+

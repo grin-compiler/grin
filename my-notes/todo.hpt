@@ -1,0 +1,13 @@
+# bidirectional analysis
+
+reverse data flow arrows for more precision
+  i.e. lambda patterns and case patterns defines the valid cases that the program could handle
+        this can constrain the possible values further
+
+# call by need is an optimisation for call by name
+
+what if not the update elimination is the optimisation but the update insertion for call by name strategy to avoid redundancy
+
+# rename eval and apply to builtin name
+
+i.e. _prim_eval and _prim_apply

@@ -1,0 +1,16 @@
+week - jun 25: 
+  - patreon video
+  - contributors guide
+
+goals for haskell exchange:
+  - ghc frontend
+  - tracing GC
+  - benchmarks: compile-time + run-time
+  - modular and (machine code) compiled HPT / analysis
+
+TODO:
+  read the rest of GRIN
+    - GC
+    - arity raising
+    - generalized unboxing
+    - case copy propagation

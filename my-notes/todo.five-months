@@ -1,0 +1,101 @@
+* - ghc/stg frontend
+* - compile original benchmark suite ; diagrams/machine code: ghc vs grin
+* - HPT inline support ; context and function support
+* - sharing analysis for HPT
+* - HPT llvm backend
+* - adaptive inliner
+* - arity raising
+* - pipeline polish and testing with all transformation ; make it to work
+* - module handling
+* - parallel transformations ; parallel recursion schemes
+ - grin type annotations in syntax ; with type hole support
+ - grin linter
+ - name handling
+ - explicit product type support ; maybe alter tagged nodes to be tag + product type
+ - simplify LLVM backend ; refactor as GRIN transformations ; readd simplification transformations
+ - precompiled HPT with partial result for each module
+ - compile simple programs from hackage
+ - agda frontend ; includes dead data elimination
+ - asap memory manager
+ - tracing gc
+
+benchmark tool ; instruction counter
+  
+  perf stat -e instructions:u mv
+
+apr
+may
+
+jun : asap + gc
+jul : spmd compiler
+aug : cache friendly chunky memory
+
+- fast jit + parallel compile then migarte heap data
+- bidirectional source mapping
+- rts from ghc
+
+zurihac demo milestone:
+  - ghc frontend
+
+  - complete missing transformations ; polish transformation framework
+  - fancy benchmark framework
+
+  - HPT inline support ; sharing analysis
+  - HPT llvm backend
+  - adaptive inliner
+
+  - module support
+
+  - idris frontend
+  - parallel transformations
+
+apr
+05 T - ghc simplifier phd
+06 F
+07 S
+09 S
+
+10 M
+11 T
+12 W
+13 T
+14 F
+15 S
+16 S
+
+17 M
+18 T
+19 W
+20 T
+21 F
+22 S
+23 S
+
+24 M
+25 T
+26 W
+27 T
+28 F
+29 S
+30 S
+
+may - 4 weeks
+
+this moment:
+  i have plenty of time, many many months.
+  i can achieve a lot, optimise HPT to be extremely efficient and support for incremental analysis
+  i also can add multiple frontends to grin, like ghc, agda and idris
+  i also know how to extend whole program analyisis to collect static heap information and do compile time garbage collection
+  i could reimplement lambdacube with gpgpu support including a node editor
+  i can finish lambdacube quake 3
+  april, may, june, july, august, september
+
+  large tasks
+    grin phd level
+    frontends: ghc, idris, agda
+    asap
+    spmd support
+    reboot lambdacube with as new grin frontend
+    network support for lambdacube quake3
+    particle system support for lambdacube quake3
+    full game logic for lambdacube quake3
