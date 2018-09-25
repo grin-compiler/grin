@@ -8,6 +8,7 @@ import Data.Maybe
 
 import Control.Monad
 import Control.Monad.State
+import Control.Monad.Trans.Except
 import Control.Comonad
 import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
@@ -31,6 +32,11 @@ import Grin.Grin
     - function reference
         function name in SApp
 -}
+
+type Trf a = Except String a
+
+runTrf :: Trf a -> Either String a
+runTrf = runExcept
 
 foldNamesVal :: (Monoid m) => (Name -> m) -> Val -> m
 foldNamesVal f = \case
@@ -200,8 +206,8 @@ collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
     goCPat (NodePat t args) = modify $ updateTagInfo t (length args)
     goCPat _ = pure ()
 
-unsafeLookup :: Ord k => k -> Map k v -> v
-unsafeLookup k = fromJust . Map.lookup k
+lookupExcept :: Ord k => String -> k -> Map k v -> Except String v
+lookupExcept err k = maybe (throwE err) pure . Map.lookup k
 
 mapWithDoubleKey :: (Ord k1, Ord k2) =>
                     (k1 -> k2 -> a -> b) ->
@@ -209,8 +215,19 @@ mapWithDoubleKey :: (Ord k1, Ord k2) =>
                     Map k1 (Map k2 b)
 mapWithDoubleKey f = Map.mapWithKey (\k1 m -> Map.mapWithKey (f k1) m)
 
+mapWithDoubleKeyM :: (Ord k1, Ord k2, Monad m) =>
+                     (k1 -> k2 -> a -> m b) ->
+                     Map k1 (Map k2 a) ->
+                     m (Map k1 (Map k2 b))
+mapWithDoubleKeyM f = sequence . Map.mapWithKey (\k1 m -> sequence $ Map.mapWithKey (f k1) m)
+
 lookupWithDoubleKey :: (Ord k1, Ord k2) => k1 -> k2 -> Map k1 (Map k2 v) -> Maybe v
 lookupWithDoubleKey k1 k2 m = Map.lookup k1 m >>= Map.lookup k2
 
-unsafeLookupWithDoubleKey :: (Ord k1, Ord k2) => k1 -> k2 -> Map k1 (Map k2 v) -> v
-unsafeLookupWithDoubleKey k1 k2 = fromJust . lookupWithDoubleKey k1 k2
+lookupWithDoubleKeyExcept :: (Ord k1, Ord k2) =>
+                             String -> k1 -> k2 -> Map k1 (Map k2 v) -> Except String v
+lookupWithDoubleKeyExcept err k1 k2 = maybe (throwE err) pure
+                                    . lookupWithDoubleKey k1 k2
+
+notFoundIn :: Show a => String -> a -> String -> String
+notFoundIn n1 x n2 = n1 ++ " " ++ show x ++ " not found in " ++ n2

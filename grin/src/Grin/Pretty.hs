@@ -7,6 +7,7 @@ module Grin.Pretty
   , prettyBracedList
   , prettySimplePair
   , prettyFunction
+  , Pretty
   ) where
 
 import Data.Set (Set)

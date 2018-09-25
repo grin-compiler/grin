@@ -16,6 +16,7 @@ import AbstractInterpretation.CByResult (CByResult)
 import AbstractInterpretation.LVAResult (LVAResult)
 
 import Transformations.Optimising.DeadDataElimination
+import Transformations.Util (runTrf)
 
 import CreatedBy.CreatedBySpec (calcCByResult)
 import LiveVariable.LiveVariableSpec (calcLiveness)
@@ -75,7 +76,7 @@ calcProducerGraph :: Exp -> ProducerGraph
 calcProducerGraph e = groupAllProducers (calcCByResult e)
 
 eliminateDeadData :: Exp -> (LVAResult, CByResult, Exp)
-eliminateDeadData e = (lvaResult, cbyResult, transformed)
-  where lvaResult   = calcLiveness e
-        cbyResult   = calcCByResult e
-        transformed = deadDataElimination lvaResult cbyResult e
+eliminateDeadData e = (lvaResult, cbyResult, e')
+  where lvaResult = calcLiveness e
+        cbyResult = calcCByResult e
+        Right e'  = runTrf . deadDataElimination lvaResult cbyResult $ e
