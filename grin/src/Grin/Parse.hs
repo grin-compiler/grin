@@ -11,7 +11,7 @@ import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
 import Grin.Grin
 
-keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "#True", "#False"]
+keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "#True", "#False", "#undefined"]
 
 type Parser = Parsec Void String
 
@@ -112,7 +112,8 @@ literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
           (try $ LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u')) <|>
           LInt64 . fromIntegral <$> signedInteger <|>
-          LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")
+          LBool <$> (True <$ kw "#True" <|> False <$ kw "#False") <|>
+          pure LUndefined <* kw "#undefined"
 
 satisfyM :: (a -> Bool) -> Parser a -> Parser a
 satisfyM pred parser = do

@@ -35,11 +35,14 @@ data Tag = Tag
 
 -- * GRIN Literal
 
+-- QUESTION: Now #undefined can be pattern matched on.
+-- Should the linter warn about this?
 data Lit
   = LInt64  Int64
   | LWord64 Word64
   | LFloat  Float
   | LBool   Bool
+  | LUndefined
   deriving (Generic, NFData, Eq, Ord, Show)
 
 -- * GRIN Value

@@ -193,6 +193,8 @@ test-suite grin-test
 
   other-modules:     CreatedBy.CreatedBySpec
                      , DeadCodeElimination.DeadCodeEliminationSpec
+                     , DeadCodeElimination.Tests.DeadData.DeletableSingle
+                     , DeadCodeElimination.Tests.DeadData.DeletableMulti
                      , DeadCodeElimination.Tests.DeadData.MultipleFields
                      , DeadCodeElimination.Tests.DeadData.OnlyDummify
                      , DeadCodeElimination.Tests.ProducerGrouping

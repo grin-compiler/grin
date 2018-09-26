@@ -144,7 +144,7 @@ ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM
   switch d _ False = d
 
   dummify :: Val -> Bool -> Val
-  dummify = switch (Var "undefined")
+  dummify = switch (Lit LUndefined)
 
 
 

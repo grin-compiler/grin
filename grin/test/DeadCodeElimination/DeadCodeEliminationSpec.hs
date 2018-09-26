@@ -23,6 +23,8 @@ import LiveVariable.LiveVariableSpec (calcLiveness)
 
 import DeadCodeElimination.Tests.DeadData.MultipleFields
 import DeadCodeElimination.Tests.DeadData.OnlyDummify
+import DeadCodeElimination.Tests.DeadData.DeletableSingle
+import DeadCodeElimination.Tests.DeadData.DeletableMulti
 import DeadCodeElimination.Tests.ProducerGrouping
 
 
@@ -67,9 +69,13 @@ runTestsFrom fromCurDir = do
   runTestsFromWith fromCurDir eliminateDeadData
     [ multipleFieldsSrc
     , onlyDummifySrc
+    , deletableSingleSrc
+    , deletableMultiSrc
     ]
     [ multipleFieldsSpec
     , onlyDummifySpec
+    , deletableSingleSpec
+    , deletableMultiSpec
     ]
 
 calcProducerGraph :: Exp -> ProducerGraph
