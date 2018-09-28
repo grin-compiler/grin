@@ -33,11 +33,6 @@ import Grin.Grin
         function name in SApp
 -}
 
-type Trf a = Except String a
-
-runTrf :: Trf a -> Either String a
-runTrf = runExcept
-
 foldNamesVal :: (Monoid m) => (Name -> m) -> Val -> m
 foldNamesVal f = \case
   ConstTagNode tag vals -> mconcat $ map (foldNamesVal f) vals

@@ -18,6 +18,7 @@ library
   exposed-modules:
     AbstractInterpretation.CodeGen
     AbstractInterpretation.CByResult
+    AbstractInterpretation.CByResultTypes
     AbstractInterpretation.CByUtil
     AbstractInterpretation.CreatedBy
     AbstractInterpretation.HeapPointsTo

@@ -28,9 +28,9 @@ import Transformations.Util
        is it more optimal?
 -}
 
-deadDataElimination :: LVAResult -> CByResult -> Exp -> Trf Exp
-deadDataElimination lvaResult cbyResult =
-  ddeFromProducers lvaResult cbyResult >=> ddeFromConsumers cbyResult
+deadDataElimination :: LVAResult -> CByResult -> Exp -> Either String Exp
+deadDataElimination lvaResult cbyResult e = runExcept $
+  ddeFromProducers lvaResult cbyResult e >>= ddeFromConsumers cbyResult
 
 markToRemove :: a -> Bool -> Maybe a
 markToRemove x True  = Just x
@@ -46,7 +46,10 @@ lookupNodeLivenessM v t lvaResult = do
 
 type GlobalLiveness = Map Name (Map Tag (Vector Bool))
 
-calcGlobalLiveness :: LVAResult -> CByResult -> ProducerGraph' -> Except String GlobalLiveness
+calcGlobalLiveness :: LVAResult ->
+                      CByResult ->
+                      ProducerGraph' ->
+                      Except String GlobalLiveness
 calcGlobalLiveness lvaResult cbyResult prodGraph =
   mapWithDoubleKeyM' mergeLivenessExcept prodGraph where
 
@@ -81,10 +84,10 @@ calcGlobalLiveness lvaResult cbyResult prodGraph =
                             " for tag " ++ show (PP t) ++
                             " is not connected with any other producers"
 
-ddeFromConsumers :: CByResult -> (Exp, GlobalLiveness) -> Trf Exp
+ddeFromConsumers :: CByResult -> (Exp, GlobalLiveness) -> Except String Exp
 ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
 
-  alg :: ExpF Exp -> Trf Exp
+  alg :: ExpF Exp -> Except String Exp
   alg = \case
     ECaseF (Var v) alts -> do
       alts' <- forM alts $ \case
@@ -117,12 +120,12 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
 -- then it deletes the field.
 -- Whenever it deletes a field, it makes a new entry into a table.
 -- This table will be used to transform the consumers.
-ddeFromProducers :: LVAResult -> CByResult -> Exp -> Trf (Exp, GlobalLiveness)
+ddeFromProducers :: LVAResult -> CByResult -> Exp -> Except String (Exp, GlobalLiveness)
 ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM where
 
   -- dummifying all locally unused fields
   -- deleteing all globally unused fields
-  alg :: ExpF Exp -> Trf Exp
+  alg :: ExpF Exp -> Except String Exp
   alg = \case
     EBindF (SReturn (ConstTagNode t args)) (Var v) rhs -> do
       globalLiveness     <- globalLivenessM
@@ -134,7 +137,9 @@ ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM
     e -> pure . embed $ e
 
   prodGraph :: ProducerGraph'
-  prodGraph = fromProducerGraph . groupActiveProducers lvaResult cbyResult $ e
+  prodGraph = case _groupedProducers cbyResult of
+    All _ -> fromProducerGraph . groupActiveProducers lvaResult . _producers $ cbyResult
+    Active activeProdGraph -> fromProducerGraph activeProdGraph
 
   globalLivenessM :: Except String GlobalLiveness
   globalLivenessM = calcGlobalLiveness lvaResult cbyResult prodGraph

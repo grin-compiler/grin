@@ -26,7 +26,7 @@ instance SameAs LVAResult where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
 
 instance SameAs ProducerGraph where
-  sameAs (ProducerGraph found) (ProducerGraph expected) = found `sameAs` expected
+  sameAs found expected = (PP found) `shouldBe` (PP expected)
 
 instance (SameAs a, SameAs b) => SameAs (a, b) where
   sameAs (f1, f2) (e1, e2) = do

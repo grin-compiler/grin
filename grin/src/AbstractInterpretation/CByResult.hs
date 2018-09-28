@@ -1,6 +1,9 @@
-{-# LANGUAGE RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module AbstractInterpretation.CByResult where
+module AbstractInterpretation.CByResult
+  ( module AbstractInterpretation.CByResult
+  , module AbstractInterpretation.CByResultTypes
+  ) where
 
 import Data.Set    (Set)
 import Data.Map    (Map)
@@ -10,39 +13,19 @@ import qualified Data.Map    as M
 import qualified Data.Vector as V
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
 import AbstractInterpretation.HPTResult
 import AbstractInterpretation.IR (Reg(..))
 import AbstractInterpretation.Reduce (Computer)
 import AbstractInterpretation.CreatedBy as CBy (CByProgram(..), HPTWProducerInfo(..))
+import AbstractInterpretation.CByResultTypes
+import AbstractInterpretation.CByUtil
+import AbstractInterpretation.LVAResult (LVAResult)
 
 -- HPTResult with producer info
 type HPTResultP = HPTResult
 type Producer   = Int
-
--- possible producers grouped by tags
-newtype ProducerMap = ProducerMap { _producerMap :: Map Name ProducerSet }
-  deriving (Eq, Show)
-newtype ProducerSet = ProducerSet { _producerSet :: Map Tag (Set Name)   }
-  deriving (Eq, Show)
-
-instance Monoid ProducerSet where
-  mempty = ProducerSet M.empty
-  mappend (ProducerSet x) (ProducerSet y) = ProducerSet $ M.unionWith mappend x y
-
-instance Monoid ProducerMap where
-  mempty = ProducerMap M.empty
-  mappend (ProducerMap x) (ProducerMap y) = ProducerMap $ M.unionWith mappend x y
-
-data CByResult
-  = CByResult
-  { _hptResult :: HPTResult
-  , _producers :: ProducerMap
-  }
-
-concat <$> mapM makeLenses [''ProducerMap, ''ProducerSet, ''CByResult]
 
 -- node with its possible producers in its first field
 type NodeP    = Node
@@ -86,7 +69,7 @@ extractProducer nodeP = (S.map toProducer ps, node)
   where (ps,node) = unsafeUncons nodeP
 
 toCByResult :: CByProgram -> Computer -> CByResult
-toCByResult cbyProg comp = CByResult hptResult producers
+toCByResult cbyProg comp = CByResult hptResult producers groupedProducers
   where prodMap = toProdMap . CBy._producerMap $ cbyProg
         hptProg = _hptProg . _hptProgWProd $ cbyProg
         hptProdResult@HPTResult{..} = toHPTResult hptProg comp
@@ -98,7 +81,15 @@ toCByResult cbyProg comp = CByResult hptResult producers
 
         producers = ProducerMap $ M.map (ProducerSet . getNamedProducer') _register
 
+        groupedProducers = All $ groupAllProducers producers
+
         getNamedProducer' :: TypeSet -> Map Tag (Set Name)
         getNamedProducer' = M.map (getNamedProducer prodMap)
                           . _nodeTagMap
                           . _nodeSet
+
+toCByResultWithLiveness :: LVAResult -> CByProgram -> Computer -> CByResult
+toCByResultWithLiveness lvaResult cbyProg comp
+  | CByResult hptResult producers _ <- toCByResult cbyProg comp
+  , groupedProducers <- Active $ groupActiveProducers lvaResult producers
+  = CByResult hptResult producers groupedProducers

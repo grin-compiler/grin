@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE RecordWildCards #-}
 module AbstractInterpretation.PrettyCBy where
 
 import Data.Functor.Foldable as Foldable
@@ -21,8 +21,18 @@ instance Pretty ProducerSet where
 instance Pretty ProducerMap where
   pretty (ProducerMap pm) = prettyKeyValue $ Map.toList pm
 
+instance Pretty ProducerGraph where
+  pretty (ProducerGraph pMap) = pretty pMap
+
+instance Pretty GroupedProducers where
+  pretty (All    prods) = yellow (text "Grouped Producers (all)")
+                          <$$> indent 4 (pretty prods)
+  pretty (Active prods) = yellow (text "Grouped Producers (active)")
+                          <$$> indent 4 (pretty prods)
+
 instance Pretty CByResult where
   pretty CByResult{..} = vsep
     [ pretty _hptResult
     , yellow (text "Producers") <$$> indent 4 (pretty _producers)
+    , pretty _groupedProducers
     ]

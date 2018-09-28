@@ -1,5 +1,7 @@
-{-# LANGUAGE LambdaCase #-}
-module AbstractInterpretation.CByUtil where
+module AbstractInterpretation.CByUtil
+  ( module AbstractInterpretation.CByUtil
+  , module AbstractInterpretation.CByResultTypes
+  ) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -16,17 +18,37 @@ import Control.Monad.State
 import Grin.Grin
 
 import AbstractInterpretation.LVAResult
-import AbstractInterpretation.CByResult
+import AbstractInterpretation.CByResultTypes
 
 import Transformations.Util
 
--- A graph representing the connections between producers.
--- p1 <-t-> p2 means: producers p1 and p2 share a consumer for tag t
--- In a ProducerMap, we map variables to producers,
--- in a ProducerGraph we map producers to other producers.
-newtype ProducerGraph = ProducerGraph { _producerGraph :: ProducerMap }
 -- An untyped representation of the ProducerGraph (easier to handle).
 type ProducerGraph' = Map Name (Map Tag (Set Name))
+
+-- Constructs the connection graph between all producers.
+-- First, it constructs the basic connection graph,
+-- then it calculcates the basic graph's transitive closure.
+groupAllProducers :: ProducerMap -> ProducerGraph
+groupAllProducers = toProducerGraph
+                  . transitiveClosure
+                  . undirectedReflexiveClosure
+                  . mkBasicProdGraph
+
+-- Constructs the connection graph between the active producers.
+-- First, it constructs the basic connection graph,
+-- then it calculcates the basic graph's transitive closure.
+-- This function is different from `groupAllProducers` in that
+-- this calclulates the transitive closure only for the active producers.
+groupActiveProducers :: LVAResult -> ProducerMap -> ProducerGraph
+groupActiveProducers lvaResult prodMap = toProducerGraph
+                                       . transitiveClosure
+                                       . undirectedReflexiveClosure
+                                       . flip Map.restrictKeys activeProds
+                                       . mkBasicProdGraph
+                                       $ prodMap
+  where
+    activeProds :: Set Name
+    activeProds = collectActiveProducers lvaResult prodMap
 
 toProducerGraph :: ProducerGraph' -> ProducerGraph
 toProducerGraph = ProducerGraph . ProducerMap . Map.map ProducerSet
@@ -34,36 +56,15 @@ toProducerGraph = ProducerGraph . ProducerMap . Map.map ProducerSet
 fromProducerGraph :: ProducerGraph -> ProducerGraph'
 fromProducerGraph = Map.map _producerSet . _producerMap . _producerGraph
 
--- Collects the consumers from the syntax tree.
--- A consumer can be a case expression scrutinee,
--- or the left-hand side of a bind, if it is of form: <tag> <fields> <- pure v.
--- Only the producers of these consumers will be interesting (the others are unused).
--- NOTE: VarTagNode?
-collectConsumers :: Exp -> Set Name
-collectConsumers = flip execState mempty . paraM alg where
-  alg :: ExpF (Exp,()) -> State (Set Name) ()
-  alg = \case
-    ECaseF (Var v) _ -> modify $ Set.insert v
-    EBindF lhs pat rhs
-      | SReturn (Var v)  <- fst lhs
-      , ConstTagNode _ _ <- pat
-      -> modify $ Set.insert v
-    x -> pure ()
-
-collectActiveProducers :: LVAResult -> Exp -> Set Name
+collectActiveProducers :: LVAResult -> ProducerMap -> Set Name
 collectActiveProducers lvaResult = selectActiveProducers lvaResult . collectProducers
 
--- Collects the producers from the syntax tree.
--- NOTE: VarTagNode
-collectProducers :: Exp -> Set Name
-collectProducers = flip execState mempty . cataM alg where
-
-  alg :: ExpF Exp -> State (Set Name) Exp
-  alg = \case
-    e@(EBindF (SReturn (ConstTagNode t args)) (Var v) rhs) -> do
-      modify $ Set.insert v
-      pure . embed $ e
-    e -> pure . embed $ e
+collectProducers :: ProducerMap -> Set Name
+collectProducers = mconcat
+                 . concatMap Map.elems
+                 . Map.elems
+                 . Map.map _producerSet
+                 . _producerMap
 
 
 -- Selects the active producers from a producer set.
@@ -89,46 +90,21 @@ selectActiveProducers lvaResult prods = Map.keysSet
 -- Constructs the basic connection graph between all producers.
 -- If a consumer has multiple producers with the same tag,
 -- then one producer will be selected, and the others will be connected to it.
-mkBasicProdGraph :: CByResult -> ProducerGraph'
-mkBasicProdGraph cbyResult = flip execState mempty $ do
+mkBasicProdGraph :: ProducerMap -> ProducerGraph'
+mkBasicProdGraph producers = flip execState mempty $ do
   let
     -- All the active producers found in the program grouped by tags.
     taggedGroups :: [(Tag, Set Name)]
     taggedGroups = concatMap (Map.toList . _producerSet)
                  . Map.elems
                  . _producerMap
-                 . _producers
-                 $ cbyResult
+                 $ producers
 
   forM taggedGroups $ \(t,ps) -> do
     let (p:_)  = Set.toList ps
         entry  = Map.singleton t ps
         update = Map.unionWith Set.union
     modify $ Map.insertWith update p entry
-
--- Constructs the connection graph between all producers.
--- First, it constructs the basic connection graph,
--- then it calculcates the basic graph's transitive closure.
-groupAllProducers :: CByResult -> ProducerGraph
-groupAllProducers = toProducerGraph
-                  . transitiveClosure
-                  . undirectedReflexiveClosure
-                  . mkBasicProdGraph
-
--- Constructs the connection graph between the active producers.
--- First, it constructs the basic connection graph,
--- then it calculcates the basic graph's transitive closure.
-groupActiveProducers :: LVAResult -> CByResult -> Exp -> ProducerGraph
-groupActiveProducers lvaResult cbyResult e = toProducerGraph
-                                           . transitiveClosure
-                                           . undirectedReflexiveClosure
-                                           . flip Map.restrictKeys activeProds
-                                           . mkBasicProdGraph
-                                           $ cbyResult
-  where
-    activeProds :: Set Name
-    activeProds = collectActiveProducers lvaResult e
-
 
 -- Creates an undirected graph from a directed one by connecting vertices
 -- in both directions. Also connects each vertex with itself.

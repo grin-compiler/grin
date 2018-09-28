@@ -102,6 +102,7 @@ data Transformation
   | UpdateElimination
   | CopyPropagation
   | ConstantPropagation
+  | DeadDataElimination
   | DeadProcedureElimination
   | DeadParameterElimination
   | DeadVariableElimination
@@ -177,6 +178,7 @@ data PipelineStep
   = HPT AbstractComputationStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
+  | CByWithLVA AbstractComputationStep
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
@@ -274,6 +276,11 @@ pipelineStep p = do
       PrintAbstractProgram     -> printLVACode
       RunAbstractProgramPure   -> runLVAPure
       PrintAbstractResult      -> printLVAResult
+    CByWithLVA step -> case step of
+      CompileToAbstractProgram -> compileLVA >> compileCBy
+      PrintAbstractProgram     -> printCByCode
+      RunAbstractProgramPure   -> runCByWithLVAPure
+      PrintAbstractResult      -> printCByResult
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -423,6 +430,23 @@ runLVAPure = use psLVAProgram >>= \case
 
 
 
+runCByWithLVAPure :: PipelineM ()
+runCByWithLVAPure = do
+  runLVAPure
+  use psLVAResult >>= \case
+    Nothing -> psCByResult .= Nothing
+    Just lvaResult -> use psCByProgram >>= \case
+      Nothing -> psCByResult .= Nothing
+      Just cbyProgram -> do
+        let cbyResult = R.evalDataFlowInfo cbyProgram
+            result = CBy.toCByResultWithLiveness lvaResult cbyProgram cbyResult
+        psCByResult .= Just result
+        case typeEnvFromHPTResult (CBy._hptResult result) of
+          Right te  -> psTypeEnv .= Just te
+          Left err  -> do
+            psErrors %= (err :)
+            psTypeEnv .= Nothing
+
 
 
 printTypeEnv :: PipelineM ()
@@ -431,6 +455,15 @@ printTypeEnv = do
   pipelineLog $ show $ pretty $ typeEnv
 
 transformationM :: Transformation -> PipelineM ()
+transformationM DeadDataElimination = do
+  n  <- use psTransStep
+  e  <- use psExp
+  Just cbyResult <- use psCByResult
+  Just lvaResult <- use psLVAResult
+  case deadDataElimination lvaResult cbyResult e of
+    Right e'  -> psExp .= e' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
+    
 transformationM t = do
   --preconditionCheck t
   env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv

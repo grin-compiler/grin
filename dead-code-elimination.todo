@@ -4,3 +4,13 @@ Dead field elimination:
   - for field deletion, CBy analysis is also required
     - we have to scrutinize every case expression, and group the overlapping producers together
     - in order to be able to delete a field (wtih a given tag), that field must be dead (with the given tag) for all producers in the group
+
+TODO:
+  - lift Undefined to Val level
+  - introduce type annotations
+  - pretty print type annotations using HPT using
+  - introduce heap type annotations in the begininning of the program
+  - write parser for type annotations
+  - HPT should still calculate the types
+  - linter should check whether calculated types match with annotations
+  - Grin.Grin FoldNames
