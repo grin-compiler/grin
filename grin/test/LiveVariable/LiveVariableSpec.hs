@@ -23,6 +23,7 @@ import LiveVariable.Tests.FunctionCall1
 import LiveVariable.Tests.FunctionCall2
 import LiveVariable.Tests.HeapCaseMin
 import LiveVariable.Tests.HeapCase
+import LiveVariable.Tests.HeapIndirectSimple
 import LiveVariable.Tests.HeapSimple
 import LiveVariable.Tests.HeapUpdateComplex
 import LiveVariable.Tests.HeapUpdateFunCall
@@ -55,6 +56,7 @@ runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcLiveness
   , functionCall2Src
   , heapCaseMinSrc
   , heapCaseSrc
+  , heapIndirectSimpleSrc
   , heapSimpleSrc
   , heapUpdateComplexSrc
   , heapUpdateFunCallSrc
@@ -76,6 +78,7 @@ runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcLiveness
   , functionCall2Spec
   , heapCaseMinSpec
   , heapCaseSpec
+  , heapIndirectSimpleSpec
   , heapSimpleSpec
   , heapUpdateComplexSpec
   , heapUpdateFunCallSpec

@@ -31,3 +31,9 @@ cFoo = Tag C "Foo"
 
 cBar :: Tag
 cBar = Tag C "Bar"
+
+cNil :: Tag 
+cNil = Tag C "Nil"
+
+cCons :: Tag 
+cCons = Tag C "Cons"

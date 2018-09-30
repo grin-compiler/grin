@@ -37,7 +37,7 @@ data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
   | NotIn             (Set Tag)
-  -- A field satisfies a predicate iff at least one of its possibly values
+  -- A field satisfies a predicate iff at least one of its possible values
   -- satisfy that predicate.
   -- NOTE: "non-deterministic" selector for Any?
   | Any               Predicate

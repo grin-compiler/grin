@@ -97,8 +97,8 @@ prettySelector mirm = \case
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
-    NodeTypeExists  tag -> prettyTag mirm tag
-    SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty)
+    NodeTypeExists  tag -> prettyTag mirm tag <+> text "exists in"
+    SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty) <+> text "exists in"
     NotIn          tags -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
     All       predicate -> text "all" <+> prettyPredicate mirm predicate True
     Any       predicate -> text "any" <+> prettyPredicate mirm predicate False
@@ -119,19 +119,20 @@ prettyConstant mirm = \case
 
 prettyPredicate :: Maybe IRMap -> Predicate -> Bool -> Doc
 prettyPredicate mirm predicate plural = case predicate of
-  TagIn     tags -> text ("tag" ++ s ++ "in") <+> list (map (prettyTag mirm) $ Set.toList tags)
-  TagNotIn  tags -> text ("tag" ++ s ++ "not in") <+> list (map (prettyTag mirm) $ Set.toList tags)
-  ValueIn    rng -> text ("value" ++ s ++ "in") <+> pretty rng
-  ValueNotIn rng -> text ("value" ++ s ++ "not in") <+> pretty rng
+  TagIn     tags -> text ("tag" ++ s ++ " in") <+> list (map (prettyTag mirm) $ Set.toList tags)
+  TagNotIn  tags -> text ("tag" ++ s ++ " not in") <+> list (map (prettyTag mirm) $ Set.toList tags)
+  ValueIn    rng -> text ("value" ++ s ++ " in") <+> pretty rng
+  ValueNotIn rng -> text ("value" ++ s ++ " not in") <+> pretty rng
   where s = if plural then "s" else ""
 
 prettyInstruction :: Maybe IRMap -> Instruction -> Doc
 prettyInstruction mirm = \case
-    If      {..} -> keyword "if" <+> prettyCondition mirm condition <+> keyword "in" <+> ppR srcReg <$$> indent 2 (vsep . map (prettyInstruction mirm) $ instructions)
+    If      {..} -> keyword "if" <+> prettyCondition mirm condition <+> ppR srcReg <$$> indent 2 (vsep . map (prettyInstruction mirm) $ instructions)
     Project {..} -> keyword "project" <+> ppS srcSelector <+> ppR srcReg <+> arr <+> ppR dstReg
     Extend  {..} -> keyword "extend" <+> ppR srcReg <+> ppS dstSelector <+> arr <+> ppR dstReg
     Move    {..} -> keyword "move" <+> ppR srcReg <+> arr <+> ppR dstReg
     RestrictedMove {..} -> keyword "restricted move" <+> ppR srcReg <+> arr <+> ppR dstReg
+    ConditionalMove {..} -> keyword "conditional move" <+> parens (prettyPredicate mirm predicate False) <+> ppR srcReg <+> arr <+> ppR dstReg
     Fetch   {..} -> keyword "fetch" <+> ppR addressReg <+> arr <+> ppR dstReg
     Store   {..} -> keyword "store" <+> ppR srcReg <+> arr <+> pretty address
     Update  {..} -> keyword "update" <+> ppR srcReg <+> arr <+> ppR addressReg

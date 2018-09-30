@@ -52,7 +52,7 @@ isPointer = IR.ValueIn (IR.Range 0 (maxBound :: Int32))
 isNotPointer :: IR.Predicate
 isNotPointer = IR.ValueIn (IR.Range (minBound :: Int32) 0)
 
--- Tests whether the give register is live.
+-- Tests whether the given register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
 isLiveThen r i = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = i }
 
@@ -84,12 +84,37 @@ setLive r = do
   setBasicValLive r
   emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
 
+-- For simple types, copies only pointer information
+-- For nodes, copies the structure and the pointer information in the fields
 copyStructureWithPtrInfo :: IR.Reg -> IR.Reg -> IR.Instruction
 copyStructureWithPtrInfo srcReg dstReg = IR.ConditionalMove
   { srcReg    = srcReg
   , predicate = isPointer
   , dstReg    = dstReg
   }
+
+{- Data flow info propagation for node pattern:
+   case nodeReg of 
+     (CNode argReg) -> ...
+   (CNode argReg) <- pure nodeReg 
+-}
+nodePatternDataFlow :: IR.Reg -> IR.Reg -> IR.Tag -> Int -> CG LVAProgram ()
+nodePatternDataFlow argReg nodeReg irTag idx = do
+  tmp    <- newReg
+
+  -- propagating liveness info backwards
+  emit IR.Extend { srcReg      = argReg
+                 , dstSelector = IR.NodeItem irTag idx
+                 , dstReg      = nodeReg
+                 }
+
+    -- propagating pointer info forwards
+  emit IR.Project { srcReg      = nodeReg
+                  , srcSelector = IR.NodeItem irTag idx
+                  , dstReg      = tmp
+                  }
+
+  emit $ copyStructureWithPtrInfo tmp argReg
 
 codeGenVal :: Val -> CG LVAProgram IR.Reg
 codeGenVal = \case
@@ -99,8 +124,21 @@ codeGenVal = \case
     emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals)}
     forM_ (zip [0..] vals) $ \(idx, val) -> case val of
       Var name -> do
+        tmp    <- newReg
         valReg <- getReg name
-        emit IR.Project {srcReg = r, srcSelector = IR.NodeItem irTag idx, dstReg = valReg}
+
+        -- propagating liveness info backwards
+        emit IR.Project { srcReg = r
+                        , srcSelector = IR.NodeItem irTag idx
+                        , dstReg = valReg
+                        }
+
+        -- propagating pointer info forwards
+        emit $ copyStructureWithPtrInfo valReg tmp
+        emit IR.Extend { srcReg      = tmp
+                       , dstSelector = IR.NodeItem irTag idx
+                       , dstReg      = r
+                       }
       Lit lit -> doNothing
       _ -> throwE $ "illegal node item value " ++ show val
     pure r
@@ -157,7 +195,7 @@ codeGen = fmap reverseProgram
                 Var name -> do
                   argReg <- newReg
                   addReg name argReg
-                  emit IR.Extend { srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r }
+                  nodePatternDataFlow argReg r irTag idx
                 Lit {} -> emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
                 _ -> throwE $ "illegal node pattern component " ++ show arg
             emit IR.If
@@ -249,7 +287,7 @@ codeGen = fmap reverseProgram
               forM_ (zip [0..] vars) $ \(idx, name) -> do
                 argReg <- newReg
                 addReg name argReg
-                emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = altScrutReg}
+                nodePatternDataFlow argReg altScrutReg irTag idx
             emit IR.If
               { condition    = IR.NodeTypeExists irTag
               , srcReg       = valReg
@@ -301,7 +339,7 @@ codeGen = fmap reverseProgram
       valReg <- codeGenVal val
 
       -- setting pointer information
-      emit IR.Set           { dstReg = r, constant = IR.CHeapLocation loc }
+      emit IR.Set { dstReg = r, constant = IR.CHeapLocation loc }
 
       -- copying structural information to the heap
       emit $ copyStructureWithPtrInfo valReg tmp1
@@ -324,7 +362,7 @@ codeGen = fmap reverseProgram
         r          <- newReg
 
         -- copying structural information from the heap
-        emit IR.Fetch         { addressReg = addressReg, dstReg = tmp }
+        emit IR.Fetch { addressReg = addressReg, dstReg = tmp }
         emit $ copyStructureWithPtrInfo tmp r
 
         -- restrictively propagating info to heap
