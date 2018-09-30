@@ -66,16 +66,15 @@ pipelineOpts =
   <|> flg (LVA PrintAbstractProgram) "print-lva-code" "Prints thelive variabley analysis machine"
   <|> flg (LVA RunAbstractProgramPure) "run-lva-pure" "Runs the live variable analysis machine via pure interpreter"
   <|> flg (LVA PrintAbstractResult) "print-lva-result" "Prints the live variable analysis result"
-  <|> flg (CByWithLVA CompileToAbstractProgram) "compile-cby-lva" "Compiles created-by analysis machine"
-  <|> flg (CByWithLVA PrintAbstractProgram) "print-cby-lva-code" "Prints the created-by analysis machine"
-  <|> flg (CByWithLVA RunAbstractProgramPure) "run-cby-lva-pure" "Runs the created-by analysis machine via pure interpreter"
-  <|> flg (CByWithLVA PrintAbstractResult) "print-cby-lva-result" "Prints the created-by analysis result"
   <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
   <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code"
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
+  <|> flg' (Pass [CBy CompileToAbstractProgram, CBy RunAbstractProgramPure]) 't' "cby" "Compiles and runs the created-by analysis"
+  <|> flg' (Pass [LVA CompileToAbstractProgram, LVA RunAbstractProgramPure]) 't' "lva" "Compiles and runs the live variable analysis"
+  <|> flg' (Pass [LVA CompileToAbstractProgram, CBy CompileToAbstractProgram, RunCByWithLVA]) 't' "cby-with-lva" "Compiles the live variable and created-by analyses, then runs the created-by analysis using the LVA result"
   <|> flg PureEval "eval" "Evaluate the grin program (pure)"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
@@ -89,6 +88,7 @@ pipelineOpts =
         ])))
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
+  <|> flg PrintErrors "print-errors" "Prints the error log"
 
 options :: IO Options
 options = execParser $ info

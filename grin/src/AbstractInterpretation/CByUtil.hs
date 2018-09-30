@@ -35,20 +35,34 @@ groupAllProducers = toProducerGraph
                   . mkBasicProdGraph
 
 -- Constructs the connection graph between the active producers.
--- First, it constructs the basic connection graph,
--- then it calculcates the basic graph's transitive closure.
--- This function is different from `groupAllProducers` in that
--- this calclulates the transitive closure only for the active producers.
+-- First, it constructs the basic connection graph.
+-- Then it calculcates the basic graph's transitive closure for the active producers.
+-- Then it inserts the inactive producers with only reflexive connections.
+-- This way, the function calculates the transitive closure for potentially less nodes,
+-- but still retains information about all producers.
 groupActiveProducers :: LVAResult -> ProducerMap -> ProducerGraph
-groupActiveProducers lvaResult prodMap = toProducerGraph
-                                       . transitiveClosure
-                                       . undirectedReflexiveClosure
-                                       . flip Map.restrictKeys activeProds
-                                       . mkBasicProdGraph
-                                       $ prodMap
-  where
-    activeProds :: Set Name
-    activeProds = collectActiveProducers lvaResult prodMap
+groupActiveProducers lvaResult prodMap = toProducerGraph groupedProducers where
+
+  groupedProducers :: ProducerGraph'
+  groupedProducers = Map.union groupedActives reflexiveInactives
+
+  reflexiveInactives :: ProducerGraph'
+  reflexiveInactives = onlyReflexiveConnections
+                     . flip Map.withoutKeys activeProds
+                     $ basicGraph
+
+  groupedActives :: ProducerGraph'
+  groupedActives = transitiveClosure
+                 . undirectedReflexiveClosure
+                 . flip Map.restrictKeys activeProds
+                 $ basicGraph
+
+
+  basicGraph :: ProducerGraph'
+  basicGraph = mkBasicProdGraph prodMap
+  
+  activeProds :: Set Name
+  activeProds = collectActiveProducers lvaResult prodMap
 
 toProducerGraph :: ProducerGraph' -> ProducerGraph
 toProducerGraph = ProducerGraph . ProducerMap . Map.map ProducerSet
@@ -105,6 +119,10 @@ mkBasicProdGraph producers = flip execState mempty $ do
         entry  = Map.singleton t ps
         update = Map.unionWith Set.union
     modify $ Map.insertWith update p entry
+
+-- Deletes all connections then connects each producer with itself
+onlyReflexiveConnections :: ProducerGraph' -> ProducerGraph'
+onlyReflexiveConnections = Map.mapWithKey (\k m -> Map.map (const $ Set.singleton k) m)
 
 -- Creates an undirected graph from a directed one by connecting vertices
 -- in both directions. Also connects each vertex with itself.

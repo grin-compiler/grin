@@ -1,0 +1,7 @@
+grinMain = 
+  a0 <- pure 5
+  n0 <- pure (CInt)
+  r <- case n0 of 
+    (CInt)  -> pure 0
+    (CBool) -> pure 0
+  pure r

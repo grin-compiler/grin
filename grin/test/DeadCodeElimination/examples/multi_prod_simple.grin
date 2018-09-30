@@ -16,8 +16,8 @@ grinMain =
   z0 <- case n01 of
     (CInt  c0) -> pure 5
     (CBool c1) -> pure 5
-  (CBool c3) <- case n12 of
+  (CBool z1) <- case n12 of
     (CInt  c2) -> pure 5
     (CBool c3) -> pure 5
-  (CBool c4) <- pure n23
+  (CBool z2) <- pure n23
   pure 5

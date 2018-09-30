@@ -34,7 +34,9 @@ instance Monoid ProducerMap where
 newtype ProducerGraph = ProducerGraph { _producerGraph :: ProducerMap }
   deriving (Eq, Show)
 
-data GroupedProducers = All ProducerGraph | Active ProducerGraph
+data GroupedProducers 
+  = All ProducerGraph     -- All producers are grouped
+  | Active ProducerGraph  -- Groups are calcualted only for active producers (inactive producers have only reflexive connections)
 
 data CByResult
   = CByResult

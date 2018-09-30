@@ -25,8 +25,9 @@ n3 = "n3"
 multiProdSimpleSrc :: FilePath
 multiProdSimpleSrc = dceExamples </> "multi_prod_simple.grin"
 
-multiProdSimpleExpected :: ProducerGraph
-multiProdSimpleExpected = mkGraph
+
+multiProdSimpleAllExpected :: ProducerGraph
+multiProdSimpleAllExpected = mkGraph
   [ (n0, [ (cInt, [n0])
          ]
     )
@@ -41,5 +42,25 @@ multiProdSimpleExpected = mkGraph
     )
   ]
 
-multiProdSimpleSpec :: ProducerGraph -> Spec
-multiProdSimpleSpec found = it "multi_prod_simple" $ found `sameAs` multiProdSimpleExpected
+multiProdSimpleAllSpec :: ProducerGraph -> Spec
+multiProdSimpleAllSpec found = it "multi_prod_simple_all" $ found `sameAs` multiProdSimpleAllExpected
+
+
+multiProdSimpleActiveExpected :: ProducerGraph
+multiProdSimpleActiveExpected = mkGraph
+  [ (n0, [ (cInt, [n0])
+         ]
+    )
+  , (n1, [ (cBool, [n1])
+         ]
+    )
+  , (n2, [ (cBool, [n2])
+         ]
+    )
+  , (n3, [ (cBool, [n3])
+         ]
+    )
+  ]
+
+multiProdSimpleActiveSpec :: ProducerGraph -> Spec
+multiProdSimpleActiveSpec found = it "multi_prod_simple_active" $ found `sameAs` multiProdSimpleActiveExpected

@@ -178,7 +178,7 @@ data PipelineStep
   = HPT AbstractComputationStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
-  | CByWithLVA AbstractComputationStep
+  | RunCByWithLVA
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
@@ -193,6 +193,7 @@ data PipelineStep
   | PrintTypeEnv
   | Lint
   | ConfluenceTest
+  | PrintErrors
   deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
@@ -276,11 +277,7 @@ pipelineStep p = do
       PrintAbstractProgram     -> printLVACode
       RunAbstractProgramPure   -> runLVAPure
       PrintAbstractResult      -> printLVAResult
-    CByWithLVA step -> case step of
-      CompileToAbstractProgram -> compileLVA >> compileCBy
-      PrintAbstractProgram     -> printCByCode
-      RunAbstractProgramPure   -> runCByWithLVAPure
-      PrintAbstractResult      -> printCByResult
+    RunCByWithLVA -> runCByWithLVAPure
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -297,6 +294,9 @@ pipelineStep p = do
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
     ConfluenceTest  -> confluenceTest
+    PrintErrors     -> do 
+      errors <- use psErrors
+      pipelineLog $ unlines $ "errors:" : errors
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
@@ -384,12 +384,12 @@ printCByResult = use psCByResult >>= \case
   Nothing -> pure ()
   Just result -> pipelineLog $ show $ pretty result
 
-runCByPure :: PipelineM ()
-runCByPure = use psCByProgram >>= \case
+runCByPureWith :: (CBy.CByProgram -> R.Computer -> CBy.CByResult) -> PipelineM ()
+runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
   Just cbyProgram -> do
     let cbyResult = R.evalDataFlowInfo cbyProgram
-        result = CBy.toCByResult cbyProgram cbyResult
+        result = toCByResult cbyProgram cbyResult
     psCByResult .= Just result
     case typeEnvFromHPTResult (CBy._hptResult result) of
       Right te  -> psTypeEnv .= Just te
@@ -397,7 +397,17 @@ runCByPure = use psCByProgram >>= \case
         psErrors %= (err :)
         psTypeEnv .= Nothing
 
+runCByPure :: PipelineM ()
+runCByPure = runCByPureWith CBy.toCByResult
 
+runCByWithLVAPure :: PipelineM ()
+runCByWithLVAPure = do
+  runLVAPure
+  use psLVAResult >>= \case
+    Nothing -> do 
+      psCByResult .= Nothing
+      psErrors %= ("LVA result is not availabe for cby-with-lva pass" :)
+    Just lvaResult -> runCByPureWith (CBy.toCByResultWithLiveness lvaResult)
 
 
 compileLVA :: PipelineM ()
@@ -428,24 +438,6 @@ runLVAPure = use psLVAProgram >>= \case
         result = LVA.toLVAResult lvaProgram lvaResult
     psLVAResult .= Just result
 
-
-
-runCByWithLVAPure :: PipelineM ()
-runCByWithLVAPure = do
-  runLVAPure
-  use psLVAResult >>= \case
-    Nothing -> psCByResult .= Nothing
-    Just lvaResult -> use psCByProgram >>= \case
-      Nothing -> psCByResult .= Nothing
-      Just cbyProgram -> do
-        let cbyResult = R.evalDataFlowInfo cbyProgram
-            result = CBy.toCByResultWithLiveness lvaResult cbyProgram cbyResult
-        psCByResult .= Just result
-        case typeEnvFromHPTResult (CBy._hptResult result) of
-          Right te  -> psTypeEnv .= Just te
-          Left err  -> do
-            psErrors %= (err :)
-            psTypeEnv .= Nothing
 
 
 

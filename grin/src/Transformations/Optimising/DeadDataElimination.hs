@@ -94,8 +94,7 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
         Alt (NodePat t args) e -> do
           args' <- deleteDeadFieldsM v t args
           pure $ Alt (NodePat t args') e
-        e -> throwE $ "Unsupported case alternative in dead data elimination: "
-                      ++ show (pretty e)
+        e -> pure e
       pure $ ECase (Var v) alts'
 
     EBindF lhs@(SReturn (Var v)) (ConstTagNode t args) rhs -> do
@@ -105,15 +104,20 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
 
   deleteDeadFieldsM :: Name -> Tag -> [a] -> Except String [a]
   deleteDeadFieldsM v t args = do
-    gblLivenessVT <- Vec.toList <$> lookupGlobalLivenessM v t
+    gblLivenessVT <- lookupGlobalLivenessM v t
     pure $ catMaybes $ zipWith markToRemove args gblLivenessVT
 
-  lookupGlobalLivenessM :: Name -> Tag -> Except String (Vector Bool)
+  -- Returns "all dead" if it cannot find the tag
+  -- This way it handles impossible case alternatives 
+  -- NOTE: could also be solved by prior sparse case optimisation
+  lookupGlobalLivenessM :: Name -> Tag -> Except String [Bool]
   lookupGlobalLivenessM v t = do
     let pMap = _producerMap . _producers $ cbyResult
     pSet <- _producerSet <$> lookupExcept (notFoundInPMap v) v pMap
-    (p:_) <- Set.toList  <$> lookupExcept (notFoundInPMap t) t pSet
-    lookupWithDoubleKeyExcept (notFoundLiveness p t) p t gblLiveness
+    flip catchE (const $ pure $ repeat False) $ do
+      (p:_) <- Set.toList  <$> lookupExcept (notFoundInPSet t) t pSet
+      liveness <- lookupWithDoubleKeyExcept (notFoundLiveness p t) p t gblLiveness
+      pure $ Vec.toList liveness
 
 -- For each producer, it dummifies all locally unused fields.
 -- If the field is dead for all other producers in the same group,
@@ -136,9 +140,14 @@ ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM
       pure $ EBind (SReturn (ConstTagNode t args'')) (Var v) rhs
     e -> pure . embed $ e
 
+  -- extracts the active producer grouping from the CByResult
+  -- if not present, it calculates it (so it will always work with only the active producers) 
   prodGraph :: ProducerGraph'
   prodGraph = case _groupedProducers cbyResult of
-    All _ -> fromProducerGraph . groupActiveProducers lvaResult . _producers $ cbyResult
+    All _ -> fromProducerGraph 
+           . groupActiveProducers lvaResult 
+           . _producers 
+           $ cbyResult
     Active activeProdGraph -> fromProducerGraph activeProdGraph
 
   globalLivenessM :: Except String GlobalLiveness

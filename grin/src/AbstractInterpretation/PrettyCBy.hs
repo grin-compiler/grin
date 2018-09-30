@@ -25,9 +25,9 @@ instance Pretty ProducerGraph where
   pretty (ProducerGraph pMap) = pretty pMap
 
 instance Pretty GroupedProducers where
-  pretty (All    prods) = yellow (text "Grouped Producers (all)")
+  pretty (All    prods) = yellow (text "Producer Groups (all)")
                           <$$> indent 4 (pretty prods)
-  pretty (Active prods) = yellow (text "Grouped Producers (active)")
+  pretty (Active prods) = yellow (text "Producer Groups (only for actives)")
                           <$$> indent 4 (pretty prods)
 
 instance Pretty CByResult where

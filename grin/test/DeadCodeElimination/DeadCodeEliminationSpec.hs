@@ -7,51 +7,21 @@ import Test.Hspec
 
 import Grin.Grin
 
--- TODO: delete these
-import Grin.Parse
-import Grin.Pretty
-
 import AbstractInterpretation.CByUtil
-import AbstractInterpretation.CByResult (CByResult)
+import AbstractInterpretation.CByResult (CByResult(..))
 import AbstractInterpretation.LVAResult (LVAResult)
 
 import Transformations.Optimising.DeadDataElimination
-import Transformations.Util (runTrf)
 
 import CreatedBy.CreatedBySpec (calcCByResult)
 import LiveVariable.LiveVariableSpec (calcLiveness)
 
+import DeadCodeElimination.Tests.DeadData.ImpossibleAlt
 import DeadCodeElimination.Tests.DeadData.MultipleFields
 import DeadCodeElimination.Tests.DeadData.OnlyDummify
 import DeadCodeElimination.Tests.DeadData.DeletableSingle
 import DeadCodeElimination.Tests.DeadData.DeletableMulti
 import DeadCodeElimination.Tests.ProducerGrouping
-
-
--- TODO: delete
-prettyActiveProducerGraphIO :: FilePath -> IO ()
-prettyActiveProducerGraphIO fp = do
-  src <- readFile fp
-  let prog = parseProg src
-  print . pretty
-        . _producerGraph
-        . groupActiveProducers (calcLiveness prog) (calcCByResult prog)
-        $ prog
-
-printAllProducersIO :: FilePath -> IO ()
-printAllProducersIO fp = do
-  src <- readFile fp
-  let prog = parseProg src
-  print . collectProducers
-        $ prog
-
-printActiveProducersIO :: FilePath -> IO ()
-printActiveProducersIO fp = do
-  src <- readFile fp
-  let prog = parseProg src
-  print . collectActiveProducers (calcLiveness prog)
-        $ prog
-
 
 
 spec :: Spec
@@ -65,24 +35,34 @@ runTestsGHCi = runTestsFrom stackTest
 
 runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = do
-  runTestsFromWith fromCurDir calcProducerGraph [multiProdSimpleSrc] [multiProdSimpleSpec]
+  runTestsFromWith fromCurDir calcProducerGraphAll    [multiProdSimpleSrc] [multiProdSimpleAllSpec]
+  runTestsFromWith fromCurDir calcProducerGraphActive [multiProdSimpleSrc] [multiProdSimpleActiveSpec]
   runTestsFromWith fromCurDir eliminateDeadData
-    [ multipleFieldsSrc
+    [ impossibleAltSrc
+    , multipleFieldsSrc
     , onlyDummifySrc
     , deletableSingleSrc
     , deletableMultiSrc
     ]
-    [ multipleFieldsSpec
+    [ impossibleAltSpec
+    , multipleFieldsSpec
     , onlyDummifySpec
     , deletableSingleSpec
     , deletableMultiSpec
     ]
 
-calcProducerGraph :: Exp -> ProducerGraph
-calcProducerGraph e = groupAllProducers (calcCByResult e)
+calcProducerGraphAll :: Exp -> ProducerGraph
+calcProducerGraphAll = groupAllProducers 
+                    . _producers 
+                    . calcCByResult
+
+calcProducerGraphActive :: Exp -> ProducerGraph
+calcProducerGraphActive 
+  = uncurry groupActiveProducers
+  . ((,) <$> calcLiveness <*> (_producers . calcCByResult))
 
 eliminateDeadData :: Exp -> (LVAResult, CByResult, Exp)
 eliminateDeadData e = (lvaResult, cbyResult, e')
   where lvaResult = calcLiveness e
         cbyResult = calcCByResult e
-        Right e'  = runTrf . deadDataElimination lvaResult cbyResult $ e
+        Right e'  = deadDataElimination lvaResult cbyResult e

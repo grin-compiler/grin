@@ -46,7 +46,7 @@ foldNameUseExpF f = \case
   SAppF name vals   -> mconcat $ map (foldNamesVal f) vals
   SReturnF val      -> foldNamesVal f val
   SStoreF val       -> foldNamesVal f val
-  SUpdateF name val -> mconcat $ [f name, foldNamesVal f val]
+  SUpdateF name val -> mconcat [f name, foldNamesVal f val]
   SFetchIF name i   -> f name
   _                 -> mempty
 
