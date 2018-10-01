@@ -9,4 +9,4 @@ import Test.Assertions
 
 import DeadCodeElimination.Tests.Util
 
-(deletableMultiSrc, deletableMultiSpec) = mkDDETestCase "deletable_multi"
+(deletableMultiBefore, deletableMultiAfter, deletableMultiSpec) = mkDDETestCase "deletable_multi"

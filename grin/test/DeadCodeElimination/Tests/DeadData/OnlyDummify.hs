@@ -9,4 +9,4 @@ import Test.Assertions
 
 import DeadCodeElimination.Tests.Util
 
-(onlyDummifySrc, onlyDummifySpec) = mkDDETestCase "only_dummify"
+(onlyDummifyBefore, onlyDummifyAfter, onlyDummifySpec) = mkDDETestCase "only_dummify"

@@ -28,6 +28,7 @@ nodeNameIntroduction e = evalNameM e . cata alg $ e where
     SUpdateF p x@ConstTagNode{}       -> bindVal (SUpdate p) x
     SReturnF   x@VarTagNode{}         -> bindVal SReturn x
     SReturnF   x@ConstTagNode{}       -> bindVal SReturn x
+    SAppF      f args                 -> bindFromApp f args
     ECaseF     x@VarTagNode{}   altsM -> bindFromCase x altsM
     ECaseF     x@ConstTagNode{} altsM -> bindFromCase x altsM
     expf -> fmap embed . sequence $ expf
@@ -43,3 +44,8 @@ nodeNameIntroduction e = evalNameM e . cata alg $ e where
   bindFromCase x altsM = do
     alts <- sequence altsM
     bindVal (flip ECase alts) x
+
+  bindFromApp :: Name -> [SimpleVal] -> NameM Exp
+  bindFromApp f args = do
+    nodeVar <- fmap Var newNodeName
+    return $ SBlock $ EBind (SApp f args) nodeVar (SReturn nodeVar)

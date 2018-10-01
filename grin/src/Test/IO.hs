@@ -22,17 +22,36 @@ readProgram fp = do
   src <- readFile fp
   return $ parseProg src
 
+withCurDir :: FilePath -> FilePath -> FilePath
+withCurDir curDir fp = if curDir == stackTest
+  then "." </> fp
+  else (curDir </> stackTest) </> fp
+
 runTestsFromWith :: FilePath
                 -> (Exp -> a)
                 -> [FilePath]
                 -> [a -> Spec]
                 -> IO ()
-runTestsFromWith fromCurDir calcInfo srcs validators = do
+runTestsFromWith curDir calcInfo srcs validators = do
   foundResults <- mapM calcInfoIO srcs'
   let validatedResults = zipWith ($) validators foundResults
   mapM_ hspec validatedResults
 
-  where srcs' = if fromCurDir == stackTest
-                  then map ("." </>) srcs
-                  else map ((fromCurDir </> stackTest) </>) srcs
+  where srcs' = map (withCurDir curDir) srcs
+        calcInfoIO fp = calcInfo <$> readProgram fp
+
+runBeforeAfterTestsFromWith :: FilePath
+                            -> (Exp -> a)
+                            -> [FilePath]
+                            -> [FilePath]
+                            -> [FilePath -> a -> Spec]
+                            -> IO ()
+runBeforeAfterTestsFromWith curDir calcInfo befores afters validators = do
+  foundResults <- mapM calcInfoIO befores'
+  let validators'      = zipWith ($) validators  afters'
+      validatedResults = zipWith ($) validators' foundResults
+  mapM_ hspec validatedResults
+
+  where befores' = map (withCurDir curDir) befores
+        afters'  = map (withCurDir curDir) afters
         calcInfoIO fp = calcInfo <$> readProgram fp

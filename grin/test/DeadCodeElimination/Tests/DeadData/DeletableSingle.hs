@@ -9,4 +9,4 @@ import Test.Assertions
 
 import DeadCodeElimination.Tests.Util
 
-(deletableSingleSrc, deletableSingleSpec) = mkDDETestCase "deletable_single"
+(deletableSingleBefore, deletableSingleAfter, deletableSingleSpec) = mkDDETestCase "deletable_single"

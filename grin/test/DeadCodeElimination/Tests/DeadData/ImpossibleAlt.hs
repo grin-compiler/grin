@@ -9,4 +9,4 @@ import Test.Assertions
 
 import DeadCodeElimination.Tests.Util
 
-(impossibleAltSrc, impossibleAltSpec) = mkDDETestCase "impossible_alt"
+(impossibleAltBefore, impossibleAltAfter, impossibleAltSpec) = mkDDETestCase "impossible_alt"

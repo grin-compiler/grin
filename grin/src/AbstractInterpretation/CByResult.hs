@@ -76,7 +76,9 @@ toCByResult cbyProg comp = CByResult hptResult producers groupedProducers
 
         mem  = V.map (over nodeTagMap (M.map dropProducer)) _memory
         regs = M.map simplifyTypeSet _register
-        funs = M.map (over _2 (V.map simplifyTypeSet)) _function
+        funs = M.map (over _1 simplifyTypeSet)
+             . M.map (over _2 (V.map simplifyTypeSet))
+             $ _function 
         hptResult = HPTResult mem regs funs
 
         producers = ProducerMap $ M.map (ProducerSet . getNamedProducer') _register

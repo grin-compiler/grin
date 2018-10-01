@@ -194,6 +194,8 @@ test-suite grin-test
 
   other-modules:     CreatedBy.CreatedBySpec
                      , DeadCodeElimination.DeadCodeEliminationSpec
+                     , DeadCodeElimination.Tests.DeadData.ImpossibleAlt
+                     , DeadCodeElimination.Tests.DeadData.Length
                      , DeadCodeElimination.Tests.DeadData.DeletableSingle
                      , DeadCodeElimination.Tests.DeadData.DeletableMulti
                      , DeadCodeElimination.Tests.DeadData.MultipleFields
@@ -212,6 +214,7 @@ test-suite grin-test
                      , LiveVariable.Tests.FunctionCall2
                      , LiveVariable.Tests.HeapCaseMin
                      , LiveVariable.Tests.HeapCase
+                     , LiveVariable.Tests.HeapIndirectSimple
                      , LiveVariable.Tests.HeapSimple
                      , LiveVariable.Tests.HeapUpdateComplex
                      , LiveVariable.Tests.HeapUpdateFunCall

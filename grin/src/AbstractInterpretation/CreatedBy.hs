@@ -106,11 +106,15 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
           Var name -> addReg name r
           ConstTagNode tag args -> do
             irTag <- getTag tag
-            bindInstructions <- forM (zip [0..] args) $ \(idx, arg) -> case arg of
+            bindInstructions <- forM (zip [1..] args) $ \(idx, arg) -> case arg of
               Var name -> do
                 argReg <- newReg
                 addReg name argReg
-                pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
+                pure [ IR.Project { srcReg      = r
+                                  , srcSelector = IR.NodeItem irTag idx
+                                  , dstReg      = argReg
+                                  }
+                     ]
               Lit {} -> pure []
               _ -> throwE $ "illegal node pattern component " ++ show arg
             emit IR.If

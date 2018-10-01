@@ -9,4 +9,4 @@ import Test.Assertions
 
 import DeadCodeElimination.Tests.Util
 
-(multipleFieldsSrc, multipleFieldsSpec) = mkDDETestCase "multiple_fields"
+(multipleFieldsBefore, multipleFieldsAfter, multipleFieldsSpec) = mkDDETestCase "multiple_fields"

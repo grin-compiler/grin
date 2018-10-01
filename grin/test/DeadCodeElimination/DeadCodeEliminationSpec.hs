@@ -17,6 +17,7 @@ import CreatedBy.CreatedBySpec (calcCByResult)
 import LiveVariable.LiveVariableSpec (calcLiveness)
 
 import DeadCodeElimination.Tests.DeadData.ImpossibleAlt
+import DeadCodeElimination.Tests.DeadData.Length
 import DeadCodeElimination.Tests.DeadData.MultipleFields
 import DeadCodeElimination.Tests.DeadData.OnlyDummify
 import DeadCodeElimination.Tests.DeadData.DeletableSingle
@@ -37,14 +38,23 @@ runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = do
   runTestsFromWith fromCurDir calcProducerGraphAll    [multiProdSimpleSrc] [multiProdSimpleAllSpec]
   runTestsFromWith fromCurDir calcProducerGraphActive [multiProdSimpleSrc] [multiProdSimpleActiveSpec]
-  runTestsFromWith fromCurDir eliminateDeadData
-    [ impossibleAltSrc
-    , multipleFieldsSrc
-    , onlyDummifySrc
-    , deletableSingleSrc
-    , deletableMultiSrc
+  runBeforeAfterTestsFromWith fromCurDir eliminateDeadData
+    [ impossibleAltBefore
+    , lengthBefore
+    , multipleFieldsBefore
+    , onlyDummifyBefore
+    , deletableSingleBefore
+    , deletableMultiBefore
+    ]
+    [ impossibleAltAfter
+    , lengthAfter
+    , multipleFieldsAfter
+    , onlyDummifyAfter
+    , deletableSingleAfter
+    , deletableMultiAfter
     ]
     [ impossibleAltSpec
+    , lengthSpec
     , multipleFieldsSpec
     , onlyDummifySpec
     , deletableSingleSpec
