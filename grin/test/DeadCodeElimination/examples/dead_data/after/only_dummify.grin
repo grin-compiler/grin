@@ -20,6 +20,5 @@ grinMain =
   (CThree c0 c1 c2) <- pure n01
   (CThree d0 d1 d2) <- pure n1
 
-  -- this is not included in the producer graph
   r <- pure (CLive b0 c1 d2)
   pure r

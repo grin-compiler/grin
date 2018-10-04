@@ -8,9 +8,25 @@ Dead field elimination:
 TODO:
   - lift Undefined to Val level
   - introduce type annotations
-  - pretty print type annotations using HPT using
+  - pretty print type annotations using HPT
   - introduce heap type annotations in the begininning of the program
   - write parser for type annotations
   - HPT should still calculate the types
   - linter should check whether calculated types match with annotations
   - Grin.Grin FoldNames
+
+  - tests: HeapIndirectSimple -> HeapIndirectComplex ?
+
+  - rename node name introduction to producer name introduction 
+  - this transformation only has to introduce new name for producers, 
+    not for every node
+
+    is this even needed then?
+  - write tests for node name introduction
+  - introduce new names for applications:
+    before: f x 5 (CNil)
+    after:  n0 <- pure x
+            n1 <- pure 5
+            n2 <- pure (CNil)
+            f n0 n1 n2
+  - 

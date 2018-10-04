@@ -200,6 +200,7 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadData.DeletableMulti
                      , DeadCodeElimination.Tests.DeadData.MultipleFields
                      , DeadCodeElimination.Tests.DeadData.OnlyDummify
+                     , DeadCodeElimination.Tests.DeadData.SeparateProds
                      , DeadCodeElimination.Tests.ProducerGrouping
                      , DeadCodeElimination.Tests.Util
                      , LiveVariable.LiveVariableSpec

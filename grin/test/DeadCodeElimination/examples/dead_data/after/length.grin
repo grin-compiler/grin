@@ -24,24 +24,24 @@ upto m n = n6 <- eval m
             m1 <- store n9
             n10 <- pure (Fupto m1 n)
             p <- store n10
-            n11 <- pure (CCons p)
+            n11 <- pure (CCons.0 p)
             pure n11
 
 length l = l2 <- eval l
            case l2 of
              (CNil)       -> n12 <- pure (CInt 0)
                              pure n12
-             (CCons xs) -> n13 <- length xs
-                           (CInt l') <- pure n13
-                           len <- _prim_int_add l' 1
-                           n14 <- pure (CInt len)
-                           pure n14
+             (CCons.0 xs) -> n13 <- length xs
+                             (CInt l') <- pure n13
+                             len <- _prim_int_add l' 1
+                             n14 <- pure (CInt len)
+                             pure n14
 
 eval q = v <- fetch q
          case v of
           (CInt x'1)    -> pure v
           (CNil)        -> pure v
-          (CCons ys)    -> pure v
+          (CCons.0 ys)  -> pure v
           (Fupto a b)   -> w <- upto a b
                            update q w
                            pure w

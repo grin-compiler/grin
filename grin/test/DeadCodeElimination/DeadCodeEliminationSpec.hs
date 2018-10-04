@@ -22,6 +22,7 @@ import DeadCodeElimination.Tests.DeadData.MultipleFields
 import DeadCodeElimination.Tests.DeadData.OnlyDummify
 import DeadCodeElimination.Tests.DeadData.DeletableSingle
 import DeadCodeElimination.Tests.DeadData.DeletableMulti
+import DeadCodeElimination.Tests.DeadData.SeparateProds
 import DeadCodeElimination.Tests.ProducerGrouping
 
 
@@ -45,6 +46,7 @@ runTestsFrom fromCurDir = do
     , onlyDummifyBefore
     , deletableSingleBefore
     , deletableMultiBefore
+    , separateProdsBefore
     ]
     [ impossibleAltAfter
     , lengthAfter
@@ -52,6 +54,7 @@ runTestsFrom fromCurDir = do
     , onlyDummifyAfter
     , deletableSingleAfter
     , deletableMultiAfter
+    , separateProdsAfter
     ]
     [ impossibleAltSpec
     , lengthSpec
@@ -59,6 +62,7 @@ runTestsFrom fromCurDir = do
     , onlyDummifySpec
     , deletableSingleSpec
     , deletableMultiSpec
+    , separateProdsSpec
     ]
 
 calcProducerGraphAll :: Exp -> ProducerGraph

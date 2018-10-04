@@ -12,6 +12,7 @@ import Data.Maybe
 import Data.Functor.Foldable as Foldable
 
 import Control.Monad
+import Control.Monad.State
 import Control.Monad.Trans.Except
 
 import Grin.Grin
@@ -22,21 +23,47 @@ import AbstractInterpretation.CByResult
 import AbstractInterpretation.LVAResult
 
 import Transformations.Util
+import Transformations.Names
 
 {-
  TODO: replace modify with modify'
        is it more optimal?
 -}
 
+
+-- (t,lv) -> t'
+-- we deleted the dead fields from a node with tag t with liveness lv
+-- then we introduced the new tag t' for this deleted node
+type TagMapping = Map (Tag, Vector Bool) Tag 
+type Trf = ExceptT String (StateT TagMapping NameM)
+
+execTrf :: Exp -> Trf a -> Either String a 
+execTrf e = evalNameM e . flip evalStateT mempty . runExceptT
+
+getTag :: Tag -> Vector Bool -> Trf Tag
+getTag t lv
+  | and lv = pure t
+getTag t@(Tag ty n) lv = do 
+  mt' <- gets $ Map.lookup (t,lv)
+  case mt' of 
+    Just t' -> return t'
+    Nothing -> do 
+      n' <- lift $ lift $ deriveNewName n
+      let t' = Tag ty n'
+      modify $ Map.insert (t,lv) t'
+      return t'
+
+
+
 deadDataElimination :: LVAResult -> CByResult -> Exp -> Either String Exp
-deadDataElimination lvaResult cbyResult e = runExcept $
+deadDataElimination lvaResult cbyResult e = execTrf e $
   ddeFromProducers lvaResult cbyResult e >>= ddeFromConsumers cbyResult
 
 markToRemove :: a -> Bool -> Maybe a
 markToRemove x True  = Just x
 markToRemove _ False = Nothing
 
-lookupNodeLivenessM :: Name -> Tag -> LVAResult -> Except String (Vector Bool)
+lookupNodeLivenessM :: Name -> Tag -> LVAResult -> Trf (Vector Bool)
 lookupNodeLivenessM v t lvaResult = do
   NodeSet taggedLiveness <- lookupExcept (noLiveness v) v . _register $ lvaResult
   _node <$> lookupExcept (noLivenessTag v t) t taggedLiveness
@@ -49,7 +76,7 @@ type GlobalLiveness = Map Name (Map Tag (Vector Bool))
 calcGlobalLiveness :: LVAResult ->
                       CByResult ->
                       ProducerGraph' ->
-                      Except String GlobalLiveness
+                      Trf GlobalLiveness
 calcGlobalLiveness lvaResult cbyResult prodGraph =
   mapWithDoubleKeyM' mergeLivenessExcept prodGraph where
 
@@ -64,7 +91,7 @@ calcGlobalLiveness lvaResult cbyResult prodGraph =
     -- This can only happen at pattern matches, not at the time of construction.
     -- So we do not have to worry about the liveness of those "extra" parameters.
     -- They will always be at the last positions.
-    mergeLivenessExcept :: Name -> Tag -> Except String (Vector Bool)
+    mergeLivenessExcept :: Name -> Tag -> Trf(Vector Bool)
     mergeLivenessExcept prod tag = do
       let ps = Set.toList connectedProds
       when (null ps) (throwE $ noConnections prod tag)
@@ -84,33 +111,37 @@ calcGlobalLiveness lvaResult cbyResult prodGraph =
                             " for tag " ++ show (PP t) ++
                             " is not connected with any other producers"
 
-ddeFromConsumers :: CByResult -> (Exp, GlobalLiveness) -> Except String Exp
+ddeFromConsumers :: CByResult -> (Exp, GlobalLiveness) -> Trf Exp
 ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
 
-  alg :: ExpF Exp -> Except String Exp
+  alg :: ExpF Exp -> Trf Exp
   alg = \case
     ECaseF (Var v) alts -> do
       alts' <- forM alts $ \case
         Alt (NodePat t args) e -> do
-          args' <- deleteDeadFieldsM v t args
-          pure $ Alt (NodePat t args') e
+          (args',lv) <- deleteDeadFieldsM v t args
+          t' <- getTag t lv 
+          pure $ Alt (NodePat t' args') e
         e -> pure e
       pure $ ECase (Var v) alts'
 
     EBindF lhs@(SReturn (Var v)) (ConstTagNode t args) rhs -> do
-      args' <- deleteDeadFieldsM v t args
-      pure $ EBind lhs (ConstTagNode t args') rhs
+      (args',lv) <- deleteDeadFieldsM v t args
+      t' <- getTag t lv 
+      pure $ EBind lhs (ConstTagNode t' args') rhs
     e -> pure . embed $ e
 
-  deleteDeadFieldsM :: Name -> Tag -> [a] -> Except String [a]
+  deleteDeadFieldsM :: Name -> Tag -> [a] -> Trf ([a], Vector Bool)
   deleteDeadFieldsM v t args = do
     gblLivenessVT <- lookupGlobalLivenessM v t
-    pure $ catMaybes $ zipWith markToRemove args gblLivenessVT
+    let args'    = catMaybes $ zipWith markToRemove args gblLivenessVT
+        liveness = Vec.fromList $ take (length args) gblLivenessVT
+    pure (args', liveness)
 
   -- Returns "all dead" if it cannot find the tag
   -- This way it handles impossible case alternatives 
   -- NOTE: could also be solved by prior sparse case optimisation
-  lookupGlobalLivenessM :: Name -> Tag -> Except String [Bool]
+  lookupGlobalLivenessM :: Name -> Tag -> Trf [Bool]
   lookupGlobalLivenessM v t = do
     let pMap = _producerMap . _producers $ cbyResult
     pSet <- _producerSet <$> lookupExcept (notFoundInPMap v) v pMap
@@ -124,12 +155,12 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
 -- then it deletes the field.
 -- Whenever it deletes a field, it makes a new entry into a table.
 -- This table will be used to transform the consumers.
-ddeFromProducers :: LVAResult -> CByResult -> Exp -> Except String (Exp, GlobalLiveness)
+ddeFromProducers :: LVAResult -> CByResult -> Exp -> Trf (Exp, GlobalLiveness)
 ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM where
 
   -- dummifying all locally unused fields
   -- deleteing all globally unused fields
-  alg :: ExpF Exp -> Except String Exp
+  alg :: ExpF Exp -> Trf Exp
   alg = \case
     EBindF (SReturn (ConstTagNode t args)) (Var v) rhs -> do
       globalLiveness     <- globalLivenessM
@@ -137,7 +168,8 @@ ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM
       globalNodeLiveness <- lookupWithDoubleKeyExcept (notFoundLiveness v t) v t globalLiveness
       let args'  = zipWith dummify args (Vec.toList nodeLiveness)
           args'' = catMaybes $ zipWith markToRemove args' (Vec.toList globalNodeLiveness)
-      pure $ EBind (SReturn (ConstTagNode t args'')) (Var v) rhs
+      t' <- getTag t globalNodeLiveness 
+      pure $ EBind (SReturn (ConstTagNode t' args'')) (Var v) rhs
     e -> pure . embed $ e
 
   -- extracts the active producer grouping from the CByResult
@@ -150,7 +182,7 @@ ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM
            $ cbyResult
     Active activeProdGraph -> fromProducerGraph activeProdGraph
 
-  globalLivenessM :: Except String GlobalLiveness
+  globalLivenessM :: Trf GlobalLiveness
   globalLivenessM = calcGlobalLiveness lvaResult cbyResult prodGraph
 
   switch :: a -> a -> Bool -> a

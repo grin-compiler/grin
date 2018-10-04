@@ -1,7 +1,7 @@
 grinMain = 
   a0 <- pure 5
-  n0 <- pure (CInt)
+  n0 <- pure (CInt.0)
   r <- case n0 of 
-    (CInt)  -> pure 0
-    (CBool) -> pure 0
+    (CInt.0)  -> pure 0
+    (CBool.0) -> pure 0
   pure r

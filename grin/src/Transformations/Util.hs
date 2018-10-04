@@ -201,8 +201,17 @@ collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
     goCPat (NodePat t args) = modify $ updateTagInfo t (length args)
     goCPat _ = pure ()
 
-lookupExcept :: Ord k => String -> k -> Map k v -> Except String v
+lookupExcept :: (Monad m, Ord k) => 
+                String -> 
+                k -> Map k v -> 
+                ExceptT String m v
 lookupExcept err k = maybe (throwE err) pure . Map.lookup k
+
+lookupExceptT :: (MonadTrans t, Monad m, Ord k) => 
+                 String -> 
+                 k -> Map k v -> 
+                 t (ExceptT String m) v
+lookupExceptT err k = lift . lookupExcept err k
 
 mapWithDoubleKey :: (Ord k1, Ord k2) =>
                     (k1 -> k2 -> a -> b) ->
@@ -219,10 +228,19 @@ mapWithDoubleKeyM f = sequence . Map.mapWithKey (\k1 m -> sequence $ Map.mapWith
 lookupWithDoubleKey :: (Ord k1, Ord k2) => k1 -> k2 -> Map k1 (Map k2 v) -> Maybe v
 lookupWithDoubleKey k1 k2 m = Map.lookup k1 m >>= Map.lookup k2
 
-lookupWithDoubleKeyExcept :: (Ord k1, Ord k2) =>
-                             String -> k1 -> k2 -> Map k1 (Map k2 v) -> Except String v
+lookupWithDoubleKeyExcept :: (Monad m, Ord k1, Ord k2) =>
+                             String -> k1 -> k2 -> 
+                             Map k1 (Map k2 v) -> 
+                             ExceptT String m v
 lookupWithDoubleKeyExcept err k1 k2 = maybe (throwE err) pure
                                     . lookupWithDoubleKey k1 k2
+
+lookupWithDoubleKeyExceptT :: (MonadTrans t, Monad m, Ord k1, Ord k2) =>
+                              String -> k1 -> k2 -> 
+                              Map k1 (Map k2 v) -> 
+                              t (ExceptT String m) v
+lookupWithDoubleKeyExceptT err k1 k2 = lift . lookupWithDoubleKeyExcept err k1 k2
+       
 
 notFoundIn :: Show a => String -> a -> String -> String
 notFoundIn n1 x n2 = n1 ++ " " ++ show x ++ " not found in " ++ n2
