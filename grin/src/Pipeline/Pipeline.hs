@@ -452,7 +452,8 @@ transformationM DeadDataElimination = do
   e  <- use psExp
   Just cbyResult <- use psCByResult
   Just lvaResult <- use psLVAResult
-  case deadDataElimination lvaResult cbyResult e of
+  Just typeEnv   <- use psTypeEnv
+  case deadDataElimination lvaResult cbyResult typeEnv e of
     Right e'  -> psExp .= e' >> psTransStep %= (+1)
     Left  err -> psErrors %= (err:)
     

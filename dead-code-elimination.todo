@@ -29,4 +29,7 @@ TODO:
             n1 <- pure 5
             n2 <- pure (CNil)
             f n0 n1 n2
-  - 
+  
+  - store variable name <-> heap location is a bijective mapping 
+    right now we store the lcoation (a number)
+    but we could also store the variable name (just as with producers)  

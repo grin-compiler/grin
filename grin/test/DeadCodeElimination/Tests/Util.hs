@@ -42,11 +42,11 @@ mkGraph = toProducerGraph
 
 
 -- name ~ name of the test case, and also the grin source file
-mkDDETestCase :: String -> (FilePath, FilePath, FilePath -> (LVAResult, CByResult, Exp) -> Spec)
+mkDDETestCase :: String -> (FilePath, FilePath, FilePath -> Exp -> Spec)
 mkDDETestCase name = (before, after, specFun)
   where before = ddeBefore </> name <.> "grin"
         after  = ddeAfter  </> name <.> "grin"
-        specFun after' (lvaResult, cbyResult, transformed) = do
+        specFun after' transformed = do
           expected <- runIO $ readFile after'
           let expected' = parseProg expected
           it name $ transformed `sameAs` expected'

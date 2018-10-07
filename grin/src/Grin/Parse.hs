@@ -9,48 +9,10 @@ import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
+
 import Grin.Grin
-
-keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "#True", "#False", "#undefined"]
-
-type Parser = Parsec Void String
-
-lineComment :: Parser ()
-lineComment = L.skipLineComment "--"
-
-blockComment :: Parser ()
-blockComment = L.skipBlockComment "{-" "-}"
-
-sc :: Parser ()
-sc = L.space (void spaceChar) lineComment blockComment
-
-sc' :: Parser ()
-sc' = L.space (void $ oneOf " \t") lineComment blockComment
-
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc'
-
-symbol = L.symbol sc'
-parens = between (symbol "(") (symbol ")")
-
-kw w = lexeme $ string w
-
-op w = L.symbol sc' w
-
--- TODO: unify var and con + support quotted syntax which allow any character
-var :: Parser String
-var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_.:!@{}$-")) >>= \x -> case Set.member x keywords of
-  True -> fail $ "keyword: " ++ x
-  False -> return x
-
-con :: Parser String
-con = lexeme $ some (alphaNumChar <|> oneOf "_.{}")
-
-integer = lexeme L.decimal
-signedInteger = L.signed sc' integer
-
-float = lexeme L.float
-signedFloat = L.signed sc' float
+import Grin.ParseBasic
+import Grin.ParseType
 
 -- grin syntax
 
@@ -96,24 +58,21 @@ altPat = parens (NodePat <$> tag <*> many var) <|>
          TagPat <$> tag <|>
          LitPat <$> literal
 
-tag = Tag C <$ char 'C' <*> con <|>
-      Tag F <$ char 'F' <*> var <|>
-      Tag <$> (P <$ char 'P' <*> L.decimal) <*> (var <|> con)
-
 simpleValue = Lit <$> literal <|>
-              Var <$> var
+              Var <$> var <|>
+              Undefined <$> parens (kw "#undefined" *> op "::" *> typeAnnot)
 
+-- #undefined can hold simple types as well as node types
 value = Unit <$ op "()" <|>
         parens (ConstTagNode <$> tag <*> many simpleValue <|> VarTagNode <$> var <*> many simpleValue) <|>
         ValTag <$> tag <|>
-        simpleValue
+        simpleValue 
 
 literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
           (try $ LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u')) <|>
           LInt64 . fromIntegral <$> signedInteger <|>
-          LBool <$> (True <$ kw "#True" <|> False <$ kw "#False") <|>
-          pure LUndefined <* kw "#undefined"
+          LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")
 
 satisfyM :: (a -> Bool) -> Parser a -> Parser a
 satisfyM pred parser = do

@@ -45,14 +45,18 @@ library
     Frontend.Lambda.Syntax
     Grin.Grin
     Grin.Syntax
+    Grin.SyntaxDefs
     Grin.TH
     Grin.Lint
     Grin.Parse
+    Grin.ParseBasic
+    Grin.ParseType
     Grin.Pretty
     Grin.PrettyLint
     Grin.Statistics
     Grin.TypeCheck
     Grin.TypeEnv
+    Grin.TypeEnvDefs
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -142,6 +146,7 @@ library
     extra,
     logict,
     QuickCheck,
+    quickcheck-instances,
     ghc-dump-core,
     ghc-dump-util,
     ghc,

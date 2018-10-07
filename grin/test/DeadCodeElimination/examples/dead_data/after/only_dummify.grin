@@ -7,8 +7,8 @@ grinMain =
   a5 <- pure 0
 
   -- two producers
-  n0 <- pure (CThree a0 a1 #undefined)
-  n1 <- pure (CThree #undefined a4 a5)
+  n0 <- pure (CThree a0 a1 (#undefined :: T_Int64))
+  n1 <- pure (CThree (#undefined :: T_Int64) a4 a5)
 
   -- n01 has producers: n0, n1
   n01 <- case 0 of

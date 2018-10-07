@@ -17,6 +17,7 @@ import Control.Monad.Trans.Except
 
 import Grin.Grin
 import Grin.Pretty
+import Grin.TypeEnvDefs
 
 import AbstractInterpretation.CByUtil
 import AbstractInterpretation.CByResult
@@ -55,9 +56,9 @@ getTag t@(Tag ty n) lv = do
 
 
 
-deadDataElimination :: LVAResult -> CByResult -> Exp -> Either String Exp
-deadDataElimination lvaResult cbyResult e = execTrf e $
-  ddeFromProducers lvaResult cbyResult e >>= ddeFromConsumers cbyResult
+deadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either String Exp
+deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
+  ddeFromProducers lvaResult cbyResult tyEnv e >>= ddeFromConsumers cbyResult
 
 markToRemove :: a -> Bool -> Maybe a
 markToRemove x True  = Just x
@@ -155,8 +156,8 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
 -- then it deletes the field.
 -- Whenever it deletes a field, it makes a new entry into a table.
 -- This table will be used to transform the consumers.
-ddeFromProducers :: LVAResult -> CByResult -> Exp -> Trf (Exp, GlobalLiveness)
-ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM where
+ddeFromProducers :: LVAResult -> CByResult -> TypeEnv -> Exp -> Trf (Exp, GlobalLiveness)
+ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLivenessM where
 
   -- dummifying all locally unused fields
   -- deleteing all globally unused fields
@@ -166,8 +167,9 @@ ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM
       globalLiveness     <- globalLivenessM
       nodeLiveness       <- lookupNodeLivenessM v t lvaResult
       globalNodeLiveness <- lookupWithDoubleKeyExcept (notFoundLiveness v t) v t globalLiveness
-      let args'  = zipWith dummify args (Vec.toList nodeLiveness)
-          args'' = catMaybes $ zipWith markToRemove args' (Vec.toList globalNodeLiveness)
+      let indexedArgs = zip args [0..]
+      args' <- zipWithM (dummify v t) indexedArgs (Vec.toList nodeLiveness)
+      let args'' = catMaybes $ zipWith markToRemove args' (Vec.toList globalNodeLiveness)
       t' <- getTag t globalNodeLiveness 
       pure $ EBind (SReturn (ConstTagNode t' args'')) (Var v) rhs
     e -> pure . embed $ e
@@ -185,12 +187,31 @@ ddeFromProducers lvaResult cbyResult e = (,) <$> cataM alg e <*> globalLivenessM
   globalLivenessM :: Trf GlobalLiveness
   globalLivenessM = calcGlobalLiveness lvaResult cbyResult prodGraph
 
-  switch :: a -> a -> Bool -> a
-  switch _ x True  = x
-  switch d _ False = d
+  -- If the node field is dead, it replaces it with #undefined :: <type>
+  -- where <type> is looked up from the type env
+  dummify :: Name -> Tag -> (Val,Int) -> Bool -> Trf Val
+  dummify n t (_,idx) False = do
+    sty <- lookupFieldTypeM n t idx
+    pure $ Undefined (T_SimpleType sty)
+  dummify n t (arg,_) True  = pure arg
 
-  dummify :: Val -> Bool -> Val
-  dummify = switch (Lit LUndefined)
+  -- looks up a node variable's nth field's type for tag a ertain tag
+  -- refers tyEnv in the global scope
+  lookupFieldTypeM :: Name -> Tag -> Int -> Trf SimpleType 
+  lookupFieldTypeM v tag idx = do 
+    let varTypes = _variable tyEnv
+    ty <- lookupExcept (notFoundInTyEnv v) v varTypes
+    case ty of 
+      T_NodeSet ns -> do 
+        simpleTys <- lookupExcept (tag `notFoundInTySetFor` v) tag ns
+        let fieldTy = simpleTys Vec.!? idx
+        case fieldTy of
+          Just sty -> pure sty 
+          Nothing  -> throwE $ 
+            "Invalid field index (" ++ show idx ++ ") " ++ 
+            "for variable " ++ show (PP v) ++ " " ++
+            "with tag " ++ show (PP tag) 
+      _ -> throwE $ "Variable " ++ show (PP v) ++ " does not have a node type set"
 
 
 
@@ -204,3 +225,9 @@ notFoundLiveness :: (Pretty a, Pretty b) => a -> b -> String
 notFoundLiveness p t = "Producer "  ++ show (PP p) ++
                        " with tag " ++ show (PP t) ++
                        " not found in global liveness map"
+
+notFoundInTyEnv :: Pretty a => a -> String
+notFoundInTyEnv v = notFoundIn "Variable" (PP v) "type environment"
+
+notFoundInTySetFor :: (Pretty a, Pretty b) => a -> b -> String
+notFoundInTySetFor t v = (notFoundIn "Tag" (PP t) "node type set") ++ " for variable " ++ show (PP v)

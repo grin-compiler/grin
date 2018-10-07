@@ -25,8 +25,10 @@ import qualified Data.Text as Text
 import GHC.Generics
 import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
+import qualified Grin.TypeEnvDefs as Grin
 import qualified Test.PrimOps as PrimOps
 import Test.QuickCheck
+import Test.QuickCheck.Instances.Vector
 import Generic.Random.Generic
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -339,7 +341,8 @@ data Type
   deriving (Eq, Generic, Ord, Show)
 
 instance Arbitrary Type where arbitrary = genericArbitraryU
-
+instance Arbitrary Grin.SimpleType where arbitrary = genericArbitraryU
+instance Arbitrary Grin.Type where arbitrary = genericArbitraryU
 
 simpleType :: GoalM Type
 simpleType = melements

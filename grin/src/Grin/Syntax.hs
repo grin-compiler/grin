@@ -1,7 +1,11 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
-module Grin.Syntax where
+
+module Grin.Syntax 
+  ( module Grin.Syntax 
+  , module Grin.SyntaxDefs
+  ) where
 
 import Data.Functor.Foldable.TH
 import Control.DeepSeq
@@ -11,27 +15,17 @@ import Data.Word
 import Data.List (isPrefixOf)
 import qualified Data.ByteString.Short as B
 
+import Grin.SyntaxDefs
+import Grin.TypeEnvDefs
+
 data Name2
   = Name        B.ShortByteString
   | DerivedName B.ShortByteString Int
   | NewName     Name2 Int -- Block scope with shadowing support
   deriving (Ord, Eq, Show)
 
-type Name = String
-
 isPrimName :: Name -> Bool
 isPrimName = isPrefixOf "_prim_"
-
--- * GRIN Tag
-
-data TagType = C | F | P Int {-missing parameter count-}
-  deriving (Generic, NFData, Eq, Ord, Show)
-
-data Tag = Tag
-  { tagType :: TagType
-  , tagName :: Name
-  }
-  deriving (Generic, NFData, Eq, Ord, Show)
 
 -- * GRIN Literal
 
@@ -42,7 +36,6 @@ data Lit
   | LWord64 Word64
   | LFloat  Float
   | LBool   Bool
-  | LUndefined
   deriving (Generic, NFData, Eq, Ord, Show)
 
 -- * GRIN Value
@@ -58,6 +51,7 @@ data Val
   -- simple val
   | Lit Lit                        -- HIGH level GRIN
   | Var Name                       -- HIGH level GRIN
+  | Undefined     Type
   deriving (Generic, NFData, Eq, Ord, Show)
 
 -- See: https://github.com/ekmett/recursion-schemes/blob/master/Data/Functor/Foldable/TH.hs#L31

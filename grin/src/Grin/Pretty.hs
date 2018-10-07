@@ -69,11 +69,12 @@ instance Pretty Val where
   pretty = \case
     ConstTagNode tag args -> parens $ hsep (pretty tag : map pretty args)
     VarTagNode name args  -> parens $ hsep (text name : map pretty args)
-    ValTag tag  -> pretty tag
-    Unit        -> parens empty
+    ValTag tag   -> pretty tag
+    Unit         -> parens empty
     -- simple val
-    Lit lit     -> pretty lit
-    Var name    -> text name
+    Lit lit      -> pretty lit
+    Var name     -> text name
+    Undefined ty -> parens $ text "#undefined :: " <+> pretty ty
 
 instance Pretty Lit where
   pretty = \case
@@ -81,7 +82,6 @@ instance Pretty Lit where
     LWord64 a  -> integer (fromIntegral a) <> text "u"
     LFloat a   -> float a
     LBool a    -> text "#" <> text (show a)
-    LUndefined -> text "#undefined"  
 
 instance Pretty CPat where
   pretty = \case

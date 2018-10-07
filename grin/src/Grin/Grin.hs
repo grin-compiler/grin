@@ -10,6 +10,7 @@ import Lens.Micro.Platform
 import Data.Maybe
 
 import Grin.Syntax
+import Grin.TypeEnvDefs
 
 class FoldNames n where
   foldNames :: (Monoid m) => (Name -> m) -> n -> m

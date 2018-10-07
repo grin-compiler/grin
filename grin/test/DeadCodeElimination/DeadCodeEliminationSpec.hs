@@ -6,6 +6,7 @@ import Test.IO
 import Test.Hspec
 
 import Grin.Grin
+import Grin.TypeCheck (typeEnvFromHPTResult)
 
 import AbstractInterpretation.CByUtil
 import AbstractInterpretation.CByResult (CByResult(..))
@@ -75,8 +76,9 @@ calcProducerGraphActive
   = uncurry groupActiveProducers
   . ((,) <$> calcLiveness <*> (_producers . calcCByResult))
 
-eliminateDeadData :: Exp -> (LVAResult, CByResult, Exp)
-eliminateDeadData e = (lvaResult, cbyResult, e')
+eliminateDeadData :: Exp -> Exp
+eliminateDeadData e = e'
   where lvaResult = calcLiveness e
         cbyResult = calcCByResult e
-        Right e'  = deadDataElimination lvaResult cbyResult e
+        Right env = typeEnvFromHPTResult (_hptResult cbyResult)
+        Right e'  = deadDataElimination lvaResult cbyResult env e
