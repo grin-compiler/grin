@@ -1,0 +1,77 @@
+grinMain =
+  t1 <- store (CInt 1)
+  t2 <- store (CInt 10000)
+  t3 <- store (Fupto t1 t2)
+  t4 <- store (Fsum t3)
+  (CInt r') <- do
+    q.0 <- pure t4
+    v.0 <- fetch q.0
+    case v.0 of
+      (CInt x'1.0) ->
+        pure v.0
+      (Fupto a.0 b.0) ->
+        upto a.0 b.0
+      (Fsum c.0) ->
+        sum c.0
+  _prim_int_print r'
+
+upto m n =
+  (CInt m') <- do
+    q.1 <- pure m
+    v.1 <- fetch q.1
+    case v.1 of
+      (CInt x'1.1) ->
+        pure v.1
+      (Fupto a.1 b.1) ->
+        upto a.1 b.1
+      (Fsum c.1) ->
+        sum c.1
+  (CInt n') <- do
+    q.2 <- pure n
+    v.2 <- fetch q.2
+    case v.2 of
+      (CInt x'1.2) ->
+        pure v.2
+      (Fupto a.2 b.2) ->
+        upto a.2 b.2
+      (Fsum c.2) ->
+        sum c.2
+  b' <- _prim_int_gt m' n'
+  case b' of
+    #True ->
+      pure (CNil)
+    #False ->
+      m1' <- _prim_int_add m' 1
+      m1 <- store (CInt m1')
+      p <- store (Fupto m1 n)
+      pure (CCons m p)
+
+sum l =
+  l2 <- do
+    q.3 <- pure l
+    v.3 <- fetch q.3
+    case v.3 of
+      (CInt x'1.3) ->
+        pure v.3
+      (Fupto a.3 b.3) ->
+        upto a.3 b.3
+      (Fsum c.3) ->
+        sum c.3
+  ccp.0 <- case l2 of
+    (CNil) ->
+      pure 0
+    (CCons x xs) ->
+      (CInt x') <- do
+        q.4 <- pure x
+        v.4 <- fetch q.4
+        case v.4 of
+          (CInt x'1.4) ->
+            pure v.4
+          (Fupto a.4 b.4) ->
+            upto a.4 b.4
+          (Fsum c.4) ->
+            sum c.4
+      (CInt s') <- sum xs
+      ax' <- _prim_int_add x' s'
+      pure ax'
+  pure (CInt ccp.0)

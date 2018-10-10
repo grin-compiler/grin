@@ -1,0 +1,42 @@
+grinMain =
+  t1 <- store (CInt 1)
+  t2 <- store (CInt 10000)
+  t3 <- store (Fupto t1 t2)
+  t4 <- store (Fsum t3)
+  (CInt r') <- eval t4
+  _prim_int_print r'
+
+upto m n =
+  (CInt m') <- eval m
+  (CInt n') <- eval n
+  b' <- _prim_int_gt m' n'
+  case b' of
+    #True ->
+      pure (CNil)
+    #False ->
+      m1' <- _prim_int_add m' 1
+      m1 <- store (CInt m1')
+      p <- store (Fupto m1 n)
+      pure (CCons m p)
+
+sum l =
+  l2 <- eval l
+  ccp.0 <- case l2 of
+    (CNil) ->
+      pure 0
+    (CCons x xs) ->
+      (CInt x') <- eval x
+      (CInt s') <- sum xs
+      ax' <- _prim_int_add x' s'
+      pure ax'
+  pure (CInt ccp.0)
+
+eval q =
+  v <- fetch q
+  case v of
+    (CInt x'1) ->
+      pure v
+    (Fupto a b) ->
+      upto a b
+    (Fsum c) ->
+      sum c
