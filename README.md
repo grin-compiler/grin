@@ -11,6 +11,7 @@ The GRIN Project
 <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf">
 Code Optimisation Techniques for Lazy Functional Languages
 </a>.
+
 We presented the core ideas of GRIN at Haskell Exchange 2018. [slides](https://docs.google.com/presentation/d/1QsZ3Kyy3XIco-qba1biRmzuMzz8o2uCBqA9DMtnqP2c/edit?usp=sharing) [video](https://skillsmatter.com/skillscasts/12390-grin-an-alternative-haskell-compiler-backend)
 
 Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=317) and an [example from our imlementation](https://github.com/grin-tech/grin/tree/master/grin/grin/sum-simple-output).
