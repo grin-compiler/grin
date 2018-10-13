@@ -61,5 +61,5 @@ spec = do
           , T CopyPropagation
           , T DeadVariableElimination
           ]
-    (pipelineInfo, transformed) <- pipeline defaultOpts before ppln
+    (pipelineInfo, transformed) <- pipeline defaultOpts Nothing before ppln
     transformed `sameAs` after

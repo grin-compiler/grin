@@ -49,8 +49,9 @@ library
     Grin.TH
     Grin.Lint
     Grin.Parse
+    Grin.ParseAST
     Grin.ParseBasic
-    Grin.ParseType
+    Grin.ParseTypeEnv
     Grin.Pretty
     Grin.PrettyLint
     Grin.Statistics
@@ -104,7 +105,7 @@ library
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.UpdateElimination
     Transformations.Simplifying.CaseSimplification
-    Transformations.Simplifying.NodeNameIntroduction
+    Transformations.Simplifying.ProducerNameIntroduction
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Simplifying.SplitFetch
@@ -208,6 +209,9 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadData.SeparateProds
                      , DeadCodeElimination.Tests.ProducerGrouping
                      , DeadCodeElimination.Tests.Util
+                     , HeapPointsTo.HeapPointsToSpec
+                     , HeapPointsTo.Tests.Undefined
+                     , HeapPointsTo.Tests.Util
                      , LiveVariable.LiveVariableSpec
                      , LiveVariable.Tests.CaseAnonymous
                      , LiveVariable.Tests.CaseMinLit
@@ -231,6 +235,9 @@ test-suite grin-test
                      , LiveVariable.Tests.NodesTricky
                      , LiveVariable.Tests.SumOpt
                      , LiveVariable.Tests.Util
+                     , Parse.ParseSpec 
+                     , Parse.Tests.Interleaved
+                     , Parse.Tests.Util
                      , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec

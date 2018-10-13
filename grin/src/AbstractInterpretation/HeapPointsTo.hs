@@ -4,13 +4,20 @@ module AbstractInterpretation.HeapPointsTo where
 import Control.Monad.Trans.Except
 import Control.Monad.State
 
+import Data.Set (Set)
+import Data.Map (Map)
+import Data.Vector (Vector)
+
 import qualified Data.Set as Set
+import qualified Data.Map as Map
+import qualified Data.Vector as Vec
 import Data.Functor.Foldable as Foldable
 
 import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin
+import Grin.TypeEnvDefs
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
@@ -37,6 +44,18 @@ litToSimpleType = \case
   LFloat  {}  -> -4
   LBool   {}  -> -5
 
+codeGenNodeTypeHPT :: HasDataFlowInfo s => 
+                      Tag -> Vector SimpleType -> CG s IR.Reg 
+codeGenNodeTypeHPT tag ts = do 
+  let ts' = Vec.toList ts
+  r <- newReg
+  irTag <- getTag tag
+  argRegs <- mapM codeGenSimpleType ts'
+  emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length argRegs)}
+  forM_ (zip [0..] argRegs) $ \(idx, argReg) -> 
+    emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
+  pure r
+
 codeGenVal :: Val -> CG HPTProgram IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
@@ -46,8 +65,11 @@ codeGenVal = \case
     forM_ (zip [0..] vals) $ \(idx, val) -> case val of
       Var name -> do
         valReg <- getReg name
-        emit IR.Extend {srcReg = valReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
+        emitExtendNodeItem valReg irTag idx r
       Lit lit -> emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
+      Undefined (T_SimpleType t) -> do 
+        tmp <- codeGenSimpleType t
+        emitExtendNodeItem tmp irTag idx r
       _ -> throwE $ "illegal node item value " ++ show val
     pure r
   Unit -> do
@@ -62,6 +84,7 @@ codeGenVal = \case
       }
     pure r
   Var name -> getReg name
+  Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
   val -> throwE $ "unsupported value " ++ show val
 
 codeGenPrimOp :: HasDataFlowInfo s => Name -> IR.Reg -> [IR.Reg] -> CG s ()

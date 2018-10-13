@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Transformations.Simplifying.NodeNameIntroduction where
+module Transformations.Simplifying.ProducerNameIntroduction where
 
 import Control.Monad
 import Data.Functor.Foldable as Foldable
@@ -18,8 +18,8 @@ newNodeName = deriveNewName "node"
 
 -- this transformation can invalidate the "no left bind" invariant
 -- so we have to normalize these incorrect bindings
-nodeNameIntroduction :: Exp -> Exp
-nodeNameIntroduction e = evalNameM e . cata alg $ e where
+producerNameIntroduction :: Exp -> Exp
+producerNameIntroduction e = evalNameM e . cata alg $ e where
   alg :: ExpF (NameM Exp) -> NameM Exp
   alg e = case e of
     SStoreF    x@VarTagNode{}         -> bindVal SStore x
@@ -28,7 +28,6 @@ nodeNameIntroduction e = evalNameM e . cata alg $ e where
     SUpdateF p x@ConstTagNode{}       -> bindVal (SUpdate p) x
     SReturnF   x@VarTagNode{}         -> bindVal SReturn x
     SReturnF   x@ConstTagNode{}       -> bindVal SReturn x
-    SAppF      f args                 -> bindFromApp f args
     ECaseF     x@VarTagNode{}   altsM -> bindFromCase x altsM
     ECaseF     x@ConstTagNode{} altsM -> bindFromCase x altsM
     expf -> fmap embed . sequence $ expf
@@ -44,8 +43,3 @@ nodeNameIntroduction e = evalNameM e . cata alg $ e where
   bindFromCase x altsM = do
     alts <- sequence altsM
     bindVal (flip ECase alts) x
-
-  bindFromApp :: Name -> [SimpleVal] -> NameM Exp
-  bindFromApp f args = do
-    nodeVar <- fmap Var newNodeName
-    return $ SBlock $ EBind (SApp f args) nodeVar (SReturn nodeVar)

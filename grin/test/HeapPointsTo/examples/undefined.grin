@@ -1,0 +1,9 @@
+grinMain = 
+  p0 <- store (CNil)
+  p1 <- store (CCons 0 p0)
+  x0 <- pure (#undefined :: T_Int64)
+  n0 <- pure (#undefined :: {CCons[T_Int64,{0,1}]})
+  p2 <- store n0
+  n1 <- pure (#undefined :: {CNil[],CCons[T_Int64,{2}]})
+  n2 <- pure (CCons (#undefined :: T_Int64) p0) 
+  pure 5

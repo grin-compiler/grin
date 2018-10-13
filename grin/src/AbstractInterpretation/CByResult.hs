@@ -12,16 +12,19 @@ import qualified Data.Set    as S
 import qualified Data.Map    as M
 import qualified Data.Vector as V
 
+import Data.Maybe
+
 import Lens.Micro.Platform
 
 import Grin.Grin (Name, Tag)
 import AbstractInterpretation.HPTResult
 import AbstractInterpretation.IR (Reg(..))
 import AbstractInterpretation.Reduce (Computer)
-import AbstractInterpretation.CreatedBy as CBy (CByProgram(..), HPTWProducerInfo(..))
+import AbstractInterpretation.CreatedBy as CBy
 import AbstractInterpretation.CByResultTypes
 import AbstractInterpretation.CByUtil
 import AbstractInterpretation.LVAResult (LVAResult)
+
 
 -- HPTResult with producer info
 type HPTResultP = HPTResult
@@ -41,10 +44,19 @@ regToProd (Reg i) = fromIntegral i
 toProdMap :: Map Reg Name -> Map Producer Name
 toProdMap = M.mapKeys regToProd
 
--- the producers will be interpreted as heap locations
+-- Adds the undefined producer to a producer mapping
+withUndefined :: Map Producer Name -> Map Producer Name 
+withUndefined = M.insert udProdId udProdName
+  where udProdId   = fromIntegral undefinedProducer
+        udProdName = undefinedProducerName
+
+-- the heap locations will be interpreted as producers
+-- also, the undefined value will hold the undefined producer's id
 toProducer :: SimpleType -> Producer
-toProducer (T_Location n) = n
-toProducer t = error $ "Incorrect information for producer. Expected T_Location Int, got: " ++ show t
+toProducer (T_Location  n) = n
+toProducer (T_Undefined n) 
+  | n == fromIntegral undefinedProducer = n
+toProducer t = error $ "Incorrect information for producer. Expected T_Location Int or the undefined producer, got: " ++ show t
 
 -- removes the producers info from nodes
 dropProducer :: NodeP -> Node
@@ -62,7 +74,10 @@ getProducer = fst . extractProducer
 
 -- we assume that the producer will always be present in the register mapping
 getNamedProducer :: Map Producer Name -> NodeP -> Set Name
-getNamedProducer regs = S.map (regs M.!) . fst . extractProducer
+getNamedProducer regs = S.map (`lookupE` regs) . fst . extractProducer
+  where lookupE k m = fromMaybe (error $ hasNoName k) $ M.lookup k m
+        hasNoName p = "Producer with id " ++ show p ++ " has no name. " ++ fix
+        fix = "Possible fix: run producer name introduction before the created-by analysis"
 
 extractProducer :: NodeP -> (Set Producer, Node)
 extractProducer nodeP = (S.map toProducer ps, node)
@@ -70,7 +85,7 @@ extractProducer nodeP = (S.map toProducer ps, node)
 
 toCByResult :: CByProgram -> Computer -> CByResult
 toCByResult cbyProg comp = CByResult hptResult producers groupedProducers
-  where prodMap = toProdMap . CBy._producerMap $ cbyProg
+  where prodMap = withUndefined . toProdMap . CBy._producerMap $ cbyProg
         hptProg = _hptProg . _hptProgWProd $ cbyProg
         hptProdResult@HPTResult{..} = toHPTResult hptProg comp
 

@@ -38,6 +38,7 @@ runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcProducers
   , caseRestricted1Src
   , caseRestricted2Src
   , caseRestricted3Src
+  , undefinedSrc
   ]
   [ puresSpec
   , funCallSpec
@@ -47,6 +48,7 @@ runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcProducers
   , caseRestricted1Spec
   , caseRestricted2Spec
   , caseRestricted3Spec
+  , undefinedSpec
   ]
 
 cbyExamples :: FilePath
@@ -71,6 +73,8 @@ emptyProducerSet = mkProducerSet []
 restrictedBy :: ProducerSet -> Tag -> ProducerSet
 restrictedBy (ProducerSet ps) tag = ProducerSet $ M.filterWithKey (\k _ -> k == tag) ps
 
+udProd :: String 
+udProd = undefinedProducerName
 
 
 puresSrc :: FilePath
@@ -274,3 +278,25 @@ pointerInNodeExpected = ProducerMap $
 
 pointerInNodeSpec :: ProducerMap -> Spec
 pointerInNodeSpec found = it "pointer_in_node" $ found `sameAs` pointerInNodeExpected
+
+
+
+undefinedSrc :: FilePath
+undefinedSrc = cbyExamples </> "undefined.grin"
+
+undefinedExpected :: ProducerMap
+undefinedExpected = ProducerMap $
+  M.fromList [ ("n0",  producerN0)
+             , ("n1",  producerN1)
+             , ("n2",  producerN2)
+             , ("p0",  emptyProducerSet)
+             , ("p1",  emptyProducerSet)
+             , ("p2",  emptyProducerSet)
+             , ("x0",  emptyProducerSet)
+             ]
+  where producerN0 = mkProducerSet [(Tag C "Cons", [udProd])]
+        producerN1 = mkProducerSet [(Tag C "Cons", [udProd]), (Tag C "Nil", [udProd])]
+        producerN2 = mkProducerSet [(Tag C "Cons", ["n2"])]
+
+undefinedSpec :: ProducerMap -> Spec
+undefinedSpec found = it "undefined" $ found `sameAs` undefinedExpected

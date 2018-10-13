@@ -5,6 +5,8 @@ module Grin.TypeEnvDefs where
 import Data.Map (Map)
 import Data.Vector (Vector)
 
+import Data.Monoid
+
 import Control.DeepSeq
 import GHC.Generics (Generic)
 

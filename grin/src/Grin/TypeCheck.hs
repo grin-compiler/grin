@@ -43,6 +43,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
     T_Bool    -> TypeEnv.T_Bool
     T_Unit    -> TypeEnv.T_Unit
     T_Location l -> TypeEnv.T_Location [l]
+    ud@T_Undefined{} -> error $ "Encountered undefined type during type checking: " ++ show ud
 
   isLocation :: SimpleType -> Bool
   isLocation = \case

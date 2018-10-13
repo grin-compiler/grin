@@ -15,6 +15,7 @@ import Grin.TypeEnv
 import Grin.TypeCheck
 import Pipeline.Optimizations
 import qualified Grin.Statistics as Statistics
+import Grin.Parse
 import Grin.Pretty()
 import Transformations.CountVariableUse
 import Transformations.GenerateEval
@@ -31,7 +32,7 @@ import Transformations.MangleNames
 import Transformations.EffectMap
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
-import Transformations.Simplifying.NodeNameIntroduction
+import Transformations.Simplifying.ProducerNameIntroduction
 import qualified AbstractInterpretation.HPTResult as HPT
 import qualified AbstractInterpretation.CByResult as CBy
 import qualified AbstractInterpretation.LVAResult as LVA
@@ -81,7 +82,7 @@ type RenameVariablesMap = Map String String
 data Transformation
   -- Simplifying
   = RegisterIntroduction
-  | NodeNameIntroduction
+  | ProducerNameIntroduction
   | Vectorisation
   | SplitFetch
   | CaseSimplification
@@ -127,7 +128,7 @@ transformation n = \case
   CaseSimplification              -> noEffectMap $ noTypeEnv caseSimplification
   SplitFetch                      -> noEffectMap $ noTypeEnv splitFetch
   RegisterIntroduction            -> noEffectMap $ noTypeEnv $ registerIntroductionI n
-  NodeNameIntroduction            -> noEffectMap $ noTypeEnv nodeNameIntroduction
+  ProducerNameIntroduction        -> noEffectMap $ noTypeEnv producerNameIntroduction
   RightHoistFetch                 -> noEffectMap $ noTypeEnv RHF.rightHoistFetch
   -- misc
   MangleNames                     -> noEffectMap $ noTypeEnv mangleNames
@@ -190,6 +191,8 @@ data PipelineStep
   | SaveGrin FilePath
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
+  | ParseTypeAnnots
+  | PrintTypeAnnots
   | PrintTypeEnv
   | Lint
   | ConfluenceTest
@@ -219,7 +222,8 @@ defaultOpts = PipelineOpts
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
-    { _psExp        :: Exp
+    { _psSrc        :: Maybe String
+    , _psExp        :: Exp
     , _psTransStep  :: Int
     , _psSaveIdx    :: Int
     , _psHPTProgram :: Maybe HPT.HPTProgram
@@ -229,6 +233,7 @@ data PState = PState
     , _psLVAProgram :: Maybe LVA.LVAProgram
     , _psLVAResult  :: Maybe LVA.LVAResult
     , _psTypeEnv    :: Maybe TypeEnv
+    , _psTypeAnnots :: Maybe TypeEnv
     , _psEffectMap  :: Maybe EffectMap
     , _psErrors     :: [String]
     }
@@ -289,6 +294,8 @@ pipelineStep p = do
     SaveLLVM relPath path -> saveLLVM relPath path
     SaveGrin path   -> saveGrin path
     PrintAST        -> printAST
+    ParseTypeAnnots -> parseTypeAnnots
+    PrintTypeAnnots -> printTypeAnnots
     PrintTypeEnv    -> printTypeEnv
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
@@ -441,10 +448,20 @@ runLVAPure = use psLVAProgram >>= \case
 
 
 
+parseTypeAnnots :: PipelineM () 
+parseTypeAnnots = do 
+  Just src <- use psSrc
+  psTypeAnnots .= Just (parseMarkedTypeEnv src)
+
+printTypeAnnots :: PipelineM () 
+printTypeAnnots = do 
+  Just typeEnv <- use psTypeAnnots
+  pipelineLog . show . pretty $ typeEnv
+
 printTypeEnv :: PipelineM ()
 printTypeEnv = do
   Just typeEnv <- use psTypeEnv
-  pipelineLog $ show $ pretty $ typeEnv
+  pipelineLog . show . pretty $ typeEnv
 
 transformationM :: Transformation -> PipelineM ()
 transformationM DeadDataElimination = do
@@ -632,10 +649,11 @@ confluenceTest = do
   pipelineLog "\nSecond transformation permutation:"
   pipelineLog $ show pipeline2
 
-runPipeline :: PipelineOpts -> Exp -> PipelineM a -> IO (a, Exp)
-runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
+runPipeline :: PipelineOpts -> Maybe String -> Exp -> PipelineM a -> IO (a, Exp)
+runPipeline o s e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
   start = PState
-    { _psExp        = e
+    { _psSrc        = s
+    , _psExp        = e
     , _psTransStep  = 0
     , _psSaveIdx    = 0
     , _psHPTProgram = Nothing
@@ -645,16 +663,17 @@ runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o
     , _psLVAProgram = Nothing
     , _psLVAResult  = Nothing
     , _psTypeEnv    = Nothing
+    , _psTypeAnnots = Nothing
     , _psEffectMap  = Nothing
     , _psErrors     = []
     }
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
-pipeline :: PipelineOpts -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
-pipeline o e ps = do
+pipeline :: PipelineOpts -> Maybe String -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
+pipeline o s e ps = do
   print ps
-  runPipeline o e $ mapM (\p -> (,) p <$> pipelineStep p) ps
+  runPipeline o s e $ mapM (\p -> (,) p <$> pipelineStep p) ps
 
 -- | Run the pipeline with the given set of transformations, till
 -- it reaches a fixpoint where none of the pipeline transformations
@@ -700,7 +719,7 @@ optimize o e pre post = optimizeWith o e pre optimizations post where
     ]
 
 optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> IO Exp
-optimizeWith o e pre optimizations post = fmap snd $ runPipeline o e $ do
+optimizeWith o e pre optimizations post = fmap snd $ runPipeline o Nothing e $ do
   lintGrin $ Just "init"
 
   mapM_ pipelineStep pre

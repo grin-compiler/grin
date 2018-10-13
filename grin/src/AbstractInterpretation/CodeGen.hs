@@ -1,14 +1,21 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, RankNTypes, ViewPatterns #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes #-}
 module AbstractInterpretation.CodeGen where
 
-import Control.Monad.Trans.Except
 import Data.Word
+import Data.Set (Set)
+import Data.Map (Map)
+import Data.Vector (Vector)
+
 import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Vector as Vec
+
 import Control.Monad.State
+import Control.Monad.Trans.Except
 
 import Grin.Grin
+import Grin.TypeEnvDefs
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (AbstractProgram(..), HasDataFlowInfo(..))
 
@@ -96,3 +103,61 @@ codeGenAlt (mName, reg) restrict before altM after restore =
     altResult <- altM
     after altResult
     maybe (pure ()) (restore reg) mName
+
+emitMove :: HasDataFlowInfo s => IR.Reg -> IR.Reg -> CG s () 
+emitMove src dst = emit IR.Move { srcReg = src, dstReg = dst }
+
+emitExtendNodeItem :: HasDataFlowInfo s => 
+                      IR.Reg -> IR.Tag -> Int -> IR.Reg -> CG s () 
+emitExtendNodeItem src irTag idx dst = 
+  emit IR.Extend { srcReg = src
+                 , dstSelector = IR.NodeItem irTag idx
+                 , dstReg = dst
+                 }
+
+-- TODO: rename simple type to something more generic,
+newRegWithSimpleType :: HasDataFlowInfo s => IR.SimpleType -> CG s IR.Reg 
+newRegWithSimpleType irTy = newReg >>= extendSimpleType irTy
+
+-- TODO: rename simple type to something more generic,
+extendSimpleType :: HasDataFlowInfo s => 
+                    IR.SimpleType -> IR.Reg -> CG s IR.Reg 
+extendSimpleType irTy r = do
+  emit IR.Set
+    { dstReg    = r
+    , constant  = IR.CSimpleType irTy
+    }
+  pure r
+
+codeGenSimpleType :: HasDataFlowInfo s => SimpleType -> CG s IR.Reg 
+codeGenSimpleType = \case 
+  T_Unit   -> newRegWithSimpleType (-1)
+  T_Int64  -> newRegWithSimpleType (-2)
+  T_Word64 -> newRegWithSimpleType (-3)
+  T_Float  -> newRegWithSimpleType (-4)
+  T_Bool   -> newRegWithSimpleType (-5)
+  T_Location locs -> do
+    r <- newReg
+    let locs' = map fromIntegral locs
+    mapM_ (`extendSimpleType` r) locs' 
+    pure r
+  t -> throwE $ "Code gen is not implemented for simple type: " ++ show t
+  
+
+codeGenNodeSetWith :: HasDataFlowInfo s => 
+                      (Tag -> Vector SimpleType -> CG s IR.Reg) -> 
+                      NodeSet -> CG s IR.Reg 
+codeGenNodeSetWith cgNodeTy ns = do 
+  let (tags, argss) = unzip . Map.toList $ ns
+  r <- newReg
+  nodeRegs <- zipWithM cgNodeTy tags argss
+  forM_ nodeRegs (`emitMove` r)
+  pure r
+
+codeGenType :: HasDataFlowInfo s => 
+               (SimpleType -> CG s IR.Reg) ->
+               (NodeSet -> CG s IR.Reg) ->
+               Type -> CG s IR.Reg
+codeGenType cgSimpleTy cgNodeTy = \case 
+  T_SimpleType t -> cgSimpleTy t
+  T_NodeSet   ns -> cgNodeTy ns

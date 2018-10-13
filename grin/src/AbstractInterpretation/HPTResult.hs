@@ -26,6 +26,9 @@ data SimpleType
   | T_Bool
   | T_Unit
   | T_Location Int
+  -- NOTE: The undefined type can hold any negative integer,
+  --       but cannot be propagated to the type checking phase.
+  | T_Undefined Int
   deriving (Eq, Ord, Show)
 
 type    Node    = Vector (Set SimpleType)
@@ -76,7 +79,7 @@ toSimpleType ty | ty < 0 = case ty of
   -3 -> T_Word64
   -4 -> T_Float
   -5 -> T_Bool
-  _ -> error $ "unknown type code " ++ show ty
+  n  -> T_Undefined $ fromIntegral n
 toSimpleType l = T_Location $ fromIntegral l
 
 type instance Index   (Vector a) = Int

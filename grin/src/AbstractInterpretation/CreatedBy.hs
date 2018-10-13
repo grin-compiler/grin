@@ -4,14 +4,20 @@ module AbstractInterpretation.CreatedBy where
 import Control.Monad.Trans.Except
 import Control.Monad.State
 
+import Data.Set (Set)
+import Data.Map (Map)
+import Data.Vector (Vector)
+
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified Data.Vector as Vec
 import Data.Functor.Foldable as Foldable
 
 import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin
+import Grin.TypeEnvDefs
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataFlowInfo(..))
@@ -44,6 +50,26 @@ addProducer r v = producerMap %= Map.insert r v
 registerToProducer :: IR.Reg -> IR.Producer
 registerToProducer (IR.Reg r) = fromIntegral r
 
+undefinedProducer :: IR.Producer
+undefinedProducer = -1723
+
+undefinedProducerName :: Name 
+undefinedProducerName = "#undefined"
+
+
+codeGenNodeTypeCBy :: HasDataFlowInfo s => 
+                      Tag -> Vector SimpleType -> CG s IR.Reg 
+codeGenNodeTypeCBy tag ts = do 
+  let ts' = Vec.toList ts
+  r <- newReg
+  irTag <- getTag tag
+  argRegs <- mapM codeGenSimpleType ts'
+  emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length argRegs + 1)}
+  emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag 0 undefinedProducer}
+  forM_ (zip [1..] argRegs) $ \(idx, argReg) -> 
+    emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
+  pure r
+
 codeGenVal :: Val -> CG CByProgram IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
@@ -54,8 +80,11 @@ codeGenVal = \case
     forM_ (zip [1..] vals) $ \(idx, val) -> case val of
       Var name -> do
         valReg <- getReg name
-        emit IR.Extend {srcReg = valReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
+        emitExtendNodeItem valReg irTag idx r
       Lit lit -> emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
+      Undefined (T_SimpleType t) -> do 
+        tmp <- codeGenSimpleType t
+        emitExtendNodeItem tmp irTag idx r
       _ -> throwE $ "illegal node item value " ++ show val
     pure r
   Unit -> do
@@ -70,6 +99,7 @@ codeGenVal = \case
       }
     pure r
   Var name -> getReg name
+  Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeCBy) t
   val -> throwE $ "unsupported value " ++ show val
 
 codeGen :: Exp -> Either String CByProgram
@@ -86,11 +116,15 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       pure Z
 
-    EBindF (SReturn ConstTagNode{},leftExp) (Var v) (_,rightExp) -> do
-      R r <- leftExp
-      addReg v r
-      addProducer r v
-      rightExp
+    EBindF (SReturn lhs,leftExp) (Var v) (_,rightExp) 
+      | ConstTagNode{}        <- lhs -> cgProducer leftExp v rightExp
+      | Undefined T_NodeSet{} <- lhs -> cgProducer leftExp v rightExp
+      where 
+        cgProducer lExp p rExp = do
+          R r <- lExp
+          addReg v r
+          addProducer r v
+          rExp
     EBindF (_,leftExp) lpat (_,rightExp) -> do
       leftExp >>= \case
         Z -> case lpat of

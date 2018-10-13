@@ -88,6 +88,13 @@ set p = Set.fromList <$> bracedList p
 set1 :: Ord a => Parser a -> Parser (Set a)
 set1 p = Set.fromList <$> bracedList p
 
+anySingle :: MonadParsec e s m => m (Token s) 
+anySingle = satisfy (const True)
+
+anySingleBut :: MonadParsec e s m => Token s -> m (Token s) 
+anySingleBut t = satisfy (/= t)
+
+
 -- grin syntax
 
 -- TODO: unify var and con + support quotted syntax which allow any character

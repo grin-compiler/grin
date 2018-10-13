@@ -27,7 +27,7 @@ transformOpts =
   <|> flg SplitFetch "sf" "Split Fetch"
   <|> flg Vectorisation "v" "Vectorisation"
   <|> flg RegisterIntroduction "ri" "Register Introduction"
-  <|> flg NodeNameIntroduction "nni" "Node Name Introduction"
+  <|> flg ProducerNameIntroduction "pni" "Producer Name Introduction"
   <|> flg InlineEval "ie" "Inline Eval"
   <|> flg InlineApply "ia" "Inline Apply"
   <|> flg BindNormalisation "bn" "Bind Normalisation"
@@ -70,6 +70,8 @@ pipelineOpts =
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
   <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code"
+  <|> flg ParseTypeAnnots "parse-type-annots" "Parses the type annotations from the source"
+  <|> flg PrintTypeAnnots "print-type-annots" "Prints the type env calculated from the annotations in the source"
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
   <|> flg' (Pass [CBy CompileToAbstractProgram, CBy RunAbstractProgramPure]) 't' "cby" "Compiles and runs the created-by analysis"
@@ -118,7 +120,7 @@ main = do
         opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
     case steps of
       [] -> void $ optimize opts program prePipeline postPipeline
-      _  -> void $ pipeline opts program steps
+      _  -> void $ pipeline opts (Just content) program steps
 
 prePipeline :: [PipelineStep]
 prePipeline =

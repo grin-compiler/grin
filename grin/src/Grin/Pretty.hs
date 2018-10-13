@@ -74,7 +74,7 @@ instance Pretty Val where
     -- simple val
     Lit lit      -> pretty lit
     Var name     -> text name
-    Undefined ty -> parens $ text "#undefined :: " <+> pretty ty
+    Undefined ty -> parens $ text "#undefined" <+> text "::" <+> pretty ty
 
 instance Pretty Lit where
   pretty = \case

@@ -40,7 +40,7 @@ cg_main opts = do
     putStrLn "\n* Lambda"
     printLambda program
     let lambdaGrin = codegenGrin program
-    void $ pipeline pipelineOpts lambdaGrin
+    void $ pipeline pipelineOpts (Just content) lambdaGrin
       [ SaveGrin "from-lambda.grin"
       , T GenerateEval
       , SaveGrin (output opts)

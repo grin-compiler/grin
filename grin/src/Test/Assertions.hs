@@ -11,6 +11,7 @@ import AbstractInterpretation.CByUtil   (ProducerGraph(..))
 import AbstractInterpretation.CByResult (ProducerMap)
 import AbstractInterpretation.PrettyLVA
 import AbstractInterpretation.LVAResult (LVAResult)
+import AbstractInterpretation.HPTResult (HPTResult)
 
 
 class SameAs a where
@@ -20,6 +21,9 @@ instance SameAs TypeEnv where
   sameAs found expected = found `shouldBe` expected
 
 instance SameAs ProducerMap where
+  sameAs found expected = (PP found) `shouldBe` (PP expected)
+
+instance SameAs HPTResult where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
 
 instance SameAs LVAResult where
