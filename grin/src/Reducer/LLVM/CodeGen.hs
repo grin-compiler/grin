@@ -465,14 +465,28 @@ codeGenIncreaseHeapPointer name = do
     , type'     = i64
     , metadata  = []
     }
-  heapInt <- codeGenLocalVar "new_node_ptr" i64 $ AST.AtomicRMW
-    { volatile      = False
-    , rmwOperation  = RMWOperation.Add
-    , address       = ConstantOperand $ GlobalReference (ptr i64) (mkName heapPointerName)
-    , value         = tuSizeInt
-    , atomicity     = (System, Monotonic)
-    , metadata      = []
+  heapInt <- codeGenLocalVar "cur_heap" tagLLVMType $ Load
+    { volatile        = False
+    , address         = ConstantOperand $ GlobalReference (ptr i64) (mkName heapPointerName)
+    , maybeAtomicity  = Nothing
+    , alignment       = 1
+    , metadata        = []
     }
+  newHeapInt <- codeGenLocalVar "new_heap" i64 $ Add
+    { nsw             = False
+    , nuw             = False
+    , operand0        = tuSizeInt
+    , operand1        = heapInt
+    , metadata        = []
+    }
+  emit [Do Store
+    { volatile        = False
+    , address         = ConstantOperand $ GlobalReference (ptr i64) (mkName heapPointerName)
+    , value           = newHeapInt
+    , maybeAtomicity  = Nothing
+    , alignment       = 1
+    , metadata        = []
+    }]
   codeGenLocalVar "new_node_ptr" (ptr i64) $ AST.IntToPtr
     { operand0  = heapInt
     , type'     = ptr i64
