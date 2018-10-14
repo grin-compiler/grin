@@ -1,6 +1,6 @@
 # GRIN - LLVM - WebAssembly Experiment
 
-## Run
+## Try
 0. clone this repo
 ```bash
 cd grin/grin/grin/wasm-sum-test
@@ -9,6 +9,13 @@ firefox grin-wasm-simple.html
 ```
 open javascript console
 ![](https://raw.githubusercontent.com/grin-tech/grin/webassemby-experiment/grin/grin/wasm-sum-test/wasm-sum-simple-output.png)
+
+## Recompile (optional)
+GRIN -> LLVM -> WASM
+```bash
+cd grin/grin/grin/wasm-sum-test
+./wasm.sh
+```
 
 ### GRIN optimization OFF
 Thunks and data are stored on heap.
