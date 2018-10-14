@@ -1,0 +1,9 @@
+grinMain =
+  pp 1234
+  pp 2345
+  pp 3456
+
+pp i =
+  t1 <- store (CInt i)
+  (CInt x) <- fetch t1
+  _prim_int_print x

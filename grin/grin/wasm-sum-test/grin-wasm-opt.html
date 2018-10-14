@@ -1,0 +1,40 @@
+<!doctype html>
+
+<html>
+
+  <head>
+    <meta charset="utf-8">
+    <title>WASM test</title>
+  </head>
+
+  <body>
+    <script>
+      var importObject = {
+        env: {
+          _prim_int_print: function(arg) {
+            console.log(arg);
+          }
+        }
+      };
+
+function run(result) {
+  result.instance.exports.grinMain();
+}
+
+try {
+      fetch('opt-linked.wasm').then(response =>
+        response.arrayBuffer()
+      ).then(bytes =>
+        WebAssembly.instantiate(bytes, importObject)
+      ).then(result => run(result)
+      );
+}
+catch(error) {
+  console.error(error);
+  // expected output: SyntaxError: unterminated string literal
+  // Note - error messages will vary depending on browser
+}
+    </script>
+  </body>
+
+</html>
