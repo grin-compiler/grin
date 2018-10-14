@@ -3,7 +3,7 @@
 ## Run
 0. clone this repo
 ```bash
-cd grin/grin/wasm-sum-test
+cd grin/grin/grin/wasm-sum-test
 firefox grin-wasm-opt.html
 firefox grin-wasm-simple.html
 ```
