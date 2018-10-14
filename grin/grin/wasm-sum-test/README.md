@@ -1,24 +1,25 @@
 # GRIN - LLVM - WebAssemby Experiment
 
 ## Run
-- clone the repo
-- cd grin/grin/wasm-sum-test
-- firefox grin-wasm-opt.html
-- firefox grin-wasm-simple.html
-
-![wasm-sum-simple-output.png]
+0. clone this repo
+```bash
+cd grin/grin/wasm-sum-test
+firefox grin-wasm-opt.html
+firefox grin-wasm-simple.html
+```
+![](https://raw.githubusercontent.com/grin-tech/grin/webassemby-experiment/grin/grin/wasm-sum-test/wasm-sum-simple-output.png)
 
 ### GRIN optimization OFF
 Thunks and data are stored on heap.
 
-![wasm-wasm-grin-simple.png]
+![](https://raw.githubusercontent.com/grin-tech/grin/webassemby-experiment/grin/grin/wasm-sum-test/wasm-grin-simple.png)
 
 
 ### GRIN optimization ON
 
 No heap usage.
 
-![wasm-grin-opt.png]
+![](https://raw.githubusercontent.com/grin-tech/grin/webassemby-experiment/grin/grin/wasm-sum-test/wasm-grin-opt.png)
 
 ## Sample Program
 Sample Haskell program
