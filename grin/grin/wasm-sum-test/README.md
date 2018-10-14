@@ -1,5 +1,26 @@
 # GRIN - LLVM - WebAssemby Experiment
 
+## Run
+- clone the repo
+- cd grin/grin/wasm-sum-test
+- firefox grin-wasm-opt.html
+- firefox grin-wasm-simple.html
+
+![wasm-sum-simple-output.png]
+
+### GRIN optimization OFF
+Thunks and data are stored on heap.
+
+![wasm-wasm-grin-simple.png]
+
+
+### GRIN optimization ON
+
+No heap usage.
+
+![wasm-grin-opt.png]
+
+## Sample Program
 Sample Haskell program
 ```
 main = print $ sum [1..100]
@@ -45,25 +66,4 @@ eval q = v <- fetch q
           (Fsum c)      -> z <- sum c
                            --update q z -- FIXME: enable sharing analysis
                            pure z
-```
-
-### GRIN optimization OFF
-Thunks and data are stored on heap.
-
-
-### GRIN optimization ON
-
-No heap usage.
-
-```
-(module
-  (type (;0;) (func))
-  (type (;1;) (func (param i32)))
-  (import "env" "__linear_memory" (memory (;0;) 1))
-  (import "env" "__indirect_function_table" (table (;0;) 0 anyfunc))
-  (import "env" "_prim_int_print" (func (;0;) (type 1)))
-  (func (;1;) (type 0)
-    i32.const 5050
-    call 0)
-  (data (i32.const 0) "\00\00\00\00"))
 ```
