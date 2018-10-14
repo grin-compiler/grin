@@ -1,6 +1,6 @@
 # GRIN - LLVM - WebAssembly Experiment
 
-## Try
+## Run
 0. clone this repo
 ```bash
 cd grin/grin/grin/wasm-sum-test
