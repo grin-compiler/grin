@@ -1,4 +1,4 @@
-# GRIN - LLVM - WebAssemby Experiment
+# GRIN - LLVM - WebAssembly Experiment
 
 ## Run
 0. clone this repo
