@@ -1,7 +1,7 @@
 # GRIN - LLVM - WebAssembly Experiment
 
 ## Run
-0. clone this repo
+0. clone this repo + switch to `webassembly-experiment` branch
 ```bash
 cd grin/grin/grin/wasm-sum-test
 firefox grin-wasm-opt.html
