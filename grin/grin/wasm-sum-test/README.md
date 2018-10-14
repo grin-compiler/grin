@@ -7,6 +7,7 @@ cd grin/grin/grin/wasm-sum-test
 firefox grin-wasm-opt.html
 firefox grin-wasm-simple.html
 ```
+open javascript console
 ![](https://raw.githubusercontent.com/grin-tech/grin/webassemby-experiment/grin/grin/wasm-sum-test/wasm-sum-simple-output.png)
 
 ### GRIN optimization OFF
