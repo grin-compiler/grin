@@ -24,7 +24,7 @@ No heap usage.
 
 ## Sample Program
 Sample Haskell program
-```
+```haskell
 main = print $ sum [1..100]
 ```
 
