@@ -28,7 +28,6 @@ data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
   | NotIn             (Set Tag)
-  | In                Reg        -- Check if the value is in the Reg
   deriving Show
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error on compile time ; the analyis will not be restrictive ; there will not be runtime checks
@@ -48,6 +47,10 @@ data Instruction
     { srcReg        :: Reg
     , dstSelector   :: Selector -- ^ the seleced tag must exist
     , dstReg        :: Reg
+    }
+  | ExtendReg -- ^ extends the destination register with the source register
+    { srcReg :: Reg
+    , dstReg :: Reg
     }
   | Move
     { srcReg        :: Reg
@@ -69,12 +72,6 @@ data Instruction
     { dstReg      :: Reg
     , constant    :: Constant
     }
-  | SetShared
-    { addressReg :: Reg
-    }
-  | GetShared
-    { dstReg :: Reg
-    }
   deriving Show
 
 data Constant
@@ -92,6 +89,7 @@ data HPTProgram
   , hptInstructions     :: [Instruction]
   , hptFunctionArgMap   :: Map.Map Name (Reg, [Reg])
   , hptTagMap           :: Bimap.Bimap Grin.Tag Tag
+  , hptSharingReg       :: Maybe Reg
   }
   deriving Show
 
@@ -102,4 +100,5 @@ emptyHPTProgram = HPTProgram
   , hptInstructions     = []
   , hptFunctionArgMap   = Map.empty
   , hptTagMap           = Bimap.empty
+  , hptSharingReg       = Nothing
   }

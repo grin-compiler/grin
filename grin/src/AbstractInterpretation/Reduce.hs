@@ -36,7 +36,6 @@ data Computer
   = Computer
   { _memory    :: Vector NodeSet
   , _register  :: Vector Value
-  , _shared    :: Set Mem
   }
   deriving (Eq, Show)
 
@@ -126,6 +125,10 @@ evalInstruction = \case
     let NodeItem tag itemIndex = dstSelector
     register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
 
+  ExtendReg {..} -> do
+    value <- use $ register.ix (regIndex srcReg)
+    register . ix (regIndex dstReg) %= mappend value
+
   Move {..} -> do
     value <- use $ register.ix (regIndex srcReg)
     register.ix (regIndex dstReg) %= (mappend value)
@@ -154,21 +157,11 @@ evalInstruction = \case
     CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-  SetShared {..} -> do
-    addressSet <- use $ register . ix (regIndex addressReg) . simpleType
-    forM_ addressSet $ \address -> when (address >= 0) $ do
-      shared %= Set.insert (Mem (fromIntegral address))
-
-  GetShared {..} -> do
-    sharedSet <- use shared
-    register . ix (regIndex dstReg) .= mempty { _simpleType = Set.map (fromIntegral . memIndex) sharedSet }
-
 evalHPT :: HPTProgram -> Computer
 evalHPT HPTProgram{..} = run emptyComputer where
   emptyComputer = Computer
     { _memory   = V.replicate (fromIntegral hptMemoryCounter) mempty
     , _register = V.replicate (fromIntegral hptRegisterCounter) mempty
-    , _shared   = mempty
     }
   run computer = if computer == nextComputer then computer else run nextComputer
     where nextComputer = execState (mapM_ evalInstruction hptInstructions) computer
@@ -178,7 +171,7 @@ toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
   { R._memory   = V.map convertNodeSet _memory
   , R._register = Map.map convertReg hptRegisterMap
   , R._function = Map.map convertFunctionRegs hptFunctionArgMap
-  , R._sharing  = Set.map (\(Mem m) -> fromIntegral m) _shared
+  , R._sharing  = maybe mempty (Set.map (\(R.T_Location l) -> l) . R._simpleType . convertReg) hptSharingReg
   }
   where
     convertReg :: Reg -> R.TypeSet

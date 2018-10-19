@@ -22,14 +22,14 @@ import qualified Data.Set as Set
 [x] Create a register to maintain sharing information
 [x] Add Sharing register as parameter to HPT
 [x] Add Sharing register as parameter to Sharing
-[ ] Remove _shared field from Reduce
-[ ] Add 'In' to the Condition
-[ ] Remove GetShared from IR
-[ ] Remove SetShared from IR
+[x] Remove _shared field from Reduce
+[-] Add 'In' to the Condition
+[x] Remove GetShared from IR
+[x] Remove SetShared from IR
 [x] CodeGenMain: depend on optimisation phase, before InLineAfter inline
     [x] CodeGenMain: add an extra parameter
     [x] Pipeline: Set a variable if the codegen is after or before
-[ ] Add mode as parameter for the eval'' and typecheck
+[?] Add mode as parameter for the eval'' and typecheck
 -}
 
 data Mode = IgnoreUpdates | CalcUpdates
@@ -57,18 +57,18 @@ calcNonLinearVariables mode exp = Set.fromList $ Map.keys $ Map.filter (>1) $ ca
       _ -> Map.empty
 
 sharingCodeGen :: Mode -> IR.Reg -> Exp -> CG ()
-sharingCodeGen m _s e = do
+sharingCodeGen m s e = do
   forM_ nonLinearVars $ \name -> do
     -- For all non-linear variables set the locations as shared.
     nonLinearVarReg <- getReg name
     nonLinearVarLocReg <- newReg
     emit $ IR.Project Locations nonLinearVarReg nonLinearVarLocReg
-    emit $ IR.SetShared nonLinearVarLocReg
+    emit $ IR.ExtendReg nonLinearVarLocReg s
 
-  sharedLocReg <- newReg
   pointsToLocReg <- newReg
-  emit $ IR.GetShared sharedLocReg
-  emit $ IR.Project IR.NodeLocations sharedLocReg pointsToLocReg
-  emit $ IR.SetShared pointsToLocReg
+  pointsToNodeReg <- newReg
+  emit $ IR.Fetch s pointsToNodeReg
+  emit $ IR.Project IR.NodeLocations pointsToNodeReg pointsToLocReg
+  emit $ IR.ExtendReg pointsToLocReg s
   where
     nonLinearVars = calcNonLinearVariables m e
