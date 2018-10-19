@@ -6,38 +6,29 @@ Dead field elimination:
     - in order to be able to delete a field (wtih a given tag), that field must be dead (with the given tag) for all producers in the group
 
 TODO:
-  ✔ lift Undefined to Val level @done(18-10-12 22:43)
-  ✔ introduce type annotations @done(18-10-12 22:43)
-  ✔ pretty print type annotations @done(18-10-12 22:45)
-  ✔ introduce heap type annotations in the begininning of the program @done(18-10-12 22:43)
-  ✔ write parser for type annotations @done(18-10-12 22:43)
-  - linter should check whether calculated types match with annotations
-  ✔ Grin.Grin FoldNames @done(18-10-14 00:56)
+  HIGH:
+    - implement type safe undefined node generation for tests (Test.Test) 
+    - store variable name <-> heap location is a bijective mapping
+    right now we store the location (a number)
+    but we could also store the variable name (just as with producers) 
+    
+  LOW:
+    - implement type env transformation for DDE
+    - linter should check whether calculated types match with annotations
+    - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
   
-  - tests: HeapIndirectSimple -> HeapIndirectComplex ?
-  
-  ✔ rename node name introduction to producer name introduction @done(18-10-14 01:17)
-  ✔ this transformation only has to introduce new name for producers, @done(18-10-14 01:17)
-  not for every node
-  
-  is this even needed then?
-  ✘ write tests for node name introduction @cancelled(18-10-12 22:44)
-  ✘ introduce new names for applications: @cancelled(18-10-12 22:44)
-  before: f x 5 (CNil)
-  after:  n0 <- pure x
-  n1 <- pure 5
-  n2 <- pure (CNil)
-  f n0 n1 n2
-  
-  - store variable name <-> heap location is a bijective mapping 
-  right now we store the lcoation (a number)
-  but we could also store the variable name (just as with producers) 
-  
-  ✔ implement heap type env parsing @done(18-10-12 22:44)
-  ✔ implement annotated line type env parsing @done(18-10-12 22:44)
-  ✔ extend HPT (and CBy) so that they gather type info from #undefined nodes @started(18-10-12 22:44) @done(18-10-14 00:52) @lasted(1d2h8m35s)
-  ✔ tests for HPT, CBy with undefineds @done(18-10-14 00:52)
-
-  - implement type safe undefined node generation for tests (Test.Test) 
-  ? implement type env transformation for DDE
 Archive:
+  ✔ lift Undefined to Val level @done(18-10-12 22:43) @project(TODO)
+  ✔ introduce type annotations @done(18-10-12 22:43) @project(TODO)
+  ✔ pretty print type annotations @done(18-10-12 22:45) @project(TODO)
+  ✔ introduce heap type annotations in the begininning of the program @done(18-10-12 22:43) @project(TODO)
+  ✔ write parser for type annotations @done(18-10-12 22:43) @project(TODO)
+  ✔ Grin.Grin FoldNames @done(18-10-14 00:56) @project(TODO)
+  ✔ rename node name introduction to producer name introduction @done(18-10-14 01:17) @project(TODO)
+  ✔ this transformation only has to introduce new name for producers, @done(18-10-14 01:17) @project(TODO)
+  ✘ write tests for node name introduction @cancelled(18-10-12 22:44) @project(TODO)
+  ✘ introduce new names for applications: @cancelled(18-10-12 22:44) @project(TODO)
+  ✔ implement heap type env parsing @done(18-10-12 22:44) @project(TODO)
+  ✔ implement annotated line type env parsing @done(18-10-12 22:44) @project(TODO)
+  ✔ extend HPT (and CBy) so that they gather type info from #undefined nodes @started(18-10-12 22:44) @done(18-10-14 00:52) @lasted(1d2h8m35s) @project(TODO)
+  ✔ tests for HPT, CBy with undefineds @done(18-10-14 00:52) @project(TODO)
