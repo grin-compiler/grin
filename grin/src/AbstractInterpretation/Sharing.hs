@@ -18,9 +18,21 @@ import qualified Data.Set as Set
 [x] Assumption: all the non-linear variables have registers already.
 [x] For all non-linear variables set the locations as shared.
 [x] For all the shared locations, look up the pointed locations and set to shared them.
+
+[x] Create a register to maintain sharing information
+[x] Add Sharing register as parameter to HPT
+[x] Add Sharing register as parameter to Sharing
+[ ] Remove _shared field from Reduce
+[ ] Add 'In' to the Condition
+[ ] Remove GetShared from IR
+[ ] Remove SetShared from IR
+[x] CodeGenMain: depend on optimisation phase, before InLineAfter inline
+    [x] CodeGenMain: add an extra parameter
+    [x] Pipeline: Set a variable if the codegen is after or before
+[ ] Add mode as parameter for the eval'' and typecheck
 -}
 
-data Mode = UpdatesInEval | InlinedEval
+data Mode = IgnoreUpdates | CalcUpdates
 
 calcNonLinearVariables :: Mode -> Exp -> Set.Set Name
 calcNonLinearVariables mode exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
@@ -32,8 +44,8 @@ calcNonLinearVariables mode exp = Set.fromList $ Map.keys $ Map.filter (>1) $ ca
       SFetchIF var _ -> seen (Var var)
       SUpdateF var val ->
         case mode of
-          UpdatesInEval -> mempty
-          InlinedEval   -> seen val
+          IgnoreUpdates -> mempty
+          CalcUpdates   -> seen val
       SReturnF val -> seen val
       SAppF _ ps -> union $ fmap seen ps
       rest -> Data.Foldable.foldr (Map.unionWith (+)) mempty rest
@@ -44,8 +56,8 @@ calcNonLinearVariables mode exp = Set.fromList $ Map.keys $ Map.filter (>1) $ ca
       VarTagNode v ps -> union $ fmap seen (Var v : ps)
       _ -> Map.empty
 
-sharingCodeGen :: Mode -> Exp -> CG ()
-sharingCodeGen m e = do
+sharingCodeGen :: Mode -> IR.Reg -> Exp -> CG ()
+sharingCodeGen m _s e = do
   forM_ nonLinearVars $ \name -> do
     -- For all non-linear variables set the locations as shared.
     nonLinearVarReg <- getReg name

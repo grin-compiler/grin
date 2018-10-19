@@ -82,8 +82,9 @@ typeEnvFromHPTResult hptResult = typeEnv where
     mapM convertFunction (_function hptResult) <*>
     pure (_sharing hptResult)
 
+-- TODO: Add mode as a parameter?
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where
-  hptProgram = HPT.codeGen exp
+  hptProgram = HPT.codeGen HPT.IgnoreUpdates exp
   hptResult = HPT.evalHPT <$> hptProgram
   result = HPT.toHPTResult <$>  hptProgram <*> hptResult

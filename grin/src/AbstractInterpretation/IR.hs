@@ -17,8 +17,8 @@ newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
 data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
-  | Locations
-  | NodeLocations
+  | Locations     -- Project the locations from an abstract value
+  | NodeLocations -- Project the locations from nodes stored in an abstract values
   deriving Show
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
@@ -28,6 +28,7 @@ data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
   | NotIn             (Set Tag)
+  | In                Reg        -- Check if the value is in the Reg
   deriving Show
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error on compile time ; the analyis will not be restrictive ; there will not be runtime checks

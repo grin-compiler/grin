@@ -19,6 +19,7 @@ data Reducer
   | LLVMReducer
   deriving (Eq, Show)
 
+-- TODO: Add Mode as a parameter?
 eval' :: Reducer -> String -> IO RTVal
 eval' reducer fname = do
   content <- readFile fname
@@ -31,7 +32,7 @@ eval' reducer fname = do
         LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
           typeEnv     = either error id $ typeEnvFromHPTResult =<< hptResult
           hptResult   = HPT.toHPTResult <$> hptProgram <*> (HPT.evalHPT <$> hptProgram)
-          hptProgram  = HPT.codeGen program
+          hptProgram  = HPT.codeGen HPT.IgnoreUpdates program
 
 evalProgram :: Reducer -> Program -> IO RTVal
 evalProgram reducer program =

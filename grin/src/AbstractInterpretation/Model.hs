@@ -41,6 +41,7 @@ TODO:
     [x] In the abstract heap the return value part of the location is only unioned if the same abstract location becomes shared
 [x] Implement warnings
 [ ] Check emptyness of nodeset and simpletypes when converting from TypeSet
+[ ] Handle default alternatives
 [ ] Create test case
 -}
 

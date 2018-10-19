@@ -182,11 +182,13 @@ codeGenPrimOp name funResultReg funArgRegs = do
     "_prim_bool_eq"   -> op [bool, bool] bool
     "_prim_bool_ne"   -> op [bool, bool] bool
 
-codeGenPhases :: [Exp -> CG ()] -> Exp -> Either String HPTProgram
-codeGenPhases phases e = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT $ mapM_ ($e) phases
+codeGenPhases :: CG ctx -> [ctx -> Exp -> CG ()] -> Exp -> Either String HPTProgram
+codeGenPhases init phases e = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT $ do
+  ctx <- init
+  mapM_ (\phase -> phase ctx e) phases
 
-hptCodeGen :: Exp -> CG ()
-hptCodeGen = void . cata folder where
+hptCodeGen :: IR.Reg -> Exp -> CG ()
+hptCodeGen _sharingReg = void . cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
     ProgramF defs -> sequence_ defs >> pure Z

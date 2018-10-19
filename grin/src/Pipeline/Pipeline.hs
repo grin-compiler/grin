@@ -105,6 +105,11 @@ data Transformation
   | LateInlining
   deriving (Enum, Eq, Ord, Show)
 
+data PipelinePhase
+  = BeforeInlineEval
+  | AfterInlineEval
+  deriving (Enum, Eq, Ord, Show)
+
 noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
 noTypeEnv f (t, e) = (t, f e)
 
@@ -180,6 +185,7 @@ data PipelineStep
   | PrintTypeEnv
   | Lint
   | ConfluenceTest
+  | DebugPipelineState
   deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
@@ -213,7 +219,8 @@ data PState = PState
     , _psTypeEnv    :: Maybe TypeEnv
     , _psEffectMap  :: Maybe EffectMap
     , _psErrors     :: [String]
-    }
+    , _psPhase      :: PipelinePhase
+    } deriving (Show)
 
 makeLenses ''PState
 makeLenses ''PipelineOpts
@@ -265,6 +272,7 @@ pipelineStep p = do
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
     ConfluenceTest  -> confluenceTest
+    DebugPipelineState -> debugPipelineState
   after <- use psExp
   let eff = if before == after then None else ExpChanged
   case p of
@@ -272,6 +280,7 @@ pipelineStep p = do
     _   -> pure ()
   -- TODO: Test this only for development mode.
   return eff
+
 
 calcEffectMap :: PipelineM ()
 calcEffectMap = do
@@ -288,7 +297,8 @@ printEffectMap = do
 compileHPT :: PipelineM ()
 compileHPT = do
   grin <- use psExp
-  case HPT.codeGen grin of
+  hptMode <- (\case { BeforeInlineEval -> HPT.IgnoreUpdates; _ -> HPT.CalcUpdates }) <$> use psPhase
+  case HPT.codeGen hptMode grin of
     Right hptProgram -> do
       psHPTProgram .= Just hptProgram
     Left e -> do
@@ -344,6 +354,7 @@ transformationM t = do
   n    <- use psTransStep
   exp0 <- use psExp
   let (env1, effs1, exp1) = transformation n t (env0, effs0, exp0)
+  when (t == InlineEval) $ psPhase .= AfterInlineEval
   psTypeEnv .= Just env1
   psExp     .= exp1
   psTransStep %= (+1)
@@ -512,6 +523,11 @@ confluenceTest = do
   pipelineLog "\nSecond transformation permutation:"
   pipelineLog $ show pipeline2
 
+debugPipelineState :: PipelineM ()
+debugPipelineState = do
+  ps <- MonadState.get
+  liftIO $ print ps
+
 runPipeline :: PipelineOpts -> Exp -> PipelineM a -> IO (a, Exp)
 runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
   start = PState
@@ -523,6 +539,7 @@ runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o
     , _psTypeEnv    = Nothing
     , _psEffectMap  = Nothing
     , _psErrors     = []
+    , _psPhase      = BeforeInlineEval
     }
 
 -- | Runs the pipeline and returns the last version of the given
