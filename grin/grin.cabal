@@ -78,6 +78,7 @@ library
     Transformations.Optimising.SparseCaseOptimisation
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.UpdateElimination
+    Transformations.Optimising.NonSharedElimination
     Transformations.Simplifying.CaseSimplification
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch2

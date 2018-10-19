@@ -15,6 +15,7 @@ module Pipeline.Optimizations
   , arityRaising
   , caseHoisting
   , lateInlining
+  , nonSharedElimination
   ) where
 
 import Transformations.Optimising.ConstantFolding (constantFolding)
@@ -33,3 +34,4 @@ import Transformations.Optimising.GeneralizedUnboxing (generalizedUnboxing)
 import Transformations.Optimising.ArityRaising (arityRaising)
 import Transformations.Optimising.CaseHoisting (caseHoisting)
 import Transformations.Optimising.Inlining (lateInlining)
+import Transformations.Optimising.NonSharedElimination (nonSharedElimination)

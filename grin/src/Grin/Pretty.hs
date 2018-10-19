@@ -122,7 +122,7 @@ instance Pretty Type where
 
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
-    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue
+    [ yellow (text "Location (* is shared)") <$$> indent 4 (prettyKeyValue
          $ map (\(k, v) -> (if k `Set.member` _sharing then (pretty k) <> text "*" else pretty k, v))
          $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
     , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)

@@ -49,6 +49,7 @@ transformOpts =
   <|> flg CaseHoisting "ch" "Case Hoisting"
   <|> flg LateInlining "li" "Late Inlining"
   <|> flg MangleNames "mn" "Mangle Names"
+  <|> flg NonSharedElimination "nse" "Non Shared Elimination"
 
 pipelineOpts :: Parser PipelineStep
 pipelineOpts =

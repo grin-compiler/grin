@@ -92,6 +92,7 @@ data Transformation
   | TrivialCaseElimination
   | SparseCaseOptimisation
   | UpdateElimination
+  | NonSharedElimination
   | CopyPropagation
   | ConstantPropagation
   | DeadProcedureElimination
@@ -148,6 +149,7 @@ transformation n = \case
   ArityRaising                    -> noEffectMap arityRaising
   LateInlining                    -> noEffectMap lateInlining
   UnitPropagation                 -> noEffectMap unitPropagation
+  NonSharedElimination            -> noEffectMap nonSharedElimination
 
 newtype Hidden a = H a
 
@@ -577,6 +579,7 @@ optimize o e pre post = optimizeWith o e pre optimizations post where
     , TrivialCaseElimination
     , SparseCaseOptimisation
     , UpdateElimination
+    , NonSharedElimination
     , CopyPropagation
     , ConstantPropagation
     , DeadProcedureElimination
