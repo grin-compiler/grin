@@ -106,11 +106,6 @@ data Transformation
   | LateInlining
   deriving (Enum, Eq, Ord, Show)
 
-data PipelinePhase
-  = BeforeInlineEval
-  | AfterInlineEval
-  deriving (Enum, Eq, Ord, Show)
-
 noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
 noTypeEnv f (t, e) = (t, f e)
 
@@ -221,7 +216,6 @@ data PState = PState
     , _psTypeEnv    :: Maybe TypeEnv
     , _psEffectMap  :: Maybe EffectMap
     , _psErrors     :: [String]
-    , _psPhase      :: PipelinePhase
     } deriving (Show)
 
 makeLenses ''PState
@@ -299,8 +293,7 @@ printEffectMap = do
 compileHPT :: PipelineM ()
 compileHPT = do
   grin <- use psExp
-  hptMode <- (\case { BeforeInlineEval -> HPT.IgnoreUpdates; _ -> HPT.CalcUpdates }) <$> use psPhase
-  case HPT.codeGen hptMode grin of
+  case HPT.codeGen grin of
     Right hptProgram -> do
       psHPTProgram .= Just hptProgram
     Left e -> do
@@ -356,7 +349,6 @@ transformationM t = do
   n    <- use psTransStep
   exp0 <- use psExp
   let (env1, effs1, exp1) = transformation n t (env0, effs0, exp0)
-  when (t == InlineEval) $ psPhase .= AfterInlineEval
   psTypeEnv .= Just env1
   psExp     .= exp1
   psTransStep %= (+1)
@@ -541,7 +533,6 @@ runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o
     , _psTypeEnv    = Nothing
     , _psEffectMap  = Nothing
     , _psErrors     = []
-    , _psPhase      = BeforeInlineEval
     }
 
 -- | Runs the pipeline and returns the last version of the given

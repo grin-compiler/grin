@@ -85,6 +85,6 @@ typeEnvFromHPTResult hptResult = typeEnv where
 -- TODO: Add mode as a parameter?
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where
-  hptProgram = HPT.codeGen HPT.IgnoreUpdates exp
+  hptProgram = HPT.codeGen exp
   hptResult = HPT.evalHPT <$> hptProgram
   result = HPT.toHPTResult <$>  hptProgram <*> hptResult

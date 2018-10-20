@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 module AbstractInterpretation.Sharing
-  ( Mode(..)
-  , sharingCodeGen
+  ( sharingCodeGen
   ) where
 
 import Grin.Syntax
@@ -29,23 +28,25 @@ import qualified Data.Set as Set
 [x] CodeGenMain: depend on optimisation phase, before InLineAfter inline
     [x] CodeGenMain: add an extra parameter
     [x] Pipeline: Set a variable if the codegen is after or before
-[?] Add mode as parameter for the eval'' and typecheck
+[-] Add mode as parameter for the eval'' and typecheck
+[x] Remove Mode for calcNonLinearVars
 -}
 
-data Mode = IgnoreUpdates | CalcUpdates
-
-calcNonLinearVariables :: Mode -> Exp -> Set.Set Name
-calcNonLinearVariables mode exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
+-- | Calc non linear variables, ignores variables that are used in update locations
+-- This is an important difference, if a variable would become non-linear due to
+-- being subject to an update, that would make the sharing analysis incorect.
+-- One possible improvement is to count the updates in a different set and make a variable
+-- linear if it subject to an update more than once. But that could not happen, thus the only
+-- introdcution of new updates comes from inlining the eval.
+calcNonLinearNonUpdateLocVariables :: Exp -> Set.Set Name
+calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
   where
     union = Map.unionsWith (+)
     collect = \case
       ECaseF val alts -> union (seen val : alts)
       SStoreF val -> seen val
       SFetchIF var _ -> seen (Var var)
-      SUpdateF var val ->
-        case mode of
-          IgnoreUpdates -> mempty
-          CalcUpdates   -> seen val
+      SUpdateF var val -> seen val
       SReturnF val -> seen val
       SAppF _ ps -> union $ fmap seen ps
       rest -> Data.Foldable.foldr (Map.unionWith (+)) mempty rest
@@ -56,8 +57,8 @@ calcNonLinearVariables mode exp = Set.fromList $ Map.keys $ Map.filter (>1) $ ca
       VarTagNode v ps -> union $ fmap seen (Var v : ps)
       _ -> Map.empty
 
-sharingCodeGen :: Mode -> IR.Reg -> Exp -> CG ()
-sharingCodeGen m s e = do
+sharingCodeGen :: IR.Reg -> Exp -> CG ()
+sharingCodeGen s e = do
   forM_ nonLinearVars $ \name -> do
     -- For all non-linear variables set the locations as shared.
     nonLinearVarReg <- getReg name
@@ -71,4 +72,4 @@ sharingCodeGen m s e = do
   emit $ IR.Project IR.NodeLocations pointsToNodeReg pointsToLocReg
   emit $ IR.ExtendReg pointsToLocReg s
   where
-    nonLinearVars = calcNonLinearVariables m e
+    nonLinearVars = calcNonLinearNonUpdateLocVariables e
