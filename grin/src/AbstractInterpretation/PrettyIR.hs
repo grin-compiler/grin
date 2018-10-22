@@ -83,6 +83,8 @@ prettySelector :: Maybe IRMap -> Selector -> Doc
 prettySelector mirm = \case
   NodeItem tag idx          -> prettyTag mirm tag <> brackets (pretty idx)
   ConditionAsSelector cond  -> prettyCondition mirm cond
+  Locations                 -> text "Location"
+  NodeLocations             -> text "NodeLocation"
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
@@ -114,6 +116,7 @@ prettyInstruction mirm = \case
     Store   {..} -> keyword "store" <+> ppR srcReg <+> arr <+> pretty address
     Update  {..} -> keyword "update" <+> ppR srcReg <+> arr <+> ppR addressReg
     Set     {..} -> keyword "set" <+> prettyConstant mirm constant <+> arr <+> ppR dstReg
+    ExtendReg {..} -> keyword "extend-reg" <+> ppR srcReg <+> ppR dstReg
   where
     ppR = prettyReg mirm
     ppS = prettySelector mirm
