@@ -96,6 +96,7 @@ litToSimpleType = \case
   LWord64 {}  -> -3
   LFloat  {}  -> -4
   LBool   {}  -> -5
+  LString {}  -> -6
 
 codeGenBlock :: CG () -> CG [IR.Instruction]
 codeGenBlock genM = do
@@ -142,9 +143,11 @@ codeGenPrimOp name funResultReg funArgRegs = do
       word  = litToSimpleType $ LWord64 0
       float = litToSimpleType $ LFloat 0
       bool  = litToSimpleType $ LBool False
+      string = litToSimpleType $ LString ""
 
   case name of
     "_prim_int_print" -> op [int] unit
+    "_prim_string_print" -> op [string] unit
     -- Int
     "_prim_int_add"   -> op [int, int] int
     "_prim_int_sub"   -> op [int, int] int
@@ -181,6 +184,7 @@ codeGenPrimOp name funResultReg funArgRegs = do
     -- Bool
     "_prim_bool_eq"   -> op [bool, bool] bool
     "_prim_bool_ne"   -> op [bool, bool] bool
+    unknown           -> error unknown
 
 codeGenPhases :: CG IR.Reg -> [IR.Reg -> Exp -> CG ()] -> Exp -> Either String HPTProgram
 codeGenPhases init phases e = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT $ do

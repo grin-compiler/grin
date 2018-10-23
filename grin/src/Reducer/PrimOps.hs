@@ -9,12 +9,14 @@ import Data.Map.Strict as Map
 import Control.Monad.IO.Class
 
 -- primitive functions
-primIntPrint [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
-primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
+primLiteralPrint [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
+primLiteralPrint [RT_Lit (LString a)] = liftIO (putStr a) >> pure RT_Unit
+primLiteralPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
 evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal] -> m RTVal
 evalPrimOp name _ args = case name of
-  "_prim_int_print" -> primIntPrint args
+  "_prim_int_print" -> primLiteralPrint args
+  "_prim_string_print" -> primLiteralPrint args
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
   "_prim_int_sub"   -> int_bin_op int (-)

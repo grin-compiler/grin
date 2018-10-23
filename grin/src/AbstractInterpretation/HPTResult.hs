@@ -24,6 +24,7 @@ data SimpleType
   | T_Bool
   | T_Unit
   | T_Location Loc
+  | T_String
   deriving (Eq, Ord, Show)
 
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set SimpleType))} deriving (Eq, Ord, Show)
@@ -71,6 +72,7 @@ toSimpleType ty | ty < 0 = case ty of
   -3 -> T_Word64
   -4 -> T_Float
   -5 -> T_Bool
+  -6 -> T_String
   _ -> error $ "unknown type code " ++ show ty
 toSimpleType l = T_Location $ fromIntegral l
 
