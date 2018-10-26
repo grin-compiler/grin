@@ -148,6 +148,10 @@ codeGenPrimOp name funResultReg funArgRegs = do
   case name of
     "_prim_int_print" -> op [int] unit
     "_prim_string_print" -> op [string] unit
+    -- String
+    "_prim_string_concat" -> op [string, string] string
+    -- Conversion
+    "_prim_int_str" -> op [int] string
     -- Int
     "_prim_int_add"   -> op [int, int] int
     "_prim_int_sub"   -> op [int, int] int
@@ -184,7 +188,7 @@ codeGenPrimOp name funResultReg funArgRegs = do
     -- Bool
     "_prim_bool_eq"   -> op [bool, bool] bool
     "_prim_bool_ne"   -> op [bool, bool] bool
-    unknown           -> error unknown
+    unknown           -> error $ "codeGenPrimOp unknown prim-op: " ++ unknown
 
 codeGenPhases :: CG IR.Reg -> [IR.Reg -> Exp -> CG ()] -> Exp -> Either String HPTProgram
 codeGenPhases init phases e = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT $ do

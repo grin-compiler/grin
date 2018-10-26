@@ -17,6 +17,10 @@ evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal] -> m RTVal
 evalPrimOp name _ args = case name of
   "_prim_int_print" -> primLiteralPrint args
   "_prim_string_print" -> primLiteralPrint args
+  -- Conversion
+  "_prim_int_str" -> int_str
+  -- String
+  "_prim_string_concat" -> string_concat
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
   "_prim_int_sub"   -> int_bin_op int (-)
@@ -60,6 +64,7 @@ evalPrimOp name _ args = case name of
   word  x = pure . RT_Lit . LWord64 $ x
   float x = pure . RT_Lit . LFloat $ x
   bool  x = pure . RT_Lit . LBool $ x
+  string x = pure . RT_Lit . LString $ x
 
   int_bin_op retTy fn = case args of
     [RT_Lit (LInt64 a), RT_Lit (LInt64 b)] -> retTy $ fn a b
@@ -76,3 +81,11 @@ evalPrimOp name _ args = case name of
   bool_bin_op retTy fn = case args of
     [RT_Lit (LBool a), RT_Lit (LBool b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
+
+  string_concat = case args of
+    [RT_Lit (LString a), RT_Lit (LString b)] -> string $ a ++ b
+    _ -> error $ "invalid arguments:" ++ show args ++ " for " ++ unpackName name
+
+  int_str = case args of
+    [RT_Lit (LInt64 a)] -> string $ show a
+    _ -> error $ "invalid arguments:" ++ show args ++ " for " ++ unpackName name
