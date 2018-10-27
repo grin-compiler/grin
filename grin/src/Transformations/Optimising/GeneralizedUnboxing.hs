@@ -159,6 +159,7 @@ transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) wh
   -- NOTE: SApp is handled by transformCalls
   canUnbox :: SimpleExp -> Bool
   canUnbox = \case
+    SApp n ps -> n `Set.notMember` toUnbox
     SReturn{} -> True
     SFetchI{} -> True
     _         -> False
