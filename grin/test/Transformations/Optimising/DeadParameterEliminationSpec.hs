@@ -1,16 +1,31 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Transformations.Optimising.DeadParameterEliminationSpec where
 
+import AbstractInterpretation.LVAResultTypes
 import Transformations.Optimising.DeadParameterElimination
 
 import Test.Hspec
 import Grin.TH
+import Grin.Syntax
 import Test.Test hiding (newVar)
 import Test.Assertions
 
+import LiveVariable.LiveVariableSpec (calcLiveness)
 
 runTests :: IO ()
 runTests = hspec spec
+
+right :: b -> Either a b -> b
+right _ (Right x) = x
+right x (Left _)  = x
+
+dpe :: Exp -> Exp
+dpe e = right fail
+      . deadParameterElimination lvaResult
+      $ e
+  where 
+    fail = error "Dead parameter elimination failed. See the error logs for more information"
+    lvaResult = calcLiveness e
 
 spec :: Spec
 spec = do
@@ -23,7 +38,7 @@ spec = do
           funA b = pure b
           funB c = funA 1
       |]
-    deadParameterElimination before `sameAs` after
+    dpe before `sameAs` after
 
   it "Pnode + Fnode ; val - lpat - cpat" $ do
     let before = [prog|
@@ -68,4 +83,4 @@ spec = do
                 (P0funA b6) <- pure (P0funA b5)
                 pure (P0funA b6)
       |]
-    deadParameterElimination before `sameAs` after
+    dpe before `sameAs` after

@@ -141,7 +141,7 @@ transformation n = \case
   CopyPropagation                 -> noEffectMap $ noTypeEnv copyPropagation
   ConstantPropagation             -> noEffectMap $ noTypeEnv constantPropagation
   DeadProcedureElimination        -> noEffectMap $ noTypeEnv deadProcedureElimination
-  DeadParameterElimination        -> noEffectMap $ noTypeEnv deadParameterElimination
+  -- DeadParameterElimination        -> noEffectMap $ noTypeEnv deadParameterElimination
   InlineEval                      -> noEffectMap inlineEval
   InlineApply                     -> noEffectMap inlineApply
   InlineBuiltins                  -> noEffectMap inlineBuiltins
@@ -464,6 +464,14 @@ printTypeEnv = do
   pipelineLog . show . pretty $ typeEnv
 
 transformationM :: Transformation -> PipelineM ()
+transformationM DeadParameterElimination = do
+  n  <- use psTransStep
+  e  <- use psExp
+  Just lvaResult <- use psLVAResult
+  case deadParameterElimination lvaResult e of
+    Right e'  -> psExp .= e' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
+
 transformationM DeadDataElimination = do
   n  <- use psTransStep
   e  <- use psExp

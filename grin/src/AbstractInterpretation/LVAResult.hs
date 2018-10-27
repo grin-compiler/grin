@@ -1,5 +1,8 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, DeriveFunctor, ViewPatterns #-}
-module AbstractInterpretation.LVAResult where
+{-# LANGUAGE RecordWildCards, ViewPatterns #-}
+module AbstractInterpretation.LVAResult
+( module AbstractInterpretation.LVAResult
+, module AbstractInterpretation.LVAResultTypes
+) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -9,32 +12,11 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 
-import Lens.Micro.Platform
-import Lens.Micro.Internal
-
-import Grin.Grin (Name, Tag)
 import AbstractInterpretation.LiveVariable (LVAProgram(..))
-import AbstractInterpretation.IR as IR hiding (Tag, SimpleType, Liveness)
+import AbstractInterpretation.LVAResultTypes
+import AbstractInterpretation.IR as IR hiding (Liveness)
 import qualified AbstractInterpretation.IR as IR (Liveness)
 import qualified AbstractInterpretation.Reduce as R
-
-newtype Node = Node { _node :: Vector Bool }
-  deriving (Eq, Ord, Show)
-
-data Liveness = BasicVal Bool
-              | NodeSet (Map Tag Node)
-  deriving (Eq, Ord, Show)
-
-data LVAResult
-  = LVAResult
-  { _memory   :: Vector Liveness
-  , _register :: Map Name Liveness
-  , _function :: Map Name (Liveness, Vector Liveness)
-  }
-  deriving (Eq, Show)
-
-concat <$> mapM makeLenses [''Node, ''Liveness, ''LVAResult]
-
 
 toLVAResult :: LVAProgram -> R.Computer -> LVAResult
 toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult

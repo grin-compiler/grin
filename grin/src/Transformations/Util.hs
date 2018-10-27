@@ -244,3 +244,10 @@ lookupWithDoubleKeyExceptT err k1 k2 = lift . lookupWithDoubleKeyExcept err k1 k
 
 notFoundIn :: Show a => String -> a -> String -> String
 notFoundIn n1 x n2 = n1 ++ " " ++ show x ++ " not found in " ++ n2
+
+markToRemove :: a -> Bool -> Maybe a
+markToRemove x True  = Just x
+markToRemove _ False = Nothing
+
+zipFilter :: [a] -> [Bool] -> [a]
+zipFilter xs = catMaybes . zipWith markToRemove xs 

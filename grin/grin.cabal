@@ -26,6 +26,8 @@ library
     AbstractInterpretation.IR
     AbstractInterpretation.LiveVariable
     AbstractInterpretation.LVAResult
+    AbstractInterpretation.LVAResultTypes
+    AbstractInterpretation.LVAUtil
     AbstractInterpretation.PrettyCBy
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
@@ -204,8 +206,11 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadData.Length
                      , DeadCodeElimination.Tests.DeadData.DeletableSingle
                      , DeadCodeElimination.Tests.DeadData.DeletableMulti
+                     , DeadCodeElimination.Tests.DeadData.FNode
                      , DeadCodeElimination.Tests.DeadData.MultipleFields
                      , DeadCodeElimination.Tests.DeadData.OnlyDummify
+                     , DeadCodeElimination.Tests.DeadData.PNode
+                     , DeadCodeElimination.Tests.DeadData.PNodeOpt
                      , DeadCodeElimination.Tests.DeadData.SeparateProds
                      , DeadCodeElimination.Tests.ProducerGrouping
                      , DeadCodeElimination.Tests.Util

@@ -1,0 +1,26 @@
+{- NOTE:
+  Please note that this code invalid.
+  In the definition of eval, we call foo on undefined variables.
+  Dead Parameter Elimination will take care of these.
+-}
+grinMain = 
+  x0 <- pure (CInt 5)
+  p0 <- store x0
+  a0 <- pure (Ffoo.0 p0)
+  p1 <- store a0
+  a1 <- eval p1
+  pure a1 
+
+foo x y z =
+  y' <- eval y
+  pure y'
+
+eval p =
+  v <- fetch p
+  case v of 
+    (CInt n) -> pure v
+    (Ffoo.0 y1) -> 
+      w <- foo x1 y1 z1
+      update p w 
+      pure w
+  

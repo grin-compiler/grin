@@ -427,9 +427,10 @@ genProg = genProgWith mzero
 sampleProg :: IO ()
 sampleProg = sample $ fmap PP $ genProg
 
+-- TODO: add liveness info, or use simples DPE
 genProgWith :: GoalM G.Exp -> Gen Exp
 genProgWith gexp =
-  fmap (deadProcedureElimination . deadParameterElimination . singleStaticAssignment . head) $
+  fmap (deadProcedureElimination . {- deadParameterElimination . -} singleStaticAssignment . head) $
   G.asExp <$$>
   (runGoalM gexp $
     withADTs 10 $

@@ -1,0 +1,22 @@
+grinMain = 
+  x0 <- pure (CInt 5)
+  p0 <- store x0
+  a0 <- pure (Ffoo p0 p0 p0)
+  p1 <- store a0
+  a1 <- eval p1
+  pure a1 
+
+-- functions cannot return pointers
+foo x y z = 
+  y' <- eval y
+  pure y'
+
+eval p =
+  v <- fetch p
+  case v of 
+    (CInt n) -> pure v
+    (Ffoo x1 y1 z1) -> 
+      w <- foo x1 y1 z1
+      update p w 
+      pure w
+  

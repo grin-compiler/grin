@@ -24,6 +24,9 @@ import DeadCodeElimination.Tests.DeadData.OnlyDummify
 import DeadCodeElimination.Tests.DeadData.DeletableSingle
 import DeadCodeElimination.Tests.DeadData.DeletableMulti
 import DeadCodeElimination.Tests.DeadData.SeparateProds
+import DeadCodeElimination.Tests.DeadData.FNode
+import DeadCodeElimination.Tests.DeadData.PNode
+import DeadCodeElimination.Tests.DeadData.PNodeOpt
 import DeadCodeElimination.Tests.ProducerGrouping
 
 
@@ -48,6 +51,9 @@ runTestsFrom fromCurDir = do
     , deletableSingleBefore
     , deletableMultiBefore
     , separateProdsBefore
+    , fNodeBefore
+    , pNodeBefore
+    , pNodeOptBefore
     ]
     [ impossibleAltAfter
     , lengthAfter
@@ -56,6 +62,9 @@ runTestsFrom fromCurDir = do
     , deletableSingleAfter
     , deletableMultiAfter
     , separateProdsAfter
+    , fNodeAfter
+    , pNodeAfter
+    , pNodeOptAfter
     ]
     [ impossibleAltSpec
     , lengthSpec
@@ -64,6 +73,9 @@ runTestsFrom fromCurDir = do
     , deletableSingleSpec
     , deletableMultiSpec
     , separateProdsSpec
+    , fNodeSpec
+    , pNodeSpec
+    , pNodeOptSpec
     ]
 
 calcProducerGraphAll :: Exp -> ProducerGraph

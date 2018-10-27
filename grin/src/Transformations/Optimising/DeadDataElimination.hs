@@ -60,9 +60,6 @@ deadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either Strin
 deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
   ddeFromProducers lvaResult cbyResult tyEnv e >>= ddeFromConsumers cbyResult
 
-markToRemove :: a -> Bool -> Maybe a
-markToRemove x True  = Just x
-markToRemove _ False = Nothing
 
 lookupNodeLivenessM :: Name -> Tag -> LVAResult -> Trf (Vector Bool)
 lookupNodeLivenessM v t lvaResult = do
@@ -72,6 +69,8 @@ lookupNodeLivenessM v t lvaResult = do
         noLivenessTag v t = noLivenessMsg ++ show (PP v) ++ " with tag " ++ show (PP t)
         noLivenessMsg     = "No liveness information present for variable"
 
+-- Global liveness is the accumulated liveness information about the producers
+-- It represents the collective liveness of a producer group.
 type GlobalLiveness = Map Name (Map Tag (Vector Bool))
 
 calcGlobalLiveness :: LVAResult ->
@@ -92,7 +91,7 @@ calcGlobalLiveness lvaResult cbyResult prodGraph =
     -- This can only happen at pattern matches, not at the time of construction.
     -- So we do not have to worry about the liveness of those "extra" parameters.
     -- They will always be at the last positions.
-    mergeLivenessExcept :: Name -> Tag -> Trf(Vector Bool)
+    mergeLivenessExcept :: Name -> Tag -> Trf (Vector Bool)
     mergeLivenessExcept prod tag = do
       let ps = Set.toList connectedProds
       when (null ps) (throwE $ noConnections prod tag)
@@ -135,7 +134,7 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
   deleteDeadFieldsM :: Name -> Tag -> [a] -> Trf ([a], Vector Bool)
   deleteDeadFieldsM v t args = do
     gblLivenessVT <- lookupGlobalLivenessM v t
-    let args'    = catMaybes $ zipWith markToRemove args gblLivenessVT
+    let args'    = zipFilter args gblLivenessVT
         liveness = Vec.fromList $ take (length args) gblLivenessVT
     pure (args', liveness)
 
@@ -169,7 +168,7 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
       globalNodeLiveness <- lookupWithDoubleKeyExcept (notFoundLiveness v t) v t globalLiveness
       let indexedArgs = zip args [0..]
       args' <- zipWithM (dummify v t) indexedArgs (Vec.toList nodeLiveness)
-      let args'' = catMaybes $ zipWith markToRemove args' (Vec.toList globalNodeLiveness)
+      let args'' = zipFilter args' (Vec.toList globalNodeLiveness)
       t' <- getTag t globalNodeLiveness 
       pure $ EBind (SReturn (ConstTagNode t' args'')) (Var v) rhs
     e -> pure . embed $ e
