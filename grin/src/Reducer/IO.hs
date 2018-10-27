@@ -95,7 +95,7 @@ evalSimpleExp env = \case
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                   go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
               if isPrimName n
-                then evalPrimOp n args
+                then evalPrimOp n [] args
                 else do
                   Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ n) n) <$> getProg
                   evalExp (go env vars args) body

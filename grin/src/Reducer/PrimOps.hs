@@ -10,7 +10,7 @@ import Control.Monad.IO.Class
 primIntPrint [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
 primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
-evalPrimOp name args = case name of
+evalPrimOp name _ args = case name of
   "_prim_int_print" -> primIntPrint args
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
