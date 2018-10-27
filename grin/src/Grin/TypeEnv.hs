@@ -25,6 +25,7 @@ data SimpleType
   | T_Location {_locations :: [Loc]}
   | T_Dead
   | T_String
+  | T_Char
   deriving (Eq, Ord, Show)
 
 type NodeSet = Map Tag (Vector SimpleType)
@@ -136,6 +137,8 @@ typeOfLitST lit = case lit of
   LWord64{} -> T_Word64
   LFloat{}  -> T_Float
   LBool{}   -> T_Bool
+  LString{} -> T_String
+  LChar{}   -> T_Char
 
 -- Type of literal like values
 typeOfVal :: Val -> Type

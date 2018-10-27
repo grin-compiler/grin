@@ -97,6 +97,7 @@ litToSimpleType = \case
   LFloat  {}  -> -4
   LBool   {}  -> -5
   LString {}  -> -6
+  LChar   {}  -> -7
 
 codeGenBlock :: CG () -> CG [IR.Instruction]
 codeGenBlock genM = do
@@ -144,14 +145,27 @@ codeGenPrimOp name funResultReg funArgRegs = do
       float = litToSimpleType $ LFloat 0
       bool  = litToSimpleType $ LBool False
       string = litToSimpleType $ LString ""
+      char  = litToSimpleType $ LChar ' '
 
   case name of
     "_prim_int_print" -> op [int] unit
     "_prim_string_print" -> op [string] unit
+    "_prim_read_string" -> op [] string
+
     -- String
-    "_prim_string_concat" -> op [string, string] string
+    "_prim_string_concat"  -> op [string, string] string
+    "_prim_string_reverse" -> op [string] string
+    "_prim_string_eq"      -> op [string, string] bool
+    "_prim_string_head"    -> op [string] int
+    "_prim_string_tail"    -> op [string] string
+    "_prim_string_cons"    -> op [int, string] string
+    "_prim_string_len"     -> op [string] int
+
     -- Conversion
-    "_prim_int_str" -> op [int] string
+    "_prim_int_str"      -> op [int] string
+    "_prim_int_float"    -> op [int] float
+    "_prim_float_string" -> op [float] string
+    "_prim_char_int"     -> op [char] int
     -- Int
     "_prim_int_add"   -> op [int, int] int
     "_prim_int_sub"   -> op [int, int] int
@@ -188,6 +202,8 @@ codeGenPrimOp name funResultReg funArgRegs = do
     -- Bool
     "_prim_bool_eq"   -> op [bool, bool] bool
     "_prim_bool_ne"   -> op [bool, bool] bool
+    -- FFI - TODO: Handle FFI appropiatey
+    "_prim_ffi_file_eof" -> op [int] int
     unknown           -> error $ "codeGenPrimOp unknown prim-op: " ++ unknown
 
 codeGenPhases :: CG IR.Reg -> [IR.Reg -> Exp -> CG ()] -> Exp -> Either String HPTProgram

@@ -42,6 +42,7 @@ data Lit
   | LFloat  Float
   | LBool   Bool
   | LString String
+  | LChar   Char
   deriving (Generic, NFData, Eq, Ord, Show)
 
 -- * GRIN Value

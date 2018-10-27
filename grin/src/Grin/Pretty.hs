@@ -96,6 +96,7 @@ instance Pretty Lit where
     LFloat a  -> float a
     LBool a   -> text "#" <> text (show a)
     LString a -> text (show a)
+    LChar a   -> text (show a)
 
 instance Pretty CPat where
   pretty = \case

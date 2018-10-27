@@ -44,6 +44,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
     T_Unit    -> TypeEnv.T_Unit
     T_Location l -> TypeEnv.T_Location [l]
     T_String     -> TypeEnv.T_String
+    T_Char       -> TypeEnv.T_Char
 
   isLocation :: SimpleType -> Bool
   isLocation = \case

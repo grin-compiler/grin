@@ -4,23 +4,39 @@ module Reducer.PrimOps (evalPrimOp) where
 
 import Reducer.Base
 
+import Data.Char (chr, ord)
 import Grin.Grin
 import Data.Map.Strict as Map
 import Control.Monad.IO.Class
 
+import System.IO.Unsafe
+
+
 -- primitive functions
-primLiteralPrint [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
-primLiteralPrint [RT_Lit (LString a)] = liftIO (putStr a) >> pure RT_Unit
-primLiteralPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
+primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
+primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr a) >> pure RT_Unit
+primLiteralPrint ctx ps x = error $ unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
+
 
 evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal] -> m RTVal
-evalPrimOp name _ args = case name of
-  "_prim_int_print" -> primLiteralPrint args
-  "_prim_string_print" -> primLiteralPrint args
+evalPrimOp name params args = case name of
+  "_prim_int_print"    -> primLiteralPrint "int"    params args
+  "_prim_string_print" -> primLiteralPrint "string" params args
+  "_prim_read_string"  -> primReadString
   -- Conversion
-  "_prim_int_str" -> int_str
+  "_prim_int_str"      -> int_str
+  "_prim_int_float"    -> int_float
+  "_prim_float_string" -> float_str
+  "_prim_char_int"     -> char_int
   -- String
-  "_prim_string_concat" -> string_concat
+  "_prim_string_reverse" -> string_un_op string reverse
+  "_prim_string_head"    -> string_un_op int (fromIntegral . ord . head)
+  "_prim_string_tail"    -> string_un_op string tail
+  "_prim_string_len"     -> string_un_op int (fromIntegral . length)
+  "_prim_string_concat"  -> string_bin_op string (++)
+  "_prim_string_eq"      -> string_bin_op bool (==)
+  "_prim_string_cons"    -> string_cons
+
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
   "_prim_int_sub"   -> int_bin_op int (-)
@@ -57,6 +73,8 @@ evalPrimOp name _ args = case name of
   -- Bool
   "_prim_bool_eq"   -> bool_bin_op bool (==)
   "_prim_bool_ne"   -> bool_bin_op bool (/=)
+    -- FFI - TODO: Handle FFI appropiatey
+  "_prim_ffi_file_eof" -> file_eof
 
   _ -> error $ "unknown primitive operation: " ++ unpackName name
  where
@@ -65,27 +83,56 @@ evalPrimOp name _ args = case name of
   float x = pure . RT_Lit . LFloat $ x
   bool  x = pure . RT_Lit . LBool $ x
   string x = pure . RT_Lit . LString $ x
+--  char x = pure . RT_Lit . LChar $ x
 
   int_bin_op retTy fn = case args of
     [RT_Lit (LInt64 a), RT_Lit (LInt64 b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   word_bin_op retTy fn = case args of
     [RT_Lit (LWord64 a), RT_Lit (LWord64 b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   float_bin_op retTy fn = case args of
     [RT_Lit (LFloat a), RT_Lit (LFloat b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   bool_bin_op retTy fn = case args of
     [RT_Lit (LBool a), RT_Lit (LBool b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
-  string_concat = case args of
-    [RT_Lit (LString a), RT_Lit (LString b)] -> string $ a ++ b
-    _ -> error $ "invalid arguments:" ++ show args ++ " for " ++ unpackName name
+  string_bin_op retTy fn = case args of
+    [RT_Lit (LString a), RT_Lit (LString b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  string_un_op retTy fn = case args of
+    [RT_Lit (LString a)] -> retTy $ fn a
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  string_cons = case args of
+    [RT_Lit (LInt64 a), RT_Lit (LString b)] -> string $ (chr (fromIntegral a)) : b
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_str = case args of
     [RT_Lit (LInt64 a)] -> string $ show a
-    _ -> error $ "invalid arguments:" ++ show args ++ " for " ++ unpackName name
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  int_float = case args of
+    [RT_Lit (LInt64 a)] -> float $ fromIntegral a
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  char_int = case args of
+    [RT_Lit (LChar a)] -> int . fromIntegral . ord $ a
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  float_str = case args of
+    [RT_Lit (LFloat a)] -> string $ show a
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  file_eof = case args of
+    [RT_Lit (LInt64 a)] -> int 0 -- TODO: Call to FFI
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  primReadString = case args of
+    [] -> string $ "This is a test ..." -- unsafePerformIO $ getLine
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
