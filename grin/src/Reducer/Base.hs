@@ -62,7 +62,7 @@ bindPat env !val lpat = case lpat of
               _ -> error $ "bindPat - illegal value: " ++ show val
   ConstTagNode ptag pargs -> case val of
                   RT_ConstTagNode vtag vargs | ptag == vtag -> bindPatMany env vargs pargs
-                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
+                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val ++ " vs " ++ show (ConstTagNode ptag pargs)
   VarTagNode varname pargs -> case val of
                   RT_ConstTagNode vtag vargs -> bindPatMany (Map.insert varname (RT_ValTag vtag) env) vargs pargs
                   _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val

@@ -24,6 +24,8 @@ import qualified Grin.TypeEnv as TypeEnv
 import qualified AbstractInterpretation.CodeGenMain as HPT
 import qualified AbstractInterpretation.Reduce as HPT
 
+import Data.Bifunctor
+
 {-
   validate HPT result
          - fixed node tag arity
@@ -59,27 +61,27 @@ typeEnvFromHPTResult hptResult = typeEnv where
     | any (TypeEnv.T_Location [] ==) v = throwError $ printf "illegal node type %s in %s" (show . pretty $ V.toList v) (show $ pretty ns)
     | otherwise = pure v
 
-  convertNodeSet :: NodeSet -> Either String (Map Tag (Vector TypeEnv.SimpleType))
-  convertNodeSet a@(NodeSet ns) = mapM (checkNode a <=< mapM (convertNodeItem . Set.toList)) ns
+  convertNodeSet :: (String, NodeSet) -> Either String (Map Tag (Vector TypeEnv.SimpleType))
+  convertNodeSet (_, a@(NodeSet ns)) = mapM (checkNode a <=< mapM (convertNodeItem . Set.toList)) ns
 
-  convertTypeSet :: TypeSet -> Either String TypeEnv.Type
-  convertTypeSet ts = do
+  convertTypeSet :: (String, TypeSet) -> Either String TypeEnv.Type
+  convertTypeSet (name, ts) = do
     let ns = ts^.nodeSet
         st = ts^.simpleType
     case (Set.size st, Map.size $ ns^.nodeTagMap) of
-      (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet <$> convertNodeSet ns
+      (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet <$> convertNodeSet (name, ns)
       (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType <$> convertNodeItem (Set.toList st)
       (0,0)                                           -> pure TypeEnv.dead_t
-      _ -> throwError $ printf "illegal type %s" (show . pretty $ ts)
+      _ -> throwError $ printf "illegal type %s for %s" (show . pretty $ ts) name
 
-  convertFunction :: (TypeSet, Vector TypeSet) -> Either String (TypeEnv.Type, Vector TypeEnv.Type)
-  convertFunction (ret, args) = (,) <$> convertTypeSet ret <*> mapM convertTypeSet args
+  convertFunction :: (String, (TypeSet, Vector TypeSet)) -> Either String (TypeEnv.Type, Vector TypeEnv.Type)
+  convertFunction (name, (ret, args)) = (,) <$> convertTypeSet (name, ret) <*> mapM (convertTypeSet . (,) name) args
 
   typeEnv :: Either String TypeEnv.TypeEnv
   typeEnv = TypeEnv.TypeEnv <$>
-    mapM convertNodeSet  (_memory hptResult) <*>
-    mapM convertTypeSet  (_register hptResult) <*>
-    mapM convertFunction (_function hptResult) <*>
+    (mapM convertNodeSet  $ (\v -> V.zip (V.map show (V.iterateN (V.length v) succ 0)) v) $ (_memory hptResult)) <*>
+    (mapM convertTypeSet  $ Map.mapWithKey (,) $ (_register hptResult)) <*>
+    (mapM convertFunction $ Map.mapWithKey (,) $ (_function hptResult)) <*>
     pure (_sharing hptResult)
 
 -- TODO: Add mode as a parameter?
