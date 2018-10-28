@@ -31,7 +31,7 @@ import Transformations.Optimising.DeadVariableElimination (deadVariableEliminati
 import Transformations.Optimising.CSE (commonSubExpressionElimination)
 import Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation)
 import Transformations.Optimising.GeneralizedUnboxing (generalizedUnboxing)
-import Transformations.Optimising.ArityRaising (arityRaising)
+import Transformations.Optimising.ArityRaisingSimple (arityRaising)
 import Transformations.Optimising.CaseHoisting (caseHoisting)
 import Transformations.Optimising.Inlining (lateInlining)
 import Transformations.Optimising.NonSharedElimination (nonSharedElimination)

@@ -64,6 +64,7 @@ library
     Transformations.UnitPropagation
     Transformations.Util
     Transformations.Optimising.ArityRaising
+    Transformations.Optimising.ArityRaisingSimple
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CaseHoisting
     Transformations.Optimising.ConstantFolding
