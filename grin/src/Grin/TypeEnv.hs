@@ -167,8 +167,8 @@ typeOfValTE typeEnv = \case
 -- * Effects
 
 data Effect
-  = Effectful Name
+  = Effectful Name                      -- called effectful primop or function name
   | Update { updateLocs :: [Int] }
   deriving (Eq, Show, Ord)
 
-type EffectMap = Map Name (Set Effect)
+type EffectMap = Map Name (Set Effect)  -- key: function name, value: effectful calls or updates

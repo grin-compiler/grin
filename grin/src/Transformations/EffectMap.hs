@@ -22,11 +22,8 @@ effectMap :: (TypeEnv, Exp) -> Map Name (Set Effect)
 effectMap (te, e) = effectfulFunctions $ unMMap $ snd $ cata buildEffectMap e where
   buildEffectMap :: ExpF (Set EffectWithCalls, MMap Name (Set EffectWithCalls)) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
   buildEffectMap = \case
-    ProgramF defs -> mconcat defs
     DefF name _ (effs, _) -> (mempty, MMap $ Map.singleton name effs)
-    EBindF lhs _ rhs -> lhs <> rhs
-    ECaseF _ alts -> mconcat alts
-    SAppF    name _
+    SAppF name _
       | Just () <- te ^? function . at name . _Just . _ReturnType . _T_SimpleType . _T_Unit
       -> (Set.singleton (EffectW $ Effectful name), mempty)
       | otherwise
