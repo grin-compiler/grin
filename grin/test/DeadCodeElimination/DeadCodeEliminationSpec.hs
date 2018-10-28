@@ -5,92 +5,18 @@ import System.FilePath
 import Test.IO
 import Test.Hspec
 
-import Grin.Grin
-import Grin.TypeCheck (typeEnvFromHPTResult)
-
-import AbstractInterpretation.CByUtil
-import AbstractInterpretation.CByResult (CByResult(..))
-import AbstractInterpretation.LVAResult (LVAResult)
-
-import Transformations.Optimising.DeadDataElimination
-
-import CreatedBy.CreatedBySpec (calcCByResult)
-import LiveVariable.LiveVariableSpec (calcLiveness)
-
-import DeadCodeElimination.Tests.DeadData.ImpossibleAlt
-import DeadCodeElimination.Tests.DeadData.Length
-import DeadCodeElimination.Tests.DeadData.MultipleFields
-import DeadCodeElimination.Tests.DeadData.OnlyDummify
-import DeadCodeElimination.Tests.DeadData.DeletableSingle
-import DeadCodeElimination.Tests.DeadData.DeletableMulti
-import DeadCodeElimination.Tests.DeadData.SeparateProds
-import DeadCodeElimination.Tests.DeadData.FNode
-import DeadCodeElimination.Tests.DeadData.PNode
-import DeadCodeElimination.Tests.DeadData.PNodeOpt
-import DeadCodeElimination.Tests.ProducerGrouping
-
+import qualified DeadCodeElimination.Tests.DeadData.Spec as DDE
+import qualified DeadCodeElimination.Tests.DeadParam.Spec as DPE
 
 spec :: Spec
 spec = runIO runTests
 
 runTests :: IO ()
-runTests = runTestsFrom stackRoot
+runTests = do 
+  DDE.runTestsFrom stackRoot
+  DPE.runTestsFrom stackRoot
 
 runTestsGHCi :: IO ()
-runTestsGHCi = runTestsFrom stackTest
-
-runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = do
-  runTestsFromWith fromCurDir calcProducerGraphAll    [multiProdSimpleSrc] [multiProdSimpleAllSpec]
-  runTestsFromWith fromCurDir calcProducerGraphActive [multiProdSimpleSrc] [multiProdSimpleActiveSpec]
-  runBeforeAfterTestsFromWith fromCurDir eliminateDeadData
-    [ impossibleAltBefore
-    , lengthBefore
-    , multipleFieldsBefore
-    , onlyDummifyBefore
-    , deletableSingleBefore
-    , deletableMultiBefore
-    , separateProdsBefore
-    , fNodeBefore
-    , pNodeBefore
-    , pNodeOptBefore
-    ]
-    [ impossibleAltAfter
-    , lengthAfter
-    , multipleFieldsAfter
-    , onlyDummifyAfter
-    , deletableSingleAfter
-    , deletableMultiAfter
-    , separateProdsAfter
-    , fNodeAfter
-    , pNodeAfter
-    , pNodeOptAfter
-    ]
-    [ impossibleAltSpec
-    , lengthSpec
-    , multipleFieldsSpec
-    , onlyDummifySpec
-    , deletableSingleSpec
-    , deletableMultiSpec
-    , separateProdsSpec
-    , fNodeSpec
-    , pNodeSpec
-    , pNodeOptSpec
-    ]
-
-calcProducerGraphAll :: Exp -> ProducerGraph
-calcProducerGraphAll = groupAllProducers 
-                    . _producers 
-                    . calcCByResult
-
-calcProducerGraphActive :: Exp -> ProducerGraph
-calcProducerGraphActive 
-  = uncurry groupActiveProducers
-  . ((,) <$> calcLiveness <*> (_producers . calcCByResult))
-
-eliminateDeadData :: Exp -> Exp
-eliminateDeadData e = e'
-  where lvaResult = calcLiveness e
-        cbyResult = calcCByResult e
-        Right env = typeEnvFromHPTResult (_hptResult cbyResult)
-        Right e'  = deadDataElimination lvaResult cbyResult env e
+runTestsGHCi = do 
+  DDE.runTestsFrom stackTest
+  DPE.runTestsFrom stackTest

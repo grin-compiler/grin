@@ -22,12 +22,16 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
+hptTestName :: String 
+hptTestName = "Heap Points To"
+
 runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcHPTResult
-  [ undefinedSrc
-  ]
-  [ undefinedSpec
-  ]
+runTestsFrom fromCurDir = testGroup hptTestName $
+  mkSpecFromWith fromCurDir calcHPTResult
+    [ undefinedSrc
+    ]
+    [ undefinedSpec
+    ]
 
 calcHPTResult :: Exp -> HPTResult
 calcHPTResult prog

@@ -7,7 +7,7 @@ module DeadCodeElimination.Tests.DeadData.SeparateProds where
   import Test.Hspec
   import Test.Assertions
   
-  import DeadCodeElimination.Tests.Util
+  import DeadCodeElimination.Tests.DeadData.Util
   
   (separateProdsBefore, separateProdsAfter, separateProdsSpec) = mkDDETestCase "separate_prods"
   

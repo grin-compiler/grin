@@ -7,6 +7,6 @@ import Grin.Grin
 import Test.Hspec
 import Test.Assertions
 
-import DeadCodeElimination.Tests.Util
+import DeadCodeElimination.Tests.DeadData.Util
 
 (pNodeOptBefore, pNodeOptAfter, pNodeOptSpec) = mkDDETestCase "pnode_opt"

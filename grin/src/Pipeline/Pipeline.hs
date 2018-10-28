@@ -103,6 +103,7 @@ data Transformation
   | UpdateElimination
   | CopyPropagation
   | ConstantPropagation
+  | DeadCodeElimination
   | DeadDataElimination
   | DeadProcedureElimination
   | DeadParameterElimination
@@ -464,8 +465,22 @@ printTypeEnv = do
   pipelineLog . show . pretty $ typeEnv
 
 transformationM :: Transformation -> PipelineM ()
+transformationM DeadCodeElimination = do 
+  e  <- use psExp
+  Just cbyResult <- use psCByResult
+  Just lvaResult <- use psLVAResult
+  Just typeEnv   <- use psTypeEnv
+
+  case deadDataElimination lvaResult cbyResult typeEnv e of
+    Right e'  -> psExp .= e' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
+
+  e' <- use psExp
+  case deadParameterElimination lvaResult e' of
+    Right e'' -> psExp .= e'' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
+
 transformationM DeadParameterElimination = do
-  n  <- use psTransStep
   e  <- use psExp
   Just lvaResult <- use psLVAResult
   case deadParameterElimination lvaResult e of
@@ -473,7 +488,6 @@ transformationM DeadParameterElimination = do
     Left  err -> psErrors %= (err:)
 
 transformationM DeadDataElimination = do
-  n  <- use psTransStep
   e  <- use psExp
   Just cbyResult <- use psCByResult
   Just lvaResult <- use psLVAResult
@@ -589,11 +603,7 @@ lintGrin mPhaseName = do
 -- and returns the list of transformation that helped to reach the fixpoint.
 randomPipeline :: PipelineM [Transformation]
 randomPipeline = do
-  mapM_ pipelineStep
-    [ HPT CompileToAbstractProgram
-    , HPT RunAbstractProgramPure
-    , Eff CalcEffectMap
-    ]
+  runAnalyses
   go transformationWhitelist []
   where
     go :: [Transformation] -> [Transformation] -> PipelineM [Transformation]
@@ -605,11 +615,7 @@ randomPipeline = do
         None -> go (available Data.List.\\ [t]) res
         ExpChanged -> do
           lintGrin . Just $ show t
-          mapM_ pipelineStep
-            [ HPT CompileToAbstractProgram
-            , HPT RunAbstractProgramPure
-            , Eff CalcEffectMap
-            ]
+          runAnalyses
           go transformationWhitelist (t:res)
 
     transformationWhitelist :: [Transformation]
@@ -623,8 +629,8 @@ randomPipeline = do
         , UpdateElimination
         , CopyPropagation
         , ConstantPropagation
+        , DeadCodeElimination
         , DeadProcedureElimination
-        , DeadParameterElimination
         , DeadVariableElimination
         , CommonSubExpressionElimination
         , CaseCopyPropagation
@@ -633,6 +639,15 @@ randomPipeline = do
         , ArityRaising
         , LateInlining
         ]
+
+    runAnalyses :: PipelineM ()
+    runAnalyses = mapM_ pipelineStep
+      [ CBy CompileToAbstractProgram
+      , CBy RunAbstractProgramPure
+      , LVA CompileToAbstractProgram
+      , LVA RunAbstractProgramPure
+      , Eff CalcEffectMap
+      ]
 
 confluenceTest :: PipelineM ()
 confluenceTest = do

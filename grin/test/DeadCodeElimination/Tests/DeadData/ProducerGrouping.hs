@@ -1,4 +1,4 @@
-module DeadCodeElimination.Tests.ProducerGrouping where
+module DeadCodeElimination.Tests.DeadData.ProducerGrouping where
 
 import System.FilePath
 
@@ -13,7 +13,7 @@ import AbstractInterpretation.CreatedBy
 import Transformations.Optimising.DeadDataElimination
 
 import CreatedBy.CreatedBySpec (calcCByResult)
-import DeadCodeElimination.Tests.Util
+import DeadCodeElimination.Tests.DeadData.Util
 
 
 n0 = "n0"

@@ -7,33 +7,43 @@ Dead data elimination:
 
 TODO:
   HIGH:
-    - apply inlining should also inline ap
-    - implement type safe undefined node generation for tests (Test.Test) 
-    - store variable name <-> heap location is a bijective mapping
-    right now we store the location (a number)
-    but we could also store the variable name (just as with producers) 
-    
-  LOW:
-    - is tag renaming (during DDE) valid for P and F nodes?
-    - fix confuence test behaviour for analysis based transformations
-    - genProgWith (in Test.Test) -> readd dead parameter elimination
-    - implement type env transformation for DDE
-    - linter should check whether calculated types match with annotations
-    - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
-
-  QUESTIONS:
-    - do all P nodes of the same function have the same liveness?
-      (even after apply inlining)
-    - if they do, can their fields be deleted solely based on the function args' liveness?
-
-    if they do:
-      - we don't have to introduce new names for them (probably same for F nodes)
-      - (args' == args after dde) and (l == no. live args of foo) and (n == no. args'): 
-        - PNfoo args --> P(l-n)foo args'
-        - if last argument is deleted, then do ... ?
-
+  - apply inlining should also inline ap
+  - implement type safe undefined node generation for tests (Test.Test) 
+  - store variable name <-> heap location is a bijective mapping
+  right now we store the location (a number)
+  but we could also store the variable name (just as with producers) 
   
+  LOW:
+  - rename dead procedure elimination to dead function elimination
+  - is tag renaming (during DDE) valid for P and F nodes?
+  - genProgWith (in Test.Test) -> readd dead parameter elimination
+  - implement type env transformation for DDE
+  - linter should check whether calculated types match with annotations
+  - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
+  
+  QUESTIONS:
+  - do all P nodes of the same function have the same liveness?
+  (even after apply inlining)
+  - if they do, can their fields be deleted solely based on the function args' liveness?
+
+  if they do:
+  - we don't have to introduce new names for them (probably same for F nodes)
+      - (args' == args after dde) and (l == no. live args of foo) and (n == no. args'): 
+      - PNfoo args --> P(l-n)foo args'
+      - if last argument is deleted, then do ... ?
+      
+      NOTES:
+      - dead data elimination can produce semantically invalid code
+      - dead parameter elimination should be run right after dde to prevent it
+
+      - dead function elimination can produce semantically invalid code
+      - dead variable elimination should be run right after dfe to prevent it
+      
+      
+      
 Archive:
+  ✔ make sure that dead (data/parameter/procedure/variable) elimination are executed after each other in the pipeline @done(18-10-28 15:51)
+  ✘ fix confuence test behaviour for analysis based transformations @cancelled(18-10-28 15:32)
   ✔ lift Undefined to Val level @done(18-10-12 22:43) @project(TODO)
   ✔ introduce type annotations @done(18-10-12 22:43) @project(TODO)
   ✔ pretty print type annotations @done(18-10-12 22:45) @project(TODO)

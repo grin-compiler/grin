@@ -1,0 +1,5 @@
+grinMain = f
+
+f = g
+
+g = f

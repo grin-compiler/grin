@@ -1,0 +1,5 @@
+grinMain = f 0 0
+
+f x y = g x 0
+
+g v w = f 0 w

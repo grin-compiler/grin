@@ -146,6 +146,7 @@ library
     functor-infix,
     generic-random,
     hspec,
+    hspec-core,
     extra,
     logict,
     QuickCheck,
@@ -201,7 +202,9 @@ test-suite grin-test
                      , vector
 
   other-modules:     CreatedBy.CreatedBySpec
+
                      , DeadCodeElimination.DeadCodeEliminationSpec
+
                      , DeadCodeElimination.Tests.DeadData.ImpossibleAlt
                      , DeadCodeElimination.Tests.DeadData.Length
                      , DeadCodeElimination.Tests.DeadData.DeletableSingle
@@ -211,9 +214,21 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadData.OnlyDummify
                      , DeadCodeElimination.Tests.DeadData.PNode
                      , DeadCodeElimination.Tests.DeadData.PNodeOpt
+                     , DeadCodeElimination.Tests.DeadData.ProducerGrouping
                      , DeadCodeElimination.Tests.DeadData.SeparateProds
-                     , DeadCodeElimination.Tests.ProducerGrouping
+                     , DeadCodeElimination.Tests.DeadData.Spec
+                     , DeadCodeElimination.Tests.DeadData.Util
+
+                     , DeadCodeElimination.Tests.DeadParam.FNode
+                     , DeadCodeElimination.Tests.DeadParam.PNode
+                     , DeadCodeElimination.Tests.DeadParam.PNodeOpt
+                     , DeadCodeElimination.Tests.DeadParam.Simple
+                     , DeadCodeElimination.Tests.DeadParam.MutuallyRecursive
+                     , DeadCodeElimination.Tests.DeadParam.Spec
+                     , DeadCodeElimination.Tests.DeadParam.Util
+
                      , DeadCodeElimination.Tests.Util
+
                      , HeapPointsTo.HeapPointsToSpec
                      , HeapPointsTo.Tests.Undefined
                      , HeapPointsTo.Tests.Util
@@ -261,7 +276,6 @@ test-suite grin-test
                      , Transformations.Optimising.GeneralizedUnboxingSpec
                      , Transformations.Optimising.ArityRaisingSpec
                      , Transformations.Optimising.DeadProcedureEliminationSpec
-                     , Transformations.Optimising.DeadParameterEliminationSpec
                      , Transformations.Optimising.DeadVariableEliminationSpec
                      , Transformations.Optimising.InliningSpec
                      , Transformations.Optimising.CaseHoistingSpec

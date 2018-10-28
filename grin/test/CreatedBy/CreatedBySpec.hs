@@ -28,28 +28,32 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
+cbyTestName :: String 
+cbyTestName = "Created-By"
+
 runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcProducers
-  [ puresSrc
-  , funCallSrc
-  , caseSimpleSrc
-  , heapSrc
-  , pointerInNodeSrc
-  , caseRestricted1Src
-  , caseRestricted2Src
-  , caseRestricted3Src
-  , undefinedSrc
-  ]
-  [ puresSpec
-  , funCallSpec
-  , caseSimpleSpec
-  , heapSpec
-  , pointerInNodeSpec
-  , caseRestricted1Spec
-  , caseRestricted2Spec
-  , caseRestricted3Spec
-  , undefinedSpec
-  ]
+runTestsFrom fromCurDir = testGroup cbyTestName $
+  mkSpecFromWith fromCurDir calcProducers
+    [ puresSrc
+    , funCallSrc
+    , caseSimpleSrc
+    , heapSrc
+    , pointerInNodeSrc
+    , caseRestricted1Src
+    , caseRestricted2Src
+    , caseRestricted3Src
+    , undefinedSrc
+    ]
+    [ puresSpec
+    , funCallSpec
+    , caseSimpleSpec
+    , heapSpec
+    , pointerInNodeSpec
+    , caseRestricted1Spec
+    , caseRestricted2Spec
+    , caseRestricted3Spec
+    , undefinedSpec
+    ]
 
 cbyExamples :: FilePath
 cbyExamples = "CreatedBy" </> "examples"

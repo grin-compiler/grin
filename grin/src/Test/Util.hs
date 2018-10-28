@@ -1,6 +1,12 @@
 module Test.Util where
 
+import System.FilePath
+
 import Grin.Grin
+import Grin.Parse
+
+import Test.Hspec
+import Test.Assertions
 
 cInt :: Tag
 cInt = Tag C "Int"
@@ -37,3 +43,16 @@ cNil = Tag C "Nil"
 
 cCons :: Tag 
 cCons = Tag C "Cons"
+
+-- name ~ name of the test case, and also the grin source file
+mkBeforeAfterTestCase :: String ->
+                         FilePath ->
+                         FilePath -> 
+                         (FilePath, FilePath, FilePath -> Exp -> Spec)
+mkBeforeAfterTestCase name beforeDir afterDir = (before, after, specFun)
+  where before = beforeDir </> name <.> "grin"
+        after  = afterDir  </> name <.> "grin"
+        specFun after' transformed = do
+          expected <- runIO $ readFile after'
+          let expected' = parseProg expected
+          it name $ transformed `sameAs` expected'

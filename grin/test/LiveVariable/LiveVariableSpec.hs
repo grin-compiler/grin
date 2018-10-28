@@ -43,52 +43,56 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
+lvaTestName :: String 
+lvaTestName = "Live Variable Analysis"
+
 runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = runTestsFromWith fromCurDir calcLiveness
-  [ caseAnonymousSrc
-  , caseMinLitSrc
-  , caseMinNodesSrc
-  , caseNestedSrc
-  , caseRestrictedSrc
-  , caseRestrictedNodesSrc
-  , fieldsSrc
-  , functionCall1Src
-  , functionCall2Src
-  , heapCaseMinSrc
-  , heapCaseSrc
-  , heapIndirectSimpleSrc
-  , heapSimpleSrc
-  , heapUpdateComplexSrc
-  , heapUpdateFunCallSrc
-  , heapUpdateLocalSrc
-  , litPatSrc
-  , mainNodeRetSrc
-  , nodesSimpleSrc
-  , nodesTrickySrc
-  , sumOptSrc
-  ]
-  [ caseAnonymousSpec
-  , caseMinLitSpec
-  , caseMinNodesSpec
-  , caseNestedSpec
-  , caseRestrictedSpec
-  , caseRestrictedNodesSpec
-  , fieldsSpec
-  , functionCall1Spec
-  , functionCall2Spec
-  , heapCaseMinSpec
-  , heapCaseSpec
-  , heapIndirectSimpleSpec
-  , heapSimpleSpec
-  , heapUpdateComplexSpec
-  , heapUpdateFunCallSpec
-  , heapUpdateLocalSpec
-  , litPatSpec
-  , mainNodeRetSpec
-  , nodesSimpleSpec
-  , nodesTrickySpec
-  , sumOptSpec
-  ]
+runTestsFrom fromCurDir = testGroup lvaTestName $
+  mkSpecFromWith fromCurDir calcLiveness
+    [ caseAnonymousSrc
+    , caseMinLitSrc
+    , caseMinNodesSrc
+    , caseNestedSrc
+    , caseRestrictedSrc
+    , caseRestrictedNodesSrc
+    , fieldsSrc
+    , functionCall1Src
+    , functionCall2Src
+    , heapCaseMinSrc
+    , heapCaseSrc
+    , heapIndirectSimpleSrc
+    , heapSimpleSrc
+    , heapUpdateComplexSrc
+    , heapUpdateFunCallSrc
+    , heapUpdateLocalSrc
+    , litPatSrc
+    , mainNodeRetSrc
+    , nodesSimpleSrc
+    , nodesTrickySrc
+    , sumOptSrc
+    ]
+    [ caseAnonymousSpec
+    , caseMinLitSpec
+    , caseMinNodesSpec
+    , caseNestedSpec
+    , caseRestrictedSpec
+    , caseRestrictedNodesSpec
+    , fieldsSpec
+    , functionCall1Spec
+    , functionCall2Spec
+    , heapCaseMinSpec
+    , heapCaseSpec
+    , heapIndirectSimpleSpec
+    , heapSimpleSpec
+    , heapUpdateComplexSpec
+    , heapUpdateFunCallSpec
+    , heapUpdateLocalSpec
+    , litPatSpec
+    , mainNodeRetSpec
+    , nodesSimpleSpec
+    , nodesTrickySpec
+    , sumOptSpec
+    ]
 
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog

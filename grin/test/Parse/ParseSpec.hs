@@ -19,14 +19,17 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
+parseTestName :: String 
+parseTestName = "Parse"
+
 runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = do
-  runTestsFromWith fromCurDir id 
+runTestsFrom fromCurDir = testGroup parseTestName $ do
+  mkSpecFromWith fromCurDir id 
     [ interleavedSrc 
     ] 
     [ interleavedAstParseSpec
     ]
-  runTestsFromWith' parseMarkedTypeEnv fromCurDir id 
+  mkSpecFromWith' parseMarkedTypeEnv fromCurDir id 
     [ interleavedSrc 
     ] 
     [ interleavedTypeEnvParseSpec

@@ -1,3 +1,8 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving
+           , StandaloneDeriving
+           , FlexibleInstances
+           , DerivingStrategies
+           #-}
 module Test.IO where
 
 import System.FilePath
@@ -6,7 +11,11 @@ import Grin.Grin
 import Grin.Parse
 
 import Test.Hspec
+import Test.Hspec.Core.Spec (SpecM(..))
 
+import Control.Monad.Trans
+
+deriving newtype instance MonadIO (SpecM ())
 
 stackRoot :: FilePath
 stackRoot = ""
@@ -30,38 +39,41 @@ withCurDir curDir fp = if curDir == stackTest
   then "." </> fp
   else (curDir </> stackTest) </> fp
 
-runTestsFromWith' :: (String -> a)
-                  -> FilePath
-                  -> (a -> b)
-                  -> [FilePath]
-                  -> [b -> Spec]
-                  -> IO ()
-runTestsFromWith' parse curDir calcInfo srcs validators = do
-  foundResults <- mapM calcInfoIO srcs'
+testGroup :: String -> Spec -> IO () 
+testGroup name tests = hspec $ describe name tests
+
+mkSpecFromWith' :: (String -> a)
+                -> FilePath
+                -> (a -> b)
+                -> [FilePath]
+                -> [b -> Spec]
+                -> Spec
+mkSpecFromWith' parse curDir calcInfo srcs validators = do
+  foundResults <- liftIO $ mapM calcInfoIO srcs'
   let validatedResults = zipWith ($) validators foundResults
-  mapM_ hspec validatedResults
+  sequence_ validatedResults
 
   where srcs' = map (withCurDir curDir) srcs
         calcInfoIO fp = calcInfo <$> readProgramWith parse fp
 
-runTestsFromWith :: FilePath
-                -> (Exp -> a)
-                -> [FilePath]
-                -> [a -> Spec]
-                -> IO ()
-runTestsFromWith = runTestsFromWith' parseProg
+mkSpecFromWith :: FilePath
+              -> (Exp -> a)
+              -> [FilePath]
+              -> [a -> Spec]
+              -> Spec
+mkSpecFromWith = mkSpecFromWith' parseProg
 
-runBeforeAfterTestsFromWith :: FilePath
-                            -> (Exp -> a)
-                            -> [FilePath]
-                            -> [FilePath]
-                            -> [FilePath -> a -> Spec]
-                            -> IO ()
-runBeforeAfterTestsFromWith curDir calcInfo befores afters validators = do
-  foundResults <- mapM calcInfoIO befores'
+mkBeforeAfterSpecFrom :: FilePath
+                      -> (Exp -> a)
+                      -> [FilePath]
+                      -> [FilePath]
+                      -> [FilePath -> a -> Spec]
+                      -> Spec
+mkBeforeAfterSpecFrom curDir calcInfo befores afters validators = do
+  foundResults <- liftIO $ mapM calcInfoIO befores'
   let validators'      = zipWith ($) validators  afters'
       validatedResults = zipWith ($) validators' foundResults
-  mapM_ hspec validatedResults
+  sequence_ validatedResults
 
   where befores' = map (withCurDir curDir) befores
         afters'  = map (withCurDir curDir) afters
