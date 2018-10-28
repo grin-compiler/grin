@@ -150,6 +150,7 @@ codeGenVal = \case
     irTag <- getTag tag
     emit IR.Set { dstReg = r, constant = IR.CNodeType irTag 1 }
     pure r
+  Undefined _ -> emptyReg
   val -> throwE $ "unsupported value " ++ show val
 
 

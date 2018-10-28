@@ -141,7 +141,7 @@ codeGenSimpleType = \case
     let locs' = map fromIntegral locs
     mapM_ (`extendSimpleType` r) locs' 
     pure r
-  t -> throwE $ "Code gen is not implemented for simple type: " ++ show t
+  t -> newReg
   
 
 codeGenNodeSetWith :: HasDataFlowInfo s => 

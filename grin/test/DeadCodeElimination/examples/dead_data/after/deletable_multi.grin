@@ -17,8 +17,16 @@ grinMain =
 
   -- consumers
   (CThree.0 b1) <- pure n0
+  b2 <- pure (#undefined :: T_Int64)
+  b0 <- pure (#undefined :: T_Int64)
+
   (CThree.0 c1) <- pure n01
+  c2 <- pure (#undefined :: T_Int64)
+  c0 <- pure (#undefined :: T_Int64)
+
   (CThree.0 d1) <- pure n1
+  d2 <- pure (#undefined :: T_Int64)
+  d0 <- pure (#undefined :: T_Int64)
 
   r <- pure (CLive c1)
   pure r

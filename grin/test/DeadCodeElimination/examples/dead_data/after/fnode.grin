@@ -1,8 +1,3 @@
-{- NOTE:
-  Please note that this code invalid.
-  In the definition of eval, we call foo on undefined variables.
-  Dead Parameter Elimination will take care of these.
--}
 grinMain = 
   x0 <- pure (CInt 5)
   p0 <- store x0
@@ -20,6 +15,8 @@ eval p =
   case v of 
     (CInt n) -> pure v
     (Ffoo.0 y1) -> 
+      z1 <- pure (#undefined :: {0})
+      x1 <- pure (#undefined :: {0})
       w <- foo x1 y1 z1
       update p w 
       pure w

@@ -12,11 +12,12 @@ import qualified Data.Foldable
 
 import Grin.Grin
 import Grin.TypeEnv
+import Grin.EffectMap
 import Transformations.Util
 
 -- TODO: Write for dead code elimination.
 deadVariableElimination :: (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
-deadVariableElimination (typeEnv, effects, e) = (typeEnv, effects, fst $ cata folder e) where
+deadVariableElimination (typeEnv, EffectMap effects, e) = (typeEnv, EffectMap effects, fst $ cata folder e) where
 
   folder :: ExpF (Exp, Set Name) -> (Exp, Set Name)
   folder = \case

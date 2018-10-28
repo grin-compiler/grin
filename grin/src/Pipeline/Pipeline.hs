@@ -13,6 +13,7 @@ import Pipeline.Eval
 import Grin.Grin
 import Grin.TypeEnv
 import Grin.TypeCheck
+import Grin.EffectMap
 import Pipeline.Optimizations
 import qualified Grin.Statistics as Statistics
 import Grin.Parse
@@ -322,7 +323,7 @@ calcEffectMap = do
 printEffectMap :: PipelineM ()
 printEffectMap = do
   grin <- use psExp
-  env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
+  env0 <- fromMaybe (traceShow "emptyEffectMap is used" emptyTypeEnv) <$> use psTypeEnv
   pipelineLog $ show $ pretty env0
 
 compileHPT :: PipelineM ()
@@ -610,6 +611,9 @@ randomPipeline = do
     go [] result = pure $ reverse result
     go available res = do
       t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
+      when (needsNameIntro t) $ do 
+        runNameIntro
+        runAnalyses
       eff <- pipelineStep (T t)
       case eff of
         None -> go (available Data.List.\\ [t]) res
@@ -629,7 +633,8 @@ randomPipeline = do
         , UpdateElimination
         , CopyPropagation
         , ConstantPropagation
-        , DeadCodeElimination
+        , DeadDataElimination
+        , DeadParameterElimination
         , DeadProcedureElimination
         , DeadVariableElimination
         , CommonSubExpressionElimination
@@ -648,6 +653,16 @@ randomPipeline = do
       , LVA RunAbstractProgramPure
       , Eff CalcEffectMap
       ]
+
+    runNameIntro :: PipelineM () 
+    runNameIntro = void . pipelineStep $ Pass 
+      [ T ProducerNameIntroduction
+      , T BindNormalisation 
+      ]
+
+    needsNameIntro :: Transformation -> Bool
+    needsNameIntro DeadDataElimination = True 
+    needsNameIntro _ = False 
 
 confluenceTest :: PipelineM ()
 confluenceTest = do

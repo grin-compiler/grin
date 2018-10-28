@@ -60,6 +60,7 @@ library
     Grin.TypeCheck
     Grin.TypeEnv
     Grin.TypeEnvDefs
+    Grin.EffectMap
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline

@@ -15,11 +15,12 @@ import Debug.Trace
 
 import Grin.Grin
 import Grin.TypeEnv
+import Grin.EffectMap
 import Transformations.Util
 
 
-effectMap :: (TypeEnv, Exp) -> Map Name (Set Effect)
-effectMap (te, e) = effectfulFunctions $ unMMap $ snd $ cata buildEffectMap e where
+effectMap :: (TypeEnv, Exp) -> EffectMap
+effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ cata buildEffectMap e where
   buildEffectMap :: ExpF (Set EffectWithCalls, MMap Name (Set EffectWithCalls)) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
   buildEffectMap = \case
     ProgramF defs -> mconcat defs

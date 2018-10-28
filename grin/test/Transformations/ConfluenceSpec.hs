@@ -71,7 +71,7 @@ spec = do
 
   it "Random pipeline" $ do
     -- NOTE: This is a random test. This could make fail the build non-related to code changes.
-    let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
+    let opts = defaultOpts { _poLogging = True, _poOutputDir = "/tmp" }
     (pipeline1, transformed1) <- runPipeline opts Nothing exp randomPipeline
     (pipeline2, transformed2) <- runPipeline opts Nothing exp randomPipeline
     print pipeline1

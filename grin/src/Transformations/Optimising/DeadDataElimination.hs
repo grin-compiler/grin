@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
 module Transformations.Optimising.DeadDataElimination where
 
 import Data.Set (Set)
@@ -8,6 +8,7 @@ import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as Vec
 
+import Data.List
 import Data.Maybe
 import Data.Functor.Foldable as Foldable
 
@@ -15,9 +16,11 @@ import Control.Monad
 import Control.Monad.State
 import Control.Monad.Trans.Except
 
+import Lens.Micro
+
 import Grin.Grin
 import Grin.Pretty
-import Grin.TypeEnvDefs
+import Grin.TypeEnv
 
 import AbstractInterpretation.CByUtil
 import AbstractInterpretation.CByResult
@@ -55,24 +58,48 @@ getTag t@(Tag ty n) lv = do
       return t'
 
 
+bindToUndefineds :: TypeEnv -> Exp -> [Name] -> Trf Exp 
+bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
+
+  bindToUndefined :: Exp -> Name -> Trf Exp 
+  bindToUndefined rhs v = do
+    ty <- lookupExcept (notInTypeEnv v) v _variable
+    pure $ EBind (SReturn (Undefined ty)) (Var v) rhs
+
+  notInTypeEnv v = "Variable " ++ show (PP v) ++ " was not found in the type environment."
+
 
 deadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either String Exp
 deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
-  ddeFromProducers lvaResult cbyResult tyEnv e >>= ddeFromConsumers cbyResult
+  ddeFromProducers lvaResult cbyResult tyEnv e >>= ddeFromConsumers cbyResult tyEnv
 
 
 lookupNodeLivenessM :: Name -> Tag -> LVAResult -> Trf (Vector Bool)
 lookupNodeLivenessM v t lvaResult = do
-  NodeSet taggedLiveness <- lookupExcept (noLiveness v) v . _register $ lvaResult
-  _node <$> lookupExcept (noLivenessTag v t) t taggedLiveness
+  lvInfo <- lookupExcept (noLiveness v) v . _register $ lvaResult
+  case lvInfo of 
+    NodeSet taggedLiveness ->
+      _node <$> lookupExcept (noLivenessTag v t) t taggedLiveness
+    _ -> throwE $ notANode v
   where noLiveness    v   = noLivenessMsg ++ show (PP v)
         noLivenessTag v t = noLivenessMsg ++ show (PP v) ++ " with tag " ++ show (PP t)
-        noLivenessMsg     = "No liveness information present for variable"
+        noLivenessMsg     = "No liveness information present for variable "
+        notANode      v   = "Variable " ++ show (PP v) ++ " has non-node liveness information. " ++
+                            "Probable cause: Either lookupNodeLivenessM was called on a non-node variable, " ++
+                            "or the liveness information was never calculated for the variable " ++
+                            "(e.g.: it was inside a dead case alternative)."
 
 -- Global liveness is the accumulated liveness information about the producers
 -- It represents the collective liveness of a producer group.
 type GlobalLiveness = Map Name (Map Tag (Vector Bool))
 
+{-
+ This should always get an active producer graph
+ Even if it does not, lookupNodeLivenessM will not be called on dead(1) variables,
+ because the connectProds set will be empty for such variables.
+
+ (1) - Here "dead variable" means a variable that was not analyzed.
+-}
 calcGlobalLiveness :: LVAResult ->
                       CByResult ->
                       ProducerGraph' ->
@@ -111,8 +138,8 @@ calcGlobalLiveness lvaResult cbyResult prodGraph =
                             " for tag " ++ show (PP t) ++
                             " is not connected with any other producers"
 
-ddeFromConsumers :: CByResult -> (Exp, GlobalLiveness) -> Trf Exp
-ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
+ddeFromConsumers :: CByResult -> TypeEnv -> (Exp, GlobalLiveness) -> Trf Exp
+ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
 
   alg :: ExpF Exp -> Trf Exp
   alg = \case
@@ -120,15 +147,19 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
       alts' <- forM alts $ \case
         Alt (NodePat t args) e -> do
           (args',lv) <- deleteDeadFieldsM v t args
+          let deletedArgs = args \\ args'
+          e' <- bindToUndefineds tyEnv e deletedArgs
           t' <- getTag t lv 
-          pure $ Alt (NodePat t' args') e
+          pure $ Alt (NodePat t' args') e'
         e -> pure e
       pure $ ECase (Var v) alts'
 
     EBindF lhs@(SReturn (Var v)) (ConstTagNode t args) rhs -> do
       (args',lv) <- deleteDeadFieldsM v t args
+      deletedArgs <- mapM fromVar (args \\ args')
+      rhs' <- bindToUndefineds tyEnv rhs deletedArgs
       t' <- getTag t lv 
-      pure $ EBind lhs (ConstTagNode t' args') rhs
+      pure $ EBind lhs (ConstTagNode t' args') rhs'
     e -> pure . embed $ e
 
   deleteDeadFieldsM :: Name -> Tag -> [a] -> Trf ([a], Vector Bool)
@@ -150,6 +181,10 @@ ddeFromConsumers cbyResult (e, gblLiveness) = cataM alg e where
       liveness <- lookupWithDoubleKeyExcept (notFoundLiveness p t) p t gblLiveness
       pure $ Vec.toList liveness
 
+  fromVar :: Val -> Trf Name
+  fromVar (Var v) = pure v 
+  fromVar x = throwE $ show x ++ " is not a variable."
+
 -- For each producer, it dummifies all locally unused fields.
 -- If the field is dead for all other producers in the same group,
 -- then it deletes the field.
@@ -160,8 +195,12 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
 
   -- dummifying all locally unused fields
   -- deleteing all globally unused fields
+  -- if the variable was not analyzed (has type T_Dead), it will be skipped
   alg :: ExpF Exp -> Trf Exp
   alg = \case
+    e@(EBindF (SReturn (ConstTagNode t args)) (Var v) rhs)
+      | Just T_Dead <- tyEnv ^? variable . at v . _Just . _T_SimpleType
+      -> pure . embed $ e
     EBindF (SReturn (ConstTagNode t args)) (Var v) rhs -> do
       globalLiveness     <- globalLivenessM
       nodeLiveness       <- lookupNodeLivenessM v t lvaResult

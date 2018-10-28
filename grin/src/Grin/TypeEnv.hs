@@ -131,12 +131,3 @@ typeOfValTE typeEnv = \case
   Var name  -> variableType typeEnv name
 
   bad -> error (show bad)
-
--- * Effects
-
-data Effect
-  = Effectful Name
-  | Update { updateLocs :: [Int] }
-  deriving (Eq, Show, Ord)
-
-type EffectMap = Map Name (Set Effect)
