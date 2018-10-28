@@ -415,9 +415,11 @@ data Goal
   | Prog
   deriving (Eq, Ord, Show)
 
+-- NOTE: entry point
 genProg :: Gen Exp
 genProg = genProgWith mzero
 
+-- generate one sample
 sampleProg :: IO ()
 sampleProg = sample $ fmap PP $ genProg
 
@@ -539,6 +541,7 @@ gValue = \case
   TUnion types    -> do
     t <- melements (Set.toList types)
     solve (GVal t)
+  -- NOTE: type driven value generator, add undef here
 
 gPureFunction :: (Name -> Bool) -> Type -> GoalM (Name, [Type])
 gPureFunction p t = do
