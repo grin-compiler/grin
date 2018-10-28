@@ -180,6 +180,7 @@ data PipelineStep
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
   | PrintTypeEnv
+  | SaveTypeEnv
   | Lint
   | ConfluenceTest
   | DebugPipelineState
@@ -194,16 +195,18 @@ pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
 
 data PipelineOpts = PipelineOpts
-  { _poOutputDir  :: FilePath
-  , _poFailOnLint :: Bool
-  , _poLogging    :: Bool
+  { _poOutputDir    :: FilePath
+  , _poFailOnLint   :: Bool
+  , _poLogging      :: Bool
+  , _poSaveTypeEnv  :: Bool
   }
 
 defaultOpts :: PipelineOpts
 defaultOpts = PipelineOpts
-  { _poOutputDir  = ".grin-output"
-  , _poFailOnLint = True
-  , _poLogging    = True
+  { _poOutputDir    = ".grin-output"
+  , _poFailOnLint   = True
+  , _poLogging      = True
+  , _poSaveTypeEnv  = False
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -264,6 +267,7 @@ pipelineStep p = do
     SaveGrin path   -> saveGrin path
     PrintAST        -> printAST
     PrintTypeEnv    -> printTypeEnv
+    SaveTypeEnv     -> saveTypeEnv
     DebugTransformation t -> debugTransformation t
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
@@ -340,6 +344,18 @@ printTypeEnv :: PipelineM ()
 printTypeEnv = do
   Just typeEnv <- use psTypeEnv
   pipelineLog $ show $ pretty $ typeEnv
+
+saveTypeEnv :: PipelineM ()
+saveTypeEnv = do
+  mTypeEnv <- use psTypeEnv
+  forM_ mTypeEnv $ \typeEnv -> do
+    n <- use psSaveIdx
+    outputDir <- view poOutputDir
+    let fname = printf "%03d.Type-Env" n
+    let content = show $ plain $ pretty typeEnv
+    liftIO $ do
+      createDirectoryIfMissing True outputDir
+      writeFile (outputDir </> fname) content
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
@@ -557,6 +573,7 @@ optimizeWithPM o e ps = loop where
         pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
         lintGrin . Just $ show p
         pipelineStep $ Eff CalcEffectMap
+        when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
       pure eff
     -- Run loop again on change
     when (any (match _ExpChanged) effs)
