@@ -143,7 +143,7 @@ transformation n = \case
   CaseCopyPropagation             -> noEffectMap $ noTypeEnv caseCopyPropagation
   CaseHoisting                    -> noEffectMap caseHoisting
   GeneralizedUnboxing             -> noEffectMap generalizedUnboxing
-  ArityRaising                    -> noEffectMap arityRaising
+  ArityRaising                    -> noEffectMap (arityRaising n)
   LateInlining                    -> noEffectMap lateInlining
   UnitPropagation                 -> noEffectMap unitPropagation
   NonSharedElimination            -> noEffectMap nonSharedElimination
