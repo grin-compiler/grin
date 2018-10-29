@@ -7,6 +7,7 @@ Dead data elimination:
 
 TODO:
   HIGH:
+    - make sure all dead code elimination transfromations handle effectful functions correctly
     - apply inlining should also inline ap
     - implement type safe undefined node generation for tests (Test.Test) 
   

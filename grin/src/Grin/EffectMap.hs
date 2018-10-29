@@ -15,6 +15,7 @@ import Grin.Grin
 data Effect
   = Effectful Name
   | Update { updateLocs :: [Int] }
+  | Store { storeLocs :: [Int]}
   deriving (Eq, Show, Ord)
 
 -- | Mapping of function names to their respective side effects.

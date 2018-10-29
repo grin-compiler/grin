@@ -317,14 +317,13 @@ pipelineStep p = do
 calcEffectMap :: PipelineM ()
 calcEffectMap = do
   grin <- use psExp
-  env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
+  env0 <- fromMaybe (traceShow "Empty type environment is used to calculate effect map" emptyTypeEnv) <$> use psTypeEnv
   psEffectMap .= Just (effectMap (env0, grin))
 
 printEffectMap :: PipelineM ()
 printEffectMap = do
-  grin <- use psExp
-  env0 <- fromMaybe (traceShow "emptyEffectMap is used" emptyTypeEnv) <$> use psTypeEnv
-  pipelineLog $ show $ pretty env0
+  effs <- fromMaybe (traceShow "No effect map is available" mempty) <$> use psEffectMap
+  pipelineLog $ show $ pretty effs
 
 compileHPT :: PipelineM ()
 compileHPT = do

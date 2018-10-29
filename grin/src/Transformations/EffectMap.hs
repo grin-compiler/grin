@@ -10,6 +10,7 @@ import Data.Monoid
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Lens.Micro
+import Data.List
 import Data.Maybe
 import Debug.Trace
 
@@ -20,13 +21,17 @@ import Transformations.Util
 
 
 effectMap :: (TypeEnv, Exp) -> EffectMap
-effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ cata buildEffectMap e where
-  buildEffectMap :: ExpF (Set EffectWithCalls, MMap Name (Set EffectWithCalls)) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
+effectMap (te, e) = unifyEffectMap . EffectMap $ effectfulFunctions $ unMMap $ snd $ para buildEffectMap e where
+  buildEffectMap :: ExpF (Exp, (Set EffectWithCalls, MMap Name (Set EffectWithCalls))) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
   buildEffectMap = \case
-    ProgramF defs -> mconcat defs
-    DefF name _ (effs, _) -> (mempty, MMap $ Map.singleton name effs)
-    EBindF lhs _ rhs -> lhs <> rhs
-    ECaseF _ alts -> mconcat alts
+    ProgramF defs -> mconcat . map snd $ defs
+    DefF name _ (_,(effs, _)) -> (mempty, MMap $ Map.singleton name effs)
+    EBindF (SStore _,lhs) (Var v) (_,rhs)
+      | Just locs <- te ^? variable . at v . _Just . _T_SimpleType . _T_Location
+      -> let storeEff = (Set.singleton $ EffectW $ Store locs, mempty)
+         in lhs <> rhs <> storeEff
+    EBindF (_,lhs) _ (_,rhs) -> lhs <> rhs
+    ECaseF _ alts -> mconcat . map snd $ alts
     SAppF    name _
       | Just () <- te ^? function . at name . _Just . _ReturnType . _T_SimpleType . _T_Unit
       -> (Set.singleton (EffectW $ Effectful name), mempty)
@@ -34,8 +39,8 @@ effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ cata buildEf
       -> (Set.singleton (CallsW name), mempty)
     SUpdateF name _
       | Just locs <- te ^? variable . at name . _Just . _T_SimpleType . _T_Location
-      -> (mempty, MMap $ Map.singleton name $ Set.singleton $ EffectW $ Update locs)
-    rest -> Data.Foldable.fold rest
+      -> (Set.singleton $ EffectW $ Update locs, mempty)
+    rest -> Data.Foldable.fold . fmap snd $ rest
 
 data EffectWithCalls
   = EffectW { toEffect :: Effect }
@@ -70,3 +75,20 @@ newtype MMap k m = MMap { unMMap :: Map k m }
 instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
+
+unifyEffectMap :: EffectMap -> EffectMap 
+unifyEffectMap (EffectMap effects) = EffectMap $ Map.map unifyEffectSet effects
+
+unifyEffectSet :: Set Effect -> Set Effect
+unifyEffectSet effects =  updates <> stores <> otherEffects where 
+  updates   = if null updateLocs then mempty else Set.singleton (Update updateLocs)
+  stores    = if null storeLocs  then mempty else Set.singleton (Store storeLocs)
+
+  updateLocs :: [Int]
+  updateLocs = nub . concat $ [ locs | (Update locs) <- Set.toList effects]
+
+  storeLocs :: [Int]
+  storeLocs  = nub . concat $ [ locs | (Store locs) <- Set.toList effects]
+
+  otherEffects :: Set Effect
+  otherEffects = Set.fromList [ eff | eff@(Effectful _) <- Set.toList effects]
