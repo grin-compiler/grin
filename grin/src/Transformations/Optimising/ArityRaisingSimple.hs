@@ -11,9 +11,7 @@ import Data.Monoid
 import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Data.Map.Strict as Map; import Data.Map (Map)
 import qualified Data.Vector as Vector; import Data.Vector (Vector)
-
-import Debug.Trace
-import Grin.Pretty
+import Control.Monad.State.Strict
 
 {-
 1. Select one function which has a parameter of a pointer to one constructor only.
@@ -40,8 +38,8 @@ Parameters:
  - Its value points to a location, which location has only one Node with at least one parameter
 -}
 
-arityRaising :: (TypeEnv,Exp) -> (TypeEnv,Exp)
-arityRaising (te,exp) = (te, if Map.null arityData then exp else phase2 arityData exp)
+arityRaising :: Int -> (TypeEnv,Exp) -> (TypeEnv,Exp)
+arityRaising n (te,exp) = (te, if Map.null arityData then exp else phase2 n arityData exp)
   where
     arityData = phase1 te exp
 
@@ -105,8 +103,7 @@ pointsToOneNode te var = case Map.lookup var (_variable te) of
     _ -> Nothing
   _ -> Nothing
 
-newParNames :: Name -> Int -> [Name]
-newParNames n i = (\j -> concat [n,".arity.",show j]) <$> [1..i]
+type VarM a = State Int a
 
 {-
 Change only the functions which are in the ArityData map, left the others out.
@@ -116,8 +113,14 @@ Change only the functions which are in the ArityData map, left the others out.
 
 Use the original parameter name with new indices, thus we dont need a name generator.
 -}
-phase2 :: ArityData -> Exp -> Exp
-phase2 arityData = para change where
+phase2 :: Int -> ArityData -> Exp -> Exp
+phase2 n arityData = flip evalState 0 . cata change where
+  fetchParNames :: Name -> Int -> Int -> [Name]
+  fetchParNames nm idx i = (\j -> concat [nm,".",show n,".",show idx,".arity.",show j]) <$> [1..i]
+
+  newParNames :: Name -> Int -> [Name]
+  newParNames nm i = (\j -> concat [nm,".",show n,".arity.",show j]) <$> [1..i]
+
   parameterInfo :: ParameterInfo
   parameterInfo = Map.fromList $ map (\(n,ith,tag) -> (n, (ith, tag))) $ concat $ Map.elems arityData
 
@@ -126,7 +129,7 @@ phase2 arityData = para change where
         newParNames p ps
       | otherwise -> [p]
 
-  change :: ExpF (Exp, Exp) -> Exp
+  change :: ExpF (VarM Exp) -> (VarM Exp)
   change = \case
     {- Change only function bodies that are in the ArityData
         from: (CNode c1 cn) <- fetch pi
@@ -142,38 +145,37 @@ phase2 arityData = para change where
     -}
     SFetchIF var idx
       | Just (nth, (tag, ps)) <- Map.lookup var parameterInfo ->
-        SReturn (ConstTagNode tag (Var <$> newParNames var ps))
+        pure $ SReturn (ConstTagNode tag (Var <$> newParNames var ps))
       | otherwise ->
-        SFetchI var idx
+        pure $ SFetchI var idx
 
     SAppF f fps
-      | Just aritedParams <- Map.lookup f arityData ->
+      | Just aritedParams <- Map.lookup f arityData -> do
+        idx <- get
         let qsi = Map.fromList $ map (\(_,i,t) -> (i,t)) aritedParams
             nsi = Map.fromList $ map (\(n,i,t) -> (n,t)) aritedParams
             psi = [1..] `zip` fps
             newPs = flip concatMap psi $ \case
-              (i, Var n) | Just (t, jth) <- Map.lookup i qsi ->
-                Var <$> newParNames n jth
+              (_, Var n) | Just (t, jth) <- Map.lookup n nsi -> Var <$> newParNames n jth
+              (i, Var n) | Just (t, jth) <- Map.lookup i qsi -> Var <$> fetchParNames n idx jth
               (_, other) -> [other]
             fetches = flip mapMaybe psi $ \case
               (_, Var n) | Just _ <- Map.lookup n nsi -> Nothing
               (i, Var n) | Just (t, jth) <- Map.lookup i qsi ->
-                Just ((ConstTagNode t (Var <$> newParNames n jth)),
-                      SFetchI n Nothing)
+                Just ((ConstTagNode t (Var <$> fetchParNames n idx jth)), SFetchI n Nothing)
               _ -> Nothing
-        in case fetches of
+        put (idx + 1)
+        pure $ case fetches of
             [] -> SApp f newPs
             _  -> SBlock $ foldr (\(pat, fetch) rest -> EBind fetch pat rest) (SApp f newPs) fetches
       | otherwise ->
-        SApp f fps
+        pure $ SApp f fps
 
-    DefF f ps (orig, new)
-      | Map.member f arityData ->
-        Def f (replace_parameters_with_new_ones ps) new
-      | otherwise ->
-        Def f ps orig
+    DefF f ps new
+      | Map.member f arityData -> Def f (replace_parameters_with_new_ones ps) <$> new
+      | otherwise              -> Def f ps <$> new
 
-    rest -> embed (snd <$> rest)
+    rest -> embed <$> sequence rest
 
 {-
 TODO: Remove this part before merge...
