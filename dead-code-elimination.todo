@@ -7,7 +7,7 @@ Dead data elimination:
 
 TODO:
   HIGH:
-    - make sure all dead code elimination transfromations handle effectful functions correctly
+    - make sure, that all dead code elimination transfromations handle effectful functions correctly
     - apply inlining should also inline ap
     - implement type safe undefined node generation for tests (Test.Test) 
   
@@ -32,9 +32,8 @@ TODO:
     - PNfoo args --> P(l-n)foo args'
     - if last argument is deleted, then do ... ?
   
-  
-  
 Archive:
+  ✔ make sure, that dead procedure elimination does not produce semantically invalid code @done(18-10-29 10:31) @project(TODO.HIGH)
   ✘ store variable name <-> heap location is a bijective mapping @cancelled(18-10-28 23:34)
   ✘ make sure that dead (data/parameter/procedure/variable) elimination are executed after each other in the pipeline @cancelled(18-10-28 23:33)
   ✔ fix confuence test behaviour for analysis based transformations @done(18-10-28 23:32)

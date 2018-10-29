@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, FlexibleContexts #-}
+{-# LANGUAGE LambdaCase, FlexibleContexts, RecordWildCards #-}
 module Transformations.Util where
 
 import Data.Map (Map)
@@ -14,6 +14,8 @@ import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
 
 import Grin.Grin
+import Grin.Pretty
+import Grin.TypeEnvDefs
 
 {-
   HINT: Name usage in Exp
@@ -251,3 +253,13 @@ markToRemove _ False = Nothing
 
 zipFilter :: [a] -> [Bool] -> [a]
 zipFilter xs = catMaybes . zipWith markToRemove xs 
+
+bindToUndefineds :: Monad m => TypeEnv -> Exp -> [Name] -> ExceptT String m Exp 
+bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
+
+  bindToUndefined :: Monad m => Exp -> Name -> ExceptT String m Exp  
+  bindToUndefined rhs v = do
+    ty <- lookupExcept (notInTypeEnv v) v _variable
+    pure $ EBind (SReturn (Undefined ty)) (Var v) rhs
+
+  notInTypeEnv v = "Variable " ++ show (PP v) ++ " was not found in the type environment."

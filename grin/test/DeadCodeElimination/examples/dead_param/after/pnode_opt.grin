@@ -20,7 +20,9 @@ grinMain =
   pure fooRet
 
 
-foo y0 = 
+foo y0 =
+  z0 <- pure (#undefined :: {2})
+  x0 <- pure (#undefined :: {0})
   y0' <- fetch y0
   (CInt n) <- y0'
   pure y0'

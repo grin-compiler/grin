@@ -58,17 +58,6 @@ getTag t@(Tag ty n) lv = do
       return t'
 
 
-bindToUndefineds :: TypeEnv -> Exp -> [Name] -> Trf Exp 
-bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
-
-  bindToUndefined :: Exp -> Name -> Trf Exp 
-  bindToUndefined rhs v = do
-    ty <- lookupExcept (notInTypeEnv v) v _variable
-    pure $ EBind (SReturn (Undefined ty)) (Var v) rhs
-
-  notInTypeEnv v = "Variable " ++ show (PP v) ++ " was not found in the type environment."
-
-
 deadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either String Exp
 deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
   ddeFromProducers lvaResult cbyResult tyEnv e >>= ddeFromConsumers cbyResult tyEnv

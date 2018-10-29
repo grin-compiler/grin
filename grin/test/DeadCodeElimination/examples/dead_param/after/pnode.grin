@@ -27,6 +27,8 @@ grinMain =
 
 
 foo y0 = 
+  z0 <- pure (#undefined :: {0,1,2})
+  x0 <- pure (#undefined :: {0,1,2})
   y0' <- eval y0
   pure y0'
 

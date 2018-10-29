@@ -8,6 +8,7 @@ import Test.IO
 import Test.Hspec
 
 import Grin.Grin
+import Grin.TypeCheck
 
 import AbstractInterpretation.LVAResultTypes
 import Transformations.Optimising.DeadParameterElimination
@@ -59,10 +60,11 @@ runTestsFrom fromCurDir = do
 eliminateDeadParams :: Exp -> Exp
 eliminateDeadParams e = 
   fromRight fail
-  . deadParameterElimination lvaResult
+  . deadParameterElimination lvaResult tyEnv
   $ e
   where 
     fail = error "Dead parameter elimination failed. See the error logs for more information"
     lvaResult = calcLiveness e
+    tyEnv = inferTypeEnv e
 
 

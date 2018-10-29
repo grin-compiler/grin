@@ -9,12 +9,15 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.Vector as Vec
 
+import Data.List
+
 import qualified Data.Foldable
 import Data.Functor.Foldable as Foldable
 
 import Control.Monad.Trans.Except
 
 import Grin.Grin
+import Grin.TypeEnvDefs
 import Transformations.Util
 import AbstractInterpretation.LVAUtil
 
@@ -24,13 +27,15 @@ runTrf :: Trf a -> Either String a
 runTrf = runExcept
 
 -- P and F nodes are handled by Dead Data Elimination
-deadParameterElimination :: LVAResult -> Exp -> Either String Exp
-deadParameterElimination lvaResult = runTrf . cataM alg where
+deadParameterElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
+deadParameterElimination lvaResult tyEnv = runTrf . cataM alg where
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     DefF f args body -> do
       liveArgs <- onlyLiveArgs f args
-      return $ Def f liveArgs body
+      let deletedArgs = args \\ liveArgs
+      body' <- bindToUndefineds tyEnv body deletedArgs
+      return $ Def f liveArgs body'
     SAppF f args -> do 
       liveArgs <- onlyLiveArgs f args
       return $ SApp f liveArgs

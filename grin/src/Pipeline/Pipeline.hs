@@ -476,14 +476,15 @@ transformationM DeadCodeElimination = do
     Left  err -> psErrors %= (err:)
 
   e' <- use psExp
-  case deadParameterElimination lvaResult e' of
+  case deadParameterElimination lvaResult typeEnv e' of
     Right e'' -> psExp .= e'' >> psTransStep %= (+1)
     Left  err -> psErrors %= (err:)
 
 transformationM DeadParameterElimination = do
   e  <- use psExp
   Just lvaResult <- use psLVAResult
-  case deadParameterElimination lvaResult e of
+  Just typeEnv   <- use psTypeEnv
+  case deadParameterElimination lvaResult typeEnv e of
     Right e'  -> psExp .= e' >> psTransStep %= (+1)
     Left  err -> psErrors %= (err:)
 
