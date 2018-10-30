@@ -51,12 +51,12 @@ typeEnvFromHPTResult hptResult = typeEnv where
     T_Location _ -> True
     _ -> False
 
-  convertNodeItem :: [SimpleType] -> Either String TypeEnv.SimpleType
-  convertNodeItem [sTy] = pure $ convertSimpleType sTy
-  convertNodeItem tys
+  convertNodeItem :: Name -> [SimpleType] -> Either String TypeEnv.SimpleType
+  convertNodeItem _ [sTy] = pure $ convertSimpleType sTy
+  convertNodeItem _ tys
     | all isLocation tys
     = pure $ TypeEnv.T_Location [l | T_Location l <- tys]
-  convertNodeItem tys = throwError $ printf "illegal node item type %s" (show . pretty $ Set.fromList tys)
+  convertNodeItem n tys = throwError $ printf "%s illegal node item type %s" n (show . pretty $ Set.fromList tys)
 
   checkNode :: Name -> NodeSet -> Vector TypeEnv.SimpleType -> Either String (Vector TypeEnv.SimpleType)
   checkNode n ns v
@@ -64,7 +64,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
     | otherwise = pure v
 
   convertNodeSet :: (Name, NodeSet) -> Either String (Map Tag (Vector TypeEnv.SimpleType))
-  convertNodeSet (n, a@(NodeSet ns)) = mapM (checkNode n a <=< mapM (convertNodeItem . Set.toList)) ns
+  convertNodeSet (n, a@(NodeSet ns)) = mapM (checkNode n a <=< mapM (convertNodeItem n . Set.toList)) ns
 
   convertTypeSet :: (Name, TypeSet) -> Either String TypeEnv.Type
   convertTypeSet (name, ts) = do
@@ -72,7 +72,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
         st = ts^.simpleType
     case (Set.size st, Map.size $ ns^.nodeTagMap) of
       (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet <$> convertNodeSet (name, ns)
-      (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType <$> convertNodeItem (Set.toList st)
+      (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType <$> convertNodeItem name (Set.toList st)
       (0,0)                                           -> pure TypeEnv.dead_t
       _ -> throwError $ printf "illegal type %s for %s" (show . pretty $ ts) name
 
