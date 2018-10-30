@@ -4,6 +4,44 @@ Dead data elimination:
   - for field deletion, CBy analysis is also required
     - we have to scrutinize every case expression, and group the overlapping producers together
     - in order to be able to delete a field (wtih a given tag), that field must be dead (with the given tag) for all producers in the group
+  - when deleting node fields, some expressions might still reference them
+  - so we must bind #undefineds to these names to produce semantically valid code 
+    (these will be cleaned up by DVE)
+
+Dead parameter elimination:
+  - delete dead parameters from function definitions
+  - delete the same arguments from function applications as well
+  - we have to bind #undefineds to the deleted function parameters inside the function body 
+    (see DDE reasoning)
+
+Dead function elimination:
+  - a function definition can be removed if its return value and all of its arguments are dead 
+  - a parameter can be live even though the return value is dead, if it has some sort of side effect
+    e.g.: it's a pointer that is updated, or a side-effecting primop is called on it
+  - replace funapp bindings with #undefined (where the function was deleted)
+  - when deleting a store, update #undefined types
+
+Dead variable elimination:
+  - for (y <- pure x) bindings, delete the binding if y is dead
+  - for (y <- fun args) bindings, we can only delete it, if fun's return value and all of its arguments are dead
+  - for (x <- fetch p) bindings, delete it if x is dead 
+  - for (p <- store x) bindings, delete it if p is dead 
+  - for (update p x), delete it if p is dead 
+  - when deleting a binding, replace all occurences of the deleted name with #undefined
+  - when deleting a store, update #undefined types
+
+
+Side effects:
+  
+  DDE:
+    - has no effect 
+  
+  DPE:
+    - has no effect 
+    - if a parameter is dead, it means that even if it is a pointer, its location will never be used
+
+  DVE:
+    - 
 
 TODO:
   HIGH:

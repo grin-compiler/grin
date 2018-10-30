@@ -109,6 +109,7 @@ data Transformation
   | DeadProcedureElimination
   | DeadParameterElimination
   | DeadVariableElimination
+  | SimpleDeadParameterElimination
   | CommonSubExpressionElimination
   | CaseCopyPropagation
   | CaseHoisting
@@ -143,7 +144,7 @@ transformation n = \case
   CopyPropagation                 -> noEffectMap $ noTypeEnv copyPropagation
   ConstantPropagation             -> noEffectMap $ noTypeEnv constantPropagation
   DeadProcedureElimination        -> noEffectMap $ noTypeEnv deadProcedureElimination
-  -- DeadParameterElimination        -> noEffectMap $ noTypeEnv deadParameterElimination
+  SimpleDeadParameterElimination  -> noEffectMap $ noTypeEnv simpleDeadParameterElimination
   InlineEval                      -> noEffectMap inlineEval
   InlineApply                     -> noEffectMap inlineApply
   InlineBuiltins                  -> noEffectMap inlineBuiltins
@@ -637,6 +638,7 @@ randomPipeline = do
         , DeadParameterElimination
         , DeadProcedureElimination
         , DeadVariableElimination
+        , SimpleDeadParameterElimination
         , CommonSubExpressionElimination
         , CaseCopyPropagation
         , CaseHoisting

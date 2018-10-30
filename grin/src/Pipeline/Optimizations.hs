@@ -10,6 +10,7 @@ module Pipeline.Optimizations
   , deadProcedureElimination
   , deadParameterElimination
   , deadVariableElimination
+  , simpleDeadParameterElimination
   , commonSubExpressionElimination
   , caseCopyPropagation
   , generalizedUnboxing
@@ -29,6 +30,7 @@ import Transformations.Optimising.DeadDataElimination (deadDataElimination)
 import Transformations.Optimising.DeadProcedureElimination (deadProcedureElimination)
 import Transformations.Optimising.DeadParameterElimination (deadParameterElimination)
 import Transformations.Optimising.DeadVariableElimination (deadVariableElimination)
+import Transformations.Optimising.SimpleDeadParameterElimination (simpleDeadParameterElimination)
 import Transformations.Optimising.CSE (commonSubExpressionElimination)
 import Transformations.Optimising.CaseCopyPropagation (caseCopyPropagation)
 import Transformations.Optimising.GeneralizedUnboxing (generalizedUnboxing)
