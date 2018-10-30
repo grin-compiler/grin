@@ -99,10 +99,10 @@ library
     Transformations.Optimising.CSE
     Transformations.Optimising.DeadDataElimination
     Transformations.Optimising.DeadParameterElimination
-    Transformations.Optimising.DeadFunctionElimination
     Transformations.Optimising.EvaluatedCaseElimination
     Transformations.Optimising.GeneralizedUnboxing
     Transformations.Optimising.Inlining
+    Transformations.Optimising.SimpleDeadFunctionElimination
     Transformations.Optimising.SimpleDeadVariableElimination
     Transformations.Optimising.SimpleDeadParameterElimination
     Transformations.Optimising.SparseCaseOptimisation
@@ -277,9 +277,9 @@ test-suite grin-test
                      , Transformations.Optimising.CSESpec
                      , Transformations.Optimising.GeneralizedUnboxingSpec
                      , Transformations.Optimising.ArityRaisingSpec
+                     , Transformations.Optimising.SimpleDeadFunctionEliminationSpec
                      , Transformations.Optimising.SimpleDeadParameterEliminationSpec
                      , Transformations.Optimising.SimpleDeadVariableEliminationSpec
-                     , Transformations.Optimising.DeadFunctionEliminationSpec
                      , Transformations.Optimising.InliningSpec
                      , Transformations.Optimising.CaseHoistingSpec
                      , Transformations.SingleStaticAssignmentSpec

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
-module Transformations.Optimising.DeadFunctionEliminationSpec where
+module Transformations.Optimising.SimpleDeadFunctionEliminationSpec where
 
-import Transformations.Optimising.DeadFunctionElimination
+import Transformations.Optimising.SimpleDeadFunctionElimination
 
 import Test.Hspec
 import Grin.TH
@@ -36,7 +36,7 @@ spec = do
         funB b = funC b
         funC c = pure ()
       |]
-    deadFunctionElimination before `sameAs` after
+    simpleDeadFunctionElimination before `sameAs` after
 
   it "reference direction" $ do
     let before = [prog|
@@ -56,7 +56,7 @@ spec = do
         funA b = funB b
         funB c = pure ()
       |]
-    deadFunctionElimination before `sameAs` after
+    simpleDeadFunctionElimination before `sameAs` after
 
   it "ignore unknown function" $ do
     let before = [prog|
@@ -72,7 +72,7 @@ spec = do
           funA 1
           funB 2
       |]
-    deadFunctionElimination before `sameAs` after
+    simpleDeadFunctionElimination before `sameAs` after
 
   it "dead clique" $ do
     let before = [prog|
@@ -97,4 +97,4 @@ spec = do
         funA b = funB b
         funB c = pure ()
       |]
-    deadFunctionElimination before `sameAs` after
+    simpleDeadFunctionElimination before `sameAs` after
