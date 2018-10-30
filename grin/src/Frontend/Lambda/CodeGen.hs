@@ -12,7 +12,6 @@ import qualified Data.Map as Map
 import Frontend.Lambda.Syntax
 import Frontend.Lambda.PrimOps
 import qualified Grin.Grin as G
-import Transformations.Optimising.DeadProcedureElimination
 import Transformations.GenerateEval
 
 data Env

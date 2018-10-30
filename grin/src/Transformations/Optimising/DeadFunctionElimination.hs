@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
-module Transformations.Optimising.DeadProcedureElimination where
+module Transformations.Optimising.DeadFunctionElimination where
 
 import Text.Printf
 import Data.Map (Map)
@@ -10,8 +10,8 @@ import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Grin.Grin
 
-deadProcedureElimination :: Program -> Program
-deadProcedureElimination (Program defs) = Program [def | def@(Def name _ _) <- defs, Set.member name liveDefs] where
+deadFunctionElimination :: Program -> Program
+deadFunctionElimination (Program defs) = Program [def | def@(Def name _ _) <- defs, Set.member name liveDefs] where
   defMap :: Map Name Def
   defMap = Map.fromList [(name, def) | def@(Def name _ _) <- defs]
 

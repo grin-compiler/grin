@@ -47,8 +47,8 @@ import Test.Hspec
 import Control.Monad
 import Data.List
 
-import Transformations.Optimising.DeadProcedureElimination
-import Transformations.Optimising.DeadParameterElimination
+import Transformations.Optimising.DeadFunctionElimination
+import Transformations.Optimising.SimpleDeadParameterElimination
 import Transformations.SingleStaticAssignment
 
 
@@ -430,7 +430,7 @@ sampleProg = sample $ fmap PP $ genProg
 -- TODO: add liveness info, or use simples DPE
 genProgWith :: GoalM G.Exp -> Gen Exp
 genProgWith gexp =
-  fmap (deadProcedureElimination . {- deadParameterElimination . -} singleStaticAssignment . head) $
+  fmap (deadFunctionElimination . simpleDeadParameterElimination . singleStaticAssignment . head) $
   G.asExp <$$>
   (runGoalM gexp $
     withADTs 10 $

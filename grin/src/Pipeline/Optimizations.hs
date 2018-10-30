@@ -7,7 +7,7 @@ module Pipeline.Optimizations
   , copyPropagation
   , constantPropagation
   , deadDataElimination
-  , deadProcedureElimination
+  , deadFunctionElimination
   , deadParameterElimination
   , deadVariableElimination
   , simpleDeadParameterElimination
@@ -27,7 +27,7 @@ import Transformations.Optimising.UpdateElimination (updateElimination)
 import Transformations.Optimising.CopyPropagation (copyPropagation)
 import Transformations.Optimising.ConstantPropagation (constantPropagation)
 import Transformations.Optimising.DeadDataElimination (deadDataElimination)
-import Transformations.Optimising.DeadProcedureElimination (deadProcedureElimination)
+import Transformations.Optimising.DeadFunctionElimination (deadFunctionElimination)
 import Transformations.Optimising.DeadParameterElimination (deadParameterElimination)
 import Transformations.Optimising.DeadVariableElimination (deadVariableElimination)
 import Transformations.Optimising.SimpleDeadParameterElimination (simpleDeadParameterElimination)

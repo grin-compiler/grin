@@ -30,7 +30,6 @@ Dead variable elimination:
   - when deleting a binding, replace all occurences of the deleted name with #undefined
   - when deleting a store, update #undefined types
 
-
 Side effects:
   
   DDE:
@@ -50,8 +49,6 @@ TODO:
     - implement type safe undefined node generation for tests (Test.Test) 
   
   LOW:
-    - rename dead procedure elimination to dead function elimination
-    - genProgWith (in Test.Test) -> readd dead parameter elimination
     - implement type env transformation for DDE
     - linter should check whether calculated types match with annotations
     - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
@@ -71,6 +68,8 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✔ genProgWith (in Test.Test) -> readd dead parameter elimination @done(18-10-30 22:23) @project(TODO.LOW)
+  ✔ rename dead procedure elimination to dead function elimination @done(18-10-30 22:23) @project(TODO.LOW)
   ✔ make sure, that dead procedure elimination does not produce semantically invalid code @done(18-10-29 10:31) @project(TODO.HIGH)
   ✘ store variable name <-> heap location is a bijective mapping @cancelled(18-10-28 23:34)
   ✘ make sure that dead (data/parameter/procedure/variable) elimination are executed after each other in the pipeline @cancelled(18-10-28 23:33)

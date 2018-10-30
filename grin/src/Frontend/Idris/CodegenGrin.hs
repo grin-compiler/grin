@@ -310,7 +310,7 @@ pipelineOpts = defaultOpts
 preparation :: [PipelineStep]
 preparation =
   [ SaveGrin "FromIdris"
-  , T DeadProcedureElimination
+  , T DeadFunctionElimination
   , PrintGrin ondullblack
   , HPT CompileToAbstractProgram
   , HPT RunAbstractProgramPure
@@ -328,7 +328,7 @@ idrisOptimizations =
   , UpdateElimination
   , CopyPropagation
 --  , ConstantPropagation
-  , DeadProcedureElimination
+  , DeadFunctionElimination
   , DeadVariableElimination
   , DeadParameterElimination
   , CommonSubExpressionElimination
