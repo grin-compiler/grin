@@ -84,13 +84,13 @@ spec = do
           , T BindNormalisation
           , T CommonSubExpressionElimination
           , T CopyPropagation
-          , T DeadVariableElimination
+          , T SimpleDeadVariableElimination
           , T ArityRaising
           , T CopyPropagation
-          , T DeadVariableElimination
+          , T SimpleDeadVariableElimination
           , T ArityRaising
           , T CopyPropagation
-          , T DeadVariableElimination
+          , T SimpleDeadVariableElimination
           ]
 
     (pipelineInfo, transformed) <- pipeline defaultOpts Nothing before ppln

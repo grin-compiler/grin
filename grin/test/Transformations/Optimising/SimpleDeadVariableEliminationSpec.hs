@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
-module Transformations.Optimising.DeadVariableEliminationSpec where
+module Transformations.Optimising.SimpleDeadVariableEliminationSpec where
 
-import Transformations.Optimising.DeadVariableElimination
+import Transformations.Optimising.SimpleDeadVariableElimination
 
 import Test.Hspec
 import Grin.TH
@@ -27,7 +27,7 @@ spec = do pure ()
     let after = [expr|
         pure 0
       |]
-    deadVariableElimination before `sameAs` after
+    simpleDeadVariableElimination before `sameAs` after
 
   it "pure case" $ do
     let before = [expr|
@@ -47,7 +47,7 @@ spec = do pure ()
         _prim_int_print i1
         pure 0
       |]
-    deadVariableElimination before `sameAs` after
+    simpleDeadVariableElimination before `sameAs` after
 
   it "effectful case" $ do
     let before = [expr|
@@ -72,7 +72,7 @@ spec = do pure ()
           #default  -> pure ()
         pure 0
       |]
-    deadVariableElimination before `sameAs` after
+    simpleDeadVariableElimination before `sameAs` after
 
   it "nested effectful case" $ do
     let before = [expr|
@@ -102,7 +102,7 @@ spec = do pure ()
           #default  -> pure ()
         pure 0
       |]
-    deadVariableElimination before `sameAs` after
+    simpleDeadVariableElimination before `sameAs` after
 
   it "node pattern" $ do
     let before = [expr|
@@ -117,7 +117,7 @@ spec = do pure ()
         i1 <- pure 1
         pure i1
       |]
-    deadVariableElimination before `sameAs` after
+    simpleDeadVariableElimination before `sameAs` after
 
   it "pattern match" $ do
     let before = [expr|
@@ -133,6 +133,6 @@ spec = do pure ()
     let after = [expr|
         pure 0
       |]
-    deadVariableElimination before `sameAs` after
+    simpleDeadVariableElimination before `sameAs` after
 -}
   

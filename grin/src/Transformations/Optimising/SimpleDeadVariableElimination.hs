@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Transformations.Optimising.DeadVariableElimination where
+module Transformations.Optimising.SimpleDeadVariableElimination where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -16,8 +16,8 @@ import Grin.EffectMap
 import Transformations.Util
 
 -- TODO: Write for dead code elimination.
-deadVariableElimination :: (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
-deadVariableElimination (typeEnv, EffectMap effects, e) = (typeEnv, EffectMap effects, fst $ cata folder e) where
+simpleDeadVariableElimination :: (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
+simpleDeadVariableElimination (typeEnv, EffectMap effects, e) = (typeEnv, EffectMap effects, fst $ cata folder e) where
 
   folder :: ExpF (Exp, Set Name) -> (Exp, Set Name)
   folder = \case

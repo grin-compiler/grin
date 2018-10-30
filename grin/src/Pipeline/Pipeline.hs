@@ -108,7 +108,7 @@ data Transformation
   | DeadDataElimination
   | DeadFunctionElimination
   | DeadParameterElimination
-  | DeadVariableElimination
+  | SimpleDeadVariableElimination
   | SimpleDeadParameterElimination
   | CommonSubExpressionElimination
   | CaseCopyPropagation
@@ -149,7 +149,7 @@ transformation n = \case
   InlineApply                     -> noEffectMap inlineApply
   InlineBuiltins                  -> noEffectMap inlineBuiltins
   SparseCaseOptimisation          -> noEffectMap sparseCaseOptimisation
-  DeadVariableElimination         -> deadVariableElimination
+  SimpleDeadVariableElimination   -> simpleDeadVariableElimination
   CommonSubExpressionElimination  -> noEffectMap commonSubExpressionElimination
   CaseCopyPropagation             -> noEffectMap $ noTypeEnv caseCopyPropagation
   CaseHoisting                    -> noEffectMap caseHoisting
@@ -637,7 +637,7 @@ randomPipeline = do
         , DeadDataElimination
         , DeadParameterElimination
         , DeadFunctionElimination
-        , DeadVariableElimination
+        , SimpleDeadVariableElimination
         , SimpleDeadParameterElimination
         , CommonSubExpressionElimination
         , CaseCopyPropagation
@@ -746,7 +746,7 @@ optimize o e pre post = optimizeWith o e pre optimizations post where
     , CopyPropagation
     , ConstantPropagation
     , DeadFunctionElimination
-    , DeadVariableElimination
+    , SimpleDeadVariableElimination
     , DeadParameterElimination
     , CommonSubExpressionElimination
     , CaseCopyPropagation

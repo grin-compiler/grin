@@ -44,7 +44,7 @@ transformOpts =
   <|> flg DeadDataElimination "dde" "Dead Data Elimination"
   <|> flg DeadFunctionElimination "dfe" "Dead Procedure Elimination"
   <|> flg DeadParameterElimination "dpe" "Dead Parameter Elimination"
-  <|> flg DeadVariableElimination "dve" "Dead Variable Elimination"
+  <|> flg SimpleDeadVariableElimination "sdve" "Simple Dead Variable Elimination"
   <|> flg SimpleDeadParameterElimination "sdpe" "Simple Dead Parameter Elimination"
   <|> flg CommonSubExpressionElimination "cse" "Common Sub-Expression Elimination"
   <|> flg CaseCopyPropagation "ccp" "Case Copy Propagation"

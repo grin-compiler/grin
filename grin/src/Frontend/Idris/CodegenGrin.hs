@@ -329,7 +329,7 @@ idrisOptimizations =
   , CopyPropagation
 --  , ConstantPropagation
   , DeadFunctionElimination
-  , DeadVariableElimination
+  , SimpleDeadVariableElimination
   , DeadParameterElimination
   , CommonSubExpressionElimination
   , CaseCopyPropagation
