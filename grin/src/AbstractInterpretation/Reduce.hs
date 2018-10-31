@@ -205,6 +205,7 @@ evalInstruction = \case
         let filteredTagMap = Data.Foldable.foldr Map.delete tagMap tags
         when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
           selectReg dstReg.nodeSet %= (mappend $ NodeSet filteredTagMap)
+          selectReg dstReg.simpleType %= (mappend typeSet)
 
   Extend {..} -> do
     -- TODO: support all selectors
