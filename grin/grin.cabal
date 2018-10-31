@@ -191,6 +191,7 @@ test-suite grin-test
                      , Transformations.ConfluenceSpec
                      , Samples.SumListSpec
                      , Samples.ArityFullRemoveSpec
+                     , HptSpec
                      , LintSpec
                      , TestSpec
                      , PipelineSpec
