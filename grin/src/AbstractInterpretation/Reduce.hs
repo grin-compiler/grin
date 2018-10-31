@@ -118,6 +118,7 @@ evalInstruction = \case
         let filteredTagMap = Data.Foldable.foldr Map.delete tagMap tags
         when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
           register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet filteredTagMap)
+          register.ix (regIndex dstReg).simpleType %= (mappend typeSet)
 
   Extend {..} -> do
     -- TODO: support all selectors, except Locations and NodeLocations, which are specific for sharing.
