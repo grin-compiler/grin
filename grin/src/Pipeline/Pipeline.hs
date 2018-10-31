@@ -384,6 +384,8 @@ saveTypeEnv :: PipelineM ()
 saveTypeEnv = do
   mTypeEnv <- use psTypeEnv
   forM_ mTypeEnv $ saveTransformationInfo "Type-Env"
+  mHPTResult <- use psHPTResult
+  forM_ mHPTResult $ saveTransformationInfo "HPT-Result"
 
 statistics :: PipelineM ()
 statistics = do
