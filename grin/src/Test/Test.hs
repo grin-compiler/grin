@@ -47,7 +47,7 @@ import Data.List
 
 import Transformations.Optimising.DeadProcedureElimination
 import Transformations.Optimising.DeadParameterElimination
-import Transformations.SingleStaticAssignment
+import Transformations.StaticSingleAssignment
 
 type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
 

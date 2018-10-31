@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, QuasiQuotes #-}
-module Transformations.SingleStaticAssignmentSpec where
+module Transformations.StaticSingleAssignmentSpec where
 
-import Transformations.SingleStaticAssignment
+import Transformations.StaticSingleAssignment
 
 import Test.Test
 import Grin.TH

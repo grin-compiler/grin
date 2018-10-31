@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Transformations.SingleStaticAssignment where
+module Transformations.StaticSingleAssignment where
 
 import Control.Arrow (first)
 import Data.Functor.Foldable

@@ -59,7 +59,7 @@ library
     Transformations.GenerateEval
     Transformations.MangleNames
     Transformations.Names
-    Transformations.SingleStaticAssignment
+    Transformations.StaticSingleAssignment
     Transformations.UnitPropagation
     Transformations.Util
     Transformations.Optimising.ArityRaising
@@ -186,7 +186,7 @@ test-suite grin-test
                      , Transformations.Optimising.DeadVariableEliminationSpec
                      , Transformations.Optimising.InliningSpec
                      , Transformations.Optimising.CaseHoistingSpec
-                     , Transformations.SingleStaticAssignmentSpec
+                     , Transformations.StaticSingleAssignmentSpec
                      , Transformations.BindNormalisationSpec
                      , Transformations.ConfluenceSpec
                      , Samples.SumListSpec
