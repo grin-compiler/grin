@@ -10,6 +10,7 @@ import qualified Data.Map as Map
 import qualified Data.Vector as Vec
 
 import Data.List
+import Data.Maybe
 import Data.Monoid
 
 import qualified Data.Foldable
@@ -109,3 +110,47 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
                      ++ "should always point to a single locationn, "
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
+
+trfLoc :: Int -> Trf (Maybe Int) 
+trfLoc loc = do 
+  deletedLocs <- use deLocations
+  let numRemovedBefore = length . Set.filter (< loc) $ deletedLocs
+  if loc `elem` deletedLocs
+    then pure Nothing 
+    else pure $ Just (loc - numRemovedBefore)
+
+trfSimpleType :: SimpleType -> Trf SimpleType
+trfSimpleType (T_Location locs) = do
+  locs' <- mapM trfLoc locs
+  let locs'' = catMaybes locs'
+  if null locs'' then pure T_Dead 
+                 else pure . T_Location $ locs''
+
+trfNodeSet :: NodeSet -> Trf NodeSet 
+trfNodeSet = mapM (mapM trfSimpleType)
+
+trfType :: Type -> Trf Type 
+trfType (T_SimpleType st) = fmap T_SimpleType (trfSimpleType st)
+trfType (T_NodeSet ns) = fmap T_NodeSet (trfNodeSet ns)
+trfType t = throwE $ "DVE: Unsupported type in type env transformation: " ++ show (PP t)
+
+trfFunT :: (Type, Vector Type) -> Trf (Type, Vector Type)
+trfFunT (retT, argTs) = do 
+  retT' <- trfType retT 
+  argTs' <- mapM trfType argTs 
+  pure (retT', argTs')
+
+trfTypeEnv :: TypeEnv -> Trf TypeEnv
+trfTypeEnv TypeEnv{..} = do 
+  deletedLocs <- use deLocations 
+  deletedVars <- use deVariables
+
+  let locations = Vec.ifilter (\i _ -> not (i `elem` deletedLocs)) _location
+  locations' <- mapM trfNodeSet locations 
+  
+  let variables = Map.withoutKeys _variable deletedVars
+  variables' <- mapM trfType variables 
+
+  functions <- mapM trfFunT _function
+
+  pure (TypeEnv locations' variables' functions)
