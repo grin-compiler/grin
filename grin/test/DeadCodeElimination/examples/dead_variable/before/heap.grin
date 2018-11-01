@@ -1,0 +1,7 @@
+grinMain = 
+  p0 <- store (CInt 0)
+  (CInt n) <- fetch p0
+  y0 <- pure (CInt n)
+  p1 <- store y0 
+  y1 <- pure (CPtr p1)
+  pure 0 

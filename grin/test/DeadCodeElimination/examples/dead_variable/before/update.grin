@@ -1,0 +1,4 @@
+grinMain = 
+  p0 <- store (CInt 0)
+  update p0 (CInt 1)
+  pure 0

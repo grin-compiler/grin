@@ -1,0 +1,4 @@
+grinMain =
+  pure 0
+
+f x = pure 0

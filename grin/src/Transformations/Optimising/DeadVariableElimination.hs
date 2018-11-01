@@ -49,9 +49,8 @@ runTrf = flip evalState mempty . runExceptT
 
 -- P and F nodes are handled by Dead Data Elimination
 deadVariableElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
-deadVariableElimination lvaResult tyEnv = runTrf . cataM alg where
-  alg :: ExpF Exp -> Trf Exp
-  alg = undefined
+deadVariableElimination lvaResult tyEnv 
+  = runTrf . deleteDeadBindings lvaResult tyEnv
 
 deleteDeadBindings :: LVAResult -> TypeEnv -> Exp -> Trf Exp 
 deleteDeadBindings lvaResult tyEnv = cataM alg where 

@@ -229,6 +229,15 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadParam.MutuallyRecursive
                      , DeadCodeElimination.Tests.DeadParam.Spec
                      , DeadCodeElimination.Tests.DeadParam.Util
+                     
+                     , DeadCodeElimination.Tests.DeadVariable.Simple
+                     , DeadCodeElimination.Tests.DeadVariable.Heap
+                     , DeadCodeElimination.Tests.DeadVariable.Update
+                     , DeadCodeElimination.Tests.DeadVariable.AppSimple
+                     , DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
+                     , DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
+                     , DeadCodeElimination.Tests.DeadVariable.Spec
+                     , DeadCodeElimination.Tests.DeadVariable.Util
 
                      , DeadCodeElimination.Tests.Util
 
