@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 {-# LANGUAGE OverloadedStrings #-}
 
+=======
+{-# LANGUAGE LambdaCase #-}
+>>>>>>> Better isEOF and readString.
 module Reducer.PrimOps (evalPrimOp) where
 
 import Reducer.Base
@@ -9,6 +13,7 @@ import Grin.Grin
 import Data.Map.Strict as Map
 import Control.Monad.IO.Class
 
+import System.IO (hIsEOF, stdin)
 import System.IO.Unsafe
 
 
@@ -130,9 +135,9 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   file_eof = case args of
-    [RT_Lit (LInt64 a)] -> int 0 -- TODO: Call to FFI
+    [RT_Lit (LInt64 0)] -> (fmap (\case { False -> 0; _ -> 1}) (liftIO (hIsEOF stdin))) >>= int
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   primReadString = case args of
-    [] -> string $ "This is a test ..." -- unsafePerformIO $ getLine
+    [] -> liftIO getLine >>= string
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
