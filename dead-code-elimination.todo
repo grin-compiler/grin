@@ -30,6 +30,14 @@ Dead variable elimination:
   - when deleting a binding, replace all occurences of the deleted name with #undefined
   - when deleting a store, update #undefined types
 
+Undefined:
+  - now #undefineds will only have type information down to the location level
+  - we will only know that the field/value is a pointer, but we won't know where it points
+  - this way, transformations won't invalidate #undefineds' types
+  - HPT will now have less information, but this should not be a problem (see next point)
+  - #undefineds should always have DEAD liveness 
+  - currently, after running all dead code eliminating transformations (in the right order), we should only see #undefineds in dead fields of certain nodes (producers)
+
 Side effects:
   
   DDE:

@@ -260,6 +260,20 @@ bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
   bindToUndefined :: Monad m => Exp -> Name -> ExceptT String m Exp  
   bindToUndefined rhs v = do
     ty <- lookupExcept (notInTypeEnv v) v _variable
-    pure $ EBind (SReturn (Undefined ty)) (Var v) rhs
+    let ty' = simplifyType ty 
+    pure $ EBind (SReturn (Undefined ty')) (Var v) rhs
 
   notInTypeEnv v = "Variable " ++ show (PP v) ++ " was not found in the type environment."
+
+
+simplifySimpleType :: SimpleType -> SimpleType 
+simplifySimpleType (T_Location _) = T_Location [] 
+simplifySimpleType t = t  
+
+simplifyNodeSet :: NodeSet -> NodeSet 
+simplifyNodeSet = fmap (fmap simplifySimpleType)
+
+simplifyType :: Type -> Type 
+simplifyType (T_SimpleType st) = T_SimpleType $ simplifySimpleType st
+simplifyType (T_NodeSet    ns) = T_NodeSet $ simplifyNodeSet ns 
+simplifyType t = t
