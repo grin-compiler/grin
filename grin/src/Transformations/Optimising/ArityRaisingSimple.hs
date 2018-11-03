@@ -82,12 +82,12 @@ phase1 te = pdArityData . cata collect where
     -- Keep the parameters that are locations and points to a single node with at least one parameters
     -- * that are not appear in others
     -- * that are not appear in other function calls
-    -- * that are fetched only once. ???
+    -- * that are fetched at least once
     DefF fn ps body ->
       FunData $ Map.singleton fn $
         [ (p,i,(fromJust mtag))
         | (p,i) <- ps `zip` [1..]
-        , Just 1 == Map.lookup p (bdFetch body)
+        , Map.member p (bdFetch body)
         , let mtag = pointsToOneNode te p
         , isJust mtag
         , p `notElem` (bdOther body)
@@ -106,6 +106,8 @@ pointsToOneNode te var = case Map.lookup var (_variable te) of
 type VarM a = State Int a
 
 {-
+Phase2 and Phase3 can be implemented in one go.
+
 Change only the functions which are in the ArityData map, left the others out.
  * Change fetches to pure, using the tag information provided
  * Change funcall parameters
@@ -176,54 +178,3 @@ phase2 n arityData = flip evalState 0 . cata change where
       | otherwise              -> Def f ps <$> new
 
     rest -> embed <$> sequence rest
-
-{-
-TODO: Remove this part before merge...
-
-For every function that is arity raised, the calls must be changed.
-
-if there are two functions: ar1 and ar2 this is a valid case. Both will be selected to do
-arity, thus we need to know which functions are we.
-
-We need to change the ar2 call, but we need to leave intact the ar1 call, as it is already changed
-in the phase2
-
-ar1 p1 pn =
-  x <- store (CNode c1 cn)
-  y <- ar2 x
-  case y of
-    c1 -> ar1 p1 pn
-
-data BuildData
-  = ProgramDataP3
-  | FunDef Name
-
-phase3 :: ArityData -> Exp -> Exp
-phase3 arityData exp = apo build (ProgramDataP3, exp) where
-  build :: (BuildData, Exp) -> ExpF (Either Exp (BuildData, Exp))
-  build = \case
-    (_, Def fn ps body) -> DefF fn ps (Right (FunDef fn, body))
-
-    {- Change the function calls that are in the ArityData and non-self recursive
-    -}
-    (FunDef f, SApp fn ps)
-      | f /= fn, Just aritedParams <- Map.lookup fn arityData ->
-        let qsi = Map.fromList $ map (\(_,i,t) -> (i,t)) aritedParams
-            nsi = traceShowId $ Map.fromList $ map (\(n,i,t) -> (n,t)) aritedParams
-            psi = [1..] `zip` ps
-            newPs = flip concatMap psi $ \case
-              (i, Var n) | Just (t, jth) <- Map.lookup i qsi ->
-                Var <$> newParNames n jth
-              (_, other) -> [other]
-            fetches = flip mapMaybe psi $ \case
-              (i, Var n) | Just (t, jth) <- Map.lookup i qsi ->
-                Just ((ConstTagNode t (Var <$> newParNames n jth)),SFetchI n Nothing)
-              _ -> Nothing
-        in case fetches of
-            [] -> SAppF fn ps
-            _  -> SBlockF $ Left $ foldr (\(pat, fetch) rest -> EBind fetch pat rest) (SApp fn newPs) fetches
-      | otherwise ->
-        SAppF fn ps
-    (bd, rest) -> (Right . (,) bd) <$> project rest
-
--}
