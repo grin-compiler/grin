@@ -37,6 +37,7 @@ Undefined:
   - HPT will now have less information, but this should not be a problem (see next point)
   - #undefineds should always have DEAD liveness 
   - currently, after running all dead code eliminating transformations (in the right order), we should only see #undefineds in dead fields of certain nodes (producers)
+  - currently, all data flow analyses correctly handle #undefineds (even with location info)
 
 Producer name introduction:
   - applying PNI multiple times can result in a lot of redundant code

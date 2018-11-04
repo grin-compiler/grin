@@ -250,6 +250,7 @@ test-suite grin-test
                      , HeapPointsTo.HeapPointsToSpec
                      , HeapPointsTo.Tests.Undefined
                      , HeapPointsTo.Tests.Util
+
                      , LiveVariable.LiveVariableSpec
                      , LiveVariable.Tests.CaseAnonymous
                      , LiveVariable.Tests.CaseMinLit
@@ -272,7 +273,10 @@ test-suite grin-test
                      , LiveVariable.Tests.NodesSimple
                      , LiveVariable.Tests.NodesTricky
                      , LiveVariable.Tests.SumOpt
+                     , LiveVariable.Tests.Undefined
+                     , LiveVariable.Tests.UndefinedWithLocInfo
                      , LiveVariable.Tests.Util
+
                      , Parse.ParseSpec 
                      , Parse.Tests.Interleaved
                      , Parse.Tests.Util

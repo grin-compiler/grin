@@ -33,6 +33,8 @@ import LiveVariable.Tests.MainNodeRet
 import LiveVariable.Tests.NodesSimple
 import LiveVariable.Tests.NodesTricky
 import LiveVariable.Tests.SumOpt
+import LiveVariable.Tests.Undefined
+import LiveVariable.Tests.UndefinedWithLocInfo
 
 spec :: Spec
 spec = runIO runTests
@@ -70,6 +72,8 @@ runTestsFrom fromCurDir = testGroup lvaTestName $
     , nodesSimpleSrc
     , nodesTrickySrc
     , sumOptSrc
+    , undefinedSrc
+    , undefinedWithLocInfoSrc
     ]
     [ caseAnonymousSpec
     , caseMinLitSpec
@@ -92,6 +96,8 @@ runTestsFrom fromCurDir = testGroup lvaTestName $
     , nodesSimpleSpec
     , nodesTrickySpec
     , sumOptSpec
+    , undefinedSpec
+    , undefinedWithLocInfoSpec
     ]
 
 calcLiveness :: Exp -> LVAResult

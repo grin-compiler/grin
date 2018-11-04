@@ -14,9 +14,11 @@ import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin
+import Grin.TypeEnvDefs
 import Transformations.Util
 import AbstractInterpretation.Util
 import AbstractInterpretation.CodeGen
+import AbstractInterpretation.HeapPointsTo (codeGenNodeTypeHPT)
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataFlowInfo(..))
 
@@ -140,6 +142,13 @@ codeGenVal = \case
                        , dstReg      = r
                        }
       Lit lit -> doNothing
+      Undefined (T_SimpleType t) -> do
+        -- undefined values should not have specified location info
+        -- this is here "just in case"
+        ptrInfo <- newReg 
+        tmp     <- codeGenSimpleType t
+        emit $ copyStructureWithPtrInfo tmp ptrInfo
+        emitExtendNodeItem ptrInfo irTag idx r
       _ -> throwE $ "illegal node item value " ++ show val
     pure r
   Unit  -> emptyReg
@@ -150,7 +159,11 @@ codeGenVal = \case
     irTag <- getTag tag
     emit IR.Set { dstReg = r, constant = IR.CNodeType irTag 1 }
     pure r
-  Undefined _ -> emptyReg
+  Undefined t -> do 
+    r <- newReg
+    typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
+    emit $ copyStructureWithPtrInfo typed r
+    pure r
   val -> throwE $ "unsupported value " ++ show val
 
 
