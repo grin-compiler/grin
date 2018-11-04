@@ -1,0 +1,6 @@
+grinMain = 
+  x0 <- pure (#undefined :: #ptr)
+  n0 <- pure (CPair x0 5)
+  case n0 of 
+    (CPair c0 c1) -> pure c1
+  

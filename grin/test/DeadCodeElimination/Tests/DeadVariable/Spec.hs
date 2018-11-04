@@ -27,6 +27,7 @@ import DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec
 import DeadCodeElimination.Tests.DeadVariable.ReplacePure
 import DeadCodeElimination.Tests.DeadVariable.ReplaceStore
 import DeadCodeElimination.Tests.DeadVariable.ReplaceUpdate
+import DeadCodeElimination.Tests.DeadVariable.ReplaceUnspecLoc
 
 
 spec :: Spec
@@ -57,6 +58,7 @@ runTestsFrom fromCurDir = do
       , replacePureBefore
       , replaceStoreBefore
       , replaceUpdateBefore
+      , replaceUnspecLocBefore
       ]
       [ simpleAfter
       , heapAfter
@@ -70,6 +72,7 @@ runTestsFrom fromCurDir = do
       , replacePureAfter
       , replaceStoreAfter
       , replaceUpdateAfter
+      , replaceUnspecLocAfter
       ]
       [ simpleSpec
       , heapSpec
@@ -83,6 +86,7 @@ runTestsFrom fromCurDir = do
       , replacePureSpec
       , replaceStoreSpec
       , replaceUpdateSpec
+      , replaceUnspecLocSpec
       ]
 
 eliminateDeadVariables :: Exp -> Exp

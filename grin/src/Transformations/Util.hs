@@ -298,7 +298,7 @@ bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
 
 
 simplifySimpleType :: SimpleType -> SimpleType 
-simplifySimpleType (T_Location _) = T_Location [] 
+simplifySimpleType (T_Location _) = T_UnspecifiedLocation
 simplifySimpleType t = t  
 
 simplifyNodeSet :: NodeSet -> NodeSet 

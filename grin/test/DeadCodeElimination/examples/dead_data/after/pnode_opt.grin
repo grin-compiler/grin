@@ -17,11 +17,11 @@ grinMain =
   foo2    <- pure (P2foo.1)
 
   (P2foo.1) <- pure foo2
-  v0        <- pure (#undefined :: {})
+  v0        <- pure (#undefined :: #ptr)
   foo1      <- pure (P1foo.0 p1)
 
   (P1foo.0 v2) <- pure foo1
-  v1           <- pure (#undefined :: {})
+  v1           <- pure (#undefined :: #ptr)
   fooRet       <- foo v1 v2 p2
   
   pure fooRet

@@ -59,6 +59,7 @@ TODO:
     - implement type safe undefined node generation for tests (Test.Test) 
   
   LOW:
+    - add HPT tests to CBy tests 
     - implement type env transformation for DDE
     - linter should check whether calculated types match with annotations
     - tests: HeapIndirectSimple -> HeapIndirectComplex ? 

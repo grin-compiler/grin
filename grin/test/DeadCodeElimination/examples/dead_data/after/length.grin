@@ -33,7 +33,7 @@ length l = l2 <- eval l
               n12 <- pure (CInt 0)
               pure n12
              (CCons.0 xs) -> 
-              x <- pure (#undefined :: {})
+              x <- pure (#undefined :: #ptr)
               n13 <- length xs
               (CInt l') <- pure n13
               len <- _prim_int_add l' 1
@@ -44,7 +44,7 @@ eval q = v <- fetch q
          case v of
           (CInt x'1)    -> pure v
           (CNil)        -> pure v
-          (CCons.0 ys)  -> y <- pure (#undefined :: {})
+          (CCons.0 ys)  -> y <- pure (#undefined :: #ptr)
                            pure v
           (Fupto a b)   -> w <- upto a b
                            update q w

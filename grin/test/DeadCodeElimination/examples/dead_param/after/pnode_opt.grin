@@ -21,8 +21,8 @@ grinMain =
 
 
 foo y0 =
-  z0 <- pure (#undefined :: {})
-  x0 <- pure (#undefined :: {})
+  z0 <- pure (#undefined :: #ptr)
+  x0 <- pure (#undefined :: #ptr)
   y0' <- fetch y0
   (CInt n) <- y0'
   pure y0'

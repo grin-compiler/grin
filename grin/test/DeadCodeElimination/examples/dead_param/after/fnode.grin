@@ -8,8 +8,8 @@ grinMain =
 
 -- functions cannot return pointers
 foo y = 
-  z <- pure (#undefined :: {})
-  x <- pure (#undefined :: {})
+  z <- pure (#undefined :: #ptr)
+  x <- pure (#undefined :: #ptr)
   y' <- eval y
   pure y'
 

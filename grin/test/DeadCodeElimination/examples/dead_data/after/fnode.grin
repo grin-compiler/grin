@@ -15,8 +15,8 @@ eval p =
   case v of 
     (CInt n) -> pure v
     (Ffoo.0 y1) -> 
-      z1 <- pure (#undefined :: {})
-      x1 <- pure (#undefined :: {})
+      z1 <- pure (#undefined :: #ptr)
+      x1 <- pure (#undefined :: #ptr)
       w <- foo x1 y1 z1
       update p w 
       pure w
