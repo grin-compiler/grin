@@ -200,6 +200,7 @@ data PipelineOpts = PipelineOpts
   , _poFailOnLint   :: Bool
   , _poLogging      :: Bool
   , _poSaveTypeEnv  :: Bool
+  , _poStatistics   :: Bool
   }
 
 defaultOpts :: PipelineOpts
@@ -208,6 +209,7 @@ defaultOpts = PipelineOpts
   , _poFailOnLint   = True
   , _poLogging      = True
   , _poSaveTypeEnv  = False
+  , _poStatistics   = True
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -364,8 +366,17 @@ saveTypeEnv = do
     let fname = printf "%03d.Type-Env" n
     let content = show $ plain $ pretty typeEnv
     liftIO $ do
-      createDirectoryIfMissing True outputDir
       writeFile (outputDir </> fname) content
+
+statistics :: PipelineM ()
+statistics = do
+  exp <- use psExp
+  n <- use psSaveIdx
+  outputDir <- view poOutputDir
+  let fname = printf "%03d.Statistics" n
+  let content = show $ plain $ pretty $ Statistics.statistics exp
+  liftIO $ do
+    writeFile (outputDir </> fname) content
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
@@ -438,11 +449,6 @@ debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do
   e <- use psExp
   liftIO . print $ pretty (t e)
-
-statistics :: PipelineM ()
-statistics = do
-  e <- use psExp
-  pipelineLog $ show $ Statistics.statistics e
 
 lintGrin :: Maybe String -> PipelineM ()
 lintGrin mPhaseName = do
@@ -583,6 +589,7 @@ optimizeWithPM o e ps = loop where
         pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
         lintGrin . Just $ show p
         pipelineStep $ Eff CalcEffectMap
+        when (o ^. poStatistics) $ void $ pipelineStep Statistics
         when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
       pure eff
     -- Run loop again on change

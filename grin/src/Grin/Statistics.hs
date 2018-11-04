@@ -1,8 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 module Grin.Statistics where
 
 import Data.Monoid
 import Data.Functor.Foldable
+import Text.PrettyPrint.ANSI.Leijen
 import Grin.Grin
 
 
@@ -54,3 +56,17 @@ statistics = cata $ \case
   SBlockF  s   -> s <> mempty { sBlock  = 1 }
   -- Alt
   AltF _ s     -> s <> mempty { alt = 1 }
+
+instance Pretty Statistics where
+  pretty (Statistics{..}) = vsep
+    [ hsep [yellow $ fill 16 $ text "Definitions:", green $ text $ show def]
+    , hsep [yellow $ fill 16 $ text "Binds:", green $ text $ show eBind]
+    , hsep [yellow $ fill 16 $ text "Blocks:", green $ text $ show sBlock]
+    , hsep [yellow $ fill 16 $ text "Cases:", green $ text $ show eCase]
+    , hsep [yellow $ fill 16 $ text "Alternatives:", green $ text $ show alt]
+    , hsep [yellow $ fill 16 $ text "Function calls:", green $ text $ show sApp]
+    , hsep [yellow $ fill 16 $ text "Returns:", green $ text $ show sReturn]
+    , hsep [yellow $ fill 16 $ text "Stores:", green $ text $ show sStore]
+    , hsep [yellow $ fill 16 $ text "Fethces:", green $ text $ show sFetchI]
+    , hsep [yellow $ fill 16 $ text "Updates:", green $ text $ show sUpdate]
+    ]
