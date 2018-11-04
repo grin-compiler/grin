@@ -149,7 +149,6 @@ transformation n = \case
   InlineEval                      -> noEffectMap inlineEval
   InlineApply                     -> noEffectMap inlineApply
   InlineBuiltins                  -> noEffectMap inlineBuiltins
-  SparseCaseOptimisation          -> noEffectMap sparseCaseOptimisation
   SimpleDeadVariableElimination   -> simpleDeadVariableElimination
   CommonSubExpressionElimination  -> noEffectMap commonSubExpressionElimination
   CaseCopyPropagation             -> noEffectMap $ noTypeEnv caseCopyPropagation
@@ -511,7 +510,14 @@ transformationM DeadDataElimination = do
   case deadDataElimination lvaResult cbyResult typeEnv e of
     Right e'  -> psExp .= e' >> psTransStep %= (+1)
     Left  err -> psErrors %= (err:)
-    
+
+transformationM SparseCaseOptimisation = do 
+  e  <- use psExp
+  Just typeEnv   <- use psTypeEnv
+  case sparseCaseOptimisation typeEnv e of
+    Right e'  -> psExp .= e' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
+  
 transformationM t = do
   --preconditionCheck t
   env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv

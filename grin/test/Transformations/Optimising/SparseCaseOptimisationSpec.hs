@@ -33,7 +33,8 @@ spec = do
           case v of
             (CCons x xs) -> pure 2
         |]
-      sparseCaseOptimisation (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
+      let Right transformed = sparseCaseOptimisation teBefore before
+      ctx (teBefore, transformed) `sameAs` (ctx (teBefore, after))
 
     it "Negative case, full context" $ do
       let teBefore = create $
@@ -53,8 +54,9 @@ spec = do
             (CNil)       -> pure 1
             (CCons x xs) -> pure 2
         |]
-      sparseCaseOptimisation (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
-
+      let Right transformed = sparseCaseOptimisation teBefore before
+      ctx (teBefore, transformed) `sameAs` (ctx (teBefore, after))
+  
     it "default" $ do
       let teBefore = create $
             (newVar "v" $ T_NodeSet (Map.fromList [(Tag C "Cons", Vector.fromList [T_Int64, T_Location [1]])]))
@@ -70,8 +72,9 @@ spec = do
           case v of
             (CCons x xs) -> pure 2
         |]
-      sparseCaseOptimisation (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
-
+      let Right transformed = sparseCaseOptimisation teBefore before
+      ctx (teBefore, transformed) `sameAs` (ctx (teBefore, after))
+  
     it "negative case with default" $ do
       let teBefore = create $
             (newVar "v" $ T_NodeSet (Map.fromList
@@ -91,4 +94,50 @@ spec = do
             (CCons x xs) -> pure 2
             #default     -> pure 3
         |]
-      sparseCaseOptimisation (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
+      let Right transformed = sparseCaseOptimisation teBefore before
+      ctx (teBefore, transformed) `sameAs` (ctx (teBefore, after))
+  
+    it "const tag node scrutinee" $ do
+      let before = [expr|
+          case (CNil) of
+            (CNil)       -> pure 1
+            (CCons x xs) -> pure 2
+            #default     -> pure 3
+        |]
+      let after = [expr|
+          case (CNil) of
+            (CNil)       -> pure 1
+        |]
+      let Right transformed = sparseCaseOptimisation emptyTypeEnv before
+      ctx (emptyTypeEnv, transformed) `sameAs` (ctx (emptyTypeEnv, after))
+
+    it "literal scrutinee" $ do
+      let before = [expr|
+          case 5 of
+            0        -> pure 1
+            1        -> pure 2
+            #True    -> pure 666
+            #default -> pure 3
+        |]
+      let after = [expr|
+          case 5 of
+            0        -> pure 1
+            1        -> pure 2
+            #default -> pure 3
+        |]
+      let Right transformed = sparseCaseOptimisation emptyTypeEnv before
+      ctx (emptyTypeEnv, transformed) `sameAs` (ctx (emptyTypeEnv, after))
+
+    it "udefined scrutinee" $ do
+      let before = [expr|
+          case (#undefined :: {CNil[]}) of
+            (CNil)       -> pure 1
+            (CCons x xs) -> pure 2
+            #default     -> pure 3
+        |]
+      let after = [expr|
+          case (#undefined :: {CNil[]}) of
+            (CNil)       -> pure 1
+        |]
+      let Right transformed = sparseCaseOptimisation emptyTypeEnv before
+      ctx (emptyTypeEnv, transformed) `sameAs` (ctx (emptyTypeEnv, after))

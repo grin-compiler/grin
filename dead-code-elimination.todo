@@ -78,6 +78,7 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✔ improve SCO so that it handles all type of scrutinees @done(18-11-04 22:41) @project(TODO.HIGH)
   ✔ add HPT tests to CBy tests @done(18-11-04 19:46) @project(TODO.LOW)
   ✔ genProgWith (in Test.Test) -> readd dead parameter elimination @done(18-10-30 22:23) @project(TODO.LOW)
   ✔ rename dead procedure elimination to dead function elimination @done(18-10-30 22:23) @project(TODO.LOW)

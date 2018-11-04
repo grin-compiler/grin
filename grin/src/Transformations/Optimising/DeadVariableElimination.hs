@@ -111,6 +111,9 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
                      ++ show (PP locs)
 
 
+-- This will not replace the occurences of a deleted pointer
+-- in fetches and in updates. But it does not matter, 
+-- since all of these fetches/updates are also dead, so they will be removed as well.
 replaceDeletedVars :: TypeEnv -> Exp -> Trf Exp 
 replaceDeletedVars tyEnv e = do 
   deletedVars <- use deVariables
