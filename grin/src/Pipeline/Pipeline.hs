@@ -209,7 +209,7 @@ defaultOpts = PipelineOpts
   , _poFailOnLint   = True
   , _poLogging      = True
   , _poSaveTypeEnv  = False
-  , _poStatistics   = True
+  , _poStatistics   = False
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
