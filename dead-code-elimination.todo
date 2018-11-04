@@ -53,6 +53,7 @@ Producer name introduction:
 
 TODO:
   HIGH:
+    - make sure that all transformations handles #undefineds and unspecified locations correctly
     - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
     - make sure, that all dead code elimination transfromations handle effectful functions correctly
     - apply inlining should also inline ap

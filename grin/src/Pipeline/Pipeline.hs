@@ -654,9 +654,9 @@ randomPipeline = do
         , UpdateElimination
         , CopyPropagation
         , ConstantPropagation
-        , DeadDataElimination
-        , DeadParameterElimination
-        -- , DeadCodeElimination
+        -- , DeadDataElimination
+        -- , DeadParameterElimination
+        , DeadCodeElimination
         , SimpleDeadFunctionElimination
         , SimpleDeadVariableElimination
         , SimpleDeadParameterElimination
