@@ -111,6 +111,7 @@ library
     microlens-platform,
     process,
     text,
+    time,
     llvm-hs-pretty,
     optparse-applicative,
     directory,

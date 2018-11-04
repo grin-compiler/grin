@@ -68,6 +68,7 @@ import Data.Algorithm.Diff
 import Data.Algorithm.DiffOutput
 import Control.Monad.Extra
 import System.Random
+import Data.Time.Clock
 
 type RenameVariablesMap = Map String String
 
@@ -242,13 +243,19 @@ pipelineLog str = do
   shouldLog <- view poLogging
   when shouldLog $ liftIO $ putStrLn str
 
+pipelineLog1 :: String -> PipelineM ()
+pipelineLog1 str = do
+  shouldLog <- view poLogging
+  when shouldLog $ liftIO $ putStr str
+
+
 pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
   case p of
-    T{}     -> pure ()
     Pass{}  -> pure () -- each pass step will be printed anyway
-    _       -> pipelineLog $ printf "PipelineStep: %-35s" (show p)
+    _       -> pipelineLog1 $ printf "PipelineStep: %-50s" (show p)
   before <- use psExp
+  start <- liftIO getCurrentTime
   case p of
     HPT hptStep -> case hptStep of
       CompileHPT      -> compileHPT
@@ -275,9 +282,12 @@ pipelineStep p = do
     DebugPipelineState -> debugPipelineState
   after <- use psExp
   let eff = if before == after then None else ExpChanged
+  end <- liftIO getCurrentTime
   case p of
-    T{} -> pipelineLog $ printf "PipelineStep: %-35s has effect: %s" (show p) (show eff)
-    _   -> pure ()
+    Pass{} -> pure ()
+    T{} -> pipelineLog $ printf "had effect: %s (%s)"
+              (show eff) (show $ diffUTCTime end start)
+    _   -> pipelineLog $ printf "(%s)" (show $ diffUTCTime end start)
   -- TODO: Test this only for development mode.
   return eff
 
