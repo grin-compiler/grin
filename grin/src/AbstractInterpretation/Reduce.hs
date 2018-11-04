@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
 module AbstractInterpretation.Reduce
-  ( evalHPT
+  ( HPTInfo(..)
+  , evalHPT
   , toHPTResult
   ) where
 
@@ -158,13 +159,19 @@ evalInstruction = \case
     CNodeItem tag idx val -> register.ix (regIndex dstReg).nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-evalHPT :: HPTProgram -> Computer
-evalHPT HPTProgram{..} = run emptyComputer where
+data HPTInfo = HPTInfo { hptIterations :: !Int }
+
+evalHPT :: HPTProgram -> (Computer, HPTInfo)
+evalHPT HPTProgram{..} = run emptyComputer startHPTInfo where
+  startHPTInfo = HPTInfo 0
   emptyComputer = Computer
     { _memory   = V.replicate (fromIntegral hptMemoryCounter) mempty
     , _register = V.replicate (fromIntegral hptRegisterCounter) mempty
     }
-  run computer = if computer == nextComputer then computer else run nextComputer
+
+  run computer info1 = if computer == nextComputer
+      then (computer, info1)
+      else run nextComputer (HPTInfo (hptIterations info1 + 1))
     where nextComputer = execState (mapM_ evalInstruction hptInstructions) computer
 
 toHPTResult :: HPTProgram -> Computer -> R.HPTResult

@@ -343,8 +343,9 @@ runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
   Just hptProgram -> do
-    let hptResult = HPT.evalHPT hptProgram
+    let (hptResult, hptInfo) = HPT.evalHPT hptProgram
         result = HPT.toHPTResult hptProgram hptResult
+    pipelineLog1 $ unwords ["iterations:", show (HPT.hptIterations hptInfo), ""]
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
       Right te  -> psTypeEnv .= Just te
