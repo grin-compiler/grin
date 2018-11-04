@@ -42,6 +42,9 @@ emptyLVAProgram = LVAProgram IR.emptyAbstractProgram
 
 type ResultLVA = Result LVAProgram
 
+throwLVA :: (Monad m) => String -> ExceptT String m a
+throwLVA s = throwE $ "LVA: " ++ s
+
 doNothing :: HasDataFlowInfo s => CG s ()
 doNothing = pure ()
 
@@ -149,7 +152,7 @@ codeGenVal = \case
         tmp     <- codeGenSimpleType t
         emit $ copyStructureWithPtrInfo tmp ptrInfo
         emitExtendNodeItem ptrInfo irTag idx r
-      _ -> throwE $ "illegal node item value " ++ show val
+      _ -> throwLVA $ "illegal node item value " ++ show val
     pure r
   Unit  -> emptyReg
   Lit _ -> emptyReg
@@ -164,7 +167,7 @@ codeGenVal = \case
     typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
     emit $ copyStructureWithPtrInfo typed r
     pure r
-  val -> throwE $ "unsupported value " ++ show val
+  val -> throwLVA $ "unsupported value " ++ show val
 
 
 codeGen :: Exp -> Either String LVAProgram
@@ -197,7 +200,7 @@ codeGen = fmap reverseProgram
           Var name -> do
             r <- newReg
             addReg name r
-          _ -> throwE $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
+          _ -> throwLVA $ "pattern mismatch at LVA bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of
           Unit  -> setBasicValLive r
           Lit{} -> setBasicValLive r
@@ -211,13 +214,13 @@ codeGen = fmap reverseProgram
                   addReg name argReg
                   nodePatternDataFlow argReg r irTag idx
                 Lit {} -> emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
-                _ -> throwE $ "illegal node pattern component " ++ show arg
+                _ -> throwLVA $ "illegal node pattern component " ++ show arg
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
               , instructions  = bindInstructions
               }
-          _ -> throwE $ "unsupported lpat " ++ show lpat
+          _ -> throwLVA $ "unsupported lpat " ++ show lpat
       rightExp
 
     ECaseF val alts_ -> do
@@ -323,7 +326,7 @@ codeGen = fmap reverseProgram
               , instructions = altInstructions
               }
 
-          _ -> throwE $ "LVA does not support the following case pattern: " ++ show cpat
+          _ -> throwLVA $ "LVA does not support the following case pattern: " ++ show cpat
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp
@@ -369,7 +372,7 @@ codeGen = fmap reverseProgram
     -- This means, if a tag is not already present on that location,
     -- we do not update it.
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> throwE "LVA codegen does not support indexed fetch"
+      Just {} -> throwLVA "LVA codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         tmp        <- newReg

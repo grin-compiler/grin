@@ -44,6 +44,9 @@ emptyCByProgram = CByProgram Map.empty (HPTProducerInfo emptyHPTProgram)
 
 type ResultCBy = Result CByProgram
 
+throwCBy :: (Monad m) => String -> ExceptT String m a
+throwCBy s = throwE $ "CBy: " ++ s
+
 addProducer :: IR.Reg -> Name -> CG CByProgram ()
 addProducer r v = producerMap %= Map.insert r v
 
@@ -85,7 +88,7 @@ codeGenVal = \case
       Undefined (T_SimpleType t) -> do 
         tmp <- codeGenSimpleType t
         emitExtendNodeItem tmp irTag idx r
-      _ -> throwE $ "illegal node item value " ++ show val
+      _ -> throwCBy $ "illegal node item value " ++ show val
     pure r
   Unit -> do
     r <- newReg
@@ -100,7 +103,7 @@ codeGenVal = \case
     pure r
   Var name -> getReg name
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeCBy) t
-  val -> throwE $ "unsupported value " ++ show val
+  val -> throwCBy $ "unsupported value " ++ show val
 
 codeGen :: Exp -> Either String CByProgram
 codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para folder where
@@ -133,7 +136,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
             addReg name r
-          _ -> throwE $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show lpat
+          _ -> throwCBy $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
           Lit{} -> pure () -- TODO: is this ok? or error?
@@ -150,13 +153,13 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
                                   }
                      ]
               Lit {} -> pure []
-              _ -> throwE $ "illegal node pattern component " ++ show arg
+              _ -> throwCBy $ "illegal node pattern component " ++ show arg
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
               , instructions  = concat bindInstructions
               }
-          _ -> throwE $ "unsupported lpat " ++ show lpat
+          _ -> throwCBy $ "unsupported lpat " ++ show lpat
       rightExp
 
     ECaseF val alts_ -> do
@@ -230,7 +233,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
                   }
             emit IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
-          _ -> throwE $ "HPT does not support the following case pattern: " ++ show cpat
+          _ -> throwCBy $ "CBy does not support the following case pattern: " ++ show cpat
 
       -- restore scrutinee register mapping
       maybe (pure ()) (uncurry addReg) scrutRegMapping
@@ -258,7 +261,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
       pure $ R r
 
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> throwE "CBy codegen does not support indexed fetch"
+      Just {} -> throwCBy "CBy codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         r <- newReg

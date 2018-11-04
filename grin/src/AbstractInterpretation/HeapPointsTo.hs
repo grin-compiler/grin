@@ -34,6 +34,9 @@ emptyHPTProgram = HPTProgram emptyAbstractProgram
 
 type ResultHPT = Result HPTProgram
 
+throwHPT :: (Monad m) => String -> ExceptT String m a
+throwHPT s = throwE $ "HPT: " ++ s
+
 unitType :: IR.SimpleType
 unitType = -1
 
@@ -70,7 +73,7 @@ codeGenVal = \case
       Undefined (T_SimpleType t) -> do 
         tmp <- codeGenSimpleType t
         emitExtendNodeItem tmp irTag idx r
-      _ -> throwE $ "illegal node item value " ++ show val
+      _ -> throwHPT $ "illegal node item value " ++ show val
     pure r
   Unit -> do
     r <- newReg
@@ -85,7 +88,7 @@ codeGenVal = \case
     pure r
   Var name -> getReg name
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
-  val -> throwE $ "unsupported value " ++ show val
+  val -> throwHPT $ "unsupported value " ++ show val
 
 codeGenPrimOp :: HasDataFlowInfo s => Name -> IR.Reg -> [IR.Reg] -> CG s ()
 codeGenPrimOp name funResultReg funArgRegs = do
@@ -164,7 +167,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata f
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
             addReg name r
-          _ -> throwE $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
+          _ -> throwHPT $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
           -- NOTE: I think this is okay. Could be optimised though (since we already know the result)?
@@ -178,14 +181,14 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata f
                 addReg name argReg
                 pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
               Lit {} -> pure []
-              _ -> throwE $ "illegal node pattern component " ++ show arg
+              _ -> throwHPT $ "illegal node pattern component " ++ show arg
             -- QUESTION: In HPTProgram the instructions are in reverse order, here they are in regular order, isn't this inconsistent?
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
               , instructions  = concat bindInstructions
               }
-          _ -> throwE $ "unsupported lpat " ++ show lpat
+          _ -> throwHPT $ "unsupported lpat " ++ show lpat
       rightExp
 
     ECaseF val alts_ -> do
@@ -261,7 +264,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata f
             -- QUESTION: Redundant IF. Just for consistency?
             emit IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
-          _ -> throwE $ "HPT does not support the following case pattern: " ++ show cpat
+          _ -> throwHPT $ "HPT does not support the following case pattern: " ++ show cpat
 
       -- restore scrutinee register mapping
       maybe (pure ()) (uncurry addReg) scrutRegMapping
@@ -289,7 +292,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata f
       pure $ R r
 
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> throwE "HPT codegen does not support indexed fetch"
+      Just {} -> throwHPT "HPT codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         r <- newReg
