@@ -18,6 +18,10 @@ import AbstractInterpretation.IR hiding (Tag)
 import AbstractInterpretation.Reduce
 import AbstractInterpretation.CreatedBy
 import AbstractInterpretation.CByResult
+import AbstractInterpretation.HPTResult
+
+import qualified HeapPointsTo.Tests.Undefined as HPT
+import qualified HeapPointsTo.Tests.UnspecLoc as HPT
 
 
 spec :: Spec
@@ -29,34 +33,47 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-cbyTestName :: String 
-cbyTestName = "Created-By"
+cbyProdTestName :: String 
+cbyProdTestName = "Created-By producers"
+
+cbyTypeTestName :: String 
+cbyTypeTestName = "Created-By type info"
 
 runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = testGroup cbyTestName $
-  mkSpecFromWith fromCurDir calcProducers
-    [ puresSrc
-    , funCallSrc
-    , caseSimpleSrc
-    , heapSrc
-    , pointerInNodeSrc
-    , caseRestricted1Src
-    , caseRestricted2Src
-    , caseRestricted3Src
-    , undefinedSrc
-    , unspecLocSrc
-    ]
-    [ puresSpec
-    , funCallSpec
-    , caseSimpleSpec
-    , heapSpec
-    , pointerInNodeSpec
-    , caseRestricted1Spec
-    , caseRestricted2Spec
-    , caseRestricted3Spec
-    , undefinedSpec
-    , unspecLocSpec
-    ]
+runTestsFrom fromCurDir = do
+  testGroup cbyProdTestName $
+    mkSpecFromWith fromCurDir calcProducers
+      [ puresSrc
+      , funCallSrc
+      , caseSimpleSrc
+      , heapSrc
+      , pointerInNodeSrc
+      , caseRestricted1Src
+      , caseRestricted2Src
+      , caseRestricted3Src
+      , undefinedSrc
+      , unspecLocSrc
+      ]
+      [ puresSpec
+      , funCallSpec
+      , caseSimpleSpec
+      , heapSpec
+      , pointerInNodeSpec
+      , caseRestricted1Spec
+      , caseRestricted2Spec
+      , caseRestricted3Spec
+      , undefinedSpec
+      , unspecLocSpec
+      ]
+
+  testGroup cbyTypeTestName $ 
+    mkSpecFromWith fromCurDir calcHPTResultWithCBy
+      [ HPT.undefinedSrc
+      , HPT.unspecLocSrc
+      ]
+      [ HPT.undefinedSpec
+      , HPT.unspecLocSpec
+      ]
 
 cbyExamples :: FilePath
 cbyExamples = "CreatedBy" </> "examples"
@@ -70,6 +87,9 @@ calcCByResult prog
 
 calcProducers :: Exp -> ProducerMap
 calcProducers = _producers . calcCByResult
+
+calcHPTResultWithCBy :: Exp -> HPTResult 
+calcHPTResultWithCBy = _hptResult . calcCByResult
 
 mkProducerSet :: [(Tag, [Name])] -> ProducerSet
 mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))

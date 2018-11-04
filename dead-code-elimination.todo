@@ -59,7 +59,6 @@ TODO:
     - implement type safe undefined node generation for tests (Test.Test) 
   
   LOW:
-    - add HPT tests to CBy tests 
     - implement type env transformation for DDE
     - linter should check whether calculated types match with annotations
     - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
@@ -79,6 +78,7 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✔ add HPT tests to CBy tests @done(18-11-04 19:46) @project(TODO.LOW)
   ✔ genProgWith (in Test.Test) -> readd dead parameter elimination @done(18-10-30 22:23) @project(TODO.LOW)
   ✔ rename dead procedure elimination to dead function elimination @done(18-10-30 22:23) @project(TODO.LOW)
   ✔ make sure, that dead procedure elimination does not produce semantically invalid code @done(18-10-29 10:31) @project(TODO.HIGH)
