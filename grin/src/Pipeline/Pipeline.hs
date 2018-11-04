@@ -245,8 +245,8 @@ pipelineLog str = do
   shouldLog <- view poLogging
   when shouldLog $ liftIO $ putStrLn str
 
-pipelineLog1 :: String -> PipelineM ()
-pipelineLog1 str = do
+pipelineLogNoLn :: String -> PipelineM ()
+pipelineLogNoLn str = do
   shouldLog <- view poLogging
   when shouldLog $ liftIO $ putStr str
 
@@ -255,7 +255,7 @@ pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
   case p of
     Pass{}  -> pure () -- each pass step will be printed anyway
-    _       -> pipelineLog1 $ printf "PipelineStep: %-50s" (show p)
+    _       -> pipelineLogNoLn $ printf "PipelineStep: %-50s" (show p)
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
@@ -345,7 +345,7 @@ runHPTPure = use psHPTProgram >>= \case
   Just hptProgram -> do
     let (hptResult, hptInfo) = HPT.evalHPT hptProgram
         result = HPT.toHPTResult hptProgram hptResult
-    pipelineLog1 $ unwords ["iterations:", show (HPT.hptIterations hptInfo), ""]
+    pipelineLogNoLn $ unwords ["iterations:", show (HPT.hptIterations hptInfo), ""]
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
       Right te  -> psTypeEnv .= Just te
