@@ -1,0 +1,5 @@
+grinMain = 
+  n0 <- pure (CPair (#undefined :: T_Int64) 5)
+  case n0 of 
+    (CPair c0 c1) -> pure c1
+  

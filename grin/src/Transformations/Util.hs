@@ -91,6 +91,37 @@ mapValsExp f = \case
   SUpdate name val  -> SUpdate name $ f val
   exp               -> exp
 
+mapValValM :: Monad m => (Val -> m Val) -> Val -> m Val
+mapValValM f val = do 
+  val' <- f val
+  case val' of  
+    ConstTagNode tag vals -> do 
+      vals' <- mapM (mapValValM f) vals
+      pure $ ConstTagNode tag vals'
+    VarTagNode name vals -> do 
+      vals' <- mapM (mapValValM f) vals
+      pure $ VarTagNode name vals'
+    v -> pure v
+
+mapValsExpM :: Monad m => (Val -> m Val) -> Exp -> m Exp
+mapValsExpM f = \case
+  ECase val alts -> do
+    val' <- f val
+    pure $ ECase val' alts
+  SApp name vals -> do 
+    vals' <- mapM f vals
+    pure $ SApp name vals'
+  SReturn val -> do 
+    val' <- f val
+    pure $ SReturn val'
+  SStore val -> do
+    val' <- f val
+    pure $ SStore val'
+  SUpdate name val -> do 
+    val' <- f val
+    pure $ SUpdate name val'
+  exp -> pure exp
+
 mapNameUseExp :: (Name -> Name) -> Exp -> Exp
 mapNameUseExp f = \case
   SFetchI name i    -> SFetchI (f name) i

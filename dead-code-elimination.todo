@@ -38,20 +38,13 @@ Undefined:
   - #undefineds should always have DEAD liveness 
   - currently, after running all dead code eliminating transformations (in the right order), we should only see #undefineds in dead fields of certain nodes (producers)
 
-Side effects:
-  
-  DDE:
-    - has no effect 
-  
-  DPE:
-    - has no effect 
-    - if a parameter is dead, it means that even if it is a pointer, its location will never be used
-
-  DVE:
-    - 
+Producer name introduction:
+  - applying PNI multiple times can result in a lot of redundant code
+  - we can eliminate this redundancy by applying Copy Progagation & Simple Dead Variable Elimination
 
 TODO:
   HIGH:
+    - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
     - make sure, that all dead code elimination transfromations handle effectful functions correctly
     - apply inlining should also inline ap
     - implement type safe undefined node generation for tests (Test.Test) 

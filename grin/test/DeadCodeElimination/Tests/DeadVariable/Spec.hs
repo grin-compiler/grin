@@ -21,6 +21,12 @@ import DeadCodeElimination.Tests.DeadVariable.Update
 import DeadCodeElimination.Tests.DeadVariable.AppSimple
 import DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
 import DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
+import DeadCodeElimination.Tests.DeadVariable.ReplaceApp
+import DeadCodeElimination.Tests.DeadVariable.ReplaceCase
+import DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec
+import DeadCodeElimination.Tests.DeadVariable.ReplacePure
+import DeadCodeElimination.Tests.DeadVariable.ReplaceStore
+import DeadCodeElimination.Tests.DeadVariable.ReplaceUpdate
 
 
 spec :: Spec
@@ -45,6 +51,12 @@ runTestsFrom fromCurDir = do
       , appSimpleBefore
       , appSideEffect1Before
       , appSideEffect2Before
+      , replaceAppBefore
+      , replaceCaseBefore
+      , replaceCaseRecBefore
+      , replacePureBefore
+      , replaceStoreBefore
+      , replaceUpdateBefore
       ]
       [ simpleAfter
       , heapAfter
@@ -52,6 +64,12 @@ runTestsFrom fromCurDir = do
       , appSimpleAfter
       , appSideEffect1After
       , appSideEffect2After
+      , replaceAppAfter
+      , replaceCaseAfter
+      , replaceCaseRecAfter
+      , replacePureAfter
+      , replaceStoreAfter
+      , replaceUpdateAfter
       ]
       [ simpleSpec
       , heapSpec
@@ -59,6 +77,12 @@ runTestsFrom fromCurDir = do
       , appSimpleSpec
       , appSideEffect1Spec
       , appSideEffect2Spec
+      , replaceAppSpec
+      , replaceCaseSpec
+      , replaceCaseRecSpec
+      , replacePureSpec
+      , replaceStoreSpec
+      , replaceUpdateSpec
       ]
 
 eliminateDeadVariables :: Exp -> Exp

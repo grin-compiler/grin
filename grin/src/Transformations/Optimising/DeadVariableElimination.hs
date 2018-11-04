@@ -51,15 +51,13 @@ runTrf = flip evalState mempty . runExceptT
 -- P and F nodes are handled by Dead Data Elimination
 deadVariableElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
 deadVariableElimination lvaResult tyEnv 
-  = runTrf . deleteDeadBindings lvaResult tyEnv
+  = runTrf . (deleteDeadBindings lvaResult tyEnv >=> replaceDeletedVars tyEnv)
 
 deleteDeadBindings :: LVAResult -> TypeEnv -> Exp -> Trf Exp 
 deleteDeadBindings lvaResult tyEnv = cataM alg where 
   alg :: ExpF Exp -> Trf Exp 
   alg = \case 
-    e@(EBindF SReturn{} lpat rhs) -> rmWhenAllDead e rhs lpat 
-    e@(EBindF SFetchI{} lpat rhs) -> rmWhenAllDead e rhs lpat
-    e@(EBindF (SStore _) (Var p) rhs) 
+    e@(EBindF SStore{} (Var p) rhs) 
       | Just locs <- tyEnv ^? variable . at p . _Just . _T_SimpleType . _T_Location -> do
         unless (isSingleton locs) (throwE $ multipleLocs p locs)
         pointerDead <- isVarDeadM p 
@@ -71,6 +69,7 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
     e@(EBindF (SUpdate p v) Unit rhs) -> do 
       varDead <- isVarDeadM p 
       rmWhen varDead e rhs mempty mempty
+    e@(EBindF _ lpat rhs) -> rmWhenAllDead e rhs lpat 
     e -> pure . embed $ e
 
   rmWhenAllDead :: ExpF Exp -> Exp -> Val -> Trf Exp
@@ -98,18 +97,34 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
                . LVA._function
                $ lvaResult
 
-  varLvNotFound v = "DFE: Variable " ++ show (PP v) ++ " was not found in liveness map"
-  funLvNotFound f = "DFE: Function " ++ show (PP f) ++ " was not found in liveness map"
+  varLvNotFound v = "DVE: Variable " ++ show (PP v) ++ " was not found in liveness map"
+  funLvNotFound f = "DVE: Function " ++ show (PP f) ++ " was not found in liveness map"
     
   isSingleton :: [a] -> Bool 
   isSingleton [_] = True
   isSingleton _   = False
 
   multipleLocs :: Name ->  [Int] -> String 
-  multipleLocs p locs = "DFE: A pointer bound out from a store instruction " 
+  multipleLocs p locs = "DVE: A pointer bound out from a store instruction " 
                      ++ "should always point to a single locationn, "
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
+
+
+replaceDeletedVars :: TypeEnv -> Exp -> Trf Exp 
+replaceDeletedVars tyEnv e = do 
+  deletedVars <- use deVariables
+  let f = replaceWithUndefined deletedVars tyEnv 
+  cataM (mapValsExpM (mapValValM f) . embed) e
+
+replaceWithUndefined :: Set Name -> TypeEnv -> Val -> Trf Val
+replaceWithUndefined deletedVars TypeEnv{..} (Var v)
+  | v `elem` deletedVars = do 
+    t <- lookupExcept (notFoundInTyEnv v) v _variable 
+    pure $ Undefined (simplifyType t)
+  where notFoundInTyEnv v = "DVE: Variable " ++ show (PP v) ++ " was not found in type env"
+replaceWithUndefined _ _ v = pure v
+
 
 trfLoc :: Int -> Trf (Maybe Int) 
 trfLoc loc = do 
