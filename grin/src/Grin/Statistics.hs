@@ -69,4 +69,7 @@ instance Pretty Statistics where
     , hsep [yellow $ fill 16 $ text "Stores:", green $ text $ show sStore]
     , hsep [yellow $ fill 16 $ text "Fethces:", green $ text $ show sFetchI]
     , hsep [yellow $ fill 16 $ text "Updates:", green $ text $ show sUpdate]
+    , yellow $ text "------------------"
+    , hsep [yellow $ fill 16 $ text "Summary:", green $ text $ show $ sum
+              [def, eBind, eCase, alt, sApp, sReturn, sStore, sFetchI, sUpdate]]
     ]
