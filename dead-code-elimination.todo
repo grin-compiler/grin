@@ -39,6 +39,14 @@ Undefined:
   - currently, after running all dead code eliminating transformations (in the right order), we should only see #undefineds in dead fields of certain nodes (producers)
   - currently, all data flow analyses correctly handle #undefineds (even with location info)
 
+Unspecified location:
+  - a type representing a pointer without its target information
+  - unspecified locations are "skipped" during type checking
+  - fetching from or updating to an unspecified location propagates no type information during the analyses
+  - an empty simple typeset will result in a dead type during type checking
+    - this means that #undefined values should ALWAYS BE DEAD
+  - refactor dead code elimination so that is uses unspec loc for the types of #undefined
+
 Producer name introduction:
   - applying PNI multiple times can result in a lot of redundant code
   - we can eliminate this redundancy by applying Copy Progagation & Simple Dead Variable Elimination

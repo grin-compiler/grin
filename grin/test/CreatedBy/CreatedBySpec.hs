@@ -10,6 +10,7 @@ import Grin.Grin
 
 import Test.IO
 import Test.Test
+import Test.Util
 import Test.Hspec
 import Test.Assertions
 
@@ -43,6 +44,7 @@ runTestsFrom fromCurDir = testGroup cbyTestName $
     , caseRestricted2Src
     , caseRestricted3Src
     , undefinedSrc
+    , unspecLocSrc
     ]
     [ puresSpec
     , funCallSpec
@@ -53,6 +55,7 @@ runTestsFrom fromCurDir = testGroup cbyTestName $
     , caseRestricted2Spec
     , caseRestricted3Spec
     , undefinedSpec
+    , unspecLocSpec
     ]
 
 cbyExamples :: FilePath
@@ -304,3 +307,19 @@ undefinedExpected = ProducerMap $
 
 undefinedSpec :: ProducerMap -> Spec
 undefinedSpec found = it "undefined" $ found `sameAs` undefinedExpected
+
+
+
+unspecLocSrc :: FilePath
+unspecLocSrc = cbyExamples </> "unspec_loc.grin"
+
+unspecLocExpected :: ProducerMap
+unspecLocExpected = ProducerMap $
+  M.fromList [ ("n0",  producerN0)
+             , ("n1",  producerN0)
+             , ("p0",  emptyProducerSet)
+             ]
+  where producerN0 = mkProducerSet [(cNil, ["n0"])]
+
+unspecLocSpec :: ProducerMap -> Spec
+unspecLocSpec found = it "unspec_loc" $ found `sameAs` unspecLocExpected

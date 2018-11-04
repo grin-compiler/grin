@@ -21,6 +21,7 @@ data SimpleType
   | T_Bool
   | T_Unit
   | T_Location {_locations :: [Int]}
+  | T_UnspecifiedLocation
   | T_Dead
   deriving (Generic, NFData, Eq, Ord, Show)
 

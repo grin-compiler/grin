@@ -12,6 +12,7 @@ import AbstractInterpretation.HeapPointsTo
 import AbstractInterpretation.HPTResult
 
 import HeapPointsTo.Tests.Undefined
+import HeapPointsTo.Tests.UnspecLoc
 
 spec :: Spec
 spec = runIO runTests
@@ -29,8 +30,10 @@ runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = testGroup hptTestName $
   mkSpecFromWith fromCurDir calcHPTResult
     [ undefinedSrc
+    , unspecLocSrc
     ]
     [ undefinedSpec
+    , unspecLocSpec
     ]
 
 calcHPTResult :: Exp -> HPTResult

@@ -131,11 +131,12 @@ extendSimpleType irTy r = do
 
 codeGenSimpleType :: HasDataFlowInfo s => SimpleType -> CG s IR.Reg 
 codeGenSimpleType = \case 
-  T_Unit   -> newRegWithSimpleType (-1)
-  T_Int64  -> newRegWithSimpleType (-2)
-  T_Word64 -> newRegWithSimpleType (-3)
-  T_Float  -> newRegWithSimpleType (-4)
-  T_Bool   -> newRegWithSimpleType (-5)
+  T_Unit                -> newRegWithSimpleType (-1)
+  T_Int64               -> newRegWithSimpleType (-2)
+  T_Word64              -> newRegWithSimpleType (-3)
+  T_Float               -> newRegWithSimpleType (-4)
+  T_Bool                -> newRegWithSimpleType (-5)
+  T_UnspecifiedLocation -> newRegWithSimpleType (-6)
   T_Location locs -> do
     r <- newReg
     let locs' = map fromIntegral locs

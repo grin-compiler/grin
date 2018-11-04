@@ -24,8 +24,9 @@ import qualified AbstractInterpretation.HPTResult as R
 
 instance Pretty R.SimpleType where
   pretty = \case
-    R.T_Location l  -> cyan . int $ fromIntegral l
-    ty              -> red $ text $ show ty
+    R.T_UnspecifiedLocation -> red $ text "#ptr"
+    R.T_Location l          -> cyan . int $ fromIntegral l
+    ty                      -> red $ text $ show ty
 
 prettyHPTNode :: (Tag, Vector (Set R.SimpleType)) -> Doc
 prettyHPTNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)

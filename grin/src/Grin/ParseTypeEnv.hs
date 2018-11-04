@@ -42,6 +42,7 @@ simpleType = T_Int64 <$ kw "T_Int64" <|>
              T_Float <$ kw "T_Float" <|>
              T_Bool <$ kw "T_Bool" <|>
              T_Unit <$ kw "T_Unit" <|>
+             T_UnspecifiedLocation <$ kw "#ptr" <|>
              T_Location <$> bracedList int <|>
              T_Dead <$ kw "T_Dead"
 

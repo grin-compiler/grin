@@ -19,6 +19,12 @@ import AbstractInterpretation.HPTResult
 hptExamples :: FilePath
 hptExamples = "HeapPointsTo" </> "examples"
 
+unspecLocT :: SimpleType
+unspecLocT = T_UnspecifiedLocation
+
+unspecLoc :: TypeSet
+unspecLoc = tySetFromTypes [T_UnspecifiedLocation]
+
 locT :: Int -> SimpleType
 locT = T_Location
 

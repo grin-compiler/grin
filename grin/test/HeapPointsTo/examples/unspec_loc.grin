@@ -1,0 +1,9 @@
+grinMain = 
+  p0 <- case 0 of
+    0 -> store (CInt 5)
+    1 -> pure (#undefined :: #ptr)
+  n0 <- fetch p0 
+  n1 <- pure (#undefined :: {CNode[#ptr]})
+  (CNode p1) <- pure n1
+  x0 <- fetch p1
+  update p0 x0

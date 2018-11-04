@@ -249,6 +249,7 @@ test-suite grin-test
 
                      , HeapPointsTo.HeapPointsToSpec
                      , HeapPointsTo.Tests.Undefined
+                     , HeapPointsTo.Tests.UnspecLoc
                      , HeapPointsTo.Tests.Util
 
                      , LiveVariable.LiveVariableSpec
@@ -279,7 +280,9 @@ test-suite grin-test
 
                      , Parse.ParseSpec 
                      , Parse.Tests.Interleaved
+                     , Parse.Tests.Undefined
                      , Parse.Tests.Util
+
                      , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec

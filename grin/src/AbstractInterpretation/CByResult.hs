@@ -54,8 +54,7 @@ withUndefined = M.insert udProdId udProdName
 -- also, the undefined value will hold the undefined producer's id
 toProducer :: SimpleType -> Producer
 toProducer (T_Location  n) = n
-toProducer (T_Undefined n) 
-  | n == fromIntegral undefinedProducer = n
+toProducer (Local UndefinedProducer) = fromIntegral . fromHPTLocal $ UndefinedProducer
 toProducer t = error $ "Incorrect information for producer. Expected T_Location Int or the undefined producer, got: " ++ show t
 
 -- removes the producers info from nodes

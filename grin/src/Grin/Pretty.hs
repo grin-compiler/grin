@@ -3,6 +3,7 @@ module Grin.Pretty
   ( pretty
   , printGrin
   , PP(..)
+  , WPP(..)
   , prettyKeyValue
   , prettyBracedList
   , prettySimplePair
@@ -29,6 +30,8 @@ import Grin.Grin
 import Grin.TypeEnv
 import Grin.EffectMap
 
+import Grin.Parse
+
 printGrin :: Exp -> IO ()
 printGrin = putDoc . pretty
 
@@ -36,6 +39,12 @@ printGrin = putDoc . pretty
 newtype PP a = PP a deriving Eq
 instance Pretty a => Show (PP a ) where
   show (PP a) = show . plain . pretty $ a
+
+-- Wide pretty printing, usefil for reparsing pretty-printed ASTs
+newtype WPP a = WPP a deriving Eq
+instance Pretty a => Show (WPP a ) where
+  show (WPP a) = flip displayS "" . renderPretty 0.4 200 . plain . pretty $ a
+
 
 keyword :: String -> Doc
 keyword = yellow . text
@@ -112,8 +121,9 @@ prettyKeyValue kvList = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,
 
 instance Pretty SimpleType where
   pretty = \case
-    T_Location l  -> encloseSep lbrace rbrace comma $ map (cyan . int) l
-    ty            -> red $ text $ show ty
+    T_UnspecifiedLocation -> red $ text "#ptr"
+    T_Location l -> encloseSep lbrace rbrace comma $ map (cyan . int) l
+    ty -> red $ text $ show ty
 
 prettyNode :: (Tag, Vector SimpleType) -> Doc
 prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
