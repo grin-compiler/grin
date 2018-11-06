@@ -117,22 +117,22 @@ Transformation | Schema
 
 Transformation | Schema
 -------------- | ------
-[evaluated case elimination][141]         <br><br> _source code:_ <br> [EvaluatedCaseElimination.hs] <br> _test:_ <br> [EvaluatedCaseEliminationSpec.hs]  | [<img src="images/evaluated-case-elimination.png" width="500">][141]
-[trivial case elimination][142]           <br><br> _source code:_ <br> [TrivialCaseElimination.hs]   <br> _test:_ <br> [TrivialCaseEliminationSpec.hs]    | [<img src="images/trivial-case-elimination.png"   width="500">][142]
-[sparse case optimisation][143]           <br><br> _source code:_ <br> [SparseCaseOptimisation.hs]   <br> _test:_ <br> [SparseCaseOptimisationSpec.hs]    | [<img src="images/sparse-case-optimisation.png"   width="500">][143]
-[update elimination][148]                 <br><br> _source code:_ <br> [UpdateElimination.hs]        <br> _test:_ <br> [UpdateEliminationSpec.hs]         | [<img src="images/update-elimination.png"         width="500">][148]
-[copy propagation][129]                   <br><br> _source code:_ <br> [CopyPropagation.hs]          <br> _test:_ <br> [CopyPropagationSpec.hs]           | [<img src="images/copy-propagation-left.png"      width="500"><img src="images/copy-propagation-right.png" width="500">][129]
-[late inlining][151]                      <br><br> _source code:_ <br> [Inlining.hs]                 <br> _test:_ <br> [InliningSpec.hs]                  | [<img src="images/late-inlining.png"              width="500">][151]
-[generalised unboxing][134]               <br><br> _source code:_ <br> [GeneralizedUnboxing.hs]      <br> _test:_ <br> [GeneralizedUnboxingSpec.hs]       | [<img src="images/generalised-unboxing.png"       width="500"><img src="images/unboxing-of-function-return-values.png" width="500">][134]
-[arity raising][160]                      <br><br> _source code:_ <br> [ArityRaising.hs]             <br> _test:_ <br> [ArityRaisingSpec.hs]              | [<img src="images/arity-raising.png"              width="500">][160]
-[case copy propagation][144]              <br><br> _source code:_ <br> [CaseCopyPropagation.hs]      <br> _test:_ <br> [CaseCopyPropagationSpec.hs]       | [<img src="images/case-copy-propagation.png"      width="500">][144]
-[case hoisting][153]                      <br><br> _source code:_ <br> [CaseHoisting.hs]             <br> _test:_ <br> [CaseHoistingSpec.hs]              | [<img src="images/case-hoisting.png"              width="500">][153]
-[whnf update elimination][149]            <br><br> _source code:_ <br> __TODO__                      <br> _test:_ <br> __TODO__                           | [<img src="images/whnf-update-elimination.png"    width="500">][149]
-[common sub-expression elimination][164]  <br><br> _source code:_ <br> [CSE.hs]                      <br> _test:_ <br> [CSESpec.hs]                       | [<img src="images/common-sub-expression-elimination-1.png" width="500"><img src="images/common-sub-expression-elimination-2.png" width="500">][164]
-[constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]      <br> _test:_ <br> [ConstantPropagationSpec.hs]       | 
-[dead procedure elimination][169]         <br><br> _source code:_ <br> [DeadProcedureElimination.hs] <br> _test:_ <br> [DeadProcedureEliminationSpec.hs]  | 
-[dead variable elimination][170]          <br><br> _source code:_ <br> [DeadVariableElimination.hs]  <br> _test:_ <br> [DeadVariableEliminationSpec.hs]   | 
-[dead parameter elimination][171]         <br><br> _source code:_ <br> [DeadParameterElimination.hs] <br> _test:_ <br> [DeadParameterEliminationSpec.hs]  | 
+[evaluated case elimination][141]         <br><br> _source code:_ <br> [EvaluatedCaseElimination.hs] <br><br> _test:_ <br> [EvaluatedCaseEliminationSpec.hs]  | [<img src="images/evaluated-case-elimination.png" width="500">][141]
+[trivial case elimination][142]           <br><br> _source code:_ <br> [TrivialCaseElimination.hs]   <br><br> _test:_ <br> [TrivialCaseEliminationSpec.hs]    | [<img src="images/trivial-case-elimination.png"   width="500">][142]
+[sparse case optimisation][143]           <br><br> _source code:_ <br> [SparseCaseOptimisation.hs]   <br><br> _test:_ <br> [SparseCaseOptimisationSpec.hs]    | [<img src="images/sparse-case-optimisation.png"   width="500">][143]
+[update elimination][148]                 <br><br> _source code:_ <br> [UpdateElimination.hs]        <br><br> _test:_ <br> [UpdateEliminationSpec.hs]         | [<img src="images/update-elimination.png"         width="500">][148]
+[copy propagation][129]                   <br><br> _source code:_ <br> [CopyPropagation.hs]          <br><br> _test:_ <br> [CopyPropagationSpec.hs]           | [<img src="images/copy-propagation-left.png"      width="500"><img src="images/copy-propagation-right.png" width="500">][129]
+[late inlining][151]                      <br><br> _source code:_ <br> [Inlining.hs]                 <br><br> _test:_ <br> [InliningSpec.hs]                  | [<img src="images/late-inlining.png"              width="500">][151]
+[generalised unboxing][134]               <br><br> _source code:_ <br> [GeneralizedUnboxing.hs]      <br><br> _test:_ <br> [GeneralizedUnboxingSpec.hs]       | [<img src="images/generalised-unboxing.png"       width="500"><img src="images/unboxing-of-function-return-values.png" width="500">][134]
+[arity raising][160]                      <br><br> _source code:_ <br> [ArityRaising.hs]             <br><br> _test:_ <br> [ArityRaisingSpec.hs]              | [<img src="images/arity-raising.png"              width="500">][160]
+[case copy propagation][144]              <br><br> _source code:_ <br> [CaseCopyPropagation.hs]      <br><br> _test:_ <br> [CaseCopyPropagationSpec.hs]       | [<img src="images/case-copy-propagation.png"      width="500">][144]
+[case hoisting][153]                      <br><br> _source code:_ <br> [CaseHoisting.hs]             <br><br> _test:_ <br> [CaseHoistingSpec.hs]              | [<img src="images/case-hoisting.png"              width="500">][153]
+[whnf update elimination][149]            <br><br> _source code:_ <br> __TODO__                      <br><br> _test:_ <br> __TODO__                           | [<img src="images/whnf-update-elimination.png"    width="500">][149]
+[common sub-expression elimination][164]  <br><br> _source code:_ <br> [CSE.hs]                      <br><br> _test:_ <br> [CSESpec.hs]                       | [<img src="images/common-sub-expression-elimination-1.png" width="500"><img src="images/common-sub-expression-elimination-2.png" width="500">][164]
+[constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]      <br><br> _test:_ <br> [ConstantPropagationSpec.hs]       | 
+[dead procedure elimination][169]         <br><br> _source code:_ <br> [DeadProcedureElimination.hs] <br><br> _test:_ <br> [DeadProcedureEliminationSpec.hs]  | 
+[dead variable elimination][170]          <br><br> _source code:_ <br> [DeadVariableElimination.hs]  <br><br> _test:_ <br> [DeadVariableEliminationSpec.hs]   | 
+[dead parameter elimination][171]         <br><br> _source code:_ <br> [DeadParameterElimination.hs] <br><br> _test:_ <br> [DeadParameterEliminationSpec.hs]  | 
 
 [129]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=129
 [134]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=134
