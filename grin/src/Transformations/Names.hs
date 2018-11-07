@@ -28,7 +28,7 @@ type NameM = State NameEnv
 
 mkNameEnv :: Exp -> NameEnv
 mkNameEnv exp = NameEnv mempty (cata folder exp) where
-  folder e = foldNameDefExpF Set.singleton e `mappend` Data.Foldable.fold e
+  folder e = foldNameDefExpF (const Set.singleton) e `mappend` Data.Foldable.fold e
 
 deriveNewName :: Name -> NameM Name
 deriveNewName name = do

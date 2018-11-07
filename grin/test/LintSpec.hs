@@ -21,5 +21,20 @@ spec = do
             _prim_int p3 p2
         |]
       let (_, errors) = lint Nothing program
-      -- TODO: Better check.
-      Map.null errors `shouldBe` False
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["undefined variable: p3"]
+
+  describe "Variable used as a function" $ do
+    it "is found" $ do
+      let program = [prog|
+          name1 p11 p12 =
+            a1 <- name0 p11 p12
+            pure a1
+
+          name0 p01 p02 =
+            b0 <- p11 p01 p02
+            pure b0
+        |]
+      let (_, errors) = lint Nothing program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["non-function in function call: p11"]

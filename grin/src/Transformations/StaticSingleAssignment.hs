@@ -7,6 +7,7 @@ import Data.Monoid hiding (Alt)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad.State
+import Lens.Micro.Platform ((%=), _1)
 
 import Grin.Grin
 import Transformations.Util
@@ -15,16 +16,27 @@ type VarM a = State (Set.Set Name, Int) a
 
 
 singleStaticAssignment :: Exp -> Exp
-singleStaticAssignment e = evalState (anaM build (mempty, e)) (mempty, 1) where
+singleStaticAssignment e = flip evalState (mempty, 1) $
+  do cata functionNames e
+     anaM build (mempty, e)
+  where
+  functionNames :: ExpF (VarM ()) -> VarM ()
+  functionNames = \case
+    ProgramF defs -> sequence_ defs
+    DefF name ps body -> do
+      _1 %= Set.insert name
+      body
+    rest -> pure ()
+
   build :: (Map.Map Name Int, Exp) -> VarM (ExpF (Map.Map Name Int, Exp))
   build (subst, e) = case e of
 
     Def name names body -> do
-      (name0:names0, subst0) <- first reverse <$> foldM
+      (names0, subst0) <- first reverse <$> foldM
         (\(names1, subst1) name1 -> first (:names1) <$> calcName (name1, subst1))
         ([], subst)
-        (name:names)
-      pure $ DefF name0 names0 (subst0, body)
+        names
+      pure $ DefF name names0 (subst0, body)
 
     EBind lhs v@(Var nm) rhs -> do
       (nm', subst') <- calcName (nm, subst)

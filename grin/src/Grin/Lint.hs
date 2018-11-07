@@ -9,21 +9,28 @@ import Control.Comonad.Cofree
 import Control.Monad.State
 import Control.Monad.Writer hiding (Alt)
 import qualified Control.Comonad.Trans.Cofree as CCTC
-
 import Data.Map (Map)
 import qualified Data.Map as Map
-
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.List (isPrefixOf)
 
 import Grin.Grin
 import Grin.TypeEnv hiding (typeOfVal)
 import Transformations.Util
 
+import Debug.Trace
+import Data.Maybe
+
+{-
+Linter is responsible for the semantical checks of the program.
+-}
+
 {-
   - AST shape (syntax)
     done - exp
     - val
+  - recognise primitive functions
   - scope checking ; requires monad (full traversal)
   - type checking (using the type env)
   - pattern checking
@@ -74,7 +81,7 @@ data Env
   { envNextId       :: Int
   , envVars         :: Map Name Int -- exp id
   , envErrors       :: Map Int [Error]
-  , envDefinedNames :: Set Name
+  , envDefinedNames :: Map Name DefRole
   }
 
 emptyEnv = Env
@@ -140,25 +147,41 @@ check exp nodeCheckM = do
   nextId
   pure (idx CCTC.:< exp )
 
-checkNameDef :: Name -> Check ()
-checkNameDef name = do
-  defined <- state $ \env@Env{..} -> (Set.member name envDefinedNames, env {envDefinedNames = Set.insert name envDefinedNames})
+checkNameDef :: DefRole -> Name -> Check ()
+checkNameDef role name = do
+  defined <- state $ \env@Env{..} ->
+    ( Map.member name envDefinedNames
+    , env {envDefinedNames = Map.insert name role envDefinedNames}
+    )
   when defined $ do
     tell [printf "multiple defintion of %s" name]
 
 checkNameUse :: Name -> Check ()
 checkNameUse name = do
-  defined <- state $ \env@Env{..} -> (Set.member name envDefinedNames, env {envDefinedNames = Set.insert name envDefinedNames})
+  defined <- state $ \env@Env{..} -> (Map.member name envDefinedNames, env)
   unless defined $ do
     tell [printf "undefined variable: %s" name]
 
 checkVarScopeM :: ExpF a -> Check ()
 checkVarScopeM exp = do
+  case exp of
+    DefF _ _ _ -> pure () -- Function definitions are already registered
+    _          -> mapM_ (uncurry checkNameDef) $ foldNameDefExpF (\r n -> [(r,n)]) exp
   mapM_ checkNameUse $ foldNameUseExpF (:[]) exp
-  mapM_ checkNameDef $ foldNameDefExpF (:[]) exp
 
 lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
-lint mTypeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) emptyEnv where
+lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
+  cata functionNames exp
+  anaM builder (ProgramCtx, exp)
+  where
+  functionNames :: ExpF (Lint ()) -> Lint ()
+  functionNames = \case
+    ProgramF defs -> sequence_ defs
+    DefF name ps body -> do
+      modify' $ \env@Env{..} -> env { envDefinedNames = Map.insert name FunName envDefinedNames }
+      forM_ ps $ \p -> modify' $ \env@Env{..} -> env { envDefinedNames = Map.insert p FunParam envDefinedNames }
+      body
+    rest -> pure ()
 
   builder :: (ExpCtx, Exp) -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, Exp))
   builder (ctx, e) = case e of
@@ -182,6 +205,14 @@ lint mTypeEnv exp = fmap envErrors $ runState (anaM builder (ProgramCtx, exp)) e
     -- Simple Exp
     SApp name args -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
+      -- Test if a function exist.
+      Env{..} <- get
+      when (not $ "_prim_" `isPrefixOf` name) $
+        case Map.lookup name envDefinedNames of
+          (Just role)
+            | role == FunName -> pure ()
+            | otherwise       -> tell [printf "non-function in function call: %s" name]
+          Nothing             -> tell [printf "non-defined function is called: %s" name]
       mapM_ (syntaxV SimpleValCtx) args
 
     SReturn val -> checkWithChild ctx $ do

@@ -46,11 +46,15 @@ foldNameUseExpF f = \case
   SFetchIF name i   -> f name
   _                 -> mempty
 
-foldNameDefExpF :: (Monoid m) => (Name -> m) -> ExpF a -> m
+data DefRole = FunName | FunParam | BindVar | AltVar
+  deriving (Eq, Show)
+
+
+foldNameDefExpF :: (Monoid m) => (DefRole -> Name -> m) -> ExpF a -> m
 foldNameDefExpF f = \case
-  DefF name args _  -> mconcat $ f name : map f args
-  EBindF _ lpat _   -> foldNamesVal f lpat
-  AltF cpat _       -> foldNamesCPat f cpat
+  DefF name args _  -> mconcat $ (f FunName name) : map (f FunParam) args
+  EBindF _ lpat _   -> foldNamesVal (f BindVar) lpat
+  AltF cpat _       -> foldNamesCPat (f AltVar) cpat
   _                 -> mempty
 
 foldNamesCPat :: Monoid m => (Name -> m) -> CPat -> m
