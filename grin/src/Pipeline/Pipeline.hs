@@ -458,8 +458,7 @@ lintGrin mPhaseName = do
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
-  when (Map.size errorMap > 0) $ do
-    psErrors %= ((concat $ Map.elems errorMap) ++)
+  psErrors .= concat (Map.elems errorMap)
 
   -- print errors
   errors <- use psErrors
