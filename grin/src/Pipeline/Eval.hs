@@ -24,7 +24,7 @@ eval' :: Reducer -> String -> IO RTVal
 eval' reducer fname = do
   content <- readFile fname
   case parseGrin fname content of
-    Left err -> error $ errorBundlePretty err
+    Left err -> error $ parseErrorPretty' content err
     Right program ->
       case reducer of
         PureReducer -> Reducer.Pure.reduceFun program "grinMain"

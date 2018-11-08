@@ -101,7 +101,7 @@ main = do
   Options files steps outputDir <- options
   forM_ files $ \fname -> do
     content <- readFile fname
-    let program = either (error . M.errorBundlePretty) id $ parseGrin fname content
+    let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
         opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
     case steps of
       [] -> void $ optimize opts program prePipeline postPipeline

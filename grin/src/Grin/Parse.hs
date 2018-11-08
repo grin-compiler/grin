@@ -125,14 +125,14 @@ satisfyM pred parser = do
 grinModule :: Parser Exp
 grinModule = Program <$> many def <* sc <* eof
 
-parseGrin :: String -> String -> Either (ParseErrorBundle String Void) Exp
+parseGrin :: String -> String -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename content
 
 parseProg :: String -> Exp
-parseProg src = either (error . errorBundlePretty) id . parseGrin "" $ src
+parseProg src = either (error . parseErrorPretty' src) id . parseGrin "" $ src
 
 parseDef :: String -> Exp
-parseDef src = either (error . errorBundlePretty) id . runParser def "" $ src
+parseDef src = either (error . parseErrorPretty' src) id . runParser def "" $ src
 
 parseExpr :: String -> Exp
-parseExpr src = either (error . errorBundlePretty) id . runParser (expr pos1) "" $ src
+parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1) "" $ src
