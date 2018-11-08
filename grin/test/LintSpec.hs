@@ -38,3 +38,17 @@ spec = do
       let (_, errors) = lint Nothing program
       let result = concat $ Map.elems errors
       result `shouldBe` ["non-function in function call: p11"]
+
+  describe "Non-saturated function call" $ do
+    it "is found" $ do
+      let program = [prog|
+          fun1 p1 p2 =
+            _prim_int_add p1 p2
+
+          fun2 =
+            p3 <- fun1 3
+            pure p3
+        |]
+      let (_, errors) = lint Nothing program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["non-saturated function call: fun1"]

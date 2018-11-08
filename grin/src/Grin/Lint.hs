@@ -82,6 +82,7 @@ data Env
   , envVars         :: Map Name Int -- exp id
   , envErrors       :: Map Int [Error]
   , envDefinedNames :: Map Name DefRole
+  , envFunArity     :: Map Name Int
   }
 
 emptyEnv = Env
@@ -89,6 +90,7 @@ emptyEnv = Env
   , envVars         = mempty
   , envErrors       = mempty
   , envDefinedNames = mempty
+  , envFunArity     = mempty
   }
 
 type Lint   = State Env
@@ -177,9 +179,12 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
   functionNames :: ExpF (Lint ()) -> Lint ()
   functionNames = \case
     ProgramF defs -> sequence_ defs
-    DefF name ps body -> do
-      modify' $ \env@Env{..} -> env { envDefinedNames = Map.insert name FunName envDefinedNames }
-      forM_ ps $ \p -> modify' $ \env@Env{..} -> env { envDefinedNames = Map.insert p FunParam envDefinedNames }
+    DefF name args body -> do
+      modify' $ \env@Env{..} -> env
+        { envDefinedNames = Map.insert name FunName envDefinedNames
+        , envFunArity = Map.insert name (length args) envFunArity
+        }
+      forM_ args $ \p -> modify' $ \env@Env{..} -> env { envDefinedNames = Map.insert p FunParam envDefinedNames }
       body
     rest -> pure ()
 
@@ -209,10 +214,11 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       Env{..} <- get
       when (not $ "_prim_" `isPrefixOf` name) $
         case Map.lookup name envDefinedNames of
-          (Just role)
-            | role == FunName -> pure ()
-            | otherwise       -> tell [printf "non-function in function call: %s" name]
-          Nothing             -> tell [printf "non-defined function is called: %s" name]
+          (Just FunName) -> pure ()
+          (Just _)       -> tell [printf "non-function in function call: %s" name]
+          Nothing        -> tell [printf "non-defined function is called: %s" name]
+      forM_ (Map.lookup name envFunArity) $ \n -> when (n /= length args) $ do
+        tell [printf "non-saturated function call: %s" name]
       mapM_ (syntaxV SimpleValCtx) args
 
     SReturn val -> checkWithChild ctx $ do
