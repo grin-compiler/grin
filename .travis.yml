@@ -6,6 +6,7 @@ env:
   global:
     - GCC=gcc-5
     - GXX=g++-5
+    - LLVM_VER=7.0.0
 
 cache:
   directories:
@@ -17,9 +18,9 @@ addons:
       - gcc-5
       - g++-5
       - libgmp-dev
-      - llvm-5.0-dev
+      - llvm-7.0-dev
     sources:
-      - llvm-toolchain-trusty-5.0
+      - llvm-toolchain-trusty-7.0
       - ubuntu-toolchain-r-test
 
 before_install:
