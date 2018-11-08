@@ -23,9 +23,8 @@ data Stat
   , functionCallCount :: !(Map Name Int)
   }
 
-instance Monoid Stat where
-  mempty = Stat 0 mempty
-  mappend (Stat i1 m1) (Stat i2 m2) = Stat (i1 + i2) (Map.unionWith (+) m1 m2)
+instance Semigroup  Stat where (Stat i1 m1) <> (Stat i2 m2) = Stat (i1 + i2) (Map.unionWith (+) m1 m2)
+instance Monoid     Stat where mempty = Stat 0 mempty
 
 selectInlineSet :: Program -> Set Name
 selectInlineSet prog@(Program defs) = inlineSet where
@@ -86,7 +85,8 @@ inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM 
       | Set.member name functionsToInline
       , Just def <- Map.lookup name defMap
       -> do
-        (Def _ argNames funBody, nameMap) <- refreshNames mempty def
+        freshDef <- refreshNames mempty def
+        let (Def _ argNames funBody, nameMap) = freshDef
         let bind (n,v) e = EBind (SReturn v) (Var n) e
         pure . SBlockF . Left $ foldr bind funBody (zip argNames argVals)
 

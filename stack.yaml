@@ -1,14 +1,18 @@
-resolver: lts-11.21
+resolver: nightly-2018-11-07
 
 # due to functor-infix
 allow-newer: true
 
 packages:
-- 'grin'
+  - 'grin'
+
+  - location:
+      git: https://github.com/llvm-hs/llvm-hs-pretty
+      commit: 0d04346ea179e96797a284d094e44e538fbddcf2
+    extra-dep: true
 
 extra-deps:
   - monad-gen-0.3.0.1
-  - llvm-hs-pretty-0.2.0.0
   - functor-infix-0.0.5
   - QuickCheck-GenT-0.2.0
 

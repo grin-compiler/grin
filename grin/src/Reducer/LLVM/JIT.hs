@@ -13,14 +13,17 @@ import LLVM.Module
 import qualified LLVM.AST as AST
 
 import LLVM.OrcJIT
+import qualified LLVM.Internal.OrcJIT.CompileLayer as CL
 
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 
 import Data.Int
+import Data.IORef
 import Foreign.Ptr
 import Foreign.Storable
 import Foreign.Marshal.Alloc
+import qualified Data.Map.Strict as Map
 
 foreign import ccall "dynamic"
   mkMain :: FunPtr (IO Int64) -> IO Int64
@@ -34,16 +37,16 @@ withTestModule mod f = withContext $ \context -> withModuleFromAST context mod f
 myIntPrintImpl :: Int64 -> IO ()
 myIntPrintImpl i = print i
 
-resolver :: CompileLayer l => MangledSymbol -> l -> MangledSymbol -> IO JITSymbol
+resolver :: CompileLayer l => MangledSymbol -> l -> MangledSymbol -> IO (Either JITSymbolError JITSymbol)
 resolver intPrint compileLayer symbol
   | symbol == intPrint = do
       funPtr <- wrapIntPrint myIntPrintImpl
       let addr = ptrToWordPtr (castFunPtrToPtr funPtr)
-      pure (JITSymbol addr (JITSymbolFlags False True))
-  | otherwise = findSymbol compileLayer symbol True
+      pure $ Right (JITSymbol addr defaultJITSymbolFlags)
+  | otherwise = CL.findSymbol compileLayer symbol True
 
-nullResolver :: MangledSymbol -> IO JITSymbol
-nullResolver s = pure (JITSymbol 0 (JITSymbolFlags False False))
+nullResolver :: MangledSymbol -> IO (Either JITSymbolError JITSymbol)
+nullResolver s = putStrLn "nullresolver" >> pure (Left (JITSymbolError "unknown symbol"))
 
 failInIO :: ExceptT String IO a -> IO a
 failInIO = either fail pure <=< runExceptT
@@ -52,27 +55,28 @@ grinHeapSize :: Int
 grinHeapSize = 100 * 1024 * 1024
 
 eagerJit :: AST.Module -> String -> IO RTVal
-eagerJit amod mainName =
-    withTestModule amod $ \mod ->
-      withHostTargetMachine $ \tm ->
-        withObjectLinkingLayer $ \objectLayer ->
-          withIRCompileLayer objectLayer tm $ \compileLayer -> do
-            intPrint <- mangleSymbol compileLayer "_prim_int_print"
-            withModule
-              compileLayer
-              mod
-              (SymbolResolver (resolver intPrint compileLayer) nullResolver) $
-              \moduleSet -> do
-                mainSymbol <- mangleSymbol compileLayer (fromString mainName)
-                JITSymbol mainFn _ <- findSymbol compileLayer mainSymbol True
-                heapSymbol <- mangleSymbol compileLayer (fromString "_heap_ptr_")
-                JITSymbol heapWordPtr _ <- findSymbol compileLayer heapSymbol True
-                -- allocate GRIN heap
-                heapPointer <- callocBytes grinHeapSize :: IO (Ptr Int8)
-                poke (wordPtrToPtr heapWordPtr :: Ptr Int64) (fromIntegral $ minusPtr heapPointer nullPtr)
-                -- run function
-                result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn))
-                -- TODO: read back the result and build the haskell value represenation
-                -- free GRIN heap
-                free heapPointer
-                pure RT_Unit
+eagerJit amod mainName = do
+  resolvers <- newIORef Map.empty
+  withTestModule amod $ \mod ->
+    withHostTargetMachine $ \tm ->
+    withExecutionSession $ \es ->
+    withObjectLinkingLayer es (\k -> fmap (\rs -> rs Map.! k) (readIORef resolvers)) $ \linkingLayer ->
+    withIRCompileLayer linkingLayer tm $ \compileLayer -> do
+      intPrint <- mangleSymbol compileLayer "_prim_int_print"
+      withModuleKey es $ \k ->
+        withSymbolResolver es (SymbolResolver (resolver intPrint compileLayer)) $ \resolver -> do
+          modifyIORef' resolvers (Map.insert k resolver)
+          withModule compileLayer k mod $ do
+            mainSymbol <- mangleSymbol compileLayer (fromString mainName)
+            Right (JITSymbol mainFn _) <- CL.findSymbol compileLayer mainSymbol True
+            heapSymbol <- mangleSymbol compileLayer (fromString "_heap_ptr_")
+            Right (JITSymbol heapWordPtr _) <- CL.findSymbol compileLayer heapSymbol True
+            -- allocate GRIN heap
+            heapPointer <- callocBytes grinHeapSize :: IO (Ptr Int8)
+            poke (wordPtrToPtr heapWordPtr :: Ptr Int64) (fromIntegral $ minusPtr heapPointer nullPtr)
+            -- run function
+            result <- mkMain (castPtrToFunPtr (wordPtrToPtr mainFn))
+            -- TODO: read back the result and build the haskell value represenation
+            -- free GRIN heap
+            free heapPointer
+            pure RT_Unit

@@ -68,7 +68,9 @@ codeGenVal val = case val of
   ConstTagNode tag args -> do
     opArgs <- mapM codeGenVal args
 
-    T_NodeSet ns <- typeOfVal val
+    valT <- typeOfVal val
+    let T_NodeSet ns = valT
+
     ty <- typeOfVal val
     let cgTy = toCGType ty
         TaggedUnion{..} = cgTaggedUnion cgTy
@@ -140,7 +142,7 @@ toModule Env{..} = defaultModule
     heapPointerDef = GlobalDefinition globalVariableDefaults
       { name          = mkName (heapPointerName)
       , Global.type'  = i64
-      , initializer   = Just $ Null i64
+      , initializer   = Just $ Int 64 0
       }
 
 {-
@@ -321,7 +323,9 @@ codeGenStoreNode :: Val -> Operand -> CG ()
 codeGenStoreNode val nodeLocation = do
   tuVal <- codeGenVal val
   tagVal <- codeGenExtractTag tuVal
-  T_NodeSet nodeSet <- typeOfVal val
+  valT <- typeOfVal val
+  let T_NodeSet nodeSet = valT
+
   let valueTU = taggedUnion nodeSet
   codeGenTagSwitch tagVal nodeSet $ \tag items -> do
     let nodeTU = taggedUnion $ Map.singleton tag items
@@ -450,7 +454,8 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | [(tag, items)] <- Map.toList nodeSet
 codeGenIncreaseHeapPointer :: String -> CG Operand -- TODO
 codeGenIncreaseHeapPointer name = do
   -- increase heap pointer and return the old value which points to the first free block
-  CG_SimpleType {cgType = T_SimpleType (T_Location [loc])} <- getVarType name
+  varT <- getVarType name
+  let CG_SimpleType {cgType = T_SimpleType (T_Location [loc])} = varT
   nodeSet <- use $ envTypeEnv.location.ix loc
 
   let tuPtrTy = ptr $ tuLLVMType $ taggedUnion nodeSet

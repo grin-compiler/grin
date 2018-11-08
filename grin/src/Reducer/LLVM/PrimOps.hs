@@ -44,10 +44,10 @@ codeGenPrimOp name _ [opA, opB] = case name of
   "_prim_word_le"   -> pure . I cgWord64 $ ICmp {iPredicate=I.ULE, operand0=opA, operand1=opB, metadata=[]}
 
   -- Float
-  "_prim_float_add" -> pure . I cgFloat $ FAdd {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_float_sub" -> pure . I cgFloat $ FSub {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_float_mul" -> pure . I cgFloat $ FMul {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_float_div" -> pure . I cgFloat $ FDiv {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_add" -> pure . I cgFloat $ FAdd {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_sub" -> pure . I cgFloat $ FSub {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_mul" -> pure . I cgFloat $ FMul {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_div" -> pure . I cgFloat $ FDiv {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
   "_prim_float_eq"  -> pure . I cgFloat $ FCmp {fpPredicate=F.OEQ, operand0=opA, operand1=opB, metadata=[]}
   "_prim_float_ne"  -> pure . I cgFloat $ FCmp {fpPredicate=F.ONE, operand0=opA, operand1=opB, metadata=[]}
   "_prim_float_gt"  -> pure . I cgFloat $ FCmp {fpPredicate=F.OGT, operand0=opA, operand1=opB, metadata=[]}

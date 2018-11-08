@@ -25,7 +25,9 @@ data Statistics = Statistics
 
 instance Monoid Statistics where
   mempty = Statistics 0 0 0 0 0 0 0 0 0 0
-  mappend
+
+instance Semigroup Statistics where
+  (<>)
     (Statistics a0 b0 c0 d0 e0 f0 g0 h0 i0 j0)
     (Statistics a1 b1 c1 d1 e1 f1 g1 h1 i1 j1)
     = Statistics

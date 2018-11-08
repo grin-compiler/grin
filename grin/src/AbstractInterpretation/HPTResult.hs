@@ -35,13 +35,11 @@ data TypeSet
   }
   deriving (Eq, Ord, Show)
 
-instance Monoid NodeSet where
-  mempty  = NodeSet mempty
-  mappend = unionNodeSet
+instance Semigroup  NodeSet where (<>)    = unionNodeSet
+instance Monoid     NodeSet where mempty  = NodeSet mempty
 
-instance Monoid TypeSet where
-  mempty  = TypeSet mempty mempty
-  mappend = unionTypeSet
+instance Semigroup  TypeSet where (<>)    = unionTypeSet
+instance Monoid     TypeSet where mempty  = TypeSet mempty mempty
 
 unionNodeSet :: NodeSet -> NodeSet -> NodeSet
 unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y where

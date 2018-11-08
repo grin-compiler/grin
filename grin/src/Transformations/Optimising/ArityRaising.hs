@@ -94,8 +94,9 @@ arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
         in case Map.lookup name candidates of
             Nothing        -> pure $ DefF name params0 (Right (substs1, body))
             Just tagParams -> do
-              (Just (t, paramsTypes0)) <- use (typeEnv . function . at name)
-              let oldToNewParams = changeParams
+              mParams <- use (typeEnv . function . at name)
+              let Just (t, paramsTypes0) = mParams
+                  oldToNewParams = changeParams
                     (map (\(n, i, (t, ts)) -> (n, Vector.toList ts)) tagParams)
                     (params0 `zip` (Vector.toList paramsTypes0))
               forM_ oldToNewParams $ \(old, news) -> do
@@ -166,9 +167,10 @@ examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
 newtype MMap k m = MMap { unMMap :: Map k m }
   deriving Show
 
+instance (Ord k, Semigroup m) => Semigroup (MMap k m) where
+  (MMap m1) <> (MMap m2) = MMap (Map.unionWith (<>) m1 m2)
 instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
-  mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
 -- | Examine the function calls in the body.
 examineCallers :: TypeEnv -> Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]

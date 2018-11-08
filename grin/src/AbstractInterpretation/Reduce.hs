@@ -44,13 +44,11 @@ concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer]
 
 type HPT = State Computer
 
-instance Monoid NodeSet where
-  mempty  = NodeSet mempty
-  mappend = unionNodeSet
+instance Semigroup  NodeSet where (<>)    = unionNodeSet
+instance Monoid     NodeSet where mempty  = NodeSet mempty
 
-instance Monoid Value where
-  mempty  = Value mempty mempty
-  mappend = unionValue
+instance Semigroup  Value where (<>)    = unionValue
+instance Monoid     Value where mempty  = Value mempty mempty
 
 unionNodeSet :: NodeSet -> NodeSet -> NodeSet
 unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y where

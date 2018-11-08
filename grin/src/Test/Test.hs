@@ -27,7 +27,7 @@ import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
 import qualified Test.PrimOps as PrimOps
 import Test.QuickCheck
-import Generic.Random.Generic
+import Generic.Random
 import Lens.Micro
 import Lens.Micro.Mtl
 import qualified Test.Grammar as G
@@ -282,10 +282,8 @@ adtsL = lens adts (\e a -> e { adts = a})
 funsL :: Lens' Env (Map Name ([Type], Type, [Eff]))
 funsL = lens funs (\e f -> e { funs = f })
 
-instance Monoid Env where
-  mempty = Env mempty mempty mempty
-  mappend (Env v0 f0 a0) (Env v1 f1 a1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1) (a0 <> a1)
-
+instance Semigroup  Env where (Env v0 f0 a0) <> (Env v1 f1 a1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1) (a0 <> a1)
+instance Monoid     Env where mempty = Env mempty mempty mempty
 insertVar :: Name -> Either G.Val G.ExtraVal -> Env -> Env
 insertVar name val (Env vars funs adts) = Env (Map.singleton name (typeOf val) <> vars) funs adts
 
@@ -304,9 +302,8 @@ insertFun (fname, params, rtype, effs) (Env vars funs adts) =
 data Store = Store (Map G.Loc (G.Val, Type))
   deriving (Eq, Show)
 
-instance Monoid Store where
-  mempty = Store mempty
-  mappend (Store s0) (Store s1) = Store (s0 <> s1)
+instance Semigroup  Store where (Store s0) <> (Store s1) = Store (s0 <> s1)
+instance Monoid     Store where mempty = Store mempty
 
 data Eff
   = NoEff          -- Generate a value returning expression of the given type
@@ -547,7 +544,7 @@ gPureFunction :: (Name -> Bool) -> Type -> GoalM (Name, [Type])
 gPureFunction p t = do
   (Env vars funs adts) <- view ctxEnv
   funs <- gen $ shuffle $ filter (p . fst) $ Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
-  (name, (params, ret, [])) <- melements funs
+  (name, (params, ret, _)) <- melements funs
   pure (name, params)
 
 gPureNonPrimFun :: Type -> GoalM (Name, [Type])
@@ -588,14 +585,13 @@ gSExpSized s t = \case
     _        -> mzero
 
   -- find a name that contains the location and the given type.
-  ReadLoc t' -> do
-    (G.Var name) <- varFromEnv (TLoc t')
-    pure $ G.SFetchI name Nothing
+  ReadLoc t' -> varFromEnv (TLoc t') >>= \case
+    G.Var name -> pure $ G.SFetchI name Nothing
+    t -> error $ "var expected, but got: " ++ show t
 
-  UpdateLoc t' -> do
-    (G.Var name) <- varFromEnv (TLoc t')
-    val <- solve (GVal t')
-    pure $ G.SUpdate name val -- fing a name that contains the location and generate  value of a given type
+  UpdateLoc t' -> varFromEnv (TLoc t') >>= \case
+    G.Var name -> G.SUpdate name <$> solve (GVal t') -- fing a name that contains the location and generate  value of a given type
+    t -> error $ "var expected, but got: " ++ show t
 
 tryout :: [GoalM a] -> GoalM a
 tryout gs = do
@@ -698,7 +694,8 @@ gDef retType = do
   effs <- gEffs
   n <- gen $ choose (1, 5)
   ptypes <- replicateM n $ mfreq [ (90, simpleType), (10, definedAdt) ]
-  (fname:pnames) <- newNames n
+  nl <- newNames n
+  let (fname:pnames) = nl
   CMR.local
 --    TODO: Self recursive: Generate eval creates in infinite loop
 --    kahe ya = kahe ya
@@ -785,7 +782,8 @@ gAlts eff val typeOfVal typeOfExp = case typeOfVal of
         (Just (G.SimpleVal (G.Lit lit))) -> do
           n <- gen $ choose (0, 5)
           alts0 <- replicateM n $ do
-            (G.Lit lit0) <- gLiteral typeOfVal
+            lit0P <- gLiteral typeOfVal
+            let G.Lit lit0 = lit0P
             G.Alt (LitPat lit0) <$> (solve (Exp eff typeOfExp))
           matching <- G.Alt (LitPat lit) <$> (solve (Exp eff typeOfExp))
           let alts = Map.elems $

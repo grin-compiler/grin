@@ -69,6 +69,7 @@ import Data.Algorithm.DiffOutput
 import Control.Monad.Extra
 import System.Random
 import Data.Time.Clock
+import Data.Fixed
 
 type RenameVariablesMap = Map String String
 
@@ -284,12 +285,15 @@ pipelineStep p = do
     DebugPipelineState -> debugPipelineState
   after <- use psExp
   let eff = if before == after then None else ExpChanged
+      showMS :: Rational -> String
+      showMS t = printf "%.6f ms" (realToFrac $ 1E3 * t :: Double)
+
   end <- liftIO getCurrentTime
   case p of
     Pass{} -> pure ()
     T{} -> pipelineLog $ printf "had effect: %s (%s)"
-              (show eff) (show $ diffUTCTime end start)
-    _   -> pipelineLog $ printf "(%s)" (show $ diffUTCTime end start)
+              (show eff) (showMS $ toRational $ diffUTCTime end start)
+    _   -> pipelineLog $ printf "(%s)" (showMS $ toRational $ diffUTCTime end start)
   -- TODO: Test this only for development mode.
   return eff
 

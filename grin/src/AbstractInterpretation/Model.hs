@@ -484,13 +484,11 @@ isDir = \case
 joinSets :: (Ord a) => Set.Set (Set.Set a) -> Set.Set a
 joinSets = Set.unions . Set.toList
 
-instance Monoid NodeSet where
-  mempty = NodeSet mempty
-  mappend (NodeSet a) (NodeSet b) = NodeSet $ Map.unionWith (zipWith Set.union) a b
+instance Semigroup  NodeSet where NodeSet a <> NodeSet b = NodeSet $ Map.unionWith (zipWith Set.union) a b
+instance Monoid     NodeSet where mempty = NodeSet mempty
 
-instance Monoid TypeSet where
-  mempty = TypeSet mempty mempty
-  mappend (TypeSet p1 n1) (TypeSet p2 n2) = TypeSet (p1 `mappend` p2) (n1 `mappend` n2)
+instance Semigroup  TypeSet where TypeSet p1 n1 <> TypeSet p2 n2 = TypeSet (p1 `mappend` p2) (n1 `mappend` n2)
+instance Monoid     TypeSet where mempty = TypeSet mempty mempty
 
 instance SetEquation Name   Loc               where setEq n l = setEq n (T_Location l)
 instance SetEquation Name   SimpleType        where setEq n t = setEq n (typeSet t)

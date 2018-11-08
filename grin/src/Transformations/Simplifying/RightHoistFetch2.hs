@@ -73,10 +73,8 @@ data Info -- analysis info
   }
   deriving Show
 
-instance Monoid Info where
-  mempty = Info mempty mempty
-  mappend (Info a1 b1) (Info a2 b2) = Info (a1 `mappend` a2) (b1 `mappend` b2)
-
+instance Semigroup  Info where (Info a1 b1) <> (Info a2 b2) = Info (a1 `mappend` a2) (b1 `mappend` b2)
+instance Monoid     Info where mempty = Info mempty mempty
 
 collectFetchVars :: Exp -> Set Name
 collectFetchVars = cull . para collect where
