@@ -18,7 +18,7 @@ addons:
       - gcc-5
       - g++-5
       - libgmp-dev
-      - llvm-7.0-dev
+      - llvm-7-dev
     sources:
       - llvm-toolchain-trusty-7
       - ubuntu-toolchain-r-test
