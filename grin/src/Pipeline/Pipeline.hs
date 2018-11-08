@@ -447,7 +447,7 @@ saveLLVM relPath fname' = do
     putStrLn "* to LLVM *"
     _ <- CGLLVM.toLLVM llName code
     putStrLn "* LLVM X64 codegen *"
-    callCommand $ printf "opt-5.0 -O3 %s | llc-5.0 -o %s" llName sName
+    callCommand $ printf "opt-7 -O3 %s | llc-7 -o %s" llName sName
     readFile sName >>= putStrLn
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
