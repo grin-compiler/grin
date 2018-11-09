@@ -55,11 +55,13 @@ data Phase1Data
              }
   deriving (Show)
 
+instance Semigroup Phase1Data where
+  (ProgramData ad0) <> (ProgramData ad1) = ProgramData (Map.unionWith mappend ad0 ad1)
+  (FunData fd0) <> (FunData fd1) = FunData (mappend fd0 fd1)
+  (BodyData c0 f0 o0) <> (BodyData c1 f1 o1) = BodyData (c0 ++ c1) (Map.unionWith (+) f0 f1) (o0 ++ o1)
+
 instance Monoid Phase1Data where
   mempty = BodyData mempty mempty mempty
-  mappend (ProgramData ad0) (ProgramData ad1) = ProgramData (Map.unionWith mappend ad0 ad1)
-  mappend (FunData fd0) (FunData fd1) = FunData (mappend fd0 fd1)
-  mappend (BodyData c0 f0 o0) (BodyData c1 f1 o1) = BodyData (c0 ++ c1) (Map.unionWith (+) f0 f1) (o0 ++ o1)
 
 variableInVar   = \case { Var n -> [n]; _ -> [] }
 variableInNode  = \case { ConstTagNode _ vs -> concatMap variableInVar vs; _ -> [] }
