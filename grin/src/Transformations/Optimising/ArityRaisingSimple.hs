@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Transformations.Optimising.ArityRaisingSimple  where
 
+import Grin.Grin (packName, unpackName)
 import Grin.Syntax
 import Grin.TypeEnv
 import Data.Functor.Foldable
@@ -120,10 +121,10 @@ Use the original parameter name with new indices, thus we dont need a name gener
 phase2 :: Int -> ArityData -> Exp -> Exp
 phase2 n arityData = flip evalState 0 . cata change where
   fetchParNames :: Name -> Int -> Int -> [Name]
-  fetchParNames nm idx i = (\j -> concat [nm,".",show n,".",show idx,".arity.",show j]) <$> [1..i]
+  fetchParNames nm idx i = (\j -> packName $ concat [unpackName nm,".",show n,".",show idx,".arity.",show j]) <$> [1..i]
 
   newParNames :: Name -> Int -> [Name]
-  newParNames nm i = (\j -> concat [nm,".",show n,".arity.",show j]) <$> [1..i]
+  newParNames nm i = (\j -> packName $ concat [unpackName nm,".",show n,".arity.",show j]) <$> [1..i]
 
   parameterInfo :: ParameterInfo
   parameterInfo = Map.fromList $ map (\(n,ith,tag) -> (n, (ith, tag))) $ concat $ Map.elems arityData
