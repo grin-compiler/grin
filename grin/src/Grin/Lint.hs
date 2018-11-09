@@ -13,7 +13,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, findIndices)
+import Lens.Micro.Platform
 
 import Grin.Grin
 import Grin.TypeEnv hiding (typeOfVal)
@@ -203,9 +204,13 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
 
     ECase val alts -> checkWithChild AltCtx $ do
       syntaxE SimpleExpCtx
-      {-
-        val must not have location type
-      -}
+      when ((length (findIndices (has (_AltPat . _DefaultPat)) alts)) > 1) $ do
+        tell ["case has more than one default alternatives"]
+      forM_ mTypeEnv $ \typeEnv -> do
+        case val of
+          (Var name) | Just _ <- typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location ->
+            tell [printf "case variable %s has a location type" name]
+          _ -> pure ()
 
     -- Simple Exp
     SApp name args -> checkWithChild ctx $ do

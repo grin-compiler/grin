@@ -10,6 +10,8 @@ import Data.Int
 import Data.Word
 import Data.List (isPrefixOf)
 import qualified Data.ByteString.Short as B
+import Lens.Micro.Platform
+
 
 data Name2
   = Name        B.ShortByteString
@@ -102,3 +104,11 @@ deriving instance Ord a   => Ord  (ExpF a)
 
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
+
+_DefaultPat :: Traversal' CPat ()
+_DefaultPat f DefaultPat = const DefaultPat <$> f ()
+_DefaultPat _ other      = pure other
+
+_AltPat :: Traversal' Exp CPat
+_AltPat f (Alt p e) = (`Alt` e) <$> f p
+_AltPat _ other     = pure other
