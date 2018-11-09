@@ -117,16 +117,16 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
 replaceDeletedVars :: TypeEnv -> Exp -> Trf Exp 
 replaceDeletedVars tyEnv e = do 
   deletedVars <- use deVariables
-  let f = replaceWithUndefined deletedVars tyEnv 
+  let f = replaceVarWithUndefined deletedVars tyEnv 
   cataM (mapValsExpM (mapValValM f) . embed) e
 
-replaceWithUndefined :: Set Name -> TypeEnv -> Val -> Trf Val
-replaceWithUndefined deletedVars TypeEnv{..} (Var v)
+replaceVarWithUndefined :: Set Name -> TypeEnv -> Val -> Trf Val
+replaceVarWithUndefined deletedVars TypeEnv{..} (Var v)
   | v `elem` deletedVars = do 
     t <- lookupExcept (notFoundInTyEnv v) v _variable 
     pure $ Undefined (simplifyType t)
   where notFoundInTyEnv v = "DVE: Variable " ++ show (PP v) ++ " was not found in type env"
-replaceWithUndefined _ _ v = pure v
+replaceVarWithUndefined _ _ v = pure v
 
 
 trfLoc :: Int -> Trf (Maybe Int) 

@@ -106,6 +106,7 @@ data Transformation
   | ConstantPropagation
   | DeadCodeElimination
   | DeadDataElimination
+  | DeadFunctionElimination
   | DeadParameterElimination
   | DeadVariableElimination
   | SimpleDeadFunctionElimination
@@ -467,24 +468,37 @@ printTypeEnv = do
 
 transformationM :: Transformation -> PipelineM ()
 transformationM DeadCodeElimination = do 
-  e0  <- use psExp
   Just cbyResult <- use psCByResult
   Just lvaResult <- use psLVAResult
   Just typeEnv   <- use psTypeEnv
 
-  case deadDataElimination lvaResult cbyResult typeEnv e0 of
-    Right e1  -> psExp .= e1 >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
-
-  e1 <- use psExp
-  case deadParameterElimination lvaResult typeEnv e1 of
-    Right e2 -> psExp .= e2 >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
-
-  e2 <- use psExp
-  case deadVariableElimination lvaResult typeEnv e2 of
-    Right e3 -> psExp .= e3 >> psTransStep %= (+1)
+  e <- use psExp
+  case deadFunctionElimination lvaResult typeEnv e of
+    Right e' -> psExp .= e' >> psTransStep %= (+1)
     Left  err  -> psErrors %= (err:)
+
+  e <- use psExp
+  case deadVariableElimination lvaResult typeEnv e of
+    Right e' -> psExp .= e' >> psTransStep %= (+1)
+    Left  err  -> psErrors %= (err:)
+  
+  e  <- use psExp
+  case deadDataElimination lvaResult cbyResult typeEnv e of
+    Right e'  -> psExp .= e' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
+
+  e <- use psExp
+  case deadParameterElimination lvaResult typeEnv e of
+    Right e' -> psExp .= e' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
+
+transformationM DeadFunctionElimination = do
+  e  <- use psExp
+  Just lvaResult <- use psLVAResult
+  Just typeEnv   <- use psTypeEnv
+  case deadFunctionElimination lvaResult typeEnv e of
+    Right e'  -> psExp .= e' >> psTransStep %= (+1)
+    Left  err -> psErrors %= (err:)
 
 transformationM DeadVariableElimination = do
   e  <- use psExp

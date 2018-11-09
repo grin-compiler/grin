@@ -98,6 +98,7 @@ library
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.CSE
     Transformations.Optimising.DeadDataElimination
+    Transformations.Optimising.DeadFunctionElimination
     Transformations.Optimising.DeadParameterElimination
     Transformations.Optimising.DeadVariableElimination
     Transformations.Optimising.EvaluatedCaseElimination
@@ -221,6 +222,14 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadData.SeparateProds
                      , DeadCodeElimination.Tests.DeadData.Spec
                      , DeadCodeElimination.Tests.DeadData.Util
+
+                     , DeadCodeElimination.Tests.DeadFunction.AppSideEffect1
+                     , DeadCodeElimination.Tests.DeadFunction.MutuallyRecursive
+                     , DeadCodeElimination.Tests.DeadFunction.ReplaceNode
+                     , DeadCodeElimination.Tests.DeadFunction.ReplaceSimpleType
+                     , DeadCodeElimination.Tests.DeadFunction.Simple
+                     , DeadCodeElimination.Tests.DeadFunction.Spec
+                     , DeadCodeElimination.Tests.DeadFunction.Util
 
                      , DeadCodeElimination.Tests.DeadParam.FNode
                      , DeadCodeElimination.Tests.DeadParam.PNode

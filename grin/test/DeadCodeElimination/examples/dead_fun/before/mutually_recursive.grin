@@ -1,0 +1,5 @@
+grinMain = pure 0
+
+f x = g x
+
+g y = f y
