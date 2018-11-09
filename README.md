@@ -29,7 +29,7 @@ Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.ju
 Example using Homebrew on macOS:
 
 ```bash
-$ brew install llvm-hs/llvm/llvm-5.0
+$ brew install llvm-hs/llvm/llvm-7.0
 ```
 
 #### Debian/Ubuntu
@@ -40,7 +40,7 @@ instructions for adding the correct package database for your OS version, and
 then:
 
 ```bash
-$ apt-get install llvm-5.0-dev
+$ apt-get install llvm-7-dev
 ```
 
 #### Nix
