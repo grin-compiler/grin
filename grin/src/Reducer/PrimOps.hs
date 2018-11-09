@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 {-# LANGUAGE OverloadedStrings #-}
-
-=======
 {-# LANGUAGE LambdaCase #-}
->>>>>>> Better isEOF and readString.
 module Reducer.PrimOps (evalPrimOp) where
 
 import Reducer.Base

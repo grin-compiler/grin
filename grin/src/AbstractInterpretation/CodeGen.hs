@@ -204,7 +204,7 @@ codeGenPrimOp name funResultReg funArgRegs = do
     "_prim_bool_ne"   -> op [bool, bool] bool
     -- FFI - TODO: Handle FFI appropiatey
     "_prim_ffi_file_eof" -> op [int] int
-    unknown           -> error $ "codeGenPrimOp unknown prim-op: " ++ unknown
+    unknown           -> error $ "codeGenPrimOp unknown prim-op: " ++ unpackName unknown
 
 codeGenPhases :: CG IR.Reg -> [IR.Reg -> Exp -> CG ()] -> Exp -> Either String HPTProgram
 codeGenPhases init phases e = (\(a,s) -> s<$a) . flip runState IR.emptyHPTProgram . runExceptT $ do
