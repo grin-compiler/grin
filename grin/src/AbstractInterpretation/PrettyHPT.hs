@@ -31,7 +31,7 @@ prettyHPTNode :: (Tag, Vector (Set R.SimpleType)) -> Doc
 prettyHPTNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
 
 prettyHPTFunction :: (Name, (R.TypeSet, Vector R.TypeSet)) -> Doc
-prettyHPTFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
+prettyHPTFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 instance Pretty R.NodeSet where
   pretty (R.NodeSet m) = encloseSep lbrace rbrace comma (map prettyHPTNode $ Map.toList m)

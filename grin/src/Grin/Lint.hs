@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings #-}
 module Grin.Lint (lint, Error) where
 
 import Text.Printf
@@ -13,8 +13,9 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.List (isPrefixOf, findIndices)
+import Data.List (findIndices)
 import Lens.Micro.Platform
+import Data.Text.Short (isPrefixOf)
 
 import Grin.Grin
 import Grin.TypeEnv hiding (typeOfVal)

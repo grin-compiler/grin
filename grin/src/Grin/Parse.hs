@@ -1,7 +1,9 @@
-{-# LANGUAGE TupleSections, LambdaCase #-}
+{-# LANGUAGE TupleSections, LambdaCase, OverloadedStrings #-}
 
 module Grin.Parse (parseGrin, parseProg, parseDef, parseExpr) where
 
+import Data.Text.Short (ShortText)
+import Data.Text (Text)
 import Data.Void
 import Control.Applicative (empty)
 import Control.Monad (void, mzero)
@@ -13,7 +15,7 @@ import Grin.Grin
 
 keywords = Set.fromList ["case","of","pure","fetch","store","update","if","then","else","do", "#True", "#False"]
 
-type Parser = Parsec Void String
+type Parser = Parsec Void Text
 
 lineComment :: Parser ()
 lineComment = L.skipLineComment "--"
@@ -25,7 +27,7 @@ sc :: Parser ()
 sc = L.space (void spaceChar) lineComment blockComment
 
 sc' :: Parser ()
-sc' = L.space (void $ oneOf " \t") lineComment blockComment
+sc' = L.space (void $ oneOf (" \t" :: String)) lineComment blockComment
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc'
@@ -38,13 +40,13 @@ kw w = lexeme $ string w
 op w = L.symbol sc' w
 
 -- TODO: unify var and con + support quotted syntax which allow any character
-var :: Parser String
-var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_.:!@{}$-")) >>= \x -> case Set.member x keywords of
-  True -> fail $ "keyword: " ++ x
+var :: Parser ShortText
+var = try $ packName <$> lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf ("'_.:!@{}$-" :: String))) >>= \x -> case Set.member x keywords of
+  True -> fail $ "keyword: " ++ unpackName x
   False -> return x
 
-con :: Parser String
-con = lexeme $ some (alphaNumChar <|> oneOf "_.{}")
+con :: Parser ShortText
+con = lexeme $ packName <$> some (alphaNumChar <|> oneOf ("_.{}" :: String))
 
 integer = lexeme L.decimal
 signedInteger = L.signed sc' integer
@@ -87,7 +89,7 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
       Var _            -> True
       _                -> False
 
-primNameOrDefName = ('_':) <$ char '_' <*> var <|> var
+primNameOrDefName = ("_"<>) <$ char '_' <*> var <|> var
 
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 
@@ -125,14 +127,14 @@ satisfyM pred parser = do
 grinModule :: Parser Exp
 grinModule = Program <$> many def <* sc <* eof
 
-parseGrin :: String -> String -> Either (ParseError Char Void) Exp
+parseGrin :: String -> Text -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename content
 
-parseProg :: String -> Exp
+parseProg :: Text -> Exp
 parseProg src = either (error . parseErrorPretty' src) id . parseGrin "" $ src
 
-parseDef :: String -> Exp
+parseDef :: Text -> Exp
 parseDef src = either (error . parseErrorPretty' src) id . runParser def "" $ src
 
-parseExpr :: String -> Exp
+parseExpr :: Text -> Exp
 parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1) "" $ src

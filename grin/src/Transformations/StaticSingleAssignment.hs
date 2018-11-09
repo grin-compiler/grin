@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.StaticSingleAssignment where
 
 import Control.Arrow (first)
@@ -74,7 +74,7 @@ singleStaticAssignment e = flip evalState (mempty, 1) $
             put (Set.insert nm vars, idx + 1)
             pure (nm', subst')
 
-      newName nm i = concat [nm, "_", show i]
+      newName nm i = nm <> "_" <> showTS i
 
       substVal = \case
         ConstTagNode  tag params -> ConstTagNode tag (substVal <$> params)

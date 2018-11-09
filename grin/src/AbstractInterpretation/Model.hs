@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, LambdaCase, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, QuasiQuotes #-}
-{-# LANGUAGE DeriveFunctor, RankNTypes, TypeApplications #-}
+{-# LANGUAGE DeriveFunctor, RankNTypes, TypeApplications, OverloadedStrings #-}
 module AbstractInterpretation.Model where
 
 import Grin.Grin
@@ -546,7 +546,7 @@ valToSimpleTypeSet = \case
 
 -- * Primitive operations
 
-primitive :: String -> Maybe ([TypeSet], TypeSet)
+primitive :: Name -> Maybe ([TypeSet], TypeSet)
 primitive name = case name of
   "_prim_int_print" -> op [int] unit
   -- Int

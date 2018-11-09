@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, OverloadedStrings #-}
 module AbstractInterpretation.CodeGen
   ( codeGenPhases
   , CG
@@ -74,7 +74,7 @@ getReg :: Name -> CG IR.Reg
 getReg name = do
   regMap <- gets hptRegisterMap
   case Map.lookup name regMap of
-    Nothing   -> throwE $ "unknown variable " ++ name
+    Nothing   -> throwE $ "unknown variable " ++ unpackName name
     Just reg  -> pure reg
 
 getTag :: Tag -> CG IR.Tag

@@ -1,5 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Pipeline.Eval where
 
+import qualified Data.Text.IO as Text
 import Text.Megaparsec
 
 import Grin.Grin
@@ -22,7 +24,7 @@ data Reducer
 -- TODO: Add Mode as a parameter?
 eval' :: Reducer -> String -> IO RTVal
 eval' reducer fname = do
-  content <- readFile fname
+  content <- Text.readFile fname
   case parseGrin fname content of
     Left err -> error $ parseErrorPretty' content err
     Right program ->

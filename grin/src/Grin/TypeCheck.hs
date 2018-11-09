@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, OverloadedStrings #-}
 module Grin.TypeCheck where
 
 import Text.Printf
@@ -14,7 +14,7 @@ import qualified Data.Vector as V
 import Control.Monad.Except
 import Lens.Micro.Platform
 
-import Grin.Grin (Tag, Exp)
+import Grin.Grin (Tag, Exp, Name, packName)
 import Grin.Pretty
 import AbstractInterpretation.PrettyHPT
 
@@ -56,15 +56,15 @@ typeEnvFromHPTResult hptResult = typeEnv where
     = pure $ TypeEnv.T_Location [l | T_Location l <- tys]
   convertNodeItem tys = throwError $ printf "illegal node item type %s" (show . pretty $ Set.fromList tys)
 
-  checkNode :: String -> NodeSet -> Vector TypeEnv.SimpleType -> Either String (Vector TypeEnv.SimpleType)
+  checkNode :: Name -> NodeSet -> Vector TypeEnv.SimpleType -> Either String (Vector TypeEnv.SimpleType)
   checkNode n ns v
     | any (TypeEnv.T_Location [] ==) v = throwError $ printf "%s: illegal node type %s in %s" n (show . pretty $ V.toList v) (show $ pretty ns)
     | otherwise = pure v
 
-  convertNodeSet :: (String, NodeSet) -> Either String (Map Tag (Vector TypeEnv.SimpleType))
+  convertNodeSet :: (Name, NodeSet) -> Either String (Map Tag (Vector TypeEnv.SimpleType))
   convertNodeSet (n, a@(NodeSet ns)) = mapM (checkNode n a <=< mapM (convertNodeItem . Set.toList)) ns
 
-  convertTypeSet :: (String, TypeSet) -> Either String TypeEnv.Type
+  convertTypeSet :: (Name, TypeSet) -> Either String TypeEnv.Type
   convertTypeSet (name, ts) = do
     let ns = ts^.nodeSet
         st = ts^.simpleType
@@ -74,12 +74,12 @@ typeEnvFromHPTResult hptResult = typeEnv where
       (0,0)                                           -> pure TypeEnv.dead_t
       _ -> throwError $ printf "illegal type %s for %s" (show . pretty $ ts) name
 
-  convertFunction :: (String, (TypeSet, Vector TypeSet)) -> Either String (TypeEnv.Type, Vector TypeEnv.Type)
+  convertFunction :: (Name, (TypeSet, Vector TypeSet)) -> Either String (TypeEnv.Type, Vector TypeEnv.Type)
   convertFunction (name, (ret, args)) = (,) <$> convertTypeSet (name, ret) <*> mapM (convertTypeSet . (,) name) args
 
   typeEnv :: Either String TypeEnv.TypeEnv
   typeEnv = TypeEnv.TypeEnv <$>
-    (mapM convertNodeSet  $ (\v -> V.zip (V.map (("Loc " ++) . show) (V.iterateN (V.length v) succ 0)) v) $ (_memory hptResult)) <*>
+    (mapM convertNodeSet  $ (\v -> V.zip (V.map (("Loc " <>) . packName . show) (V.iterateN (V.length v) succ 0)) v) $ (_memory hptResult)) <*>
     (mapM convertTypeSet  $ Map.mapWithKey (,) $ (_register hptResult)) <*>
     (mapM convertFunction $ Map.mapWithKey (,) $ (_function hptResult)) <*>
     pure (_sharing hptResult)

@@ -111,6 +111,7 @@ library
     microlens-platform,
     process,
     text,
+    text-short,
     time,
     llvm-hs-pretty,
     optparse-applicative,
@@ -166,6 +167,7 @@ test-suite grin-test
                      , QuickCheck
                      , deepseq
                      , vector
+                     , text
   other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec

@@ -53,7 +53,7 @@ registerIntroductionI _ e = apo builder ([1..], e) where
 
     where
       path' = tail path
-      evars = map (\i -> concat ["v.", show (head path), ".", show i]) [1..]
+      evars = map (\i -> packName $ concat ["v.", show (head path), ".", show i]) [1..]
 
       changeSimpleVals :: [Name] -> [SimpleVal] -> ([SimpleVal], [(Name, Val)])
       changeSimpleVals newVars svals = second catMaybes . unzip $ zipWith changeVal svals newVars

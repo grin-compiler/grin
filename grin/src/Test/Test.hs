@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
-{-# LANGUAGE QuasiQuotes, ViewPatterns #-}
+{-# LANGUAGE QuasiQuotes, ViewPatterns, OverloadedStrings #-}
 module Test.Test where
 
 import Prelude hiding (GT)
@@ -22,6 +22,7 @@ import Data.List ((\\))
 import Data.Maybe (fromJust, maybeToList)
 import Data.Semigroup
 import qualified Data.Text as Text
+import qualified Data.Text.Short as TS
 import GHC.Generics
 import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
@@ -210,6 +211,7 @@ semanticallyIncorrectPrograms = resize 1 (G.asExp <$> arbitrary @G.Prog)
 downScale :: Gen a -> Gen a
 downScale = scale (`div` 2)
 
+instance Arbitrary TS.ShortText where arbitrary = TS.pack <$> arbitrary
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
 instance Arbitrary G.Prog where arbitrary = genericArbitraryU
@@ -251,7 +253,7 @@ instance Arbitrary Tag where
     <*> (G.unName <$> arbitrary)
 
 instance Arbitrary G.Name where
-  arbitrary = G.Name . concat <$> listOf1 hiragana
+  arbitrary = G.Name . packName . concat <$> listOf1 hiragana
 
 -- | Increase the size parameter until the generator succeds.
 suchThatIncreases :: Gen a -> (a -> Bool) -> Gen a
@@ -328,7 +330,7 @@ data Type
   | TBool
   | TWord
   | TLoc Type
-  | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
+  | TTag Name [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
   deriving (Eq, Generic, Ord, Show)
 
@@ -456,32 +458,32 @@ runGoalUnsafe = fmap checkSolution . runGoalM mzero
 gen :: Gen a -> GoalM a
 gen = lift . lift
 
-tagNames :: Type -> [String]
+tagNames :: Type -> [Name]
 tagNames (TTag name _)  = [name]
 tagNames (TUnion types) = concatMap tagNames (Set.toList types)
 tagNames _              = []
 
-newName :: GoalM String
+newName :: GoalM Name
 newName = do
   (Env vars funs adts) <- view ctxEnv
   let names = Map.keys vars <> Map.keys funs <> (concatMap tagNames $ Set.toList adts)
   gen $ ((G.unName <$> arbitrary) `suchThatIncreases` (`notElem` names))
 
-newNames :: Int -> GoalM [String]
+newNames :: Int -> GoalM [Name]
 newNames = go [] where
   go names 0 = pure names
   go names n = do
     name <- newName `mSuchThat` (`notElem` names)
     go (name:names) (n-1)
 
-newVar :: Type -> (String -> GoalM a) -> GoalM a
+newVar :: Type -> (Name -> GoalM a) -> GoalM a
 newVar t k = do
   (Env vars funs adts) <- view ctxEnv
   name <- newName
   CMR.local (ctxEnv %~ insertVarT name t) $ do
     k name
 
-withVars :: [(String, Type)] -> GoalM a -> GoalM a
+withVars :: [(Name, Type)] -> GoalM a -> GoalM a
 withVars vars = CMR.local (ctxEnv %~ insertVars vars)
 
 type GBool = Type
@@ -548,10 +550,10 @@ gPureFunction p t = do
   pure (name, params)
 
 gPureNonPrimFun :: Type -> GoalM (Name, [Type])
-gPureNonPrimFun = gPureFunction (not . ("_prim_" `isPrefixOf`))
+gPureNonPrimFun = gPureFunction (not . isPrimName)
 
 gPurePrimFun :: Type -> GoalM (Name, [Type])
-gPurePrimFun = gPureFunction ("_prim_" `isPrefixOf`)
+gPurePrimFun = gPureFunction isPrimName
 
 mGetSize :: GoalM Int
 mGetSize = gen $ sized pure

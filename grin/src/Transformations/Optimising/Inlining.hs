@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings #-}
 module Transformations.Optimising.Inlining where
 
 import Debug.Trace

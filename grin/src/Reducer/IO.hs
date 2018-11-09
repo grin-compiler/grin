@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, BangPatterns #-}
+{-# LANGUAGE LambdaCase, TupleSections, BangPatterns, OverloadedStrings #-}
 {-# LANGUAGE Strict #-}
 module Reducer.IO (reduceFun) where
 
@@ -97,7 +97,7 @@ evalSimpleExp env = \case
               if isPrimName n
                 then evalPrimOp n [] args
                 else do
-                  Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ n) n) <$> getProg
+                  Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ unpackName n) n) <$> getProg
                   evalExp (go env vars args) body
   SReturn v -> pure $ evalVal env v
   SStore v -> do
@@ -125,6 +125,6 @@ reduceFun (Program l) n = do
   where
     m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
     e = case Map.lookup n m of
-          Nothing -> error $ "missing function: " ++ n
+          Nothing -> error $ "missing function: " ++ unpackName n
           Just (Def _ [] a) -> a
-          _ -> error $ "function " ++ n ++ " has arguments"
+          _ -> error $ "function " ++ unpackName n ++ " has arguments"

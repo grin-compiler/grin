@@ -1,6 +1,7 @@
-{-# LANGUAGE LambdaCase, QuasiQuotes #-}
+{-# LANGUAGE LambdaCase, QuasiQuotes, OverloadedStrings #-}
 module ParserSpec where
 
+import qualified Data.Text as Text
 import Test.Hspec
 import Test.QuickCheck
 
@@ -138,5 +139,5 @@ spec = do
   describe "generated" $ do
     it "parse . pretty print == id" $ property $
       forAll (PP <$> genProg) $ \p ->
-        let p' = parseGrin "" (show p)
+        let p' = parseGrin "" (Text.pack $ show p)
         in (fmap PP p') `shouldBe` (Right p)

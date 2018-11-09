@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, BangPatterns #-}
+{-# LANGUAGE LambdaCase, TupleSections, BangPatterns, OverloadedStrings #-}
 module Reducer.Pure (reduceFun) where
 
 import Text.Printf

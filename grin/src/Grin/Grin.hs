@@ -8,6 +8,7 @@ import Data.Functor.Foldable as Foldable
 import Debug.Trace (trace)
 import Lens.Micro.Platform
 import Data.Maybe
+import qualified Data.Text.Short as TS
 
 import Grin.Syntax
 
@@ -106,3 +107,12 @@ isSimpleExp e | isPrimitiveExp e = True
 isSimpleExp e = case e of
   SBlock  _   -> True
   _           -> False
+
+unpackName :: Name -> String
+unpackName = TS.unpack
+
+packName :: String -> Name
+packName = TS.pack
+
+showTS :: Show a => a -> Name
+showTS = packName . show

@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
-{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell, StandaloneDeriving, OverloadedStrings #-}
 module Grin.Syntax where
 
 import Data.Functor.Foldable.TH
@@ -8,10 +8,9 @@ import Control.DeepSeq
 import GHC.Generics (Generic)
 import Data.Int
 import Data.Word
-import Data.List (isPrefixOf)
 import qualified Data.ByteString.Short as B
 import Lens.Micro.Platform
-
+import Data.Text.Short (ShortText, isPrefixOf)
 
 data Name2
   = Name        B.ShortByteString
@@ -19,7 +18,7 @@ data Name2
   | NewName     Name2 Int -- Block scope with shadowing support
   deriving (Ord, Eq, Show)
 
-type Name = String
+type Name = ShortText
 
 isPrimName :: Name -> Bool
 isPrimName = isPrefixOf "_prim_"

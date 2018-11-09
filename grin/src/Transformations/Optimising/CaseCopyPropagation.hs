@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.Optimising.CaseCopyPropagation where
 
 import Grin.Grin

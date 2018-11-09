@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, OverloadedStrings #-}
 module Transformations.Optimising.DeadProcedureElimination where
 
 import Text.Printf

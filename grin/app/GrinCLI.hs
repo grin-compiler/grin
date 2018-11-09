@@ -4,6 +4,7 @@ module Main where
 import Control.Monad
 import Data.Map as Map
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+import qualified Data.Text.IO as Text
 import qualified Text.Megaparsec as M
 
 import Options.Applicative
@@ -100,7 +101,7 @@ main :: IO ()
 main = do
   Options files steps outputDir <- options
   forM_ files $ \fname -> do
-    content <- readFile fname
+    content <- Text.readFile fname
     let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
         opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
     case steps of

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.Optimising.ArityRaising where
 
 import Control.Arrow
@@ -37,7 +37,7 @@ changeParams tagParams = map
 
 newParams :: Name -> [SimpleType] -> [(Name, Type)]
 newParams name [ty] = [(name, T_SimpleType ty)]
-newParams name types  = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> show i, T_SimpleType t)
+newParams name types  = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> packName (show i), T_SimpleType t)
 
 typeEnv :: Lens' (Int, TypeEnv) TypeEnv
 typeEnv = _2
@@ -122,7 +122,7 @@ arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
                       let locs = concat $ te ^.. variable . at v . _Just . _T_SimpleType . _T_Location
                       let Just (tag, vs) = sameNodeOnLocations te locs
                       c <- newVarIdx
-                      let vars = map (\n -> Var $ concat [v, ".", show c, ".f",show n]) [1 .. Vector.length vs]
+                      let vars = map (\n -> Var $ v <> "." <> showTS c <> ".f" <> showTS n) [1 .. Vector.length vs]
                       pure (vars, [(v, ConstTagNode tag vars)])
                     Just (Left (ConstTagNode tag vals)) -> pure (vals, []) -- The tag node should have the arity as in the candidates
                     Just (Left (Var v)) -> pure ([Var v], [])

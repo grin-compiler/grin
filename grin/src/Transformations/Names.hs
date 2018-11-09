@@ -34,7 +34,7 @@ deriveNewName :: Name -> NameM Name
 deriveNewName name = do
   (newName, conflict) <- state $ \env@NameEnv{..} ->
     let idx = Map.findWithDefault 0 name namePool
-        new = printf "%s.%d" name idx
+        new = packName $ printf "%s.%d" name idx
     in ((new, Set.member new nameSet), env {namePool = Map.insert name (succ idx) namePool, nameSet = Set.insert new nameSet})
   if conflict
     then deriveNewName name

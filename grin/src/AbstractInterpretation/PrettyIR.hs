@@ -9,7 +9,7 @@ import qualified Data.Set as Set
 import Text.PrettyPrint.ANSI.Leijen
 
 import Grin.Pretty ()
-import Grin.Grin (Name)
+import Grin.Grin (Name, unpackName)
 import qualified Grin.Grin as Grin
 import AbstractInterpretation.IR
 import AbstractInterpretation.HPTResult (toSimpleType)
@@ -66,7 +66,7 @@ instance Pretty Constant where
   pretty = prettyConstant Nothing
 
 prettyName :: Name -> Doc
-prettyName = red . text
+prettyName = red . text . unpackName
 
 prettySimpleType :: Int32 -> Doc
 prettySimpleType = pretty . toSimpleType

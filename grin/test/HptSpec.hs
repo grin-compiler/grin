@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, QuasiQuotes #-}
+{-# LANGUAGE LambdaCase, QuasiQuotes, OverloadedStrings #-}
 module HptSpec where
 
 import Test.Hspec
