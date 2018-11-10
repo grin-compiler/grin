@@ -41,7 +41,7 @@ instance Pretty R.TypeSet where
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
-    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue
+    [ yellow (text "Heap (* is shared)") <$$> indent 4 (prettyKeyValue
          $ map (\(k, v) -> (if k `Set.member` _sharing then (pretty k) <> text "*" else pretty k, v))
          $ zip [(0 :: Int)..] $ V.toList _memory)
     , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList  _register)

@@ -54,7 +54,6 @@ import Control.Monad.Trans.State.Strict
 import Control.Monad.IO.Class
 import Lens.Micro.TH
 import Lens.Micro.Mtl
-import Data.Set
 import System.FilePath
 import System.Exit
 import Control.DeepSeq
@@ -254,9 +253,11 @@ pipelineLogNoLn str = do
 
 pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
+  let specialPrint = [HPT PrintHPTCode, HPT PrintHPTResult, PrintGrin id, PrintAST, PrintTypeEnv]
   case p of
     Pass{}  -> pure () -- each pass step will be printed anyway
-    _       -> pipelineLogNoLn $ printf "PipelineStep: %-50s" (show p)
+    _ | p `elem` specialPrint -> pipelineLog $ printf "PipelineStep: %-50s" (show p)
+    _ -> pipelineLogNoLn $ printf "PipelineStep: %-50s" (show p)
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
