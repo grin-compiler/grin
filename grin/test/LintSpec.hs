@@ -67,14 +67,125 @@ spec = do
       let result = concat $ Map.elems errors
       result `shouldBe` ["case variable l has a location type"]
 
-    it "finds duplicate default alternatives" $ do
+    it "finds overlapping node alternatives" $ do
       let program = [prog|
           main =
-            case 3 of
-              #default -> pure ()
-              3 -> pure ()
-              #default -> pure ()
+            x <- pure (CInt 1)
+            case x of
+              (CInt a)   -> pure ()
+              (CFloat b) -> pure ()
+              (CInt c)   -> pure ()
         |]
       let (_,errors) = lint Nothing program
       let result = concat $ Map.elems errors
+      result `shouldBe` ["case has overlapping node alternatives CInt"]
+
+    it "finds overlapping literal alternatives" $ do
+      let program = [prog|
+          main =
+            x <- pure 1
+            case x of
+              1 -> pure ()
+              2 -> pure ()
+              1 -> pure ()
+        |]
+      let (_,errors) = lint Nothing program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["case has overlapping literal alternatives 1"]
+
+    it "finds non-covered node alternatives" $ do
+      let program = [prog|
+          main =
+            l <- store (CInt 1)
+            update l (CFloat 1)
+            update l (CBool #True)
+            v <- fetch l
+            case v of
+              (CInt a) -> pure ()
+              (CFloat b) -> pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["case has non-covered alternative CBool"]
+
+    it "does not report non-covered nodes with default branch" $ do
+      let program = [prog|
+          main =
+            l <- store (CInt 1)
+            update l (CFloat 1)
+            update l (CBool #True)
+            v <- fetch l
+            case v of
+              (CInt a) -> pure ()
+              (CFloat b) -> pure ()
+              #default -> pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      let result = concat $ Map.elems errors
+      result `shouldBe` []
+
+    it "finds duplicate default alternatives" $ do
+      let program = [prog|
+            main =
+              case 3 of
+                #default -> pure ()
+                3 -> pure ()
+                #default -> pure ()
+          |]
+      let (_,errors) = lint Nothing program
+      let result = concat $ Map.elems errors
       result `shouldBe` ["case has more than one default alternatives"]
+
+  describe "Store lint" $ do
+    it "finds primitive value as argument." $ do
+      let program = [prog|
+          main =
+            v <- pure 1
+            l <- store v
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["store has given a primitive value: v"]
+
+  describe "Fetch lint" $ do
+    it "finds non-location value as parameter" $ do
+      let program = [prog|
+          main =
+            l <- pure 1
+            x <- fetch l
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["the parameter of fetch is non-location: l"]
+
+  describe "Update lint" $ do
+    it "finds non-location value as parameter" $ do
+      let program = [prog|
+          main =
+            l <- pure 1
+            x <- update l (CInt 1)
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["the parameter of update is non-location: l"]
+
+    it "finds primitive value as argument." $ do
+      let program = [prog|
+          main =
+            l <- store (CInt 1)
+            v <- pure 2
+            x <- update l v
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      let result = concat $ Map.elems errors
+      result `shouldBe` ["update has given a primitive value: v"]

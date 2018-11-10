@@ -104,10 +104,18 @@ deriving instance Ord a   => Ord  (ExpF a)
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
 
-_DefaultPat :: Traversal' CPat ()
-_DefaultPat f DefaultPat = const DefaultPat <$> f ()
-_DefaultPat _ other      = pure other
+_AltCPat :: Traversal' Exp CPat
+_AltCPat f (Alt p e) = (`Alt` e) <$> f p
+_AltCPat _ other     = pure other
 
-_AltPat :: Traversal' Exp CPat
-_AltPat f (Alt p e) = (`Alt` e) <$> f p
-_AltPat _ other     = pure other
+_CPatNodeTag :: Traversal' CPat Tag
+_CPatNodeTag f (NodePat tag args) = (`NodePat` args) <$> f tag
+_CPatNodeTag _ other              = pure other
+
+_CPatLit :: Traversal' CPat Lit
+_CPatLit f (LitPat lit) = LitPat <$> f lit
+_CPatLit _ other        = pure other
+
+_CPatDefault :: Traversal' CPat ()
+_CPatDefault f DefaultPat = const DefaultPat <$> f ()
+_CPatDefault _ other      = pure other

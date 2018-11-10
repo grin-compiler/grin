@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings, ScopedTypeVariables #-}
 module Grin.Lint (lint, Error) where
 
 import Text.Printf
@@ -16,8 +16,11 @@ import qualified Data.Set as Set
 import Data.List (findIndices)
 import Lens.Micro.Platform
 import Data.Text.Short (isPrefixOf)
+import Text.PrettyPrint.ANSI.Leijen (Pretty, plain)
+
 
 import Grin.Grin
+import Grin.Pretty
 import Grin.TypeEnv hiding (typeOfVal)
 import Transformations.Util
 
@@ -40,6 +43,8 @@ Linter is responsible for the semantical checks of the program.
   - case:
     - overlapping alternatives
     - uncovered cases
+    - fully saturated alternatives
+  - fully saturated node creation eg (CPair 1 2) vs (CPair 1)
 -}
 
 {-
@@ -173,6 +178,9 @@ checkVarScopeM exp = do
     _          -> mapM_ (uncurry checkNameDef) $ foldNameDefExpF (\r n -> [(r,n)]) exp
   mapM_ checkNameUse $ foldNameUseExpF (:[]) exp
 
+plainShow :: (Pretty p) => p -> String
+plainShow = show . plain . pretty
+
 lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
 lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
   cata functionNames exp
@@ -205,24 +213,54 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
 
     ECase val alts -> checkWithChild AltCtx $ do
       syntaxE SimpleExpCtx
-      when ((length (findIndices (has (_AltPat . _DefaultPat)) alts)) > 1) $ do
+
+      -- Overlapping node alternatives
+      let tagOccurences =
+            Map.unionsWith (+) $
+            map (`Map.singleton` 1) $
+            concatMap (^.. _AltCPat . _CPatNodeTag) alts
+      forM_ (Map.keys $ Map.filter (>1) tagOccurences) $ \(tag :: Tag) ->
+        tell [printf "case has overlapping node alternatives %s" (plainShow tag)]
+
+      -- Overlapping literal alternatives
+      let literalOccurences =
+            Map.unionsWith (+) $
+            map (`Map.singleton` 1) $
+            concatMap (^.. _AltCPat . _CPatLit) alts
+      forM_ (Map.keys $ Map.filter (>1) literalOccurences) $ \(lit :: Lit) ->
+        tell [printf "case has overlapping literal alternatives %s" (plainShow lit)]
+
+      let noOfDefaults = length $ findIndices (has (_AltCPat . _CPatDefault)) alts
+      -- More than one default
+      when (noOfDefaults > 1) $ do
         tell ["case has more than one default alternatives"]
+
       forM_ mTypeEnv $ \typeEnv -> do
+        -- Case variable has a location type
         case val of
           (Var name) | Just _ <- typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location ->
             tell [printf "case variable %s has a location type" name]
-          _ -> pure ()
+          _ -> pure () -- TODO
+
+        -- Non-covered alternatives
+        when (noOfDefaults == 0) $ do
+          case val of
+            (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> do
+              forM_ tags $ \tag -> when (Map.notMember tag tagOccurences) $ do
+                tell [printf "case has non-covered alternative %s" (plainShow tag)]
+            _ -> pure () -- TODO
 
     -- Simple Exp
     SApp name args -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
-      -- Test if a function exist.
+      -- Test existence of the function.
       Env{..} <- get
       when (not $ "_prim_" `isPrefixOf` name) $
         case Map.lookup name envDefinedNames of
           (Just FunName) -> pure ()
           (Just _)       -> tell [printf "non-function in function call: %s" name]
           Nothing        -> tell [printf "non-defined function is called: %s" name]
+      -- Non saturated function call
       forM_ (Map.lookup name envFunArity) $ \n -> when (n /= length args) $ do
         tell [printf "non-saturated function call: %s" name]
       mapM_ (syntaxV SimpleValCtx) args
@@ -234,15 +272,44 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
     SStore val -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       syntaxV ValCtx val
-      --typeV NodeTypeCtx val
+      forM_ mTypeEnv $ \typeEnv -> do
+        -- Store has given a primitive type
+        case val of
+          (Lit lit) -> tell [printf "store has given a primitive value: %s" (plainShow val)]
+          (ConstTagNode _ _) -> pure ()
+          (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
+                     | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
+                        tell [printf "store has given a primitive value: %s" (plainShow val)]
+          _ -> pure ()
 
     SFetchI name _ -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
-      --typeN LocationType name
+      -- Non location parameter for fetch
+      forM_ mTypeEnv $ \typeEnv -> do
+        case (typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location) of
+          Just _ -> pure ()
+          Nothing -> tell [printf "the parameter of fetch is non-location: %s" (plainShow name)]
 
     SUpdate name val -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       syntaxV ValCtx val
+
+      -- Non location parameter for update
+      forM_ mTypeEnv $ \typeEnv -> do
+        case (typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location) of
+          Just _ -> pure ()
+          Nothing -> tell [printf "the parameter of update is non-location: %s" (plainShow name)]
+
+      forM_ mTypeEnv $ \typeEnv -> do
+        -- Update has given a primitive type
+        case val of
+          (Lit lit) -> tell [printf "update has given a primitive value: %s" (plainShow val)]
+          (ConstTagNode _ _) -> pure ()
+          (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
+                     | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
+                        tell [printf "update has given a primitive value: %s" (plainShow val)]
+          _ -> pure ()
+
       --typeN LocationType name
       --isNodePtr name val
 
