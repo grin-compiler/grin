@@ -27,6 +27,7 @@ import Grin.Grin as Grin
 import Grin.TypeEnv
 import Grin.Pretty
 
+-- QUESTION: T_Dead case?
 typeGenSimpleType :: SimpleType -> LLVM.Type
 typeGenSimpleType = \case
   T_Int64   -> i64
@@ -34,7 +35,8 @@ typeGenSimpleType = \case
   T_Float   -> float
   T_Bool    -> i1
   T_Unit    -> LLVM.void
-  T_Location _  -> locationLLVMType
+  T_Location _          -> locationLLVMType
+  T_UnspecifiedLocation -> locationLLVMType
 
 locationCGType :: CGType
 locationCGType = toCGType $ T_SimpleType $ T_Location []
@@ -159,7 +161,8 @@ codeGenValueConversion srcCGType srcOp dstCGType = case srcCGType of
   _ | isLocation srcCGType && isLocation dstCGType  -> pure srcOp
   _ -> copyTaggedUnion srcOp (cgTaggedUnion srcCGType) (cgTaggedUnion dstCGType)
   where isLocation = \case
-          CG_SimpleType{cgType = T_SimpleType (T_Location{})} -> True
+          CG_SimpleType{cgType = T_SimpleType T_Location{}} -> True
+          CG_SimpleType{cgType = T_SimpleType T_UnspecifiedLocation} -> True
           _ -> False
 
 commonCGType :: [CGType] -> CGType
