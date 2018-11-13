@@ -496,7 +496,11 @@ randomPipeline = do
   go transformationWhitelist []
   where
     go :: [Transformation] -> [Transformation] -> PipelineM [Transformation]
-    go [] result = pure $ reverse result
+    go [] result = do
+      -- The final result must be normalised as, non-normalised and normalised
+      -- grin program is semantically the same.
+      pipelineStep $ T BindNormalisation
+      pure $ reverse result
     go available res = do
       t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
       eff <- pipelineStep (T t)
