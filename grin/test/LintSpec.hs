@@ -149,7 +149,7 @@ spec = do
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       let result = concat $ Map.elems errors
-      result `shouldBe` ["store has given a primitive value: v"]
+      result `shouldBe` ["store has given a primitive value: v :: T_Int64"]
 
   describe "Fetch lint" $ do
     it "finds non-location value as parameter" $ do
@@ -188,4 +188,4 @@ spec = do
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       let result = concat $ Map.elems errors
-      result `shouldBe` ["update has given a primitive value: v"]
+      result `shouldBe` ["update has given a primitive value: v :: T_Int64"]

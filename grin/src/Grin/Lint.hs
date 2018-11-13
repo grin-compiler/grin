@@ -307,7 +307,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
           (ConstTagNode _ _) -> pure ()
           (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
                      | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
-                        tell [printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow val)]
+                        tell [printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
           _ -> pure ()
 
       --typeN LocationType name
