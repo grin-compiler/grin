@@ -249,9 +249,13 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       clearDefState
       activeBlock (mkNameG $ name <> ".entry")
       (cgTy, result) <- body >>= getOperand ("result." <> name)
-      let llvmRetType = cgLLVMType cgTy
+      (cgRetType, argTypes) <- getFunctionType name
+      let llvmReturnType = cgLLVMType cgRetType
+
+      returnValue <- codeGenValueConversion cgTy result cgRetType
+
       closeBlock $ Ret
-        { returnOperand = if llvmRetType == VoidType then Nothing else Just result
+        { returnOperand = if llvmReturnType == VoidType then Nothing else Just returnValue
         , metadata'     = []
         }
 
@@ -260,13 +264,10 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       blockInstructions <- Map.delete (mkName "") <$> gets _envBlockInstructions
       unless (Map.null blockInstructions) $ error $ printf "unclosed blocks in %s\n  %s" name (show blockInstructions)
       blocks <- gets _envBasicBlocks
-      (retType, argTypes) <- getFunctionType name
-      -- TODO: improve this check
-      -- when (retType /= cgTy) $ error $ printf "return type mismatch for %s\n  retTy: %s\n  cgTy: %s\n" name (show retType) (show cgTy)
       let def = GlobalDefinition functionDefaults
             { name        = mkNameG name
             , parameters  = ([Parameter (cgLLVMType argType) (mkNameG a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
-            , returnType  = llvmRetType
+            , returnType  = llvmReturnType
             , basicBlocks = Map.elems blocks
             , callingConvention = if name == "grinMain" then CC.C else CC.Fast
             , linkage = if name == "grinMain" then L.External else L.Private
