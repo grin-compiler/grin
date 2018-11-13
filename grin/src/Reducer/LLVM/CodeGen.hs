@@ -143,7 +143,7 @@ toModule Env{..} = defaultModule
     heapPointerDef = GlobalDefinition globalVariableDefaults
       { name          = mkName (heapPointerName)
       , Global.type'  = i64
-      , initializer   = Just $ Null i64
+      , initializer   = Just $ Int 64 0
       }
 
 {-
@@ -250,9 +250,12 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       clearDefState
       activeBlock (mkName $ name ++ ".entry")
       (cgTy, result) <- body >>= getOperand (printf "result.%s" name)
-      let llvmRetType = cgLLVMType cgTy
+      (retType, argTypes) <- getFunctionType name
+      let llvmRetType = cgLLVMType retType
+      returnValue <- codeGenValueConversion cgTy result retType
+
       closeBlock $ Ret
-        { returnOperand = if llvmRetType == VoidType then Nothing else Just result
+        { returnOperand = if llvmRetType == VoidType then Nothing else Just returnValue
         , metadata'     = []
         }
 
@@ -261,9 +264,6 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       blockInstructions <- Map.delete (mkName "") <$> gets _envBlockInstructions
       unless (Map.null blockInstructions) $ error $ printf "unclosed blocks in %s\n  %s" name (show blockInstructions)
       blocks <- gets _envBasicBlocks
-      (retType, argTypes) <- getFunctionType name
-      -- TODO: improve this check
-      -- when (retType /= cgTy) $ error $ printf "return type mismatch for %s\n  retTy: %s\n  cgTy: %s\n" name (show retType) (show cgTy)
       let def = GlobalDefinition functionDefaults
             { name        = mkName name
             , parameters  = ([Parameter (cgLLVMType argType) (mkName a) [] | (a, argType) <- zip args argTypes], False) -- HINT: False - no var args
