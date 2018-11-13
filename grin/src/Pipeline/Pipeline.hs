@@ -486,8 +486,9 @@ lintGrin mPhaseName = do
 
 -- Generate random pipeline based on the transformationWhitelist, the pipeline reaches a fixpoint
 -- and returns the list of transformation that helped to reach the fixpoint.
-randomPipeline :: PipelineM [Transformation]
-randomPipeline = do
+randomPipeline :: StdGen -> PipelineM [Transformation]
+randomPipeline seed = do
+  liftIO $ setStdGen seed
   mapM_ pipelineStep
     [ HPT CompileHPT
     , HPT RunHPTPure
@@ -542,11 +543,13 @@ confluenceTest = do
   pipelineLog "Confluence test"
   pipelineLog "Random pipeline #1"
   state <- MonadState.get
-  pipeline1 <- randomPipeline
+  gen1 <- liftIO newStdGen
+  pipeline1 <- randomPipeline gen1
   pipelineLog "Random pipeline #2"
   exp1 <- use psExp
   MonadState.put state
-  pipeline2 <- randomPipeline
+  gen2 <- liftIO newStdGen
+  pipeline2 <- randomPipeline gen2
   exp2 <- use psExp
   if (mangleNames exp1 /= mangleNames exp2)
     then do

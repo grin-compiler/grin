@@ -168,6 +168,7 @@ test-suite grin-test
                      , deepseq
                      , vector
                      , text
+                     , random
   other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
