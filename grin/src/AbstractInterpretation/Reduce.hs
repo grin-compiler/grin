@@ -125,10 +125,6 @@ evalInstruction = \case
     let NodeItem tag itemIndex = dstSelector
     register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
 
-  ExtendReg {..} -> do
-    value <- use $ register.ix (regIndex srcReg)
-    register . ix (regIndex dstReg) %= mappend value
-
   Move {..} -> do
     value <- use $ register.ix (regIndex srcReg)
     register.ix (regIndex dstReg) %= (mappend value)

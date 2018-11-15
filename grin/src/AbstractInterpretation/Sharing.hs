@@ -64,12 +64,12 @@ sharingCodeGen s e = do
     nonLinearVarReg <- getReg name
     nonLinearVarLocReg <- newReg
     emit $ IR.Project Locations nonLinearVarReg nonLinearVarLocReg
-    emit $ IR.ExtendReg nonLinearVarLocReg s
+    emit $ IR.Move nonLinearVarLocReg s
 
   pointsToLocReg <- newReg
   pointsToNodeReg <- newReg
   emit $ IR.Fetch s pointsToNodeReg
   emit $ IR.Project IR.NodeLocations pointsToNodeReg pointsToLocReg
-  emit $ IR.ExtendReg pointsToLocReg s
+  emit $ IR.Move pointsToLocReg s
   where
     nonLinearVars = calcNonLinearNonUpdateLocVariables e

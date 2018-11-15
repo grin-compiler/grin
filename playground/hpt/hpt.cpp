@@ -77,8 +77,6 @@ inline void union_value(value_t& src, value_t& dst) {
 }
 
 // data-flow instruction execution
-
-// NOTE: Move == ExtendReg
 void cmd_move(reg_t src, reg_t dst) {
   union_value(_register[src], _register[dst]);
 }

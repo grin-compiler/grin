@@ -48,11 +48,7 @@ data Instruction
     , dstSelector   :: Selector -- ^ the seleced tag must exist
     , dstReg        :: Reg
     }
-  | ExtendReg -- ^ extends the destination register with the source register
-    { srcReg :: Reg
-    , dstReg :: Reg
-    }
-  | Move
+  | Move -- ^ extends the destination register with the source register
     { srcReg        :: Reg
     , dstReg        :: Reg
     }
