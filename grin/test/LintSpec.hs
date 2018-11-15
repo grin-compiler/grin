@@ -13,6 +13,9 @@ import qualified Data.Map as Map
 runTests :: IO ()
 runTests = hspec spec
 
+lintErrors :: Map.Map Int [Error] -> [String]
+lintErrors = map message . concat . Map.elems
+
 spec :: Spec
 spec = do
 
@@ -23,8 +26,7 @@ spec = do
             _prim_int p3 p2
         |]
       let (_, errors) = lint Nothing program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["undefined variable: p3"]
+      lintErrors errors `shouldBe` ["undefined variable: p3"]
 
   describe "Function call lint" $ do
     it "finds variable used as a function" $ do
@@ -38,8 +40,7 @@ spec = do
             pure b0
         |]
       let (_, errors) = lint Nothing program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["non-function in function call: p11"]
+      lintErrors errors `shouldBe` ["non-function in function call: p11"]
 
     it "finds non-saturated function calls" $ do
       let program = [prog|
@@ -51,8 +52,7 @@ spec = do
             pure p3
         |]
       let (_, errors) = lint Nothing program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["non-saturated function call: fun1"]
+      lintErrors errors `shouldBe` ["non-saturated function call: fun1"]
 
   describe "Case lint" $ do
     it "finds location used as matched value" $ do
@@ -64,8 +64,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["case variable l has a location type"]
+      lintErrors errors `shouldBe` ["case variable l has a location type"]
 
     it "finds overlapping node alternatives" $ do
       let program = [prog|
@@ -77,8 +76,7 @@ spec = do
               (CInt c)   -> pure ()
         |]
       let (_,errors) = lint Nothing program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["case has overlapping node alternatives CInt"]
+      lintErrors errors `shouldBe` ["case has overlapping node alternatives CInt"]
 
     it "finds overlapping literal alternatives" $ do
       let program = [prog|
@@ -90,8 +88,7 @@ spec = do
               1 -> pure ()
         |]
       let (_,errors) = lint Nothing program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["case has overlapping literal alternatives 1"]
+      lintErrors errors `shouldBe` ["case has overlapping literal alternatives 1"]
 
     it "finds non-covered node alternatives" $ do
       let program = [prog|
@@ -106,8 +103,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["case has non-covered alternative CBool"]
+      lintErrors errors `shouldBe` ["case has non-covered alternative CBool"]
 
     it "does not report non-covered nodes with default branch" $ do
       let program = [prog|
@@ -123,8 +119,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      let result = concat $ Map.elems errors
-      result `shouldBe` []
+      lintErrors errors `shouldBe` []
 
     it "finds duplicate default alternatives" $ do
       let program = [prog|
@@ -135,8 +130,7 @@ spec = do
                 #default -> pure ()
           |]
       let (_,errors) = lint Nothing program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["case has more than one default alternatives"]
+      lintErrors errors `shouldBe` ["case has more than one default alternatives"]
 
   describe "Store lint" $ do
     it "finds primitive value as argument." $ do
@@ -148,8 +142,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["store has given a primitive value: v :: T_Int64"]
+      lintErrors errors `shouldBe` ["store has given a primitive value: v :: T_Int64"]
 
   describe "Fetch lint" $ do
     it "finds non-location value as parameter" $ do
@@ -161,8 +154,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["the parameter of fetch is non-location: l"]
+      lintErrors errors `shouldBe` ["the parameter of fetch is non-location: l"]
 
   describe "Update lint" $ do
     it "finds non-location value as parameter" $ do
@@ -174,8 +166,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["the parameter of update is non-location: l"]
+      lintErrors errors `shouldBe` ["the parameter of update is non-location: l"]
 
     it "finds primitive value as argument." $ do
       let program = [prog|
@@ -187,5 +178,4 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      let result = concat $ Map.elems errors
-      result `shouldBe` ["update has given a primitive value: v :: T_Int64"]
+      lintErrors errors `shouldBe` ["update has given a primitive value: v :: T_Int64"]
