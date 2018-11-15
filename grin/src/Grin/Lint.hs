@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings, ScopedTypeVariables #-}
-module Grin.Lint (lint, Error) where
+module Grin.Lint (lint, Error(..)) where
 
 import Text.Printf
 
@@ -17,6 +17,7 @@ import Data.List (findIndices)
 import Lens.Micro.Platform
 import Data.Text.Short (isPrefixOf)
 import Text.PrettyPrint.ANSI.Leijen (Pretty, plain)
+import Data.String
 
 
 import Grin.Grin
@@ -54,8 +55,16 @@ Linter is responsible for the semantical checks of the program.
       - annotate expressionf with id using cofree, then build error map referencing to expressions
 -}
 
-type Error = String
+data Error = Error
+  { before  :: Bool
+  , message :: String
+  }
 
+msg :: String -> Error
+msg = Error False
+
+beforeMsg :: String -> Error
+beforeMsg = Error True
 
 data ExpCtx
   = ProgramCtx
@@ -130,7 +139,7 @@ syntaxVal ctx = \case
   _ | ctx == ValCtx
     -> pure ()
 
-  _ -> tell ["Syntax error - expected " ++ showValCtx ctx]
+  _ -> tell [msg $ "Syntax error - expected " ++ showValCtx ctx]
 
 {-
   ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
@@ -145,7 +154,7 @@ syntaxExp :: ExpCtx -> ExpCtx -> Check ()
 syntaxExp ctx expCtx
   | expCtx == ctx = pure ()
   | expCtx == SimpleExpCtx && ctx == ExpCtx = pure () -- simple exp is also an exp
-  | otherwise = tell ["Syntax error - expected " ++ showExpCtx ctx]
+  | otherwise = tell [msg $ "Syntax error - expected " ++ showExpCtx ctx]
 
 check :: ExpF (ExpCtx, Exp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, Exp))
 check exp nodeCheckM = do
@@ -163,13 +172,13 @@ checkNameDef role name = do
     , env {envDefinedNames = Map.insert name role envDefinedNames}
     )
   when defined $ do
-    tell [printf "multiple defintion of %s" name]
+    tell [msg $ printf "multiple defintion of %s" name]
 
 checkNameUse :: Name -> Check ()
 checkNameUse name = do
   defined <- state $ \env@Env{..} -> (Map.member name envDefinedNames, env)
   unless defined $ do
-    tell [printf "undefined variable: %s" name]
+    tell [msg $ printf "undefined variable: %s" name]
 
 checkVarScopeM :: ExpF a -> Check ()
 checkVarScopeM exp = do
@@ -220,7 +229,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
             map (`Map.singleton` 1) $
             concatMap (^.. _AltCPat . _CPatNodeTag) alts
       forM_ (Map.keys $ Map.filter (>1) tagOccurences) $ \(tag :: Tag) ->
-        tell [printf "case has overlapping node alternatives %s" (plainShow tag)]
+        tell [beforeMsg $ printf "case has overlapping node alternatives %s" (plainShow tag)]
 
       -- Overlapping literal alternatives
       let literalOccurences =
@@ -228,18 +237,18 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
             map (`Map.singleton` 1) $
             concatMap (^.. _AltCPat . _CPatLit) alts
       forM_ (Map.keys $ Map.filter (>1) literalOccurences) $ \(lit :: Lit) ->
-        tell [printf "case has overlapping literal alternatives %s" (plainShow lit)]
+        tell [beforeMsg $ printf "case has overlapping literal alternatives %s" (plainShow lit)]
 
       let noOfDefaults = length $ findIndices (has (_AltCPat . _CPatDefault)) alts
       -- More than one default
       when (noOfDefaults > 1) $ do
-        tell ["case has more than one default alternatives"]
+        tell [beforeMsg $ "case has more than one default alternatives"]
 
       forM_ mTypeEnv $ \typeEnv -> do
         -- Case variable has a location type
         case val of
           (Var name) | Just _ <- typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location ->
-            tell [printf "case variable %s has a location type" name]
+            tell [beforeMsg $ printf "case variable %s has a location type" name]
           _ -> pure () -- TODO
 
         -- Non-covered alternatives
@@ -247,7 +256,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
           case val of
             (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> do
               forM_ tags $ \tag -> when (Map.notMember tag tagOccurences) $ do
-                tell [printf "case has non-covered alternative %s" (plainShow tag)]
+                tell [beforeMsg $ printf "case has non-covered alternative %s" (plainShow tag)]
             _ -> pure () -- TODO
 
     -- Simple Exp
@@ -258,11 +267,11 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       when (not $ "_prim_" `isPrefixOf` name) $
         case Map.lookup name envDefinedNames of
           (Just FunName) -> pure ()
-          (Just _)       -> tell [printf "non-function in function call: %s" name]
-          Nothing        -> tell [printf "non-defined function is called: %s" name]
+          (Just _)       -> tell [msg $ printf "non-function in function call: %s" name]
+          Nothing        -> tell [msg $ printf "non-defined function is called: %s" name]
       -- Non saturated function call
       forM_ (Map.lookup name envFunArity) $ \n -> when (n /= length args) $ do
-        tell [printf "non-saturated function call: %s" name]
+        tell [msg $ printf "non-saturated function call: %s" name]
       mapM_ (syntaxV SimpleValCtx) args
 
     SReturn val -> checkWithChild ctx $ do
@@ -275,11 +284,11 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       forM_ mTypeEnv $ \typeEnv -> do
         -- Store has given a primitive type
         case val of
-          (Lit lit) -> tell [printf "store has given a primitive value: %s" (plainShow val)]
+          (Lit lit) -> tell [msg $ printf "store has given a primitive value: %s" (plainShow val)]
           (ConstTagNode _ _) -> pure ()
           (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
                      | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
-                        tell [printf "store has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
+                        tell [msg $ printf "store has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
           _ -> pure ()
 
     SFetchI name _ -> checkWithChild ctx $ do
@@ -288,7 +297,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       forM_ mTypeEnv $ \typeEnv -> do
         case (typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location) of
           Just _ -> pure ()
-          Nothing -> tell [printf "the parameter of fetch is non-location: %s" (plainShow name)]
+          Nothing -> tell [msg $ printf "the parameter of fetch is non-location: %s" (plainShow name)]
 
     SUpdate name val -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
@@ -298,16 +307,16 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       forM_ mTypeEnv $ \typeEnv -> do
         case (typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location) of
           Just _ -> pure ()
-          Nothing -> tell [printf "the parameter of update is non-location: %s" (plainShow name)]
+          Nothing -> tell [msg $ printf "the parameter of update is non-location: %s" (plainShow name)]
 
       forM_ mTypeEnv $ \typeEnv -> do
         -- Update has given a primitive type
         case val of
-          (Lit lit) -> tell [printf "update has given a primitive value: %s" (plainShow val)]
+          (Lit lit) -> tell [msg $ printf "update has given a primitive value: %s" (plainShow val)]
           (ConstTagNode _ _) -> pure ()
           (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
                      | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
-                        tell [printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
+                        tell [msg $ printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
           _ -> pure ()
 
       --typeN LocationType name

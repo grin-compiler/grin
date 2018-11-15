@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
 module Grin.PrettyLint (prettyLintExp) where
 
+import Prelude hiding ((<$>))
 import qualified Control.Comonad.Trans.Cofree as CCTC
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -25,7 +26,10 @@ prettyLintExp (exp, errorMap) = cata folder exp where
   addError expId d =
     maybe
       d
-      ((d <>) . red . (string " <- "<>) . align . vsep . map string )
+      (\errors ->
+        if (any before errors)
+          then (<$> d) . red . align . vsep . map (string . ("-- LINT: " <>) . message) $ errors
+          else (d <>) . red . (string " -- LINT: "<>) . align . vsep . map (string . message) $ errors)
       (Map.lookup expId errorMap)
 
   prettyExpAlgebra = \case

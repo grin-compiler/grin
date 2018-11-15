@@ -363,26 +363,23 @@ printTypeEnv = do
   Just typeEnv <- use psTypeEnv
   pipelineLog $ show $ pretty $ typeEnv
 
+saveTransformationInfo :: (Pretty a) => String -> a -> PipelineM ()
+saveTransformationInfo name content = do
+  n <- use psSaveIdx
+  outputDir <- view poOutputDir
+  let fname = printf "%03d.%s" n name
+  liftIO $ do
+    writeFile (outputDir </> fname) $ show $ plain $ pretty content
+
 saveTypeEnv :: PipelineM ()
 saveTypeEnv = do
   mTypeEnv <- use psTypeEnv
-  forM_ mTypeEnv $ \typeEnv -> do
-    n <- use psSaveIdx
-    outputDir <- view poOutputDir
-    let fname = printf "%03d.Type-Env" n
-    let content = show $ plain $ pretty typeEnv
-    liftIO $ do
-      writeFile (outputDir </> fname) content
+  forM_ mTypeEnv $ saveTransformationInfo "Type-Env"
 
 statistics :: PipelineM ()
 statistics = do
   exp <- use psExp
-  n <- use psSaveIdx
-  outputDir <- view poOutputDir
-  let fname = printf "%03d.Statistics" n
-  let content = show $ plain $ pretty $ Statistics.statistics exp
-  liftIO $ do
-    writeFile (outputDir </> fname) content
+  saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
@@ -423,14 +420,8 @@ printAST = do
 saveGrin :: FilePath -> PipelineM ()
 saveGrin fn = do
   psSaveIdx %= succ
-  n <- use psSaveIdx
   e <- use psExp
-  outputDir <- view poOutputDir
-  let fname = printf "%03d.%s" n fn
-  let content = show $ plain $ pretty e
-  liftIO $ do
-    createDirectoryIfMissing True outputDir
-    writeFile (outputDir </> fname) content
+  saveTransformationInfo fn e
 
 saveLLVM :: Bool -> FilePath -> PipelineM ()
 saveLLVM relPath fname' = do
@@ -463,19 +454,17 @@ lintGrin mPhaseName = do
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
-  psErrors .= concat (Map.elems errorMap)
+  psErrors .= (fmap message $ concat $ Map.elems errorMap)
 
   -- print errors
   errors <- use psErrors
   unless (Prelude.null errors) $ void $ do
-    failOnLintError <- view poFailOnLint
-    when failOnLintError $ void $ do
-      pipelineLog $ show $ prettyLintExp lintExp
-      pipelineStep $ HPT PrintHPTResult
+    saveTransformationInfo "Lint" $ prettyLintExp lintExp
+    mHptResult <- use psHPTResult
+    saveTransformationInfo "HPT-Result" mHptResult
     case mPhaseName of
       Just phaseName  -> pipelineLog $ printf "error after %s:\n%s" phaseName (unlines errors)
       Nothing         -> pipelineLog $ printf "error:\n%s" (unlines errors)
-
     failOnLintError <- view poFailOnLint
     when failOnLintError $ do
       -- FIXME: reenable after: undefined support ; transformation to inject default alts for pattern match errors
@@ -569,17 +558,20 @@ debugPipelineState = do
   liftIO $ print ps
 
 runPipeline :: PipelineOpts -> Exp -> PipelineM a -> IO (a, Exp)
-runPipeline o e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
-  start = PState
-    { _psExp        = e
-    , _psTransStep  = 0
-    , _psSaveIdx    = 0
-    , _psHPTProgram = Nothing
-    , _psHPTResult  = Nothing
-    , _psTypeEnv    = Nothing
-    , _psEffectMap  = Nothing
-    , _psErrors     = []
-    }
+runPipeline o e m = do
+  createDirectoryIfMissing True (_poOutputDir o)
+  fmap (second _psExp) $ flip runStateT start $ runReaderT m o
+  where
+    start = PState
+      { _psExp        = e
+      , _psTransStep  = 0
+      , _psSaveIdx    = 0
+      , _psHPTProgram = Nothing
+      , _psHPTResult  = Nothing
+      , _psTypeEnv    = Nothing
+      , _psEffectMap  = Nothing
+      , _psErrors     = []
+      }
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
