@@ -154,7 +154,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["the parameter of fetch is non-location: l"]
+      lintErrors errors `shouldBe` ["the parameter of fetch is a primitive type: l :: T_Int64"]
 
   describe "Update lint" $ do
     it "finds non-location value as parameter" $ do
@@ -166,7 +166,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["the parameter of update is non-location: l"]
+      lintErrors errors `shouldBe` ["the parameter of update is a primitive type: l :: T_Int64"]
 
     it "finds primitive value as argument." $ do
       let program = [prog|

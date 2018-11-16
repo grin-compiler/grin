@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE MultiWayIf #-}
 module Grin.Lint (lint, Error(..)) where
 
 import Text.Printf
@@ -288,26 +289,34 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
           (ConstTagNode _ _) -> pure ()
           (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
                      | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
-                        tell [msg $ printf "store has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
+                        when (st /= T_Dead) $ tell [msg $ printf "store has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
           _ -> pure ()
 
     SFetchI name _ -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       -- Non location parameter for fetch
-      forM_ mTypeEnv $ \typeEnv -> do
-        case (typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location) of
-          Just _ -> pure ()
-          Nothing -> tell [msg $ printf "the parameter of fetch is non-location: %s" (plainShow name)]
+      forM_ mTypeEnv $ \typeEnv -> if
+        | Just _ <- typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location
+          -> pure ()
+        | Just st <- typeEnv ^? variable . at name . _Just . _T_SimpleType
+          -> when (st /= T_Dead) $ tell [msg $ printf "the parameter of fetch is a primitive type: %s :: %s" (plainShow name) (plainShow st)]
+        | Just ns <- typeEnv ^? variable . at name . _Just . _T_NodeSet
+          -> tell [msg $ printf "the parameter of fetch is a node type: %s" (plainShow name)]
+        | otherwise -> pure ()
 
     SUpdate name val -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       syntaxV ValCtx val
 
       -- Non location parameter for update
-      forM_ mTypeEnv $ \typeEnv -> do
-        case (typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location) of
-          Just _ -> pure ()
-          Nothing -> tell [msg $ printf "the parameter of update is non-location: %s" (plainShow name)]
+      forM_ mTypeEnv $ \typeEnv -> if
+        | Just _ <- typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location
+          -> pure ()
+        | Just st <- typeEnv ^? variable . at name . _Just . _T_SimpleType
+          -> when (st /= T_Dead) $ tell [msg $ printf "the parameter of update is a primitive type: %s :: %s" (plainShow name) (plainShow st)]
+        | Just ns <- typeEnv ^? variable . at name . _Just . _T_NodeSet
+          -> tell [msg $ printf "the parameter of update is a node type: %s" (plainShow name)]
+        | otherwise -> pure ()
 
       forM_ mTypeEnv $ \typeEnv -> do
         -- Update has given a primitive type
@@ -316,7 +325,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
           (ConstTagNode _ _) -> pure ()
           (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
                      | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
-                        tell [msg $ printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
+                        when (st /= T_Dead) $ tell [msg $ printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
           _ -> pure ()
 
       --typeN LocationType name
