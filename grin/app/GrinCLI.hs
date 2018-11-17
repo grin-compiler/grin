@@ -58,7 +58,8 @@ transformOpts =
 
 pipelineOpts :: Parser PipelineStep
 pipelineOpts =
-      flg (HPT CompileToAbstractProgram) "compile-hpt" "Compiles heap-points-to analysis machine"
+      flg Optimize "optimize" "Iteratively performs optimizations on the GRIN code until it can no longer be optimized"
+  <|> flg (HPT CompileToAbstractProgram) "compile-hpt" "Compiles heap-points-to analysis machine"
   <|> flg (HPT PrintAbstractProgram) "print-hpt-code" "Prints the heap-points-to analysis machine"
   <|> flg (HPT RunAbstractProgramPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
   <|> flg (HPT PrintAbstractResult) "print-hpt-result" "Prints the heap-points-to analysis result"

@@ -180,7 +180,8 @@ data EffectStep
   deriving (Eq, Show)
 
 data PipelineStep
-  = HPT AbstractComputationStep
+  = Optimize
+  | HPT AbstractComputationStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
   | RunCByWithLVA
@@ -271,6 +272,16 @@ pipelineStep p = do
     _       -> pipelineLog $ printf "PipelineStep: %-35s" (show p)
   before <- use psExp
   case p of
+    Optimize -> do 
+      let opts = defaultOpts { _poFailOnLint = True }
+          prePipeline = [ HPT CompileToAbstractProgram
+                        , HPT RunAbstractProgramPure
+                        , T UnitPropagation
+                        , Eff CalcEffectMap
+                        ]
+      grin <- use psExp
+      mapM_ pipelineStep prePipeline
+      optimizeWithPM opts grin (fmap T defaultOptimizations)
     HPT step -> case step of
       CompileToAbstractProgram -> compileHPT
       PrintAbstractProgram     -> printHPTCode
@@ -771,28 +782,29 @@ optimizeWithPM o e ps = loop where
     when (any (match _ExpChanged) effs)
       loop
 
+defaultOptimizations :: [Transformation]
+defaultOptimizations =
+  [ BindNormalisation
+  , EvaluatedCaseElimination
+  , TrivialCaseElimination
+  , SparseCaseOptimisation
+  , UpdateElimination
+  , CopyPropagation
+  , ConstantPropagation
+  , SimpleDeadFunctionElimination
+  , SimpleDeadVariableElimination
+  , CommonSubExpressionElimination
+  , CaseCopyPropagation
+  , CaseHoisting
+  , GeneralizedUnboxing
+  , ArityRaising
+  , InlineEval
+  , InlineApply
+  , LateInlining
+  ]
+
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
-optimize o e pre post = optimizeWith o e pre optimizations post where
-  optimizations =
-    [ BindNormalisation
-    , EvaluatedCaseElimination
-    , TrivialCaseElimination
-    , SparseCaseOptimisation
-    , UpdateElimination
-    , CopyPropagation
-    , ConstantPropagation
-    , SimpleDeadFunctionElimination
-    , SimpleDeadVariableElimination
-    , DeadParameterElimination
-    , CommonSubExpressionElimination
-    , CaseCopyPropagation
-    , CaseHoisting
-    , GeneralizedUnboxing
-    , ArityRaising
-    , InlineEval
-    , InlineApply
-    , LateInlining
-    ]
+optimize o e pre post = optimizeWith o e pre defaultOptimizations post where
 
 optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> IO Exp
 optimizeWith o e pre optimizations post = fmap snd $ runPipeline o Nothing e $ do
