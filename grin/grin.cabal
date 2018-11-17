@@ -200,6 +200,7 @@ test-suite grin-test
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec
+                     , AbstractInterpretation.IRSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
