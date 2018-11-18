@@ -1,7 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Test.PrimOps where
 
 import Data.Map.Strict as Map
-
+import Grin.Grin (Name, unpackName)
 
 data PrimType
   = TInt
@@ -11,12 +12,12 @@ data PrimType
   | TUnit
   deriving (Eq, Show)
 
-checkName :: String -> b -> b
-checkName name = maybe (error $ "primOp is not defined:" ++ name) (const id) $ Map.lookup name primOps
+checkName :: Name -> b -> b
+checkName name = maybe (error $ "primOp is not defined:" ++ unpackName name) (const id) $ Map.lookup name primOps
 
 
 -- TODO: Record effects
-primOps :: Map String ([PrimType], PrimType)
+primOps :: Map Name ([PrimType], PrimType)
 primOps = Map.fromList $
   [ ("_prim_int_print", ([TInt], TUnit)) -- HINT: this primop is adhoc, will be removed
   -- Int

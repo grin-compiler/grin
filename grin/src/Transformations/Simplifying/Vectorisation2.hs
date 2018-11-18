@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, OverloadedStrings #-}
 module Transformations.Simplifying.Vectorisation2 (vectorisation) where
 
 import Data.Map (Map)
@@ -37,7 +37,7 @@ vectorisation (typeEnv, expression) = (typeEnv, ana folder (Map.empty, expressio
           Nothing           -> EBindF (nameStore, simpleexp) var (nameStore, exp)
           Just maximumArity -> EBindF (nameStore, simpleexp) nodeContents (newNameStore, exp)
            where
-            nodeContents = VarTagNode (name <> show 0) (map (\i -> Var (name <> show i)) [1 .. maximumArity])
+            nodeContents = VarTagNode (name <> "0") (map (\i -> Var (name <> packName (show i))) [1 .. maximumArity])
             newNameStore = Map.insert name nodeContents nameStore
         ECase (Var name) alts | Just nodeContents <- Map.lookup name nameStore
           -> ECaseF nodeContents (map (\subExpression -> (nameStore, subExpression)) alts)

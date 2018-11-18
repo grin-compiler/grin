@@ -21,18 +21,24 @@ import qualified Grin.TypeEnv as TypeEnv
 import qualified AbstractInterpretation.IR as IR (SimpleType)
 import qualified AbstractInterpretation.Reduce as R
 
+type Loc = Int
+
 data SimpleType
   = T_Int64
   | T_Word64
   | T_Float
   | T_Bool
   | T_Unit
+<<<<<<< HEAD
   | T_Location Int
   | T_UnspecifiedLocation
   {- NOTE: The local value can be used for any analysis-specific computation,
            but cannot be propagated to the type checking phase.
   -}
   | Local HPTLocal
+=======
+  | T_Location Loc
+>>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
   deriving (Eq, Ord, Show)
 
 data HPTLocal = UndefinedProducer
@@ -57,13 +63,11 @@ data TypeSet
   }
   deriving (Eq, Ord, Show)
 
-instance Monoid NodeSet where
-  mempty  = NodeSet mempty
-  mappend = unionNodeSet
+instance Semigroup  NodeSet where (<>)    = unionNodeSet
+instance Monoid     NodeSet where mempty  = NodeSet mempty
 
-instance Monoid TypeSet where
-  mempty  = TypeSet mempty mempty
-  mappend = unionTypeSet
+instance Semigroup  TypeSet where (<>)    = unionTypeSet
+instance Monoid     TypeSet where mempty  = TypeSet mempty mempty
 
 unionNodeSet :: NodeSet -> NodeSet -> NodeSet
 unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y where
@@ -82,6 +86,7 @@ data HPTResult
   { _memory   :: Vector NodeSet
   , _register :: Map Name TypeSet
   , _function :: Map Name (TypeSet, Vector TypeSet)
+  , _sharing  :: Set Loc
   }
   deriving (Eq, Show)
 

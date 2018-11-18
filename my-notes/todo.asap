@@ -1,0 +1,47 @@
+GC:
+  - calculate live variables at call sites (interprocedural LVA)
+  - generate GC descriptors for call sites
+
+ASAP:
+my idea:
+  pass variables as abstract values during HPT (beside types)
+
+analysis
+  shape, share  - forward
+  access        - backward
+
+
+asap thoughts:
+  - it has no explicit memory operation ; it does not distinguish register and heap values
+
+caveat:
+  - does not support concurrent programs
+
+points-to analysis:
+  http://www.cs.cornell.edu/courses/cs711/2005fa/papers/andersen-thesis94.pdf
+  https://github.com/grievejia/andersen
+  https://www.seas.harvard.edu/courses/cs252/2011sp/slides/Lec06-PointerAnalysis.pdf
+  http://www.cl.cam.ac.uk/teaching/1718/OptComp/slides.html
+    lecture 13a
+
+  https://en.wikipedia.org/wiki/Steensgaard%27s_algorithm
+  http://www.cs.cornell.edu/courses/cs711/2005fa/papers/steensgaard-popl96.pdf
+  http://research.cs.wisc.edu/wpis/papers/toplas02.pdf
+  https://www.seas.harvard.edu/courses/cs252/2011sp/slides/Lec09-ShapeAnalysis.pdf
+
+  http://dalila.sip.ucm.es/~manuel/ATP/DataFlowAnalisis.pdf
+
+The Complexity of Andersen’s Analysis in Practice
+
+asap terms:
+  - path
+  - zone (variable, path)
+  - type compatibility of paths
+      each element of path1 and path2 points to the same type (pairwise)
+  - partial order of paths
+      p1 <= p2 ====> zone (x, p1) is subset of of zone(x, p2)
+  - prefix closure of path
+  - wild path set
+      Wild(alpha-type) -> path set
+      explores the whole memory occupied by a value of alpha-type
+  - path widening

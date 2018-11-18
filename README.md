@@ -10,8 +10,11 @@ The GRIN Project
 </a> article. To grasp the details take your time and read Urban Boquist's PhD thesis on
 <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf">
 Code Optimisation Techniques for Lazy Functional Languages
-</a>.  
-Also check the performance [benchmark](https://rawgit.com/grin-tech/grin/master/grin/grin-benchmark.html) and the GRIN transformation [example](http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=317).
+</a>.
+
+We presented the core ideas of GRIN at Haskell Exchange 2018. [slides](https://docs.google.com/presentation/d/1QsZ3Kyy3XIco-qba1biRmzuMzz8o2uCBqA9DMtnqP2c/edit?usp=sharing) [video](https://skillsmatter.com/skillscasts/12390-grin-an-alternative-haskell-compiler-backend)
+
+Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=317) and an [example from our imlementation](https://github.com/grin-tech/grin/tree/master/grin/grin/sum-simple-output).
 
 <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=41">
 <img src="https://raw.githubusercontent.com/grin-tech/grin/master/images/grin-syntax.png" width="500" >
@@ -26,7 +29,7 @@ Also check the performance [benchmark](https://rawgit.com/grin-tech/grin/master/
 Example using Homebrew on macOS:
 
 ```bash
-$ brew install llvm-hs/llvm/llvm-5.0
+$ brew install llvm-hs/llvm/llvm-7.0
 ```
 
 #### Debian/Ubuntu
@@ -37,7 +40,7 @@ instructions for adding the correct package database for your OS version, and
 then:
 
 ```bash
-$ apt-get install llvm-5.0-dev
+$ apt-get install llvm-7-dev
 ```
 
 #### Nix
@@ -79,11 +82,11 @@ See: [Issues / Tasks for new contributors](https://github.com/grin-tech/grin/iss
 
 Read about how to <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=64">generate GRIN code</a> from a frontend language.
 
-Also check the corresponding [source code](https://github.com/grin-tech/grin/tree/master/grin/src/Frontend/Lambda).
+Also check the corresponding [source code](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda).
 
 i.e.
-- [Lambda/Syntax.hs](https://github.com/grin-tech/grin/tree/master/grin/src/Frontend/Lambda/Syntax.hs) - front-end language defintion
-- [Lambda/CodeGen.hs](https://github.com/grin-tech/grin/tree/master/grin/src/Frontend/Lambda/CodeGen.hs) - code generator from front-end language to grin
+- [Lambda/Syntax.hs](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda/Syntax.hs) - front-end language defintion
+- [Lambda/CodeGen.hs](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda/CodeGen.hs) - code generator from front-end language to grin
 
 
 ## Simplifying Transformations
@@ -114,22 +117,22 @@ Transformation | Schema
 
 Transformation | Schema
 -------------- | ------
-[evaluated case elimination][141]         <br><br> _source code:_ <br> [EvaluatedCaseElimination.hs]  | [<img src="images/evaluated-case-elimination.png" width="500">][141]
-[trivial case elimination][142]           <br><br> _source code:_ <br> [TrivialCaseElimination.hs]    | [<img src="images/trivial-case-elimination.png"   width="500">][142]
-[sparse case optimisation][143]           <br><br> _source code:_ <br> [SparseCaseOptimisation.hs]    | [<img src="images/sparse-case-optimisation.png"   width="500">][143]
-[update elimination][148]                 <br><br> _source code:_ <br> [UpdateElimination.hs]         | [<img src="images/update-elimination.png"         width="500">][148]
-[copy propagation][129]                   <br><br> _source code:_ <br> [CopyPropagation.hs]           | [<img src="images/copy-propagation-left.png"      width="500"><img src="images/copy-propagation-right.png" width="500">][129]
-[late inlining][151]                      <br><br> _source code:_ <br> [Inlining.hs]                  | [<img src="images/late-inlining.png"              width="500">][151]
-[generalised unboxing][134]               <br><br> _source code:_ <br> [GeneralizedUnboxing.hs]       | [<img src="images/generalised-unboxing.png"       width="500"><img src="images/unboxing-of-function-return-values.png" width="500">][134]
-[arity raising][160]                      <br><br> _source code:_ <br> [ArityRaising.hs]              | [<img src="images/arity-raising.png"              width="500">][160]
-[case copy propagation][144]              <br><br> _source code:_ <br> [CaseCopyPropagation.hs]       | [<img src="images/case-copy-propagation.png"      width="500">][144]
-[case hoisting][153]                      <br><br> _source code:_ <br> [CaseHoisting.hs]              | [<img src="images/case-hoisting.png"              width="500">][153]
-[whnf update elimination][149]            <br><br> _source code:_ <br> __TODO__                       | [<img src="images/whnf-update-elimination.png"    width="500">][149]
-[common sub-expression elimination][164]  <br><br> _source code:_ <br> [CSE.hs]                       | [<img src="images/common-sub-expression-elimination-1.png" width="500"><img src="images/common-sub-expression-elimination-2.png" width="500">][164]
-[constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]       | 
-[dead procedure elimination][169]         <br><br> _source code:_ <br> [DeadProcedureElimination.hs]  | 
-[dead variable elimination][170]          <br><br> _source code:_ <br> [DeadVariableElimination.hs]   | 
-[dead parameter elimination][171]         <br><br> _source code:_ <br> [DeadParameterElimination.hs]  | 
+[evaluated case elimination][141]         <br><br> _source code:_ <br> [EvaluatedCaseElimination.hs] <br><br> _test:_ <br> [EvaluatedCaseEliminationSpec.hs]  | [<img src="images/evaluated-case-elimination.png" width="500">][141]
+[trivial case elimination][142]           <br><br> _source code:_ <br> [TrivialCaseElimination.hs]   <br><br> _test:_ <br> [TrivialCaseEliminationSpec.hs]    | [<img src="images/trivial-case-elimination.png"   width="500">][142]
+[sparse case optimisation][143]           <br><br> _source code:_ <br> [SparseCaseOptimisation.hs]   <br><br> _test:_ <br> [SparseCaseOptimisationSpec.hs]    | [<img src="images/sparse-case-optimisation.png"   width="500">][143]
+[update elimination][148]                 <br><br> _source code:_ <br> [UpdateElimination.hs]        <br><br> _test:_ <br> [UpdateEliminationSpec.hs]         | [<img src="images/update-elimination.png"         width="500">][148]
+[copy propagation][129]                   <br><br> _source code:_ <br> [CopyPropagation.hs]          <br><br> _test:_ <br> [CopyPropagationSpec.hs]           | [<img src="images/copy-propagation-left.png"      width="500"><img src="images/copy-propagation-right.png" width="500">][129]
+[late inlining][151]                      <br><br> _source code:_ <br> [Inlining.hs]                 <br><br> _test:_ <br> [InliningSpec.hs]                  | [<img src="images/late-inlining.png"              width="500">][151]
+[generalised unboxing][134]               <br><br> _source code:_ <br> [GeneralizedUnboxing.hs]      <br><br> _test:_ <br> [GeneralizedUnboxingSpec.hs]       | [<img src="images/generalised-unboxing.png"       width="500"><img src="images/unboxing-of-function-return-values.png" width="500">][134]
+[arity raising][160]                      <br><br> _source code:_ <br> [ArityRaising.hs]             <br><br> _test:_ <br> [ArityRaisingSpec.hs]              | [<img src="images/arity-raising.png"              width="500">][160]
+[case copy propagation][144]              <br><br> _source code:_ <br> [CaseCopyPropagation.hs]      <br><br> _test:_ <br> [CaseCopyPropagationSpec.hs]       | [<img src="images/case-copy-propagation.png"      width="500">][144]
+[case hoisting][153]                      <br><br> _source code:_ <br> [CaseHoisting.hs]             <br><br> _test:_ <br> [CaseHoistingSpec.hs]              | [<img src="images/case-hoisting.png"              width="500">][153]
+[whnf update elimination][149]            <br><br> _source code:_ <br> __TODO__                      <br><br> _test:_ <br> __TODO__                           | [<img src="images/whnf-update-elimination.png"    width="500">][149]
+[common sub-expression elimination][164]  <br><br> _source code:_ <br> [CSE.hs]                      <br><br> _test:_ <br> [CSESpec.hs]                       | [<img src="images/common-sub-expression-elimination-1.png" width="500"><img src="images/common-sub-expression-elimination-2.png" width="500">][164]
+[constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]      <br><br> _test:_ <br> [ConstantPropagationSpec.hs]       | 
+[dead procedure elimination][169]         <br><br> _source code:_ <br> [DeadProcedureElimination.hs] <br><br> _test:_ <br> [DeadProcedureEliminationSpec.hs]  | 
+[dead variable elimination][170]          <br><br> _source code:_ <br> [DeadVariableElimination.hs]  <br><br> _test:_ <br> [DeadVariableEliminationSpec.hs]   | 
+[dead parameter elimination][171]         <br><br> _source code:_ <br> [DeadParameterElimination.hs] <br><br> _test:_ <br> [DeadParameterEliminationSpec.hs]  | 
 
 [129]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=129
 [134]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=134
@@ -163,3 +166,19 @@ Transformation | Schema
 [TrivialCaseElimination.hs]:    https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/TrivialCaseElimination.hs
 [UpdateElimination.hs]:         https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/UpdateElimination.hs
 [GeneralizedUnboxing.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/GeneralizedUnboxing.hs
+
+[ArityRaisingSpec.hs]:              https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/ArityRaisingSpec.hs
+[ConstantPropagationSpec.hs]:       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/ConstantPropagationSpec.hs
+[CopyPropagationSpec.hs]:           https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/CopyPropagationSpec.hs
+[CaseCopyPropagationSpec.hs]:       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/CaseCopyPropagationSpec.hs
+[CaseHoistingSpec.hs]:              https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/CaseHoistingSpec.hs
+[CSESpec.hs]:                       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/CSESpec.hs
+[DeadProcedureEliminationSpec.hs]:  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/DeadProcedureEliminationSpec.hs
+[DeadVariableEliminationSpec.hs]:   https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/DeadVariableEliminationSpec.hs
+[DeadParameterEliminationSpec.hs]:  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/DeadParameterEliminationSpec.hs
+[EvaluatedCaseEliminationSpec.hs]:  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/EvaluatedCaseEliminationSpec.hs
+[InliningSpec.hs]:                  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/InliningSpec.hs
+[SparseCaseOptimisationSpec.hs]:    https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/SparseCaseOptimisationSpec.hs
+[TrivialCaseEliminationSpec.hs]:    https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/TrivialCaseEliminationSpec.hs
+[UpdateEliminationSpec.hs]:         https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/UpdateEliminationSpec.hs
+[GeneralizedUnboxingSpec.hs]:       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/GeneralizedUnboxingSpec.hs

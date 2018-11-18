@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.Optimising.ArityRaising where
 
 import Control.Arrow
@@ -37,7 +37,7 @@ changeParams tagParams = map
 
 newParams :: Name -> [SimpleType] -> [(Name, Type)]
 newParams name [ty] = [(name, T_SimpleType ty)]
-newParams name types  = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> show i, T_SimpleType t)
+newParams name types  = flip map (types `zip` [1 ..]) $ \(t, i) -> (name <> packName (show i), T_SimpleType t)
 
 typeEnv :: Lens' (Int, TypeEnv) TypeEnv
 typeEnv = _2
@@ -94,8 +94,9 @@ arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
         in case Map.lookup name candidates of
             Nothing        -> pure $ DefF name params0 (Right (substs1, body))
             Just tagParams -> do
-              (Just (t, paramsTypes0)) <- use (typeEnv . function . at name)
-              let oldToNewParams = changeParams
+              mParams <- use (typeEnv . function . at name)
+              let Just (t, paramsTypes0) = mParams
+                  oldToNewParams = changeParams
                     (map (\(n, i, (t, ts)) -> (n, Vector.toList ts)) tagParams)
                     (params0 `zip` (Vector.toList paramsTypes0))
               forM_ oldToNewParams $ \(old, news) -> do
@@ -122,7 +123,7 @@ arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
                       let locs = concat $ te ^.. variable . at v . _Just . _T_SimpleType . _T_Location
                       let Just (tag, vs) = sameNodeOnLocations te locs
                       c <- newVarIdx
-                      let vars = map (\n -> Var $ concat [v, ".", show c, ".f",show n]) [1 .. Vector.length vs]
+                      let vars = map (\n -> Var $ v <> "." <> showTS c <> ".f" <> showTS n) [1 .. Vector.length vs]
                       pure (vars, [(v, ConstTagNode tag vars)])
                     Just (Left (ConstTagNode tag vals)) -> pure (vals, []) -- The tag node should have the arity as in the candidates
                     Just (Left (Var v)) -> pure ([Var v], [])
@@ -167,9 +168,10 @@ examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
 newtype MMap k m = MMap { unMMap :: Map k m }
   deriving Show
 
+instance (Ord k, Semigroup m) => Semigroup (MMap k m) where
+  (MMap m1) <> (MMap m2) = MMap (Map.unionWith (<>) m1 m2)
 instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
-  mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
 -- | Examine the function calls in the body.
 examineCallers :: TypeEnv -> Map Name [(Name, Int, (Tag, Vector SimpleType))] -> Exp -> Map Name [(Name, Int, (Tag, Vector SimpleType))]

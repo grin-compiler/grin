@@ -1,0 +1,44 @@
+necessary knowledege:
+  - project overview ; read the article
+  - grin semantics ; read the relevant chapter
+  - recursion schemes ; read some recursion scheme intro
+
+specialisation:
+  - grin transformations
+  - frontends
+  - code generator ; machine code ; gc ; rts
+
+preference:
+  - quality over quantity
+  - improve the code
+  - prefer redable but do not be verbose unnecessary
+  - be elegant
+  - understand the problem ; find the best tradeoff in the problem domain
+  - do good engineering
+  - see the big picture
+
+  - write tests
+  - optimise for readibility ; care about fellow coders
+
+micro todo:
+  - boquist phd chapters
+      1 - Background and motivation
+      2 - Graph Reduction Intermdiate Notation
+      3 - Control Flow Analysis
+      4 - Program Transformations
+        4.2 - Simplifying transformations
+        4.3 - Optimising transformations
+      5 - RISC code generator
+      6 - Interprocedural register allocation
+      7 - RISC optimisation
+      8 - Garbage collection support
+      9 - Experimental results
+      10 - Conclusions
+
+    TODO: write few sentences about each chapters and how it is relevant today
+
+  - recursion schemes
+  - llvm language reference
+  - abstract interpretation
+    - overview video
+    - asap analysis

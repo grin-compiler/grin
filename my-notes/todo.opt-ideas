@@ -1,0 +1,8 @@
+deserialization as memcpy due to (well designed) data layout
+
+GHC primop global analysis and evaluation using data-flow machine
+  - memory layout optimisation
+  - removal of indirections
+  - data representation refinement
+  - primop fusion
+

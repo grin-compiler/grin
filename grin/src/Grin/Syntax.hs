@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
-{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell, StandaloneDeriving, OverloadedStrings #-}
 
 module Grin.Syntax 
   ( module Grin.Syntax 
@@ -12,8 +12,9 @@ import Control.DeepSeq
 import GHC.Generics (Generic)
 import Data.Int
 import Data.Word
-import Data.List (isPrefixOf)
 import qualified Data.ByteString.Short as B
+import Lens.Micro.Platform
+import Data.Text.Short (ShortText, isPrefixOf)
 
 import Grin.SyntaxDefs
 import Grin.TypeEnvDefs
@@ -44,8 +45,8 @@ type LPat = Val -- ConstTagNode, VarTagNode, ValTag, Unit, Lit, Var
 type SimpleVal = Val
 
 data Val
-  = ConstTagNode  Tag  [{-Simple-}Val] -- complete node (constant tag) ; HIGH level GRIN
-  | VarTagNode    Name [{-Simple-}Val] -- complete node (variable tag)
+  = ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
+  | VarTagNode    Name [SimpleVal] -- complete node (variable tag)
   | ValTag        Tag
   | Unit                           -- HIGH level GRIN
   -- simple val
@@ -74,11 +75,11 @@ type Def = Exp
 type Program = Exp
 
 data Exp
-  = Program     [{-Def-}Exp]
+  = Program     [Def]
   | Def         Name [Name] Exp
   -- Exp
-  | EBind       {-Simple-}Exp LPat Exp
-  | ECase       Val [{-Alt-}Exp]
+  | EBind       SimpleExp LPat Exp
+  | ECase       Val [Alt]
   -- Simple Exp
   | SApp        Name [SimpleVal]
   | SReturn     Val
@@ -99,3 +100,19 @@ deriving instance Ord a   => Ord  (ExpF a)
 
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
+
+_AltCPat :: Traversal' Exp CPat
+_AltCPat f (Alt p e) = (`Alt` e) <$> f p
+_AltCPat _ other     = pure other
+
+_CPatNodeTag :: Traversal' CPat Tag
+_CPatNodeTag f (NodePat tag args) = (`NodePat` args) <$> f tag
+_CPatNodeTag _ other              = pure other
+
+_CPatLit :: Traversal' CPat Lit
+_CPatLit f (LitPat lit) = LitPat <$> f lit
+_CPatLit _ other        = pure other
+
+_CPatDefault :: Traversal' CPat ()
+_CPatDefault f DefaultPat = const DefaultPat <$> f ()
+_CPatDefault _ other      = pure other

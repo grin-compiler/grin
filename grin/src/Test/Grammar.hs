@@ -6,7 +6,7 @@ import Test.QuickCheck (NonEmptyList(..))
 import GHC.Generics
 
 
-data Name = Name { unName :: String }
+data Name = Name { unName :: Grin.Name }
   deriving (Eq, Generic, Show)
 
 deriving instance Generic (NonEmptyList a)

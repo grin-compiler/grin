@@ -72,6 +72,8 @@ effectfulFunctions em = removeCalls $ go em where
 newtype MMap k m = MMap { unMMap :: Map k m }
   deriving Show
 
+instance (Ord k, Semigroup m) => Semigroup (MMap k m) where
+  (MMap m1) <> (MMap m2) = MMap (Map.unionWith (<>) m1 m2)
 instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)

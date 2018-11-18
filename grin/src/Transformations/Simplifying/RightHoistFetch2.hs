@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor, TemplateHaskell, OverloadedStrings #-}
 module Transformations.Simplifying.RightHoistFetch2 (rightHoistFetch) where
 
 import Debug.Trace (traceShowId, trace)
@@ -34,7 +34,7 @@ addStep step (x:xs) = case (step, x) of
   _ -> step : x : xs
 
 showPath :: [Step] -> Name
-showPath path = concat (map f path) where
+showPath path = packName $ concat (map f path) where
   f = \case
     SBindL i -> 'l' : show i
     SBindR i -> 'r' : show i
@@ -73,10 +73,8 @@ data Info -- analysis info
   }
   deriving Show
 
-instance Monoid Info where
-  mempty = Info mempty mempty
-  mappend (Info a1 b1) (Info a2 b2) = Info (a1 `mappend` a2) (b1 `mappend` b2)
-
+instance Semigroup  Info where (Info a1 b1) <> (Info a2 b2) = Info (a1 `mappend` a2) (b1 `mappend` b2)
+instance Monoid     Info where mempty = Info mempty mempty
 
 collectFetchVars :: Exp -> Set Name
 collectFetchVars = cull . para collect where
@@ -151,7 +149,7 @@ rightHoistFetch e = {-trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $
                    genAlt i alt = (altBuild, genBind fetchVar altFetch alt) where
                       altPath  = addStep (SAlt i) (newBuild ^. path)
                       pathName = showPath altPath
-                      altFetch = [(printf "%s.%s" n pathName, i) | (n,i) <- itemVars]
+                      altFetch = [(n <> "." <> pathName, i) | (n,i) <- itemVars]
                       altNames = map fst altFetch
                       altNameS = Set.fromList altNames
                       altSubst = Map.fromList $ zip (map fst itemVars) altNames

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings #-}
 module Transformations.Optimising.Inlining where
 
 import Debug.Trace
@@ -23,9 +23,8 @@ data Stat
   , functionCallCount :: !(Map Name Int)
   }
 
-instance Monoid Stat where
-  mempty = Stat 0 mempty
-  mappend (Stat i1 m1) (Stat i2 m2) = Stat (i1 + i2) (Map.unionWith (+) m1 m2)
+instance Semigroup  Stat where (Stat i1 m1) <> (Stat i2 m2) = Stat (i1 + i2) (Map.unionWith (+) m1 m2)
+instance Monoid     Stat where mempty = Stat 0 mempty
 
 selectInlineSet :: Program -> Set Name
 selectInlineSet prog@(Program defs) = inlineSet where
@@ -47,7 +46,7 @@ selectInlineSet prog@(Program defs) = inlineSet where
   leafSet       = Set.fromList [name | (name, callMap) <- callTrees, Map.null callMap]
 
   -- keep only the leaves of the candidate call tree
-  inlineSet     = Data.Foldable.foldr stripCallers candidateSet candidateSet
+  inlineSet     = Set.delete "grinMain" $ Data.Foldable.foldr stripCallers candidateSet candidateSet
 
   -- remove intermediate nodes from the call tree
   stripCallers name set = set Set.\\ (Map.keysSet $ Map.findWithDefault mempty name defCallTree)
@@ -86,7 +85,8 @@ inlining functionsToInline (typeEnv, prog@(Program defs)) = (typeEnv, evalNameM 
       | Set.member name functionsToInline
       , Just def <- Map.lookup name defMap
       -> do
-        (Def _ argNames funBody, nameMap) <- refreshNames mempty def
+        freshDef <- refreshNames mempty def
+        let (Def _ argNames funBody, nameMap) = freshDef
         let bind (n,v) e = EBind (SReturn v) (Var n) e
         pure . SBlockF . Left $ foldr bind funBody (zip argNames argVals)
 

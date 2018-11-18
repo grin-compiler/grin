@@ -23,6 +23,8 @@ import qualified Data.IntMap as IntMap
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
+import Data.Text.Short (ShortText)
+
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
@@ -51,6 +53,9 @@ keyword = yellow . text
 
 keywordR = red . text
 
+instance Pretty ShortText where
+  pretty = text . unpackName
+
 -- TODO
 --  nice colors for syntax highlight
 --  better node type syntax (C | F | P)
@@ -59,18 +64,18 @@ instance Pretty Exp where
   pretty = cata folder where
     folder = \case
       ProgramF defs       -> vcat (map pretty defs)
-      DefF name args exp  -> hsep (text name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
+      DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
       -- Exp
       EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
       ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
-      SAppF name args         -> hsep (((if isPrimName name then dullyellow else cyan) $ text name) : map pretty args)
+      SAppF name args         -> hsep (((if isPrimName name then dullyellow else cyan) $ pretty name) : map pretty args)
       SReturnF val            -> keyword "pure" <+> pretty val
       SStoreF val             -> keywordR "store" <+> pretty val
-      SFetchIF name Nothing   -> keywordR "fetch" <+> text name
-      SFetchIF name (Just i)  -> keywordR "fetch" <+> text name <> brackets (int i)
-      SUpdateF name val       -> keywordR "update" <+> text name <+> pretty val
+      SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
+      SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
+      SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
       SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
       AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
@@ -83,7 +88,7 @@ instance Pretty Val where
     Unit         -> parens empty
     -- simple val
     Lit lit      -> pretty lit
-    Var name     -> text name
+    Var name     -> pretty name
     Undefined ty -> parens $ text "#undefined" <+> text "::" <+> pretty ty
 
 instance Pretty Lit where
@@ -95,7 +100,7 @@ instance Pretty Lit where
 
 instance Pretty CPat where
   pretty = \case
-    NodePat tag vars  -> parens $ hsep (pretty tag : map text vars)
+    NodePat tag vars  -> parens $ hsep (pretty tag : map pretty vars)
     TagPat  tag       -> pretty tag
     LitPat  lit       -> pretty lit
     DefaultPat        -> keyword "#default"
@@ -107,7 +112,7 @@ instance Pretty TagType where
     P i -> text "P" <> int i
 
 instance Pretty Tag where
-  pretty (Tag tagtype name) = pretty tagtype <> text name
+  pretty (Tag tagtype name) = pretty tagtype <> pretty name
 
 -- generic ; used by HPTResult and TypeEnv
 
@@ -135,7 +140,9 @@ instance Pretty Type where
 
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
-    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
+    [ yellow (text "Location (* is shared)") <$$> indent 4 (prettyKeyValue
+         $ map (\(k, v) -> (if k `Set.member` _sharing then (pretty k) <> text "*" else pretty k, v))
+         $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
     , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]

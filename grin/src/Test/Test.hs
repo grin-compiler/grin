@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
-{-# LANGUAGE QuasiQuotes, ViewPatterns #-}
+{-# LANGUAGE QuasiQuotes, ViewPatterns, OverloadedStrings #-}
 module Test.Test where
 
 import Prelude hiding (GT)
@@ -22,6 +22,7 @@ import Data.List ((\\))
 import Data.Maybe (fromJust, maybeToList)
 import Data.Semigroup
 import qualified Data.Text as Text
+import qualified Data.Text.Short as TS
 import GHC.Generics
 import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
@@ -29,7 +30,7 @@ import qualified Grin.TypeEnvDefs as Grin
 import qualified Test.PrimOps as PrimOps
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Vector
-import Generic.Random.Generic
+import Generic.Random
 import Lens.Micro
 import Lens.Micro.Mtl
 import qualified Test.Grammar as G
@@ -49,7 +50,7 @@ import Data.List
 
 import Transformations.Optimising.SimpleDeadFunctionElimination
 import Transformations.Optimising.SimpleDeadParameterElimination
-import Transformations.SingleStaticAssignment
+import Transformations.StaticSingleAssignment
 
 
 type SpecWithProg = Exp -> Spec
@@ -215,6 +216,7 @@ semanticallyIncorrectPrograms = resize 1 (G.asExp <$> arbitrary @G.Prog)
 downScale :: Gen a -> Gen a
 downScale = scale (`div` 2)
 
+instance Arbitrary TS.ShortText where arbitrary = TS.pack <$> arbitrary
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
 instance Arbitrary G.Prog where arbitrary = genericArbitraryU
@@ -256,7 +258,7 @@ instance Arbitrary Tag where
     <*> (G.unName <$> arbitrary)
 
 instance Arbitrary G.Name where
-  arbitrary = G.Name . concat <$> listOf1 hiragana
+  arbitrary = G.Name . packName . concat <$> listOf1 hiragana
 
 -- | Increase the size parameter until the generator succeds.
 suchThatIncreases :: Gen a -> (a -> Bool) -> Gen a
@@ -287,10 +289,8 @@ adtsL = lens adts (\e a -> e { adts = a})
 funsL :: Lens' Env (Map Name ([Type], Type, [Eff]))
 funsL = lens funs (\e f -> e { funs = f })
 
-instance Monoid Env where
-  mempty = Env mempty mempty mempty
-  mappend (Env v0 f0 a0) (Env v1 f1 a1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1) (a0 <> a1)
-
+instance Semigroup  Env where (Env v0 f0 a0) <> (Env v1 f1 a1) = Env (Map.unionWith (<>) v0 v1) (f0 <> f1) (a0 <> a1)
+instance Monoid     Env where mempty = Env mempty mempty mempty
 insertVar :: Name -> Either G.Val G.ExtraVal -> Env -> Env
 insertVar name val (Env vars funs adts) = Env (Map.singleton name (typeOf val) <> vars) funs adts
 
@@ -309,9 +309,8 @@ insertFun (fname, params, rtype, effs) (Env vars funs adts) =
 data Store = Store (Map G.Loc (G.Val, Type))
   deriving (Eq, Show)
 
-instance Monoid Store where
-  mempty = Store mempty
-  mappend (Store s0) (Store s1) = Store (s0 <> s1)
+instance Semigroup  Store where (Store s0) <> (Store s1) = Store (s0 <> s1)
+instance Monoid     Store where mempty = Store mempty
 
 data Eff
   = NoEff          -- Generate a value returning expression of the given type
@@ -336,7 +335,7 @@ data Type
   | TBool
   | TWord
   | TLoc Type
-  | TTag String [Type] -- Only constant tags, only simple types, or variables with location info
+  | TTag Name [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
   deriving (Eq, Generic, Ord, Show)
 
@@ -421,9 +420,11 @@ data Goal
   | Prog
   deriving (Eq, Ord, Show)
 
+-- NOTE: entry point
 genProg :: Gen Exp
 genProg = genProgWith mzero
 
+-- generate one sample
 sampleProg :: IO ()
 sampleProg = sample $ fmap PP $ genProg
 
@@ -464,32 +465,32 @@ runGoalUnsafe = fmap checkSolution . runGoalM mzero
 gen :: Gen a -> GoalM a
 gen = lift . lift
 
-tagNames :: Type -> [String]
+tagNames :: Type -> [Name]
 tagNames (TTag name _)  = [name]
 tagNames (TUnion types) = concatMap tagNames (Set.toList types)
 tagNames _              = []
 
-newName :: GoalM String
+newName :: GoalM Name
 newName = do
   (Env vars funs adts) <- view ctxEnv
   let names = Map.keys vars <> Map.keys funs <> (concatMap tagNames $ Set.toList adts)
   gen $ ((G.unName <$> arbitrary) `suchThatIncreases` (`notElem` names))
 
-newNames :: Int -> GoalM [String]
+newNames :: Int -> GoalM [Name]
 newNames = go [] where
   go names 0 = pure names
   go names n = do
     name <- newName `mSuchThat` (`notElem` names)
     go (name:names) (n-1)
 
-newVar :: Type -> (String -> GoalM a) -> GoalM a
+newVar :: Type -> (Name -> GoalM a) -> GoalM a
 newVar t k = do
   (Env vars funs adts) <- view ctxEnv
   name <- newName
   CMR.local (ctxEnv %~ insertVarT name t) $ do
     k name
 
-withVars :: [(String, Type)] -> GoalM a -> GoalM a
+withVars :: [(Name, Type)] -> GoalM a -> GoalM a
 withVars vars = CMR.local (ctxEnv %~ insertVars vars)
 
 type GBool = Type
@@ -546,19 +547,20 @@ gValue = \case
   TUnion types    -> do
     t <- melements (Set.toList types)
     solve (GVal t)
+  -- NOTE: type driven value generator, add undef here
 
 gPureFunction :: (Name -> Bool) -> Type -> GoalM (Name, [Type])
 gPureFunction p t = do
   (Env vars funs adts) <- view ctxEnv
   funs <- gen $ shuffle $ filter (p . fst) $ Map.toList $ Map.filter (\(_, r, eff) -> r == t && eff == []) funs
-  (name, (params, ret, [])) <- melements funs
+  (name, (params, ret, _)) <- melements funs
   pure (name, params)
 
 gPureNonPrimFun :: Type -> GoalM (Name, [Type])
-gPureNonPrimFun = gPureFunction (not . ("_prim_" `isPrefixOf`))
+gPureNonPrimFun = gPureFunction (not . isPrimName)
 
 gPurePrimFun :: Type -> GoalM (Name, [Type])
-gPurePrimFun = gPureFunction ("_prim_" `isPrefixOf`)
+gPurePrimFun = gPureFunction isPrimName
 
 mGetSize :: GoalM Int
 mGetSize = gen $ sized pure
@@ -592,14 +594,13 @@ gSExpSized s t = \case
     _        -> mzero
 
   -- find a name that contains the location and the given type.
-  ReadLoc t' -> do
-    (G.Var name) <- varFromEnv (TLoc t')
-    pure $ G.SFetchI name Nothing
+  ReadLoc t' -> varFromEnv (TLoc t') >>= \case
+    G.Var name -> pure $ G.SFetchI name Nothing
+    t -> error $ "var expected, but got: " ++ show t
 
-  UpdateLoc t' -> do
-    (G.Var name) <- varFromEnv (TLoc t')
-    val <- solve (GVal t')
-    pure $ G.SUpdate name val -- fing a name that contains the location and generate  value of a given type
+  UpdateLoc t' -> varFromEnv (TLoc t') >>= \case
+    G.Var name -> G.SUpdate name <$> solve (GVal t') -- fing a name that contains the location and generate  value of a given type
+    t -> error $ "var expected, but got: " ++ show t
 
 tryout :: [GoalM a] -> GoalM a
 tryout gs = do
@@ -695,14 +696,15 @@ gEffs = do
     ]
 
 -- TODO: Effects
--- TODO: Always succedd with a trivial function
+-- TODO: Always succeeds with a trivial function
 -- TODO: Self Recursive
 gDef :: Type -> GoalM (G.Def, ([Type], Type, [Eff]))
 gDef retType = do
   effs <- gEffs
   n <- gen $ choose (1, 5)
   ptypes <- replicateM n $ mfreq [ (90, simpleType), (10, definedAdt) ]
-  (fname:pnames) <- newNames (n+1)
+  nl <- newNames n
+  let (fname:pnames) = nl
   CMR.local
 --    TODO: Self recursive: Generate eval creates in infinite loop
 --    kahe ya = kahe ya
@@ -789,7 +791,8 @@ gAlts eff val typeOfVal typeOfExp = case typeOfVal of
         (Just (G.SimpleVal (G.Lit lit))) -> do
           n <- gen $ choose (0, 5)
           alts0 <- replicateM n $ do
-            (G.Lit lit0) <- gLiteral typeOfVal
+            lit0P <- gLiteral typeOfVal
+            let G.Lit lit0 = lit0P
             G.Alt (LitPat lit0) <$> (solve (Exp eff typeOfExp))
           matching <- G.Alt (LitPat lit) <$> (solve (Exp eff typeOfExp))
           let alts = Map.elems $

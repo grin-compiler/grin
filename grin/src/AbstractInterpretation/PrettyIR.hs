@@ -9,7 +9,7 @@ import qualified Data.Set as Set
 import Text.PrettyPrint.ANSI.Leijen
 
 import Grin.Pretty ()
-import Grin.Grin (Name)
+import Grin.Grin (Name, unpackName)
 import qualified Grin.Grin as Grin
 import AbstractInterpretation.IR
 import AbstractInterpretation.HPTResult (toSimpleType)
@@ -76,7 +76,7 @@ instance Pretty Range where
                         <> rparen
 
 prettyName :: Name -> Doc
-prettyName = red . text
+prettyName = red . text . unpackName
 
 prettySimpleType :: Int32 -> Doc
 prettySimpleType = pretty . toSimpleType
@@ -93,7 +93,12 @@ prettySelector :: Maybe IRMap -> Selector -> Doc
 prettySelector mirm = \case
   NodeItem tag idx          -> prettyTag mirm tag <> brackets (pretty idx)
   ConditionAsSelector cond  -> prettyCondition mirm cond
+<<<<<<< HEAD
   AllFields                 -> text "all fields"
+=======
+  Locations                 -> text "Location"
+  NodeLocations             -> text "NodeLocation"
+>>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case

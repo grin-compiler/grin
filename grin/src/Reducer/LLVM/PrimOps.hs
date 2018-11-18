@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Reducer.LLVM.PrimOps where
 
 import LLVM.AST
@@ -8,6 +9,7 @@ import LLVM.AST.Type as LLVM
 import LLVM.AST.AddrSpace
 import qualified LLVM.AST.Constant as C
 
+import qualified Grin.Grin as Grin
 import Grin.TypeEnv hiding (function)
 import Reducer.LLVM.Base
 import Reducer.LLVM.TypeGen
@@ -18,6 +20,7 @@ cgWord64  = toCGType $ T_SimpleType T_Word64  :: CGType
 cgFloat   = toCGType $ T_SimpleType T_Float   :: CGType
 cgBool    = toCGType $ T_SimpleType T_Bool    :: CGType
 
+codeGenPrimOp :: Grin.Name -> [Grin.Val] -> [Operand] -> CG Result
 codeGenPrimOp name _ [opA, opB] = case name of
   -- Int
   "_prim_int_add"   -> pure . I cgInt64 $ Add  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
@@ -44,10 +47,10 @@ codeGenPrimOp name _ [opA, opB] = case name of
   "_prim_word_le"   -> pure . I cgBool   $ ICmp {iPredicate=I.ULE, operand0=opA, operand1=opB, metadata=[]}
 
   -- Float
-  "_prim_float_add" -> pure . I cgFloat $ FAdd {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_float_sub" -> pure . I cgFloat $ FSub {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_float_mul" -> pure . I cgFloat $ FMul {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_float_div" -> pure . I cgFloat $ FDiv {fastMathFlags=NoFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_add" -> pure . I cgFloat $ FAdd {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_sub" -> pure . I cgFloat $ FSub {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_mul" -> pure . I cgFloat $ FMul {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_float_div" -> pure . I cgFloat $ FDiv {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
   "_prim_float_eq"  -> pure . I cgBool  $ FCmp {fpPredicate=F.OEQ, operand0=opA, operand1=opB, metadata=[]}
   "_prim_float_ne"  -> pure . I cgBool  $ FCmp {fpPredicate=F.ONE, operand0=opA, operand1=opB, metadata=[]}
   "_prim_float_gt"  -> pure . I cgBool  $ FCmp {fpPredicate=F.OGT, operand0=opA, operand1=opB, metadata=[]}
@@ -72,4 +75,4 @@ codeGenPrimOp "_prim_int_print" _ [opA] = pure . I cgUnit $ Call
     ptr ty = PointerType { pointerReferent = ty, pointerAddrSpace = AddrSpace 0}
     fun ret args = ptr FunctionType {resultType = ret, argumentTypes = args, isVarArg = False}
 
-codeGenPrimOp name args _ = error $ "unknown primitive operation: " ++ name ++ " arguments: " ++ show args
+codeGenPrimOp name args _ = error $ "unknown primitive operation: " ++ Grin.unpackName name ++ " arguments: " ++ show args

@@ -47,7 +47,6 @@ spec = do
           (CInt b') <- pure (r' z')
           fun 3 4
         |]
-      pending
       commonSubExpressionElimination (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
 
     let te = emptyTypeEnv

@@ -1,0 +1,39 @@
+frontend:
+  - finish lambda frontend
+  - implement stg -> lambda frontend
+
+test optimising pipeline
+  - sum simple -> sum opt
+  - continue: vectorisation as conversion to tagged union
+
+framework:
+  - error messages with context ; including internal errors
+  - robust name handling ; see llvm name handling
+  - fresh name construction
+
+backend:
+  - read back llvm heap to haskell
+
+question:
+  should we use Block for left sided Case?
+ idea:
+  write grin validator to check:
+    - case usage on the left side of the bind operator
+
+experiment:
+  done - sum simple to sum opt without vectorisation and case simplification
+
+apr 23 todo:
+  done - command line args for phd opt stages
+    from handwritten stage
+      (A) one step
+      (B) the longest possible
+  done - write manual opt stages without vectorisation
+
+apr 24 todo:
+  test cases for
+    done - copy propagation
+    done - cse
+    done - trivial case elimination
+    HINT:
+      cascading cases

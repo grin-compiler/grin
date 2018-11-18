@@ -1,0 +1,14 @@
+- tail call annotation + annotation pass (force with 'must tail' in llvm)
+- explicit heap pointer passing
+- do not pass heap pointer where not neccessary (no memory operation)
+- rework heap pointer extraction to be tail call compatible
+
+- rework simplification transformations to be helper passes for the llvm codegen
+
+- runtime pattern mismatch errors? (optional)
+
+- pre codegen linter
+- report errors with references to the linted AST
+- the codegen should support only product types not sum types
+
+- lower tag values to explicit ints with custom minimal valid bit width ; codegen should not know about tags at all

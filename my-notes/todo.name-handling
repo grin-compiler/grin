@@ -1,0 +1,107 @@
+IDEA: bound + fresh name free monad
+
+TODO: study bound
+      i.e. examples/Imperative.hs
+
+# feature specification
+  two kind of names:
+  - local name:   %name
+  - global name:  @name
+
+
+# features:
+  - allow to use any character in names ; see llvm names i.e. @"123-anything!"
+  - local and global names (i.e. llvm)
+  - allow to use any character (i.e. llvm)
+  - easy and readable unique name construction
+  - cheap alpha equality
+  - store source location in names
+
+(EASY)
+# handle arbitrary name ; global + local name syntax
+  - parser
+  - pretty
+
+# tag commit + delete garbage code
+
+NOTES:
+  - algebra composition
+  - parallel execution
+  - error reporting in context
+  - new name construction
+
+(HARD)
+# QUESTION: wrap transformations in monads OR new name resolver pass
+
+TODO:
+  - name monad
+  - adjust inliner to use it
+
+# name generator
+  - name datatype
+  - new name construction
+
+# modify transformations to use new unique name construction
+  transformations that create new name:
+  - inlining
+  - generalised unboxing
+  - arity raising
+  - case copy propagation
+  - case hoisting (TODO)
+
+  - vectorisation
+  - right hoist fetch
+  - register introduction
+
+NOTES:
+  cata:
+    - BindNormalisation
+    * RightHoistFetch
+    * RegisterIntroduction
+    * Vectorisation2
+    - DeadProcedureElimination
+    * ArityRaising / examineCallees + examineTheParameters
+    - DeadVariableElimination
+    * GeneralizedUnboxing
+    * Inlining
+
+  hylo:
+    - CSE
+    - CopyPropagation
+
+  para:
+    * RightHoistFetch / collectFetchVars
+    * ArityRaising / collectStores + examineCallers
+    * GeneralizedUnboxing / collectNewNames
+    * CaseCopyPropagation / collectInfo
+
+  apoM:
+    * ArityRaising
+    * GeneralizedUnboxing / transformReturns
+
+  apo:
+    * RightHoistFetch
+    * RegisterIntroduction
+    * Vectorisation
+    * Inlining
+    * CaseCopyPropagation
+
+  anaM:
+    - SingleStaticAssignment
+    * GeneralizedUnboxing
+
+  ana:
+    - CaseSimplification
+    * RegisterIntroduction
+    * Vectorisation2
+    - SplitFetch
+    - ConstantPropagation
+    - SparseCaseOptimisation
+    - TrivialCaseElimination
+    - UpdateElimination
+    * Inlining
+    - EvaluatedCaseElimination
+    - ConstantFolding
+
+  futu:
+    * RightHoistFetch

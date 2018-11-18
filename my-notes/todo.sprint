@@ -1,0 +1,50 @@
+# unit tests
+  done - check todo.testing
+
+# grin validator
+  work in progress
+  - linter
+  done - linted ast pretty printer
+
+# llvm like name handling
+- name datatype
+- parser
+- pretty
+- new name construction
+
+- new name resolver pass
+
+- modify transformations to use new unique name construction
+  - inlining
+  - generalised unboxing
+  - arity raising
+  - case copy propagation
+  - case hoisting
+
+# pass manager
+
+# pipeline composition (algebra composition)
+
+# module cleanup
+- remove redundant modules
+- introduce module namespaces
+  https://jaspervdj.be/posts/2017-12-07-getting-things-done-in-haskell.html
+- import cleanup
+
+# missing features:
+     - CAF support
+done - side effect tracking
+     - circular data structures
+        NOTE: the initial value of a circular node is the HOLE with the error message/location
+
+# GOAL
+
+working sum simple to sum opt with
+  done - correct name handling
+  - simplified llvm codegen
+  - adjusted simplification transformations
+  done - resulting `call _prim_int_print 500500` machine code
+
+## missing
+  done - case hoisting + test
+  done - inlining test

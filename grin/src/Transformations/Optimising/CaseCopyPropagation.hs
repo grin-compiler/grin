@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.Optimising.CaseCopyPropagation where
 
 import Grin.Grin
@@ -25,10 +25,6 @@ data NewExp = NE
   , neExp     :: Exp
   } deriving Show
 
-neTag :: NewExp -> Maybe Tag
-neTag (NE (InChange t)_ ) = Just t
-neTag _                   = Nothing
-
 folder :: ExpF (Exp, NewExp) -> NameM NewExp
 folder = \case
   ProgramF ds                           -> pure $ NE Final (Program $ map (neExp . snd) ds)
@@ -53,6 +49,7 @@ folder = \case
   AltF cpat body@(_, NE c e) -> pure $ NE c (Alt cpat e)
 
   exp@(ECaseF val alts)
+    -- Each alternative has the same tag and they are changed.
     | tags <- map (neTag . snd) alts, all isJust tags
       -> if allSame tags
           then do var <- deriveNewName "ccp"
@@ -64,13 +61,20 @@ folder = \case
                         (Var var)
                         (SReturn (ConstTagNode tag [Var var]))))
           else pure $ NE None (ECase val (map fst alts))
-    | any (hasChanges Final) alts
+    -- Some of the alternatives are final, thus we mark this case as Final and we don't change it.
+    | any (hasChange Final) alts
         -> pure $ NE Final (ECase val $ map getFinalExp alts)
-    | all (hasChanges None) alts
+    -- Nothing has changed in the alternatives.
+    | all (hasChange None) alts
         -> pure $ NE None (ECase val $ map (neExp . snd) alts)
-
+    -- Some of the alternatives could change, some none, thus we leave them unchanged.
+    | any (isJust . neTag . snd) alts
+        -> pure $ NE None (ECase val $ map fst alts)
   where
-    hasChanges c0 (_, NE c _) = c == c0
+    neTag (NE (InChange t)_ ) = Just t
+    neTag _                   = Nothing
+
+    hasChange c0 (_, NE c _) = c == c0
     getFinalExp (oe, NE c ne) = case c of { Final -> ne; _ -> oe }
 
 allSame :: (Eq a) => [a] -> Bool

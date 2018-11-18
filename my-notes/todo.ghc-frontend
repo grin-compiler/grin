@@ -1,0 +1,123 @@
+save core expressions:
+  fat interface file:
+    part A: standard .hi content
+    part B (optional): core exp
+    binary layout:
+      offset 0: encoded part A
+      offset end of partA: encoded part B
+  ghc command line flag: fat interface
+
+linker GHC plugin
+
+tech is based on ghc-dump:
+  https://github.com/bgamari/ghc-dump
+  ~/haskell/stack-dump-core-playground/ghc-dump-core
+
+test project using stack:
+  haskell/grin-ghc-test
+  usage (always build and install .corebin):
+    stack --stack-root `pwd`/.stack-root build
+
+patched ghc:
+  haskell/ghc-8.2.2
+
+build ghc:
+  https://ghc.haskell.org/trac/ghc/wiki/Building/Using
+  https://ghc.haskell.org/trac/ghc/wiki/Building/Using#Buildingasinglesub-component
+  https://ghc.haskell.org/trac/ghc/wiki/Newcomers#Fastrebuilding
+
+
+TODO:
+  done - read GHC linker related source code ; check
+    - executable linking
+      compiler/main/DriverPipeline.hs : link'
+    - library linking
+      libraries/Cabal/Cabal/Distribution/Simple/GHC.hs : buildOrReplLib
+
+  done - modify GHC to use GRIN as a linker
+  - single module support
+    - circular data structures ; hole support
+    - closure conversion ; core -> lambda (nested) -> lambda (flat)
+
+Options:
+  A) app link time
+      find all core files (app + lib core modules) and compile to GRIN
+      PRO:  easy, does not require cabal modification
+      TODO:
+        done - list all module dependency
+        - call external ghc-grin-cli
+
+  B) lib link time
+      compile GRIN modules for library just before linking to a static lib
+
+  C) module compile time
+      compile GRIN module when compiling an object (.o) file
+
+linker:
+  runLink
+  LinkBinary
+  LinkStaticLib
+  linkBinary
+  link
+  doLink
+  DriverPipeline.hs
+  DotO
+  DotA
+  DotDLL
+
+Questions:
+  - why core and not stg?
+  - how to deal with coercions and types? how are those comiled to stg?
+
+PrimOps (search for *Prim*.*):
+  rts/PrimOps.cmm
+  rts/StgPrimFloat.c
+  compiler/prelude/PrimOp.hs
+  compiler/prelude/primops.txt.pp
+  compiler/prelude/TysPrim.hs
+  compiler/codeGen/StgCmmPrim.hs
+  compiler/nativeGen/CPrim.hs
+  includes/stg/Prim.h
+  includes/rts/PrimFloat.h
+  compiler/stage1/build/primop-data-decl.hs-incl
+  compiler/stage1/build/primop-vector-tys-exports.hs-incl
+  compiler/stage1/build/primop-commutable.hs-incl
+  compiler/stage1/build/primop-vector-uniques.hs-incl
+  compiler/stage1/build/primop-fixity.hs-incl
+  compiler/stage1/build/primop-can-fail.hs-incl
+  compiler/stage1/build/primop-list.hs-incl
+  compiler/stage1/build/primops.txt
+  compiler/stage1/build/primop-has-side-effects.hs-incl
+  compiler/stage1/build/primop-vector-tys.hs-incl
+  compiler/stage1/build/primop-primop-info.hs-incl
+  compiler/stage1/build/primop-code-size.hs-incl
+  compiler/stage1/build/primop-vector-tycons.hs-incl
+  compiler/stage1/build/primop-out-of-line.hs-incl
+  compiler/stage1/build/primop-tag.hs-incl
+  compiler/stage1/build/primop-strictness.hs-incl
+
+TODO:
+  done - qualified case alt names
+  skip - use unique names for non top level ids ; lambda should support name shadowing + SSA conversion pass
+  done - do we need core prep? ; propbably yes
+  - ignore type applications and type arguments ??? (stg seems to do this)
+    - lam parameter
+    - app argument
+  - save STG beside Core
+  - arity map
+  - saturate con apps
+  - closure conversion
+
+  - compile whole program STG
+    A) - save STG to file
+    B) - gen lambda in GHC
+  - export external call name to core dump
+
+Core to STG:
+  corePrepPgm - Do saturation and convert to A-normal form ; compiler/coreSyn/CorePrep.hs
+  myCoreToStg - compiler/stgSyn/CoreToStg.hs
+
+ghc data constructors:
+  https://ghc.haskell.org/trac/ghc/wiki/Commentary/Compiler/WiredIn
+  https://ghc.haskell.org/trac/ghc/wiki/Commentary/Compiler/EntityTypes
+  https://ghc.haskell.org/trac/ghc/wiki/Commentary/Compiler/CaseStudies/Bool

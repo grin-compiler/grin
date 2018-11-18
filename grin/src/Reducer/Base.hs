@@ -28,11 +28,11 @@ data RTVal
 instance Pretty RTVal where
   pretty = \case
     RT_ConstTagNode tag args -> parens $ hsep (pretty tag : map pretty args)
-    RT_VarTagNode name args  -> parens $ hsep (text name : map pretty args)
+    RT_VarTagNode name args  -> parens $ hsep (pretty name : map pretty args)
     RT_ValTag tag -> pretty tag
     RT_Unit       -> parens empty
     RT_Lit lit    -> pretty lit
-    RT_Var name   -> text name
+    RT_Var name   -> pretty name
     RT_Loc a      -> keyword "loc" <+> int a
     RT_Undefined  -> keyword "undefined"
 
@@ -62,7 +62,7 @@ bindPat env !val lpat = case lpat of
               _ -> error $ "bindPat - illegal value: " ++ show val
   ConstTagNode ptag pargs -> case val of
                   RT_ConstTagNode vtag vargs | ptag == vtag -> bindPatMany env vargs pargs
-                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
+                  _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val ++ " vs " ++ show (ConstTagNode ptag pargs)
   VarTagNode varname pargs -> case val of
                   RT_ConstTagNode vtag vargs -> bindPatMany (Map.insert varname (RT_ValTag vtag) env) vargs pargs
                   _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val
@@ -70,7 +70,7 @@ bindPat env !val lpat = case lpat of
   _ -> error $ "bindPat - pattern mismatch" ++ show (val,lpat)
 
 lookupEnv :: Name -> Env -> RTVal
-lookupEnv n env = Map.findWithDefault (error $ "missing variable: " ++ n) n env
+lookupEnv n env = Map.findWithDefault (error $ "missing variable: " ++ unpackName n) n env
 
 evalVal :: Env -> Val -> RTVal
 evalVal env = \case

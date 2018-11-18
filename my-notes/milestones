@@ -1,0 +1,13 @@
+milestone 3:
+  - add contexts to hpt
+  - hpt inline support
+  - adaptive inliner
+
+milestone 4:
+  - documentation
+  - stg frontend
+  - benchmark ; grin samples
+
+milestone 5:
+  - hpt llvm backend
+  - modular hpt

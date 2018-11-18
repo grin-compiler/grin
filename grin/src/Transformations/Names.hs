@@ -28,13 +28,13 @@ type NameM = State NameEnv
 
 mkNameEnv :: Exp -> NameEnv
 mkNameEnv exp = NameEnv mempty (cata folder exp) where
-  folder e = foldNameDefExpF Set.singleton e `mappend` Data.Foldable.fold e
+  folder e = foldNameDefExpF (const Set.singleton) e `mappend` Data.Foldable.fold e
 
 deriveNewName :: Name -> NameM Name
 deriveNewName name = do
   (newName, conflict) <- state $ \env@NameEnv{..} ->
     let idx = Map.findWithDefault 0 name namePool
-        new = printf "%s.%d" name idx
+        new = packName $ printf "%s.%d" name idx
     in ((new, Set.member new nameSet), env {namePool = Map.insert name (succ idx) namePool, nameSet = Set.insert new nameSet})
   if conflict
     then deriveNewName name

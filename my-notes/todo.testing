@@ -1,0 +1,43 @@
+case related:
+  done  - evaluated case elimination
+  done  - trivial case elimination
+  done  - sparse case optimisation
+  andor - case copy propagation
+  done  - case hoisting
+
+memory related:
+  andor - generalised unboxing
+  andor - arity raising
+  done  - update elimination ; marked for deletion
+        - whnf update elimination ; TODO
+
+control flow graph related:
+        - late inlining ; requires name gen support
+
+done - common sub-expression elimination
+done - bind normalisation
+done - constant folding      ; Q: what is the intended behaviour? ; adjust tests
+done - copy propagation      ; Q: what is the intended behaviour? ; adjust tests
+done - constant propagation  ; it is related to costant folding as it does limited constant folding
+
+dead code related:
+  done - dead procedure elimination
+  done - dead variable elimination
+  done - dead parameter elimination
+
+NOTE: possible grouping: control flow related / evaluation related
+
+opt samples
+  done - pipeline test for complex cases and to check transform interactions
+
+NEXT:
+
+simplification passes:
+  register introduction - requires name gen support
+  vectorisation
+  split fetch
+  right hoist fetch
+  case simplifiaction
+  update specialisation
+  inline calls to eval
+  inline calls to apply

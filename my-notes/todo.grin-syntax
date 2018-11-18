@@ -1,0 +1,70 @@
+### shared blocks
+
+Add support for named blocks and a corresponding call block command i.e. `tailcall` / `continue` / `join` / `follow` __BLOCK_NAME__
+
+It would allow shared use of monad blocks. Like in Haskell:
+
+```haskell
+main = do
+  a <- pure 1
+  b <- pure 2
+  let sharedBlock = do
+        print (a+b)
+        pure 3
+  x <- sharedBlock
+  print x
+  y <- sharedBlock
+  print y
+```
+
+Question: can it support block parameters?
+
+NOTE: this could be mapped to llvm using basic block branching and phi nodes
+
+The motivation is to introduce llvm's basic block expressivity to grin.
+
+INSIGHTS:
+  - llvm basic blocks are local functions without stack support ; phi nodes handles their parameters
+  - conceptually the stack handling is the only difference between a basic block and a function
+
+question:
+  what is the relation between local block (with parameters) and GHC's join points?
+
+
+CPS vs GRIN - case hoisting
+
+  before:
+  ```
+    <m0>
+    u <- case v of
+      (CNil)        -> pure (CNil)
+      (CCons x xs)  -> pure (CCons x xs)
+      (FBar a)      -> bar a
+    case u of
+      (CNil)        -> <m1>
+      (CCons y ys)  -> <m2>
+  ```
+
+  after:
+  ```
+    <m0>
+    case v of
+      (CNil)        -> <m1>
+      (CCons x xs)  -> <m2> [x/y, xs/ys]
+      (FBar a)      -> u3 <- bar a
+                       case u3 of
+                          (CNil)        -> <m1>
+                          (CCons y ys)  -> <m2>
+  ```
+
+  GRIN  - code duplication
+  CPS   - <m1>, <m2> could be shared
+
+### product types and nested values
+
+- grin should support product types that could contain any value
+- also would be useful to support nested nodes (e.g. nodes in nodes)
+
+### fix VarTagNode
+
+- VarTagNode is a regular C style tagged union which could be represented in GRIN with product types where the tag part would have Int type insead of Tag type

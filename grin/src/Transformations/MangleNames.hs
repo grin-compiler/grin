@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 module Transformations.MangleNames where
 
 import Text.Printf
@@ -43,7 +43,7 @@ mangleNames e = evalState (collectNames >=> replaceNames $ e) (Env 0 mempty) whe
 
   defName :: Name -> M Name
   defName name = state $ \env@Env{..} ->
-    let new = printf "name.%d" counter
+    let new = "name." <> showTS counter
     in (name, env {counter = succ counter, nameMap = Map.insert name new nameMap})
 
   useName :: Name -> M Name

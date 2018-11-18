@@ -4,6 +4,7 @@ module Main where
 import Control.Monad
 import Data.Map as Map
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+import qualified Data.Text.IO as Text
 import qualified Text.Megaparsec as M
 
 import Options.Applicative
@@ -55,6 +56,7 @@ transformOpts =
   <|> flg CaseHoisting "ch" "Case Hoisting"
   <|> flg LateInlining "li" "Late Inlining"
   <|> flg MangleNames "mn" "Mangle Names"
+  <|> flg NonSharedElimination "nse" "Non Shared Elimination"
 
 pipelineOpts :: Parser PipelineStep
 pipelineOpts =
@@ -113,14 +115,14 @@ options = execParser $ info
             [ short 'o'
             , long "output-dir"
             , help "Output directory for generated files"
-            , value "./output"
+            , value "./.output"
             ])
 
 main :: IO ()
 main = do
   Options files steps outputDir <- options
   forM_ files $ \fname -> do
-    content <- readFile fname
+    content <- Text.readFile fname
     let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
         opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
     case steps of

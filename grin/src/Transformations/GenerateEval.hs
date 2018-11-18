@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.GenerateEval where
 
 import Text.Printf
@@ -21,12 +21,11 @@ eval defs = Def "eval" ["p"] $
     defaultAlt                = Alt DefaultPat (SReturn $ Var "v")
     funAlt (Def name args _) = Alt (NodePat (Tag F name) argNames) $
                                       EBind (SApp name $ map Var argNames) (Var whnf) $
-                                      -- NOTE: use call by name evaluation temporarly ; optimisations works better with this
-                                      --EBind (SUpdate "p" $ Var whnf) Unit $
+                                      EBind (SUpdate "p" $ Var whnf) Unit $
                                       SReturn $ Var whnf
                                     where
-                                      whnf      = printf "%s.whnf" name
-                                      argNames  = map (printf "%s.%d" name) [1..length args]
+                                      whnf      = name <> ".whnf"
+                                      argNames  = map (\i -> name <> "." <> showTS i) [1..length args]
     f (Def name _ _) = name `notElem` ["int_print", "grinMain"] -- TODO: proper filtering
 
 apply :: [Def] -> Def
@@ -40,6 +39,6 @@ apply defs = Def "apply" ["f", "x"] $
       | otherwise = Alt (NodePat (Tag (P missingCount) name) argNames) $
                           SReturn $ ConstTagNode (Tag (P $ pred missingCount) name) $ map Var argNames ++ [Var "x"]
       where
-        argNames      = map (printf "%s%d.%d" name missingCount) [1..i]
+        argNames      = map (\i -> name <> showTS missingCount <> "." <> showTS i) [1..i]
         n             = length args
         missingCount  = length args - i

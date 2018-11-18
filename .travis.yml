@@ -6,6 +6,7 @@ env:
   global:
     - GCC=gcc-5
     - GXX=g++-5
+    - LLVM_VER=7.0.0
 
 cache:
   directories:
@@ -17,9 +18,9 @@ addons:
       - gcc-5
       - g++-5
       - libgmp-dev
-      - llvm-5.0-dev
+      - llvm-7-dev
     sources:
-      - llvm-toolchain-trusty-5.0
+      - llvm-toolchain-trusty-7
       - ubuntu-toolchain-r-test
 
 before_install:
@@ -32,14 +33,11 @@ before_install:
 install:
   - stack update
   - travis_wait 120 stack --no-terminal --install-ghc test --only-dependencies
-  - stack build --coverage
-  - stack install
 
 script:
   - mkdir output
-  - stack exec grin -- grin/grin/sum_simple.grin
-  - stack exec idris -- frontend-test/idris/Hello.idr -i frontend-test/idris --codegen grin -o hello.grin
   - stack --no-terminal test --coverage
+  - stack exec grin -- grin/grin/sum_simple.grin
 
 after_script:
   - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj

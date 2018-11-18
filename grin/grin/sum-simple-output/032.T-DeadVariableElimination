@@ -1,0 +1,13 @@
+grinMain =
+  unboxed.CInt.0 <- sum.unboxed 1 10000
+  _prim_int_print unboxed.CInt.0
+
+sum.unboxed l1 l2 =
+  b'.0 <- _prim_int_gt l1 l2
+  case b'.0 of
+    #True ->
+      pure 0
+    #False ->
+      m1'.0 <- _prim_int_add l1 1
+      unboxed.CInt.1.0 <- sum.unboxed m1'.0 l2
+      _prim_int_add l1 unboxed.CInt.1.0

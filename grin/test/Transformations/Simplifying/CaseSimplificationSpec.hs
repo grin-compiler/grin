@@ -107,7 +107,9 @@ checkVarTagCases = \case
     checkAlt (Alt cpat exp) = checkVarTagCases exp <> property (isBasicCPat cpat)
 
 
+instance Semigroup Property where
+  p <> q = p .&&. q
+
 instance Monoid Property where
   mempty      = property True
-  mappend p q = p .&&. q
   mconcat ps  = conjoin ps

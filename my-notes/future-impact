@@ -1,0 +1,46 @@
+mvp grin:
+  - compiled abstract interpretation
+  - recursion scheme
+  - LLVM
+
+phd grin (Haskell):
+  - GHC frontend
+  - optimisations
+  - tracing GC
+
+final grin (Haskell):
+  - llvm types in GHC (i.e. SIMD vector)
+  - memory layout control in GHC
+  - ASAP compile time memory management (no GC)
+  - fast compilation (via parallel transformations and abstract compilation)
+  - memory debugger
+
+after final:
+  - agda frontend
+  - idris frontend
+  - chunky recursive data transformations (for cache efficiency) (https://en.wikipedia.org/wiki/CDR_coding) (DPH Vectorisation + NESL / SPMD)
+  - spmd compilation (kmett @ zurihac 2017)
+  - fast jit + parallel optimisation / recompilation + runtime data migration
+
+possible impact:
+  - applications in performance critical domains: games, graphics, scientific calcualtions
+  - better score in benchmark game
+  - performance: haskell quake =?= c quake
+
+The combination of GRIN, LLVM and ASAP memory management can prove that
+  high performance computing is feasible in a high level language like Haskell.
+
+grin requires additional 3 months:
+  - ghc integration
+  - llvm hpt / improve hpt framework
+  - asap memory management
+  - agda frontend
+  - idris frontend
+
+marc 26 - monday
+
+simulacron:
+  marc  - state sync prototype
+  april - ddl, clasterisation
+  may   - ???
+

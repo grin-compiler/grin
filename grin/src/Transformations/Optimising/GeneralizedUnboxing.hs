@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, OverloadedStrings #-}
 module Transformations.Optimising.GeneralizedUnboxing where
 
 import Text.Printf
@@ -111,7 +111,7 @@ updateTypeEnv funs te = te & function %~ unboxFun
     unboxFun = Map.fromList . map changeFun . Map.toList
     changeFun (n, ts@(ret, params)) =
       if Set.member n funs
-        then (,) (n ++ ".unboxed")
+        then (,) (n <> ".unboxed")
           $ maybe ts ((\t -> (t, params)) . T_SimpleType) $
               ret ^? _T_NodeSet
                   . to Map.elems
@@ -150,7 +150,7 @@ transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) wh
       | canUnbox simpleExp
       , Just (tag, typ) <- mTagType
       -> do
-        freshName <- lift . deriveNewName $ printf "unboxed.%s" (show $ PP tag)
+        freshName <- lift . deriveNewName $ "unboxed." <> (showTS $ PP tag)
         tell [(freshName, typ)]
         pure . SBlockF . Left $ EBind simpleExp (ConstTagNode tag [Var freshName]) (SReturn $ Var freshName)
 
@@ -159,6 +159,7 @@ transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) wh
   -- NOTE: SApp is handled by transformCalls
   canUnbox :: SimpleExp -> Bool
   canUnbox = \case
+    SApp n ps -> n `Set.notMember` toUnbox
     SReturn{} -> True
     SFetchI{} -> True
     _         -> False
@@ -170,7 +171,7 @@ transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM (True, N
   builderM (isRightExp, mDefName, e) = case e of
 
     Def name params body
-      -> pure $ DefF (if Set.member name toUnbox then name ++ ".unboxed" else name) params (True, Just name, body)
+      -> pure $ DefF (if Set.member name toUnbox then name <> ".unboxed" else name) params (True, Just name, body)
 
     -- track the control flow
     EBind lhs pat rhs -> pure $ EBindF (False, mDefName, lhs) pat (isRightExp, mDefName, rhs)
@@ -178,7 +179,7 @@ transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM (True, N
     SApp name params
       | Set.member name toUnbox
       , Just defName <- mDefName
-      , unboxedName <- name ++ ".unboxed"
+      , unboxedName <- name <> ".unboxed"
       , Just (tag, fstType) <- returnsAUniqueTag typeEnv name
       -> if Set.member defName toUnbox && isRightExp
 
@@ -187,7 +188,7 @@ transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM (True, N
 
           -- from outside to candidate
           else do
-            freshName <- lift . deriveNewName $ printf "unboxed.%s" (show $ PP tag)
+            freshName <- lift . deriveNewName $ "unboxed." <> (showTS $ PP tag)
             tell [(freshName, fstType)]
             pure . SBlockF . (isRightExp, mDefName,) $
               EBind (SApp unboxedName params) (Var freshName) (SReturn $ ConstTagNode tag [Var freshName])

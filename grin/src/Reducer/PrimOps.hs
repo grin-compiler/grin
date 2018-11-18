@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Reducer.PrimOps (evalPrimOp) where
 
 import Reducer.Base
@@ -10,7 +12,8 @@ import Control.Monad.IO.Class
 primIntPrint [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
 primIntPrint x = error $ "primIntPrint - invalid arguments: " ++ show x
 
-evalPrimOp name args = case name of
+evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal] -> m RTVal
+evalPrimOp name _ args = case name of
   "_prim_int_print" -> primIntPrint args
   -- Int
   "_prim_int_add"   -> int_bin_op int (+)
@@ -49,7 +52,7 @@ evalPrimOp name args = case name of
   "_prim_bool_eq"   -> bool_bin_op bool (==)
   "_prim_bool_ne"   -> bool_bin_op bool (/=)
 
-  _ -> error $ "unknown primitive operation: " ++ name
+  _ -> error $ "unknown primitive operation: " ++ unpackName name
  where
   int   x = pure . RT_Lit . LInt64 $ x
   word  x = pure . RT_Lit . LWord64 $ x
@@ -58,16 +61,16 @@ evalPrimOp name args = case name of
 
   int_bin_op retTy fn = case args of
     [RT_Lit (LInt64 a), RT_Lit (LInt64 b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
 
   word_bin_op retTy fn = case args of
     [RT_Lit (LWord64 a), RT_Lit (LWord64 b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
 
   float_bin_op retTy fn = case args of
     [RT_Lit (LFloat a), RT_Lit (LFloat b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name
 
   bool_bin_op retTy fn = case args of
     [RT_Lit (LBool a), RT_Lit (LBool b)] -> retTy $ fn a b
-    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ name
+    _ -> error $ "invalid arguments: " ++ show args ++ " for " ++ unpackName name

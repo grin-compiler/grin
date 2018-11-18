@@ -1,10 +1,11 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Grin.SyntaxDefs where
 
+import Data.Text.Short (ShortText)
 import Control.DeepSeq
 import GHC.Generics (Generic)
 
-type Name = String
+type Name = ShortText
 
 -- * GRIN Tag
 

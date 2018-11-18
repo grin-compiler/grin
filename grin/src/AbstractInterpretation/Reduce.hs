@@ -1,5 +1,14 @@
+<<<<<<< HEAD
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, ViewPatterns #-}
 module AbstractInterpretation.Reduce where
+=======
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
+module AbstractInterpretation.Reduce
+  ( HPTInfo(..)
+  , evalHPT
+  , toHPTResult
+  ) where
+>>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
 import Data.Int
 import Data.Set (Set)
@@ -16,6 +25,8 @@ import Lens.Micro.Platform
 
 import AbstractInterpretation.IR
 import AbstractInterpretation.CodeGen
+
+import Debug.Trace
 
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
 
@@ -37,13 +48,11 @@ concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer]
 
 type AbstractComputation = State Computer
 
-instance Monoid NodeSet where
-  mempty  = NodeSet mempty
-  mappend = unionNodeSet
+instance Semigroup  NodeSet where (<>)    = unionNodeSet
+instance Monoid     NodeSet where mempty  = NodeSet mempty
 
-instance Monoid Value where
-  mempty  = Value mempty mempty
-  mappend = unionValue
+instance Semigroup  Value where (<>)    = unionValue
+instance Monoid     Value where mempty  = Value mempty mempty
 
 unionNodeSet :: NodeSet -> NodeSet -> NodeSet
 unionNodeSet (NodeSet x) (NodeSet y) = NodeSet $ Map.unionWith unionNodeData x y where
@@ -186,6 +195,15 @@ evalInstruction = \case
       value <- use $ selectTagMap srcReg.at tag.non mempty.ix itemIndex
       selectReg dstReg.simpleType %= (mappend value)
 
+    Locations -> do
+      typeSet <- use $ register . ix (regIndex srcReg) . simpleType
+      let locSet = Set.filter (>= 0) typeSet
+      register . ix (regIndex dstReg) .= mempty { _simpleType = locSet }
+
+    NodeLocations -> do
+      nodes <- use $ register . ix (regIndex srcReg) . nodeSet . nodeTagMap . to Map.elems
+      register . ix (regIndex dstReg) .= mempty { _simpleType = Set.fromList (concatMap (concatMap (Set.toList . Set.filter (>=0)) . V.toList) nodes) }
+
     ConditionAsSelector cond -> case cond of
       NodeTypeExists tag -> do
         tagMap <- use $ selectTagMap srcReg
@@ -204,6 +222,7 @@ evalInstruction = \case
         typeSet <- use $ selectReg srcReg.simpleType
         let filteredTagMap = Data.Foldable.foldr Map.delete tagMap tags
         when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
+<<<<<<< HEAD
           selectReg dstReg.nodeSet %= (mappend $ NodeSet filteredTagMap)
           selectReg dstReg.simpleType %= (mappend typeSet)
 
@@ -237,6 +256,20 @@ evalInstruction = \case
   ConditionalMove {..} -> do
     srcVal <- use $ selectReg srcReg
     selectReg dstReg %= (conditionalMoveValue srcVal predicate)
+=======
+          register.ix (regIndex dstReg).nodeSet %= (mappend $ NodeSet filteredTagMap)
+          register.ix (regIndex dstReg).simpleType %= (mappend typeSet)
+
+  Extend {..} -> do
+    -- TODO: support all selectors, except Locations and NodeLocations, which are specific for sharing.
+    value <- use $ register.ix (regIndex srcReg).simpleType
+    let NodeItem tag itemIndex = dstSelector
+    register.ix (regIndex dstReg).nodeSet.nodeTagMap.at tag.non mempty.ix itemIndex %= (mappend value)
+
+  Move {..} -> do
+    value <- use $ register.ix (regIndex srcReg)
+    register.ix (regIndex dstReg) %= (mappend value)
+>>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
   Fetch {..} -> do
     addressSet <- use $ register.ix (regIndex addressReg).simpleType
@@ -277,6 +310,7 @@ evalInstruction = \case
     CNodeItem tag idx val -> selectReg dstReg.nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
+<<<<<<< HEAD
 evalDataFlowInfoWith :: HasDataFlowInfo s => Computer -> s -> Computer
 evalDataFlowInfoWith comp (getDataFlowInfo -> AbstractProgram{..}) = run comp where
   run computer = if computer == nextComputer then computer else run nextComputer
@@ -285,6 +319,30 @@ evalDataFlowInfoWith comp (getDataFlowInfo -> AbstractProgram{..}) = run comp wh
 evalDataFlowInfo :: HasDataFlowInfo s => s -> Computer
 evalDataFlowInfo dfi@(getDataFlowInfo -> AbstractProgram{..}) =
   evalDataFlowInfoWith emptyComputer dfi
+=======
+data HPTInfo = HPTInfo { hptIterations :: !Int }
+
+evalHPT :: HPTProgram -> (Computer, HPTInfo)
+evalHPT HPTProgram{..} = run emptyComputer startHPTInfo where
+  startHPTInfo = HPTInfo 0
+  emptyComputer = Computer
+    { _memory   = V.replicate (fromIntegral hptMemoryCounter) mempty
+    , _register = V.replicate (fromIntegral hptRegisterCounter) mempty
+    }
+
+  run computer info1 = if computer == nextComputer
+      then (computer, info1)
+      else run nextComputer (HPTInfo (hptIterations info1 + 1))
+    where nextComputer = execState (mapM_ evalInstruction hptInstructions) computer
+
+toHPTResult :: HPTProgram -> Computer -> R.HPTResult
+toHPTResult HPTProgram{..} Computer{..} = R.HPTResult
+  { R._memory   = V.map convertNodeSet _memory
+  , R._register = Map.map convertReg hptRegisterMap
+  , R._function = Map.map convertFunctionRegs hptFunctionArgMap
+  , R._sharing  = maybe mempty (Set.map (\(R.T_Location l) -> l) . R._simpleType . convertReg) hptSharingReg
+  }
+>>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
   where
     emptyComputer = Computer
       { _memory   = V.replicate (fromIntegral absMemoryCounter) mempty

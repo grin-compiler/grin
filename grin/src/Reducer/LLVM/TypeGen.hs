@@ -140,7 +140,7 @@ codeGenExtractTag tuVal = do
     , metadata  = []
     }
 
-codeGenBitCast :: String -> Operand -> LLVM.Type -> CG Operand
+codeGenBitCast :: Grin.Name -> Operand -> LLVM.Type -> CG Operand
 codeGenBitCast name value dstType = do
   codeGenLocalVar name dstType $ AST.BitCast
     { operand0  = value
@@ -182,7 +182,7 @@ getVarType :: Grin.Name -> CG CGType
 getVarType name = do
   TypeEnv{..} <- gets _envTypeEnv
   case Map.lookup name _variable of
-    Nothing -> error ("unknown variable " ++ name)
+    Nothing -> error ("unknown variable " ++ unpackName name)
     Just ty -> pure $ toCGType ty
 
 getFunctionType :: Grin.Name -> CG (CGType, [CGType])

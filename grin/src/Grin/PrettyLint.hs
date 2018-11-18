@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
 module Grin.PrettyLint (prettyLintExp) where
 
+import Prelude hiding ((<$>))
 import qualified Control.Comonad.Trans.Cofree as CCTC
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -25,23 +26,26 @@ prettyLintExp (exp, errorMap) = cata folder exp where
   addError expId d =
     maybe
       d
-      ((d <>) . red . (string " <- "<>) . align . vsep . map string )
+      (\errors ->
+        if (any before errors)
+          then (<$> d) . red . align . vsep . map (string . ("-- LINT: " <>) . message) $ errors
+          else (d <>) . red . (string " -- LINT: "<>) . align . vsep . map (string . message) $ errors)
       (Map.lookup expId errorMap)
 
   prettyExpAlgebra = \case
       ProgramF defs       -> vcat (map pretty defs)
-      DefF name args exp  -> hsep (text name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
+      DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
       -- Exp
       EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
       ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
-      SAppF name args         -> hsep (((if isPrimName name then dullyellow else cyan) $ text name) : map pretty args)
+      SAppF name args         -> hsep (((if isPrimName name then dullyellow else cyan) $ pretty name) : map pretty args)
       SReturnF val            -> keyword "pure" <+> pretty val
       SStoreF val             -> keywordR "store" <+> pretty val
-      SFetchIF name Nothing   -> keywordR "fetch" <+> text name
-      SFetchIF name (Just i)  -> keywordR "fetch" <+> text name <> brackets (int i)
-      SUpdateF name val       -> keywordR "update" <+> text name <+> pretty val
+      SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
+      SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
+      SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
       SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
       AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
