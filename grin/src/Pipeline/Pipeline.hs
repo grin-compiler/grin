@@ -57,9 +57,9 @@ import Data.Map as Map
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
 
-import Control.Monad.State as MonadState (get, put)
+import Control.Monad.State.Class as MonadState (get, put, gets)
 import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State.Strict
+import Control.Monad.Trans.State.Strict hiding (gets)
 import Control.Monad.IO.Class
 import Lens.Micro.TH
 import Lens.Micro.Mtl
@@ -274,14 +274,10 @@ pipelineStep p = do
   case p of
     Optimize -> do 
       let opts = defaultOpts { _poFailOnLint = True }
-          prePipeline = [ HPT CompileToAbstractProgram
-                        , HPT RunAbstractProgramPure
-                        , T UnitPropagation
-                        , Eff CalcEffectMap
-                        ]
+          prePipeline = defaultOnChange
       grin <- use psExp
       mapM_ pipelineStep prePipeline
-      optimizeWithPM opts grin (fmap T defaultOptimizations)
+      optimizeWithPM opts grin (fmap T defaultOptimizations) defaultOnChange defaultCleanUp
     HPT step -> case step of
       CompileToAbstractProgram -> compileHPT
       PrintAbstractProgram     -> printHPTCode
@@ -477,71 +473,98 @@ printTypeEnv = do
   Just typeEnv <- use psTypeEnv
   pipelineLog . show . pretty $ typeEnv
 
+withPState :: (PState -> Maybe a) -> String -> (a -> PipelineM ()) -> PipelineM ()
+withPState selector err action = do 
+  substateM <- gets selector
+  maybe (pipelineLog err) action substateM 
+
+notAvailableMsg :: String -> String 
+notAvailableMsg str = str ++ " in not available, skipping next step"  
+
+withTypeEnv :: (TypeEnv -> PipelineM ()) -> PipelineM ()
+withTypeEnv = withPState _psTypeEnv $ notAvailableMsg "Type environment"
+
+withCByResult :: (CBy.CByResult -> PipelineM ()) -> PipelineM ()
+withCByResult = withPState _psCByResult $ notAvailableMsg "Created-by analysis result"
+
+withLVAResult :: (LVA.LVAResult -> PipelineM ()) -> PipelineM ()
+withLVAResult = withPState _psLVAResult $ notAvailableMsg "Live variable analysis result"
+  
+withTyEnvCByLVA :: 
+  (TypeEnv -> CBy.CByResult -> LVA.LVAResult -> PipelineM ()) -> 
+  PipelineM ()
+withTyEnvCByLVA f = 
+  withTypeEnv $ \te -> 
+    withCByResult $ \cby -> 
+      withLVAResult $ \lva -> 
+        f te cby lva
+
+withTyEnvLVA :: 
+  (TypeEnv -> LVA.LVAResult -> PipelineM ()) -> 
+  PipelineM ()
+withTyEnvLVA f = 
+  withTypeEnv $ \te -> 
+    withLVAResult $ \lva -> 
+      f te lva
+
 transformationM :: Transformation -> PipelineM ()
 transformationM DeadCodeElimination = do 
-  Just cbyResult <- use psCByResult
-  Just lvaResult <- use psLVAResult
-  Just typeEnv   <- use psTypeEnv
+  withTyEnvCByLVA $ \typeEnv cbyResult lvaResult -> do
 
-  e <- use psExp
-  case deadFunctionElimination lvaResult typeEnv e of
-    Right e' -> psExp .= e' >> psTransStep %= (+1)
-    Left  err  -> psErrors %= (err:)
+    e <- use psExp
+    case deadFunctionElimination lvaResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
+    
+    e  <- use psExp
+    case deadDataElimination lvaResult cbyResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
 
-  e <- use psExp
-  case deadVariableElimination lvaResult typeEnv e of
-    Right e' -> psExp .= e' >> psTransStep %= (+1)
-    Left  err  -> psErrors %= (err:)
-  
-  e  <- use psExp
-  case deadDataElimination lvaResult cbyResult typeEnv e of
-    Right e'  -> psExp .= e' >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
+    e <- use psExp
+    case deadVariableElimination lvaResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
 
-  e <- use psExp
-  case deadParameterElimination lvaResult typeEnv e of
-    Right e' -> psExp .= e' >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
+    e <- use psExp
+    case deadParameterElimination lvaResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
 
 transformationM DeadFunctionElimination = do
   e  <- use psExp
-  Just lvaResult <- use psLVAResult
-  Just typeEnv   <- use psTypeEnv
-  case deadFunctionElimination lvaResult typeEnv e of
-    Right e'  -> psExp .= e' >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
+  withTyEnvLVA $ \typeEnv lvaResult -> do
+    case deadFunctionElimination lvaResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
 
 transformationM DeadVariableElimination = do
   e  <- use psExp
-  Just lvaResult <- use psLVAResult
-  Just typeEnv   <- use psTypeEnv
-  case deadVariableElimination lvaResult typeEnv e of
-    Right e'  -> psExp .= e' >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
+  withTyEnvLVA $ \typeEnv lvaResult -> do
+    case deadVariableElimination lvaResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
 
 transformationM DeadParameterElimination = do
   e  <- use psExp
-  Just lvaResult <- use psLVAResult
-  Just typeEnv   <- use psTypeEnv
-  case deadParameterElimination lvaResult typeEnv e of
-    Right e'  -> psExp .= e' >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
+  withTyEnvLVA $ \typeEnv lvaResult -> do
+    case deadParameterElimination lvaResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
 
 transformationM DeadDataElimination = do
   e  <- use psExp
-  Just cbyResult <- use psCByResult
-  Just lvaResult <- use psLVAResult
-  Just typeEnv   <- use psTypeEnv
-  case deadDataElimination lvaResult cbyResult typeEnv e of
-    Right e'  -> psExp .= e' >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
+  withTyEnvCByLVA $ \typeEnv cbyResult lvaResult -> do
+    case deadDataElimination lvaResult cbyResult typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
 
 transformationM SparseCaseOptimisation = do 
   e  <- use psExp
-  Just typeEnv   <- use psTypeEnv
-  case sparseCaseOptimisation typeEnv e of
-    Right e'  -> psExp .= e' >> psTransStep %= (+1)
-    Left  err -> psErrors %= (err:)
+  withTypeEnv $ \typeEnv ->
+    case sparseCaseOptimisation typeEnv e of
+      Right e'  -> psExp .= e' >> psTransStep %= (+1)
+      Left  err -> psErrors %= (err:)
   
 transformationM t = do
   --preconditionCheck t
@@ -650,22 +673,24 @@ lintGrin mPhaseName = do
 -- and returns the list of transformation that helped to reach the fixpoint.
 randomPipeline :: PipelineM [Transformation]
 randomPipeline = do
-  runAnalyses
+  runBasicAnalyses
   go transformationWhitelist []
   where
     go :: [Transformation] -> [Transformation] -> PipelineM [Transformation]
     go [] result = pure $ reverse result
     go available res = do
       t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
-      when (needsNameIntro t) $ do 
+      when (needsCByLVA t) $ do 
         runNameIntro
-        runAnalyses
+        runCByLVA
       eff <- pipelineStep (T t)
+      when (needsCleanup t) $ do 
+        runCleanup
       case eff of
         None -> go (available Data.List.\\ [t]) res
         ExpChanged -> do
           lintGrin . Just $ show t
-          runAnalyses
+          runBasicAnalyses
           go transformationWhitelist (t:res)
 
     transformationWhitelist :: [Transformation]
@@ -677,13 +702,9 @@ randomPipeline = do
         , TrivialCaseElimination
         , SparseCaseOptimisation
         , UpdateElimination
-        , CopyPropagation
         , ConstantPropagation
-        -- , DeadDataElimination
-        -- , DeadParameterElimination
         , DeadCodeElimination
         , SimpleDeadFunctionElimination
-        , SimpleDeadVariableElimination
         , SimpleDeadParameterElimination
         , CommonSubExpressionElimination
         , CaseCopyPropagation
@@ -693,8 +714,15 @@ randomPipeline = do
         , LateInlining
         ]
 
-    runAnalyses :: PipelineM ()
-    runAnalyses = mapM_ pipelineStep
+    runBasicAnalyses :: PipelineM ()
+    runBasicAnalyses = mapM_ pipelineStep
+      [ HPT CompileToAbstractProgram
+      , HPT RunAbstractProgramPure
+      , Eff CalcEffectMap
+      ]
+
+    runCByLVA :: PipelineM ()
+    runCByLVA = mapM_ pipelineStep
       [ CBy CompileToAbstractProgram
       , CBy RunAbstractProgramPure
       , LVA CompileToAbstractProgram
@@ -708,10 +736,19 @@ randomPipeline = do
       , T BindNormalisation 
       ]
 
-    needsNameIntro :: Transformation -> Bool
-    needsNameIntro DeadCodeElimination = True 
-    needsNameIntro DeadDataElimination = True 
-    needsNameIntro _ = False 
+    -- cleanup after producer name intro
+    runCleanup :: PipelineM () 
+    runCleanup = void . pipelineStep $ Pass 
+      [ T CopyPropagation 
+      , T SimpleDeadVariableElimination
+      ]
+
+    needsCByLVA :: Transformation -> Bool
+    needsCByLVA DeadCodeElimination = True 
+    needsCByLVA _ = False 
+
+    needsCleanup :: Transformation -> Bool 
+    needsCleanup = needsCByLVA
 
 confluenceTest :: PipelineM ()
 confluenceTest = do
@@ -764,35 +801,43 @@ pipeline o s e ps = do
 
 -- | Run the pipeline with the given set of transformations, till
 -- it reaches a fixpoint where none of the pipeline transformations
--- changes the expression itself, the order of the transformations
--- are defined in the pipeline list. After all round the TypeEnv
--- is restored
-optimizeWithPM :: PipelineOpts -> Exp -> [PipelineStep] -> PipelineM ()
-optimizeWithPM o e ps = loop where
-  loop = do
-    -- Run every step and on changes run HPT
+-- change the expression itself, the order of the transformations
+-- are defined in the pipeline list. When the expression changes,
+-- it lints the resulting code, and performs a given sequence of 
+-- pipeline steps on it. Finally, it performs a cleanup sequence
+-- after each step.
+optimizeWithPM :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()
+optimizeWithPM o e ps onChange cleanUp = loop e where
+  loop :: Exp -> PipelineM ()
+  loop e = do
+    -- Run every step and on changes run `onChange`
     effs <- forM ps $ \p -> do
       eff <- pipelineStep p
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
         lintGrin . Just $ show p
-        pipelineStep $ Eff CalcEffectMap
+        mapM pipelineStep cleanUp
+        mapM pipelineStep onChange
       pure eff
     -- Run loop again on change
-    when (any (match _ExpChanged) effs)
-      loop
+    pipelineStep $ PrintGrin id
+    e' <- use psExp
+    if mangleNames e == mangleNames e'
+      then void $ mapM pipelineStep cleanUp
+      else loop e'
 
 defaultOptimizations :: [Transformation]
 defaultOptimizations =
-  [ BindNormalisation
-  , EvaluatedCaseElimination
+  [ EvaluatedCaseElimination
   , TrivialCaseElimination
   , SparseCaseOptimisation
   , UpdateElimination
   , CopyPropagation
   , ConstantPropagation
   , SimpleDeadFunctionElimination
+  , SimpleDeadParameterElimination
   , SimpleDeadVariableElimination
+  , DeadCodeElimination
   , CommonSubExpressionElimination
   , CaseCopyPropagation
   , CaseHoisting
@@ -803,20 +848,36 @@ defaultOptimizations =
   , LateInlining
   ]
 
+defaultOnChange :: [PipelineStep]
+defaultOnChange = 
+  [ PrintGrin id
+  , T ProducerNameIntroduction
+  , T BindNormalisation
+  , CBy CompileToAbstractProgram
+  , CBy RunAbstractProgramPure
+  , LVA CompileToAbstractProgram
+  , LVA RunAbstractProgramPure
+  , T UnitPropagation
+  , Eff CalcEffectMap
+  , PrintGrin id
+  ]
+
+-- Copy propagation, SDVE and bind normalisitaion 
+-- together can clean up all unnecessary artifacts 
+-- of producer name introduction. 
+defaultCleanUp :: [PipelineStep]
+defaultCleanUp = 
+  [ T CopyPropagation
+  , T SimpleDeadVariableElimination
+  ]
+
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
-optimize o e pre post = optimizeWith o e pre defaultOptimizations post where
+optimize o e pre post = optimizeWith o e pre defaultOptimizations defaultOnChange defaultCleanUp post where
 
-optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> IO Exp
-optimizeWith o e pre optimizations post = fmap snd $ runPipeline o Nothing e $ do
+optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> IO Exp
+optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipeline o Nothing e $ do
   lintGrin $ Just "init"
-
   mapM_ pipelineStep pre
-
-  mapM_ pipelineStep
-    [ HPT CompileToAbstractProgram
-    , HPT RunAbstractProgramPure
-    , T UnitPropagation
-    , Eff CalcEffectMap
-    ]
-  optimizeWithPM o e $ fmap T optimizations
+  mapM_ pipelineStep onChange
+  optimizeWithPM o e (fmap T optimizations) onChange cleanUp
   mapM_ pipelineStep post

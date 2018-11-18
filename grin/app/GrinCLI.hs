@@ -79,9 +79,9 @@ pipelineOpts =
   <|> flg PrintTypeAnnots "print-type-annots" "Prints the type env calculated from the annotations in the source"
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
-  <|> flg' (Pass [CBy CompileToAbstractProgram, CBy RunAbstractProgramPure]) 't' "cby" "Compiles and runs the created-by analysis"
-  <|> flg' (Pass [LVA CompileToAbstractProgram, LVA RunAbstractProgramPure]) 't' "lva" "Compiles and runs the live variable analysis"
-  <|> flg' (Pass [LVA CompileToAbstractProgram, CBy CompileToAbstractProgram, RunCByWithLVA]) 't' "cby-with-lva" "Compiles the live variable and created-by analyses, then runs the created-by analysis using the LVA result"
+  <|> flg' (Pass [CBy CompileToAbstractProgram, CBy RunAbstractProgramPure]) 'c' "cby" "Compiles and runs the created-by analysis"
+  <|> flg' (Pass [LVA CompileToAbstractProgram, LVA RunAbstractProgramPure]) 'l' "lva" "Compiles and runs the live variable analysis"
+  <|> flg  (Pass [LVA CompileToAbstractProgram, CBy CompileToAbstractProgram, RunCByWithLVA]) "cby-with-lva" "Compiles the live variable and created-by analyses, then runs the created-by analysis using the LVA result"
   <|> flg PureEval "eval" "Evaluate the grin program (pure)"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
@@ -128,16 +128,7 @@ main = do
       _  -> void $ pipeline opts (Just content) program steps
 
 prePipeline :: [PipelineStep]
-prePipeline =
-  [ HPT CompileToAbstractProgram
---  , HPT PrintAbstractProgram
---  , PrintGrin ondullblack
-  , HPT RunAbstractProgramPure
---  , HPT PrintAbstractResult
-  , T UnitPropagation
---  , PrintGrin ondullblack
---  , SaveLLVM "high-level-code"
-  ]
+prePipeline = defaultOnChange
 
 postPipeline :: [PipelineStep]
 postPipeline =

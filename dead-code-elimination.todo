@@ -50,18 +50,30 @@ Unspecified location:
 Producer name introduction:
   - applying PNI multiple times can result in a lot of redundant code
   - we can eliminate this redundancy by applying Copy Progagation & Simple Dead Variable Elimination
+  - but, we hae to exclude these two transformation from the optimizing pipeline
+  - and run them manually each time a transformation changes the AST
+
+Avoid looping optimization:
+  - use taboo sets of previous ASTs
+  - let e' be the resulting AST after running all possible optimizations
+  - if e' is a member of the taboo set, then stop
+  - we shouls store hashes instead of entire ASTs
+  - we could choose an "optimal" AST from the loop
 
 TODO:
   HIGH:
+    - in LVA, propagate liveness for tags as well
     - make sure that all transformations handles #undefineds and unspecified locations correctly
     - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
-    - make sure, that all dead code elimination transfromations handle effectful functions correctly
     - apply inlining should also inline ap
     - implement type safe undefined node generation for tests (Test.Test) 
   
   LOW:
-    - remove -t flag from analyses other than HPT (GrinCLI)
-    - add copy propagation after DCE in pipeline
+    - refactor randomPipeline so that it works similarly to optimizeWithPM
+      - try to reuse as much code as possible
+    - optimize pipeline, so that only the necessary analyses run before each transformation
+    - refactor out utility code pieces from Pipeline.hs
+    - improve parse error message for "satisfyM" style parsing failures
     - implement type env transformation for DDE
     - linter should check whether calculated types match with annotations
     - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
@@ -81,6 +93,10 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✔ add copy propagation after DCE in pipeline @done(18-11-18 01:52) @project(TODO.LOW)
+  ✔ remove -t flag from analyses other than HPT (GrinCLI) @done(18-11-18 01:52) @project(TODO.LOW)
+  ✔ make sure, that all dead code elimination transfromations handle effectful functions correctly @done(18-11-17 19:45) @project(TODO.HIGH)
+  ✔ investigate mangle names issue @done(18-11-17 19:44) @project(TODO.HIGH)
   ✔ improve SCO so that it handles all type of scrutinees @done(18-11-04 22:41) @project(TODO.HIGH)
   ✔ add HPT tests to CBy tests @done(18-11-04 19:46) @project(TODO.LOW)
   ✔ genProgWith (in Test.Test) -> readd dead parameter elimination @done(18-10-30 22:23) @project(TODO.LOW)

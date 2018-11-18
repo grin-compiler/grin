@@ -449,6 +449,8 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
 codeGenTagSwitch tagVal nodeSet tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
   uncurry O <$> tagAltGen tag items
 
+codeGenTagSwitch tagVal nodeSet tagAltGen = error $ "LLVM codegen: empty node set for " ++ show tagVal
+
 -- heap pointer related functions
 
 codeGenIncreaseHeapPointer :: String -> CG Operand -- TODO

@@ -76,6 +76,8 @@ codegenGrin CodegenInfo{..} = do
     (program simpleDecls)
     preparation
     idrisOptimizations
+    defaultOnChange
+    defaultCleanUp
     (postProcessing outputFile)
   generateRuntime
   callCommand $ printf "llc-5.0 -O3 -relocation-model=pic -filetype=obj %s.ll" outputFile
