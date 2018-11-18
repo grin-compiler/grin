@@ -115,5 +115,41 @@ spec = do
       |]
     (pni before) `sameAs` after
 
+  it "pure_undefined" $ do
+    let before = [prog|
+      f =
+        pure (#undefined :: T_Bool)
+      |]
+    let after = [prog|
+      f =
+        v.0 <- pure (#undefined :: T_Bool)
+        pure v.0
+      |]
+    (pni before) `sameAs` after
+
+  it "store_undefined" $ do
+    let before = [prog|
+      f =
+        store (#undefined :: {CNil[]})
+      |]
+    let after = [prog|
+      f =
+        v.0 <- pure (#undefined :: {CNil[]})
+        store v.0
+      |]
+    (pni before) `sameAs` after
+
+  it "update_undefined" $ do
+    let before = [prog|
+      f p =
+        update p (#undefined :: {CNil[]})
+      |]
+    let after = [prog|
+      f p =
+        v.0 <- pure (#undefined :: {CNil[]})
+        update p v.0
+      |]
+    (pni before) `sameAs` after
+
 
   

@@ -30,10 +30,13 @@ producerNameIntroduction e = evalNameM e . cata alg $ e where
   alg e = case e of
     SStoreF    x@VarTagNode{}   -> bindVal SStore x
     SStoreF    x@ConstTagNode{} -> bindVal SStore x
+    SStoreF    x@Undefined{}    -> bindVal SStore x
     SUpdateF p x@VarTagNode{}   -> bindVal (SUpdate p) x
     SUpdateF p x@ConstTagNode{} -> bindVal (SUpdate p) x
+    SUpdateF p x@Undefined{}    -> bindVal (SUpdate p) x
     SReturnF   x@VarTagNode{}   -> bindVal SReturn x
     SReturnF   x@ConstTagNode{} -> bindVal SReturn x
+    SReturnF   x@Undefined{}    -> bindVal SReturn x
     expf -> fmap embed . sequence $ expf
 
   -- binds a Val (usually a node) to a name, then puts it into some context
