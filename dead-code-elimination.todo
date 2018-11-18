@@ -69,8 +69,6 @@ TODO:
     - implement type safe undefined node generation for tests (Test.Test) 
   
   LOW:
-    - refactor randomPipeline so that it works similarly to optimizeWithPM
-      - try to reuse as much code as possible
     - optimize pipeline, so that only the necessary analyses run before each transformation
     - refactor out utility code pieces from Pipeline.hs
     - improve parse error message for "satisfyM" style parsing failures
@@ -93,6 +91,7 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✔ refactor randomPipeline so that it works similarly to optimizeWithPM @done(18-11-18 14:59) @project(TODO.LOW)
   ✔ add copy propagation after DCE in pipeline @done(18-11-18 01:52) @project(TODO.LOW)
   ✔ remove -t flag from analyses other than HPT (GrinCLI) @done(18-11-18 01:52) @project(TODO.LOW)
   ✔ make sure, that all dead code elimination transfromations handle effectful functions correctly @done(18-11-17 19:45) @project(TODO.HIGH)
