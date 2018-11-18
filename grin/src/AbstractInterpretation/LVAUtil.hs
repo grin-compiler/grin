@@ -14,12 +14,18 @@ import qualified Data.Bimap as Bimap
 
 import AbstractInterpretation.LVAResultTypes
 
+isNodeLive :: Node -> Bool 
+isNodeLive = (||) <$> hasLiveTag <*> hasLiveField
+
+hasLiveTag :: Node -> Bool 
+hasLiveTag (Node tagLv fieldsLv) = tagLv
+
 hasLiveField :: Node -> Bool 
-hasLiveField (Node liveness) = or liveness
+hasLiveField (Node tagLv fieldsLv) = or fieldsLv
 
 isLive :: Liveness -> Bool 
 isLive (BasicVal b) = b 
-isLive (NodeSet  m) = any hasLiveField m
+isLive (NodeSet  m) = any isNodeLive m
 
 -- | A function is only dead if its return value is dead
 -- , and all of its parameters are dead as well. The case 

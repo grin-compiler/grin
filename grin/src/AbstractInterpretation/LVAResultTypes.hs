@@ -10,7 +10,10 @@ import Grin.Grin (Name, Tag)
 import AbstractInterpretation.LiveVariable (LVAProgram(..))
 import AbstractInterpretation.IR as IR hiding (Tag, Liveness)
 
-newtype Node = Node { _node :: Vector Bool }
+data Node = Node 
+  { _tag    :: Bool
+  , _fields :: Vector Bool 
+  }
   deriving (Eq, Ord, Show)
 
 data Liveness = BasicVal Bool

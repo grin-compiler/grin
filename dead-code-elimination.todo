@@ -60,9 +60,16 @@ Avoid looping optimization:
   - we shouls store hashes instead of entire ASTs
   - we could choose an "optimal" AST from the loop
 
+Liveness tracking at pattern matching:
+  - currently when we pattern match on a concrete value of a node field we deem the given field LIVE
+  - but they are only LIVE if there is at least one other pattern match on the same field position with a different value 
+  - in the current implemtation, tags are trated differently:
+    - a tag is deemed LIVE iff we pattern matchd on it, and there is at least one LIVE field
+
 TODO:
   HIGH:
-    - in LVA, propagate liveness for tags as well
+    - for DVE, implement proper liveness lookup for bindings
+    - for analyses handle Unit arg in ConstTagNode bindings
     - make sure that all transformations handles #undefineds and unspecified locations correctly
     - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
     - apply inlining should also inline ap
@@ -91,6 +98,7 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✔ in LVA, propagate liveness for tags as well @done(18-11-18 18:01) @project(TODO.HIGH)
   ✔ refactor randomPipeline so that it works similarly to optimizeWithPM @done(18-11-18 14:59) @project(TODO.LOW)
   ✔ add copy propagation after DCE in pipeline @done(18-11-18 01:52) @project(TODO.LOW)
   ✔ remove -t flag from analyses other than HPT (GrinCLI) @done(18-11-18 01:52) @project(TODO.LOW)

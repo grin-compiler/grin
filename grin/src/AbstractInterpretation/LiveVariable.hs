@@ -70,6 +70,26 @@ setBasicValLiveInst r = IR.Set { dstReg = r, constant = IR.CSimpleType live }
 setBasicValLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
 setBasicValLive = emit . setBasicValLiveInst
 
+setTagLive :: IR.Tag -> IR.Reg -> CG LVAProgram ()
+setTagLive tag reg = do 
+  tmp <- newReg 
+  setBasicValLive tmp 
+  emit IR.Extend 
+    { srcReg      = tmp
+    , dstSelector = IR.NodeItem tag 0
+    , dstReg      = reg
+    }
+
+-- A pattern match does not necessarily mean, that the tag is live.
+-- The tag is live iff we pattern matched on it AND there is at least one live field.
+-- At pattern match sites, we merge the field liveness info into the tag liveness info.
+extendTagLiveness :: IR.Tag -> IR.Reg -> IR.Reg -> CG LVAProgram ()
+extendTagLiveness tag srcReg dstReg = do 
+  emit IR.Extend 
+    { srcReg      = srcReg
+    , dstSelector = IR.NodeItem tag 0
+    , dstReg      = dstReg
+    }
 
 -- In order to Extend a node field, or Project into it, we need that field to exist.
 -- This function initializes a node in the register with a given tag and arity.
@@ -126,8 +146,8 @@ codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
     irTag <- getTag tag
-    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals)}
-    forM_ (zip [0..] vals) $ \(idx, val) -> case val of
+    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals + 1)}
+    forM_ (zip [1..] vals) $ \(idx, val) -> case val of
       Var name -> do
         tmp    <- newReg
         valReg <- getReg name
@@ -164,7 +184,7 @@ codeGenVal = \case
     pure r
   Undefined t -> do 
     r <- newReg
-    typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
+    typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenTaggedNodeType) t
     emit $ copyStructureWithPtrInfo typed r
     pure r
   val -> throwLVA $ "unsupported value " ++ show val
@@ -207,13 +227,16 @@ codeGen = fmap reverseProgram
           Var name -> addReg name r
           ConstTagNode tag args -> do
             irTag <- getTag tag
-            bindInstructions <- codeGenBlock_ $ forM (zip [0..] args) $ \(idx, arg) ->
+            bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) ->
               case arg of
                 Var name -> do
                   argReg <- newReg
                   addReg name argReg
                   nodePatternDataFlow argReg r irTag idx
-                Lit {} -> emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
+                  extendTagLiveness irTag argReg r
+                Lit {} -> do 
+                  emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
+                  setTagLive irTag r
                 _ -> throwLVA $ "illegal node pattern component " ++ show arg
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
@@ -299,12 +322,14 @@ codeGen = fmap reverseProgram
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
-            altInstructions <- codeGenAltExists irTag $ \altScrutReg ->
+            altInstructions <- codeGenAltExists irTag $ \altScrutReg -> do
+              setTagLive irTag altScrutReg
               -- bind pattern variables
-              forM_ (zip [0..] vars) $ \(idx, name) -> do
+              forM_ (zip [1..] vars) $ \(idx, name) -> do
                 argReg <- newReg
                 addReg name argReg
                 nodePatternDataFlow argReg altScrutReg irTag idx
+                extendTagLiveness irTag argReg altScrutReg
             emit IR.If
               { condition    = IR.NodeTypeExists irTag
               , srcReg       = valReg

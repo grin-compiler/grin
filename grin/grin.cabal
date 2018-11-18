@@ -271,6 +271,7 @@ test-suite grin-test
                      , LiveVariable.Tests.CaseNested
                      , LiveVariable.Tests.CaseRestricted
                      , LiveVariable.Tests.CaseRestrictedNodes
+                     , LiveVariable.Tests.DeadTags
                      , LiveVariable.Tests.Fields
                      , LiveVariable.Tests.FunctionCall1
                      , LiveVariable.Tests.FunctionCall2

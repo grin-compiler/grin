@@ -17,6 +17,7 @@ import Control.Monad.State
 
 import Grin.Grin
 
+import AbstractInterpretation.LVAUtil
 import AbstractInterpretation.LVAResult
 import AbstractInterpretation.CreatedBy (undefinedProducerName)
 import AbstractInterpretation.CByResultTypes
@@ -90,10 +91,12 @@ collectProducers = mconcat
 
 -- Selects the active producers from a producer set.
 -- A producers is active if at least one of its tags has a live field.
+-- Producers are grouped by tags for each consumer, which means
+-- only producers with active tags will be grouped. As a consequence, 
+-- we do not have to (explicitly) consider tag liveness info here.
 selectActiveProducers :: LVAResult -> Set Name -> Set Name
 selectActiveProducers lvaResult prods = Map.keysSet
-                                      . Map.filter hasActiveTag
-                                      . Map.map nodeLiveness
+                                      . Map.filter isNodeLive'
                                       . producerLiveness
                                       $ lvaResult
   where
@@ -101,12 +104,10 @@ selectActiveProducers lvaResult prods = Map.keysSet
   producerLiveness :: LVAResult -> Map Name Liveness
   producerLiveness = flip Map.restrictKeys prods . _register
 
-  nodeLiveness :: Liveness -> Map Tag (Vector Bool)
-  nodeLiveness (NodeSet m) = Map.map _node m
-  nodeLiveness _ = error "Producers cannot have non-node liveness information"
+  isNodeLive' :: Liveness -> Bool
+  isNodeLive' (NodeSet m) = any hasLiveField m
+  isNodeLive' _ = error "Producers cannot have non-node liveness information"
 
-  hasActiveTag :: Map Tag (Vector Bool) -> Bool
-  hasActiveTag = any (Vec.elem True) . Map.elems
 
 -- Constructs the basic connection graph between all producers.
 -- If a consumer has multiple producers with the same tag,

@@ -37,9 +37,13 @@ toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult
       | Map.null ns = BasicVal False
       | otherwise   = convertNodeSet rns
 
+    convertFields :: V.Vector (Set IR.Liveness) -> Node
+    convertFields vec = Node (isLive tagLv) (V.map isLive fieldsLv)
+      where (tagLv, fieldsLv) = (,) <$> V.head <*> V.tail $ vec 
+
     convertNodeSet :: R.NodeSet -> Liveness
     convertNodeSet (R.NodeSet ns) = NodeSet $ Map.mapKeys fromIR irTaggedMap
-      where irTaggedMap = Map.map (Node . V.map isLive) ns
+      where irTaggedMap = Map.map convertFields ns
             fromIR irTag = absTagMap Bimap.!> irTag
 
     convertValue :: R.Value -> Liveness
