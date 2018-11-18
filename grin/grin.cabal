@@ -292,7 +292,9 @@ test-suite grin-test
 
                      , Parse.ParseSpec 
                      , Parse.Tests.Interleaved
-                     , Parse.Tests.Undefined
+                     , Parse.Tests.PureUndefined
+                     , Parse.Tests.StoreUndefined
+                     , Parse.Tests.UpdateUndefined
                      , Parse.Tests.Util
 
                      , Transformations.Simplifying.RegisterIntroductionSpec

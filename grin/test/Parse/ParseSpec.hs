@@ -9,7 +9,9 @@ import Grin.Grin
 import Grin.Parse
 
 import Parse.Tests.Interleaved
-import Parse.Tests.Undefined
+import Parse.Tests.PureUndefined
+import Parse.Tests.StoreUndefined
+import Parse.Tests.UpdateUndefined
 
 spec :: Spec
 spec = runIO runTests
@@ -27,10 +29,14 @@ runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = testGroup parseTestName $ do
   mkSpecFromWith fromCurDir id 
     [ interleavedSrc 
-    , undefinedSrc
+    , pureUndefinedSrc
+    , storeUndefinedSrc
+    , updateUndefinedSrc
     ] 
     [ interleavedAstParseSpec
-    , undefinedAstParseSpec
+    , pureUndefinedAstParseSpec
+    , storeUndefinedAstParseSpec
+    , updateUndefinedAstParseSpec
     ]
   mkSpecFromWith' parseMarkedTypeEnv fromCurDir id 
     [ interleavedSrc 

@@ -1,4 +1,4 @@
-module Parse.Tests.Undefined where
+module Parse.Tests.PureUndefined where
 
 import System.FilePath
 
@@ -13,11 +13,11 @@ import Test.Assertions
 
 import Parse.Tests.Util
 
-undefinedSrc :: FilePath
-undefinedSrc = parseExamples </> "undefined.grin"
+pureUndefinedSrc :: FilePath
+pureUndefinedSrc = parseExamples </> "pure_undefined.grin"
 
 -- parse (1), pretty print, parse (2)
 -- if the AST from (1) and (2) are the same, then the test passes
-undefinedAstParseSpec :: Exp -> Spec
-undefinedAstParseSpec ast = it "undefined_ast_parse" $ ast `sameAs` ast'
+pureUndefinedAstParseSpec :: Exp -> Spec
+pureUndefinedAstParseSpec ast = it "pure_undefined_ast_parse" $ ast `sameAs` ast'
   where ast' = parseProg . show . WPP $ ast
