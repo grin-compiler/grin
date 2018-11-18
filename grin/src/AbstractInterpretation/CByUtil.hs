@@ -18,9 +18,16 @@ import Control.Monad.State
 import Grin.Grin
 
 import AbstractInterpretation.LVAResult
+import AbstractInterpretation.CreatedBy (undefinedProducerName)
 import AbstractInterpretation.CByResultTypes
 
 import Transformations.Util
+
+{- NOTE: The functions in this module handle #undefined producers
+         as well. This means that the producer groupings will 
+         include a variable named "#undefined" if any undefined
+         values appear in the code
+-} 
 
 -- An untyped representation of the ProducerGraph (easier to handle).
 type ProducerGraph' = Map Name (Map Tag (Set Name))
@@ -169,3 +176,6 @@ transitiveClosure m
           let entry  = (lookup' t . lookup' p' $ m) :: Set Name
               update = Map.adjust (Set.union entry) t
           modify $ Map.adjust update p
+
+withoutUndefined :: ProducerGraph' -> ProducerGraph'
+withoutUndefined = Map.delete undefinedProducerName

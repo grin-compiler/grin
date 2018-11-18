@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, ViewPatterns #-}
 module Transformations.Optimising.DeadDataElimination where
 
 import Data.Set (Set)
@@ -88,12 +88,14 @@ type GlobalLiveness = Map Name (Map Tag (Vector Bool))
  because the connectProds set will be empty for such variables.
 
  (1) - Here "dead variable" means a variable that was not analyzed.
+ 
+ NOTE: We will ignore undefined producers, since they should always be dead.
 -}
 calcGlobalLiveness :: LVAResult ->
                       CByResult ->
                       ProducerGraph' ->
                       Trf GlobalLiveness
-calcGlobalLiveness lvaResult cbyResult prodGraph =
+calcGlobalLiveness lvaResult cbyResult (withoutUndefined -> prodGraph) =
   mapWithDoubleKeyM' mergeLivenessExcept prodGraph where
 
     -- map using only the keys
