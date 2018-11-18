@@ -80,17 +80,6 @@ setTagLive tag reg = do
     , dstReg      = reg
     }
 
--- A pattern match does not necessarily mean, that the tag is live.
--- The tag is live iff we pattern matched on it AND there is at least one live field.
--- At pattern match sites, we merge the field liveness info into the tag liveness info.
-extendTagLiveness :: IR.Tag -> IR.Reg -> IR.Reg -> CG LVAProgram ()
-extendTagLiveness tag srcReg dstReg = do 
-  emit IR.Extend 
-    { srcReg      = srcReg
-    , dstSelector = IR.NodeItem tag 0
-    , dstReg      = dstReg
-    }
-
 -- In order to Extend a node field, or Project into it, we need that field to exist.
 -- This function initializes a node in the register with a given tag and arity.
 setNodeTypeInfo :: IR.Reg -> IR.Tag -> Int -> Instruction
@@ -227,16 +216,14 @@ codeGen = fmap reverseProgram
           Var name -> addReg name r
           ConstTagNode tag args -> do
             irTag <- getTag tag
+            setTagLive irTag r
             bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) ->
               case arg of
                 Var name -> do
                   argReg <- newReg
                   addReg name argReg
                   nodePatternDataFlow argReg r irTag idx
-                  extendTagLiveness irTag argReg r
-                Lit {} -> do 
-                  emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
-                  setTagLive irTag r
+                Lit {} -> emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
                 _ -> throwLVA $ "illegal node pattern component " ++ show arg
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
@@ -329,7 +316,6 @@ codeGen = fmap reverseProgram
                 argReg <- newReg
                 addReg name argReg
                 nodePatternDataFlow argReg altScrutReg irTag idx
-                extendTagLiveness irTag argReg altScrutReg
             emit IR.If
               { condition    = IR.NodeTypeExists irTag
               , srcReg       = valReg

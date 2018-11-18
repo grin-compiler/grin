@@ -1,7 +1,7 @@
 grinMain = 
   p0 <- store (CInt 0)
-  (CInt n) <- fetch p0
-  y0 <- pure (CInt n)
-  p1 <- store y0 
-  y1 <- pure (CPtr p1)
+  n0 <- fetch p0
+  p1 <- store n0
+  y0 <- pure (CPtr p1)
+  update p1 y0
   pure 0 

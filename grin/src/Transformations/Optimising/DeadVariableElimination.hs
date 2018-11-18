@@ -69,7 +69,9 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
     e@(EBindF (SUpdate p v) Unit rhs) -> do 
       varDead <- isVarDeadM p 
       rmWhen varDead e rhs mempty mempty
-    e@(EBindF _ lpat rhs) -> rmWhenAllDead e rhs lpat 
+    e@(EBindF _ (Var v) rhs) -> do 
+      varDead <- isVarDeadM v 
+      rmWhen varDead e rhs (Set.singleton v) mempty
     e -> pure . embed $ e
 
   rmWhenAllDead :: ExpF Exp -> Exp -> Val -> Trf Exp

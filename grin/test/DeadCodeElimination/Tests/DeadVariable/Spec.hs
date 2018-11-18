@@ -21,6 +21,7 @@ import DeadCodeElimination.Tests.DeadVariable.Update
 import DeadCodeElimination.Tests.DeadVariable.AppSimple
 import DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
 import DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
+import DeadCodeElimination.Tests.DeadVariable.PatternMatch
 import DeadCodeElimination.Tests.DeadVariable.ReplaceApp
 import DeadCodeElimination.Tests.DeadVariable.ReplaceCase
 import DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec
@@ -52,6 +53,7 @@ runTestsFrom fromCurDir = do
       , appSimpleBefore
       , appSideEffect1Before
       , appSideEffect2Before
+      , patternMatchBefore
       , replaceAppBefore
       , replaceCaseBefore
       , replaceCaseRecBefore
@@ -66,6 +68,7 @@ runTestsFrom fromCurDir = do
       , appSimpleAfter
       , appSideEffect1After
       , appSideEffect2After
+      , patternMatchAfter
       , replaceAppAfter
       , replaceCaseAfter
       , replaceCaseRecAfter
@@ -80,6 +83,7 @@ runTestsFrom fromCurDir = do
       , appSimpleSpec
       , appSideEffect1Spec
       , appSideEffect2Spec
+      , patternMatchSpec
       , replaceAppSpec
       , replaceCaseSpec
       , replaceCaseRecSpec

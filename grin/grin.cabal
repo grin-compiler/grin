@@ -247,6 +247,7 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadVariable.AppSimple
                      , DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
                      , DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
+                     , DeadCodeElimination.Tests.DeadVariable.PatternMatch
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceApp
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceCase
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec

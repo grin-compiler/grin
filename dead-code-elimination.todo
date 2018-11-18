@@ -68,7 +68,6 @@ Liveness tracking at pattern matching:
 
 TODO:
   HIGH:
-    - for DVE, implement proper liveness lookup for bindings
     - for analyses handle Unit arg in ConstTagNode bindings
     - make sure that all transformations handles #undefineds and unspecified locations correctly
     - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
@@ -77,7 +76,6 @@ TODO:
   
   LOW:
     - optimize pipeline, so that only the necessary analyses run before each transformation
-    - refactor out utility code pieces from Pipeline.hs
     - improve parse error message for "satisfyM" style parsing failures
     - implement type env transformation for DDE
     - linter should check whether calculated types match with annotations
@@ -98,6 +96,8 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✔ refactor out utility code pieces from Pipeline.hs @done(18-11-19 00:22) @project(TODO.LOW)
+  ✔ for DVE, implement proper liveness lookup for bindings @done(18-11-19 00:22) @project(TODO.HIGH)
   ✔ in LVA, propagate liveness for tags as well @done(18-11-18 18:01) @project(TODO.HIGH)
   ✔ refactor randomPipeline so that it works similarly to optimizeWithPM @done(18-11-18 14:59) @project(TODO.LOW)
   ✔ add copy propagation after DCE in pipeline @done(18-11-18 01:52) @project(TODO.LOW)
