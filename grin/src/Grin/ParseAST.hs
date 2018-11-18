@@ -48,6 +48,7 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
     nodeOrVar = \case
       ConstTagNode _ _ -> True
       VarTagNode _ _   -> True
+      Undefined _      -> True
       Var _            -> True
       _                -> False
 
