@@ -1,44 +1,58 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.GenerateEval where
 
-import Text.Printf
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Control.Monad
+
 import Grin.Grin
+import Transformations.Names
 
-{-
-  done - collect all functions + arity
-  done - generate eval
-  done - generate apply
--}
 generateEval :: Program -> Program
-generateEval = \case
-  Program defs -> Program $ eval defs : apply defs : defs where
-  _ -> error "program expected"
+generateEval prog@(Program defs) =
+  let exclude = Set.fromList ["int_print", "grinMain"]
+      (evalFun, applyFun) = evalNameM prog $ do
+        (,) <$> genEval exclude "eval" defs <*> genApply exclude "apply" defs
+  in Program $ evalFun : applyFun : defs
+generateEval _ = error "program expected"
 
-eval :: [Def] -> Def
-eval defs = Def "eval" ["p"] $
-  EBind (SFetch "p") (Var "v") $
-  ECase (Var "v") $ defaultAlt : (map funAlt . filter f $ defs) where
-    defaultAlt                = Alt DefaultPat (SReturn $ Var "v")
-    funAlt (Def name args _) = Alt (NodePat (Tag F name) argNames) $
-                                      EBind (SApp name $ map Var argNames) (Var whnf) $
-                                      EBind (SUpdate "p" $ Var whnf) Unit $
-                                      SReturn $ Var whnf
-                                    where
-                                      whnf      = name <> ".whnf"
-                                      argNames  = map (\i -> name <> "." <> showTS i) [1..length args]
-    f (Def name _ _) = name `notElem` ["int_print", "grinMain"] -- TODO: proper filtering
+genEval :: Set Name -> Name -> [Def] -> NameM Def
+genEval exclude evalName defs = do
+  ptrName <- deriveNewName "p"
+  valueName <- deriveNewName "v"
+  let defaultAlt = Alt DefaultPat . SReturn . Var $ valueName
+      funAlt name args = do
+        argNames <- replicateM (length args) $ deriveNewName "a"
+        whnf <- deriveNewName "res"
+        pure $
+          Alt (NodePat (Tag F name) argNames) $
+            EBind (SApp name $ map Var argNames) (Var whnf) $
+            EBind (SUpdate ptrName $ Var whnf) Unit $
+            SReturn $ Var whnf
 
-apply :: [Def] -> Def
-apply defs = Def "apply" ["f", "x"] $
-  ECase (Var "f") $ concatMap funAlts $ filter f defs where
-    f (Def name args _) = name `notElem` ["int_print", "grinMain"] && length args > 0 -- TODO: proper filtering
-    funAlts def@(Def _ args _) = map (funAlt def) [0..length args-1]
-    funAlt (Def name args _) i
-      | i == n-1  = Alt (NodePat (Tag (P missingCount) name) argNames) $
-                          SApp name $ map Var argNames ++ [Var "x"]
-      | otherwise = Alt (NodePat (Tag (P missingCount) name) argNames) $
-                          SReturn $ ConstTagNode (Tag (P $ pred missingCount) name) $ map Var argNames ++ [Var "x"]
-      where
-        argNames      = map (\i -> name <> showTS missingCount <> "." <> showTS i) [1..i]
-        n             = length args
-        missingCount  = length args - i
+  alts <- sequence [funAlt name args | Def name args _ <- defs, Set.notMember name exclude]
+  pure $
+    Def evalName [ptrName] $
+      EBind (SFetch ptrName) (Var valueName) $
+      ECase (Var valueName) (defaultAlt : alts)
+
+genApply :: Set Name -> Name -> [Def] -> NameM Def
+genApply exclude applyName defs = do
+  partialName <- deriveNewName "p"
+  argName <- deriveNewName "x"
+
+  let funAlt name arity missing = do
+        argNames <- replicateM (arity - missing) $ deriveNewName "a"
+        pure $ Alt (NodePat (Tag (P missing) name) argNames) $ if missing < 1 then error "genApply: internal error" else
+          if missing == 1
+            then SApp name $ map Var $ argNames ++ [argName]
+            else SReturn $ ConstTagNode (Tag (P $ pred missing) name) $ map Var $ argNames ++ [argName]
+
+  alts <- sequence
+    [ funAlt name arity missing
+    | Def name args _ <- defs
+    , Set.notMember name exclude
+    , let arity = length args
+    , missing <- [1..arity]
+    ]
+  pure $ Def applyName [partialName, argName] $ ECase (Var partialName) alts
