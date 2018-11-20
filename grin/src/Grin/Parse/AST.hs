@@ -45,7 +45,9 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
               SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
               SUpdate <$ kw "update" <*> var <*> satisfyM nodeOrVar value <|>
               SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
-              SApp <$> primNameOrDefName <*> many simpleValue
+
+              -- FIXME: remove '$' from app syntax, fix 'value' and 'simpleValue' parsers with using 'lineFold' instead
+              SApp <$> primNameOrDefName <* (optional $ op "$") <*> many simpleValue
   where
     nodeOrVar = \case
       ConstTagNode _ _ -> True
