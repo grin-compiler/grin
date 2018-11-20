@@ -41,7 +41,7 @@ op w = L.symbol sc' w
 
 -- TODO: unify var and con + support quotted syntax which allow any character
 var :: Parser ShortText
-var = try $ packName <$> lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf ("'_.:!@{}$-" :: String))) >>= \x -> case Set.member x keywords of
+var = try $ packName <$> lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf ("'_.:!{}@-" :: String))) >>= \x -> case Set.member x keywords of
   True -> fail $ "keyword: " ++ unpackName x
   False -> return x
 
@@ -81,7 +81,9 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
               SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
               SUpdate <$ kw "update" <*> var <*> satisfyM nodeOrVar value <|>
               SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
-              SApp <$> primNameOrDefName <*> many simpleValue
+
+              -- FIXME: remove '$' from app syntax, fix 'value' and 'simpleValue' parsers with using 'lineFold' instead
+              SApp <$> primNameOrDefName <* (optional $ op "$") <*> many simpleValue
   where
     nodeOrVar = \case
       ConstTagNode _ _ -> True
