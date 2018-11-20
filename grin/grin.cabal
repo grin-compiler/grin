@@ -25,6 +25,7 @@ library
     AbstractInterpretation.Reduce
     AbstractInterpretation.Sharing
     AbstractInterpretation.Model
+    AbstractInterpretation.OptimiseHPT
     Grin.Grin
     Grin.Syntax
     Grin.TH
@@ -201,6 +202,7 @@ test-suite grin-test
                      , PipelineSpec
                      , ParserSpec
                      , AbstractInterpretation.IRSpec
+                     , AbstractInterpretation.OptimiseHPTSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark

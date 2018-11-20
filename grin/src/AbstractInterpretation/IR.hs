@@ -19,7 +19,7 @@ data Selector
   | ConditionAsSelector   Condition
   | Locations     -- Project the locations from an abstract value
   | NodeLocations -- Project the locations from nodes stored in an abstract values
-  deriving Show
+  deriving (Eq, Show)
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
 type SimpleType = Int32
@@ -28,7 +28,7 @@ data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
   | NotIn             (Set Tag)
-  deriving Show
+  deriving (Eq, Show)
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error on compile time ; the analyis will not be restrictive ; there will not be runtime checks
 
@@ -68,14 +68,14 @@ data Instruction
     { dstReg      :: Reg
     , constant    :: Constant
     }
-  deriving Show
+  deriving (Eq, Show)
 
 data Constant
   = CSimpleType   SimpleType
   | CHeapLocation Mem
   | CNodeType     Tag Int {-arity-}
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type or location-}
-  deriving Show
+  deriving (Eq, Ord, Show)
 
 data HPTProgram
   = HPTProgram

@@ -37,6 +37,7 @@ import qualified AbstractInterpretation.PrettyIR as HPT
 import qualified AbstractInterpretation.IR as HPT
 import qualified AbstractInterpretation.CodeGenMain as HPT
 import qualified AbstractInterpretation.Reduce as HPT
+import qualified AbstractInterpretation.OptimiseHPT as HPT
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -157,6 +158,7 @@ instance Eq (Hidden a) where
 
 data HPTStep
   = CompileHPT
+  | OptimiseHPT
   | PrintHPTCode
   | RunHPTPure
   | PrintHPTResult
@@ -263,6 +265,7 @@ pipelineStep p = do
   case p of
     HPT hptStep -> case hptStep of
       CompileHPT      -> compileHPT
+      OptimiseHPT     -> optimiseHPT
       PrintHPTCode    -> printHPTCode
       RunHPTPure      -> runHPTPure
       PrintHPTResult  -> printHPTResult
@@ -328,6 +331,12 @@ compileHPT = do
   liftIO $ putStrLn "non-linear variables:"
   liftIO $ print . pretty $ nonlinearSet
   -}
+
+optimiseHPT :: PipelineM ()
+optimiseHPT = do
+  mHPT <- use psHPTProgram
+  forM_ mHPT $ \hpt -> do
+    psHPTProgram .= Just (HPT.optimiseHPT hpt)
 
 printHPTCode :: PipelineM ()
 printHPTCode = do
@@ -450,6 +459,7 @@ debugTransformation t = do
 lintGrin :: Maybe String -> PipelineM ()
 lintGrin mPhaseName = do
   pipelineStep $ HPT CompileHPT
+  pipelineStep $ HPT OptimiseHPT
   pipelineStep $ HPT RunHPTPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
@@ -634,6 +644,7 @@ optimizeWith o e pre optimizations post = fmap snd $ runPipeline o e $ do
 
   mapM_ pipelineStep
     [ HPT CompileHPT
+    , HPT OptimiseHPT
     , HPT RunHPTPure
     , T UnitPropagation
     , Eff CalcEffectMap
