@@ -73,6 +73,7 @@ spec = do
     -- NOTE: This is a random test. This could make fail the build non-related to code changes.
     let opts = defaultOpts { _poLogging = True, _poOutputDir = "/tmp" }
     (pipeline1, transformed1) <- runPipeline opts Nothing exp randomPipeline
+    putStrLn "\n\n--------------------------------------------------------------------\n\n"
     (pipeline2, transformed2) <- runPipeline opts Nothing exp randomPipeline
     print pipeline1
     print pipeline2
