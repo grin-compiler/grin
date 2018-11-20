@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes #-}
 module Pipeline.Pipeline
  ( module Pipeline.Pipeline 
  , module Pipeline.Definitions
@@ -44,6 +44,7 @@ import Transformations.Simplifying.ProducerNameIntroduction
 import qualified AbstractInterpretation.HPTResult as HPT
 import qualified AbstractInterpretation.CByResult as CBy
 import qualified AbstractInterpretation.LVAResult as LVA
+import AbstractInterpretation.OptimiseAbstractProgram
 import AbstractInterpretation.PrettyCBy
 import AbstractInterpretation.PrettyHPT
 import AbstractInterpretation.PrettyLVA
@@ -132,7 +133,7 @@ pipelineStep p = do
   case p of
     Pass{}               -> pure () -- each pass step will be printed anyway
     _ | isPrintingStep p -> pipelineLog $ printf "PipelineStep: %-35s" (show p)
-    _                    -> pipelineLogNoLn $ printf "PipelineStep: %-35" (show p)
+    _                    -> pipelineLogNoLn $ printf "PipelineStep: %-35s" (show p)
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
@@ -144,16 +145,19 @@ pipelineStep p = do
       optimizeWithPM opts grin (fmap T defaultOptimizations) defaultOnChange defaultCleanUp
     HPT step -> case step of
       CompileToAbstractProgram -> compileHPT
+      OptimiseAbstractProgram  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
       PrintAbstractProgram     -> printHPTCode
       RunAbstractProgramPure   -> runHPTPure
       PrintAbstractResult      -> printHPTResult
     CBy step -> case step of
       CompileToAbstractProgram -> compileCBy
+      OptimiseAbstractProgram  -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
       PrintAbstractProgram     -> printCByCode
       RunAbstractProgramPure   -> runCByPure
       PrintAbstractResult      -> printCByResult
     LVA step -> case step of
       CompileToAbstractProgram -> compileLVA
+      OptimiseAbstractProgram  -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
       PrintAbstractProgram     -> printLVACode
       RunAbstractProgramPure   -> runLVAPure
       PrintAbstractResult      -> printLVAResult
@@ -227,6 +231,13 @@ compileHPT = do
   liftIO $ putStrLn "non-linear variables:"
   liftIO $ print . pretty $ nonlinearSet
   -}
+
+optimiseAbsProgWith :: IR.HasDataFlowInfo a => Lens' PState (Maybe a) -> String -> PipelineM ()
+optimiseAbsProgWith getProg err = do
+  mProg <- use getProg
+  case mProg of
+    Just prog -> getProg._Just %= IR.modifyInfo optimiseAbstractProgram
+    Nothing   -> pipelineLog err
 
 printAbsProg a = do
   pipelineLog $ show $ IR.prettyInstructions (Just a) . IR._absInstructions $ a

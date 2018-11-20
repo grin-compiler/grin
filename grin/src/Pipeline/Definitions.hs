@@ -75,6 +75,7 @@ instance Eq (Hidden a) where
 
 data AbstractComputationStep
   = CompileToAbstractProgram
+  | OptimiseAbstractProgram
   | PrintAbstractProgram
   | RunAbstractProgramPure
   | PrintAbstractResult

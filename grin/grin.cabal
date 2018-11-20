@@ -37,6 +37,7 @@ library
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util
     AbstractInterpretation.Sharing
+    AbstractInterpretation.OptimiseAbstractProgram
     Grin.Grin
     Grin.Syntax
     Grin.SyntaxDefs
@@ -327,6 +328,7 @@ test-suite grin-test
                      , PipelineSpec
                      , ParserSpec
                      , AbstractInterpretation.IRSpec
+                     , AbstractInterpretation.OptimiseAbstractProgramSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
