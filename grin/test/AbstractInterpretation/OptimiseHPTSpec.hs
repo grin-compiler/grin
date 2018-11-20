@@ -29,7 +29,7 @@ spec = do
           (computer0, (HPTInfo hptIterations0)) = evalHPT hptProgram0
           (computer1, (HPTInfo hptIterations1)) = evalHPT hptProgram2
       computer1 `shouldBe` computer0
-      (compare hptIterations1 hptIterations0) `shouldSatisfy` (`elem` [LT])
+      (compare hptIterations1 hptIterations0) `shouldSatisfy` (`elem` [EQ, LT])
 
     xit "is idempotent" $ do
       let hptProgram1 = optimiseHPT hptProgram0

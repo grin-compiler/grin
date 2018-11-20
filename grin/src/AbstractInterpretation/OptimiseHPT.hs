@@ -11,7 +11,11 @@ import Data.Graph hiding (edges)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
+import Debug.Trace
 
+{-
+Optimisation needs further investigation.
+-}
 
 optimiseHPT :: HPTProgram -> HPTProgram
 optimiseHPT h@HPTProgram{..} = h { hptInstructions = sortProgram hptInstructions }
@@ -43,7 +47,7 @@ instructionCount = sum . map go . hptInstructions
       If{..} -> sum $ map go instructions
       _      -> 1
 
-data Node = C Constant | R Reg
+data Node = R Reg | C Constant
   deriving (Eq, Show, Ord)
 
 src :: Instruction -> Node
@@ -77,6 +81,7 @@ hptSortedNodes :: HPTProgram -> Map.Map Node Int
 hptSortedNodes HPTProgram{..}
   = Map.fromList
   $ (`zip` [0..])
+--  $ traceShowId
   $ flattenSCCs
   $ stronglyConnComp
   $ edgeSet

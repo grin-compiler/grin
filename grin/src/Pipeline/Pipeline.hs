@@ -459,7 +459,7 @@ debugTransformation t = do
 lintGrin :: Maybe String -> PipelineM ()
 lintGrin mPhaseName = do
   pipelineStep $ HPT CompileHPT
-  pipelineStep $ HPT OptimiseHPT
+--  pipelineStep $ HPT OptimiseHPT
   pipelineStep $ HPT RunHPTPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
