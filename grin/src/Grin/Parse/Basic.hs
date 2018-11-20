@@ -103,7 +103,7 @@ anySingleBut t = satisfy (/= t)
 
 -- TODO: unify var and con + support quoted syntax which allow any character
 var :: Parser ShortText
-var = try $ packName <$> lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf ("'_.:!{}@-" :: String))) >>= \x -> case Set.member x keywords of
+var = try $ packName <$> lexeme ((:) <$> letterChar <*> many (alphaNumChar <|> oneOf ("'_.:!{}@-" :: String))) >>= \x -> case Set.member x keywords of
   True -> fail $ "keyword: " ++ unpackName x
   False -> return x
 
