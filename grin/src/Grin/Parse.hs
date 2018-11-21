@@ -39,14 +39,20 @@ kw w = lexeme $ string w
 
 op w = L.symbol sc' w
 
--- TODO: unify var and con + support quotted syntax which allow any character
+escaped :: Parser Char
+escaped = string "\\\"" >> pure '"'
+
+quotedVar :: Parser ShortText
+quotedVar = packName <$ char '"' <*> someTill (escaped <|> anyChar) (char '"')
+
+simpleVar :: Parser ShortText
+simpleVar = (\c s -> packName $ c : s) <$> oneOf allowedIntial <*> many (alphaNumChar <|> oneOf allowedSpecial)
+
+-- TODO: allow keywords in quotes
 var :: Parser ShortText
-var = try $ packName <$> lexeme ((:) <$> letterChar <*> many (alphaNumChar <|> oneOf ("'_.:!{}@-" :: String))) >>= \x -> case Set.member x keywords of
+var = try $ lexeme (quotedVar <|> simpleVar) >>= \x -> case Set.member x keywords of
   True -> fail $ "keyword: " ++ unpackName x
   False -> return x
-
-con :: Parser ShortText
-con = lexeme $ packName <$> some (alphaNumChar <|> oneOf ("_.{}" :: String))
 
 integer = lexeme L.decimal
 signedInteger = L.signed sc' integer
@@ -100,9 +106,9 @@ altPat = parens (NodePat <$> tag <*> many var) <|>
          TagPat <$> tag <|>
          LitPat <$> literal
 
-tag = Tag C <$ char 'C' <*> con <|>
+tag = Tag C <$ char 'C' <*> var <|>
       Tag F <$ char 'F' <*> var <|>
-      Tag <$> (P <$ char 'P' <*> L.decimal) <*> (var <|> con)
+      Tag <$> (P <$ char 'P' <*> L.decimal) <*> var
 
 simpleValue = Lit <$> literal <|>
               Var <$> var

@@ -4,8 +4,10 @@ module Grin.Pretty
   , printGrin
   , PP(..)
   , prettyKeyValue
+  , showName
   ) where
 
+import Data.Char
 import Data.Set (Set)
 import qualified Data.Set as Set
 
@@ -39,8 +41,19 @@ keyword = yellow . text
 
 keywordR = red . text
 
+showName :: Name -> String
+showName n = case unpackName n of
+  []    -> ""
+  str@(c:s)
+    | c `elem` allowedIntial && all (\a -> isAlphaNum a || elem a allowedSpecial) s -> str
+    | otherwise -> '"' : go str
+    where
+      go [] = ['"']
+      go ('\\':'"':xs) = '"' : go xs
+      go (a : xs) = a : go xs
+
 instance Pretty ShortText where
-  pretty = text . unpackName
+  pretty = text . showName
 
 -- TODO
 --  nice colors for syntax highlight

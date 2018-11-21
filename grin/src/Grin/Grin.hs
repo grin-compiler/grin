@@ -116,3 +116,10 @@ packName = TS.pack
 
 showTS :: Show a => a -> Name
 showTS = packName . show
+
+-- indetifier rules for parser and pretty printer
+allowedSpecial :: String
+allowedSpecial = "._':!{}@-"
+
+allowedIntial :: String
+allowedIntial = "._" ++['a'..'z'] ++ ['A'..'Z']
