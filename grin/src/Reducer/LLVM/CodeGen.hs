@@ -168,7 +168,8 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       leftResult <- case (leftExp, lpat) of
         -- FIXME: this is an ugly hack to compile SStore ; because it requires the binder name to for type lookup
         (SStore val, Var name) -> do
-          nodeLocation <- codeGenIncreaseHeapPointer name
+          varT <- getVarType name
+          nodeLocation <- codeGenIncreaseHeapPointer varT
           codeGenStoreNode val nodeLocation -- TODO
           pure $ O locationCGType nodeLocation
 
@@ -321,6 +322,12 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       codeGenStoreNode val nodeLocation
       pure $ O unitCGType unit
 
+    SStoreF val -> do
+      valTy <- typeOfVal val
+      nodeLocation <- codeGenIncreaseHeapPointer $ toCGType valTy
+      codeGenStoreNode val nodeLocation
+      pure $ O locationCGType nodeLocation
+
     expF -> error $ printf "missing codegen for:\n%s" (show $ pretty $ embed $ fmap fst expF)
 
 codeGenStoreNode :: Val -> Operand -> CG ()
@@ -457,12 +464,13 @@ codeGenTagSwitch tagVal nodeSet tagAltGen = error $ "LLVM codegen: empty node se
 
 -- heap pointer related functions
 
-codeGenIncreaseHeapPointer :: Grin.Name -> CG Operand -- TODO
-codeGenIncreaseHeapPointer name = do
+codeGenIncreaseHeapPointer :: CGType -> CG Operand -- TODO
+codeGenIncreaseHeapPointer varT = do
   -- increase heap pointer and return the old value which points to the first free block
-  varT <- getVarType name
-  let CG_SimpleType {cgType = T_SimpleType (T_Location [loc])} = varT
-  nodeSet <- use $ envTypeEnv.location.ix loc
+  nodeSet <- case varT of
+    CG_SimpleType {cgType = T_SimpleType (T_Location locs)} -> mconcat <$> mapM (\loc -> use $ envTypeEnv.location.ix loc) locs
+    CG_NodeSet {cgType = T_NodeSet ns} -> pure ns
+    _ -> error $ show varT
 
   let tuPtrTy = ptr $ tuLLVMType $ taggedUnion nodeSet
   tuSizePtr <- codeGenLocalVar "alloc_bytes" tuPtrTy $ AST.GetElementPtr
