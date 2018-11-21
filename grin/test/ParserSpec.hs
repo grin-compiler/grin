@@ -17,8 +17,8 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  describe "simple" $ do
-    it "quoted names" $ do
+  describe "quoted names" $ do
+    it "basic" $ do
       let before = [prog|
         "GHC.Tuple.()" = pure (C"GHC.Tuple.()")
         |]
@@ -27,6 +27,23 @@ spec = do
             ]
       before `sameAs` after
 
+    it "special symbols" $ do
+      let before = [prog|
+        "extreme name with \" and ~ ! @ # $ % ^ & * ( ) | : > < > ? , . / " = pure ()
+        |]
+      let after = Program
+            [ Def "extreme name with \" and ~ ! @ # $ % ^ & * ( ) | : > < > ? , . / " [] $ SReturn Unit
+            ]
+      before `sameAs` after
+
+    it "parse . pretty == id" $ do
+      let exp = Program
+            [ Def "extreme name with \" and ~ ! @ # $ % ^ & * ( ) | : > < > ? , . / " [] $ SReturn Unit
+            ]
+      let Right parsedExp = parseGrin "" (Text.pack $ show $ PP exp)
+      parsedExp `sameAs` exp
+
+  describe "simple" $ do
     it "case" $ do
       let before = [prog|
         test p =

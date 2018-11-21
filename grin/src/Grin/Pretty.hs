@@ -49,7 +49,7 @@ showName n = case unpackName n of
     | otherwise -> '"' : go str
     where
       go [] = ['"']
-      go ('\\':'"':xs) = '"' : go xs
+      go ('"':xs) = '\\' : '"' : go xs
       go (a : xs) = a : go xs
 
 instance Pretty ShortText where
