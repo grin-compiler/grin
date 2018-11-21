@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Transformations.EffectMap where
 
 import Data.Set (Set)
@@ -23,6 +23,10 @@ effectMap (te, e) = effectfulFunctions $ unMMap $ snd $ cata buildEffectMap e wh
   buildEffectMap :: ExpF (Set EffectWithCalls, MMap Name (Set EffectWithCalls)) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
   buildEffectMap = \case
     DefF name _ (effs, _) -> (mempty, MMap $ Map.singleton name effs)
+
+    -- FIXME: handle effectful primops properly
+    SAppF "_prim_int_print" _  -> (Set.singleton (EffectW $ Effectful "_prim_int_print"), mempty)
+
     SAppF name _
       | Just () <- te ^? function . at name . _Just . _ReturnType . _T_SimpleType . _T_Unit
       -> (Set.singleton (EffectW $ Effectful name), mempty)
