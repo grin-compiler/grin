@@ -18,6 +18,15 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   describe "simple" $ do
+    it "quoted names" $ do
+      let before = [prog|
+        "GHC.Tuple.()" = pure (C"GHC.Tuple.()")
+        |]
+      let after = Program
+            [ Def "GHC.Tuple.()" [] $ SReturn $ ConstTagNode (Tag C "GHC.Tuple.()") []
+            ]
+      before `sameAs` after
+
     it "case" $ do
       let before = [prog|
         test p =
