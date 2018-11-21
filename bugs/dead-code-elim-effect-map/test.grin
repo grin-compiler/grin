@@ -1,0 +1,22 @@
+grinMain =
+  fun_main.0 <- pure (P1Main.main.closure.0)
+  "unboxed.C\"GHC.Prim.Unit#\".0" <- apply.unboxed $ fun_main.0
+  _prim_int_print $ 0
+
+apply.unboxed p.1 =
+  case p.1 of
+    (P1Main.main.closure.0) ->
+      result_Main.main1.0.0 <- pure (P1Main.main1.closure.0)
+      apply.unboxed2 $ result_Main.main1.0.0
+    (P1Main.main1.closure.0) ->
+      _prim_int_print $ 12
+      store (F"GHC.Tuple.()")
+
+apply.unboxed2 p.1.X =
+  case p.1.X of
+    (P1Main.main.closure.0) ->
+      result_Main.main1.0.0.X <- pure (P1Main.main1.closure.0)
+      apply.unboxed $ result_Main.main1.0.0.X
+    (P1Main.main1.closure.0) ->
+      _prim_int_print $ 12
+      store (F"GHC.Tuple.()")
