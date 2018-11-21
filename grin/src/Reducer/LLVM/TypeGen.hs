@@ -163,7 +163,15 @@ codeGenValueConversion srcCGType srcOp dstCGType = case srcCGType of
           _ -> False
 
 commonCGType :: [CGType] -> CGType
-commonCGType (ty@CG_SimpleType{} : tys) | all (ty==) tys = ty
+commonCGType tys | Just ty <- foldM joinSimpleType (head tys) tys = ty where
+  joinSimpleType :: CGType -> CGType -> Maybe CGType
+  joinSimpleType t@(CG_SimpleType l1 (T_SimpleType t1)) (CG_SimpleType l2 (T_SimpleType t2)) | l1 == l2 = case (t1, t2) of
+    -- join locations
+    (T_Location p1, T_Location p2) -> Just . CG_SimpleType l1 . T_SimpleType $ T_Location (List.nub $ p1 ++ p2)
+    _ | t1 == t1  -> Just t
+      | otherwise -> Nothing
+  joinSimpleType _ _ = Nothing
+
 commonCGType tys | all isNodeSet tys = toCGType $ T_NodeSet $ mconcat [ns | CG_NodeSet _ (T_NodeSet ns) _ <- tys] where
   isNodeSet = \case
     CG_NodeSet{} -> True
