@@ -644,7 +644,7 @@ optimizeWith o e pre optimizations post = fmap snd $ runPipeline o e $ do
 
   mapM_ pipelineStep
     [ HPT CompileHPT
-    , HPT OptimiseHPT
+--    , HPT OptimiseHPT
     , HPT RunHPTPure
     , T UnitPropagation
     , Eff CalcEffectMap
