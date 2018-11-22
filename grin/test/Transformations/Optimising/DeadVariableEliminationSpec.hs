@@ -2,6 +2,8 @@
 module Transformations.Optimising.DeadVariableEliminationSpec where
 
 import Transformations.Optimising.DeadVariableElimination
+import Transformations.EffectMap
+import Grin.TypeCheck
 
 import Test.Hspec
 import Grin.TH
@@ -15,7 +17,40 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  pure ()
+  describe "bugs" $ do
+    it "keep blocks" $ do
+      let before = [prog|
+        grinMain =
+          fun_main.0 <- pure (P1Main.main.closure.0)
+          p.1.0 <- pure fun_main.0
+          "unboxed.C\"GHC.Prim.Unit#\".0" <- do
+            result_Main.main1.0.0.0 <- pure (P1Main.main1.closure.0)
+            apply.unboxed2 $ result_Main.main1.0.0.0
+          _prim_int_print $ 0
+
+        apply.unboxed2 p.1.X =
+          do
+            (P1Main.main1.closure.0) <- pure p.1.X
+            _prim_int_print $ 12
+            store (F"GHC.Tuple.()")
+        |]
+      let after = [prog|
+        grinMain =
+          "unboxed.C\"GHC.Prim.Unit#\".0" <- do
+            result_Main.main1.0.0.0 <- pure (P1Main.main1.closure.0)
+            apply.unboxed2 $ result_Main.main1.0.0.0
+          _prim_int_print $ 0
+
+        apply.unboxed2 p.1.X =
+          do
+            _prim_int_print $ 12
+            store (F"GHC.Tuple.()")
+        |]
+      let tyEnv   = inferTypeEnv before
+          effMap  = effectMap (tyEnv, before)
+          (_, _, dveExp)  = deadVariableElimination (tyEnv, effMap, before)
+      dveExp `sameAs` after
+
   {-
   it "simple" $ do
     let before = [expr|
