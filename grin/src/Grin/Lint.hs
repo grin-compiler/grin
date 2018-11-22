@@ -16,10 +16,14 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.List (findIndices)
 import Lens.Micro.Platform
+import Lens.Micro.Extra
 import Data.Text.Short (isPrefixOf)
 import Text.PrettyPrint.ANSI.Leijen (Pretty, plain)
 import Data.String
-
+import Control.Comonad (extract)
+import qualified Data.Vector as Vector
+import Control.Applicative (liftA2)
+import Data.Functor.Infix ((<$$>))
 
 import Grin.Grin
 import Grin.Pretty
@@ -190,6 +194,47 @@ checkVarScopeM exp = do
 
 plainShow :: (Pretty p) => p -> String
 plainShow = show . plain . pretty
+
+unionSType :: SimpleType -> SimpleType -> Maybe SimpleType
+unionSType (T_Location l1) (T_Location l2) = Just $ T_Location (l1 ++ l2)
+unionSType T_Dead t = Just t
+unionSType t T_Dead = Just t
+unionSType t1 t2
+  | t1 == t2 = Just t1
+  | otherwise = Nothing
+
+unionType :: Type -> Type -> Maybe Type
+unionType (T_SimpleType t1) (T_SimpleType t2) = T_SimpleType <$> unionSType t1 t2
+unionType (T_NodeSet ns1) (T_NodeSet ns2) =
+  fmap T_NodeSet
+  $ sequenceA
+  $ Map.map (fmap Vector.fromList . sequenceA)
+  $ Map.unionWith (zipWith (join <$$> liftA2 unionSType)) (Map.map (map Just . Vector.toList) ns1) (Map.map (map Just . Vector.toList) ns2)
+unionType _ _ = Nothing
+
+annotate :: TypeEnv -> Exp -> Cofree ExpF (Maybe Type)
+annotate te = cata builder where
+  builder :: ExpF (Cofree ExpF (Maybe Type)) -> Cofree ExpF (Maybe Type)
+  builder = \case
+    ProgramF defs -> Nothing :< ProgramF defs
+    DefF n ps body -> (te ^? function . at n . _Just . _1) :< DefF n ps body
+    SReturnF val -> mTypeOfValTE te val :< SReturnF val
+    SStoreF val -> Nothing :< SStoreF val -- Store returns a location type that is associated in its binded variable
+    SUpdateF name val -> Just unit_t :< SUpdateF name val
+    SFetchF var ->
+      (do locs <- mTypeOfValTE te (Var var) ^? _Just . _T_SimpleType . _T_Location
+          let (n:ns) = catMaybes $ map (\l -> te ^? location . at l . _Just . to T_NodeSet) locs
+          foldM unionType n ns
+      )
+      :< SFetchF var -- Fetch returns a value based on its arguments that is associated in its binded variable
+    SAppF name params -> (te ^? function . at name . _Just . _1) :< SAppF name params
+    AltF cpat body -> extract body :< AltF cpat body
+    ECaseF var alts ->
+      (do let (t:ts) = catMaybes $ map extract alts
+          foldM unionType t ts)
+      :< ECaseF var alts
+    EBindF lhs pat rhs -> extract rhs :< EBindF lhs pat rhs
+    SBlockF body -> extract body :< SBlockF body
 
 lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
 lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do

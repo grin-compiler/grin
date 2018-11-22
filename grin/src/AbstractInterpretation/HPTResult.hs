@@ -11,6 +11,7 @@ import qualified Data.Vector as V
 
 import Lens.Micro.Platform
 import Lens.Micro.Internal
+import Lens.Micro.Extra
 
 import Grin.Grin (Name, Tag)
 import qualified Grin.TypeEnv as TypeEnv
@@ -77,13 +78,3 @@ toSimpleType ty | ty < 0 = case ty of
   -7 -> T_Char
   _ -> error $ "unknown type code " ++ show ty
 toSimpleType l = T_Location $ fromIntegral l
-
-type instance Index   (Vector a) = Int
-type instance IxValue (Vector a) = a
-
-instance At (Vector a) where
-  at k = lens (V.!? k) (\v -> maybe v (\a -> v V.// [(k, a)]))
-
-_T_Location :: Traversal' SimpleType Int
-_T_Location f (T_Location l) = T_Location <$> f l
-_T_Location _ rest           = pure rest

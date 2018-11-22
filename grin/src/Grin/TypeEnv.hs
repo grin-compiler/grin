@@ -7,8 +7,12 @@ import Data.Map (Map)
 import Data.Set (Set)
 import Data.Vector (Vector)
 import qualified Data.Map as Map
-import qualified Data.Vector as Vector (fromList)
+import qualified Data.Vector as Vector (fromList, toList)
 import Data.Monoid
+import Data.Maybe (fromMaybe)
+import Data.Functor.Infix ((<$$>))
+import Control.Applicative (liftA2)
+import Control.Monad (join)
 
 import Lens.Micro.Platform
 
@@ -155,18 +159,19 @@ typeOfVal = \case
   bad -> error (show bad)
 
 typeOfValTE :: TypeEnv -> Val -> Type
-typeOfValTE typeEnv = \case
+typeOfValTE typeEnv val = fromMaybe (error $ show val) $ mTypeOfValTE typeEnv val
+
+mTypeOfValTE :: TypeEnv -> Val -> Maybe Type
+mTypeOfValTE typeEnv = \case
   ConstTagNode  tag simpleVals ->
-    T_NodeSet
-      $ Map.singleton tag
-      $ Vector.fromList
-      $ map ((\(T_SimpleType t) -> t) . typeOfValTE typeEnv) simpleVals
+    fmap (T_NodeSet . Map.singleton tag . Vector.fromList)
+      $ sequenceA $ map (fmap (\(T_SimpleType t) -> t) . mTypeOfValTE typeEnv) simpleVals
 
-  Unit      -> T_SimpleType T_Unit
-  Lit lit   -> typeOfLit lit
-  Var name  -> variableType typeEnv name
+  Unit      -> Just $ T_SimpleType T_Unit
+  Lit lit   -> Just $ typeOfLit lit
+  Var name  -> typeEnv ^. variable . at name
 
-  bad -> error (show bad)
+  bad -> Nothing
 
 -- * Effects
 
