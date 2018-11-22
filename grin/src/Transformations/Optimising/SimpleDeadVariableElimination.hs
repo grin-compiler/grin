@@ -29,7 +29,8 @@ simpleDeadVariableElimination (typeEnv, EffectMap effects, e) = (typeEnv, Effect
       , all (flip Set.notMember rightRef) vars
       -> case left of
           (SApp name _) | Just _ <- Map.lookup name effects -> embedExp exp
-          _                                                 -> right
+          SBlock{}  -> embedExp exp
+          _         -> right
 
     exp -> embedExp exp
     where
