@@ -15,7 +15,7 @@ import Grin.TypeEnv
 import Grin.TypeCheck
 import Pipeline.Optimizations
 import qualified Grin.Statistics as Statistics
-import Grin.Pretty()
+import Grin.Pretty(prettyKeyValue)
 import Transformations.CountVariableUse
 import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
@@ -46,6 +46,7 @@ import Data.Bifunctor
 
 import qualified Data.Bimap as Bimap
 import Data.Map as Map
+import Data.Set as Set
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
 
@@ -311,8 +312,8 @@ calcEffectMap = do
 printEffectMap :: PipelineM ()
 printEffectMap = do
   grin <- use psExp
-  env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
-  pipelineLog $ show $ pretty env0
+  env0 <- fromMaybe (traceShow "emptyEffectMap is used" mempty) <$> use psEffectMap
+  pipelineLog $ '\n' : show (prettyKeyValue $ [(k, Data.List.map show $ Set.toList v)| (k,v) <- Map.toList env0])
 
 compileHPT :: PipelineM ()
 compileHPT = do
@@ -365,6 +366,7 @@ runHPTPure = use psHPTProgram >>= \case
       Right te  -> psTypeEnv .= Just te
       Left err  -> do
         psErrors %= (err :)
+        liftIO $ printf "type-env error: %s" err
         psTypeEnv .= Nothing
 
 printTypeEnv :: PipelineM ()
