@@ -81,7 +81,7 @@ cbyExamples = "CreatedBy" </> "examples"
 calcCByResult :: Exp -> CByResult
 calcCByResult prog
   | Right cbyProgram <- codeGen prog
-  , computer <- evalDataFlowInfo cbyProgram
+  , computer <- _crComp . evalDataFlowInfo $ cbyProgram
   , cbyResult <- toCByResult cbyProgram computer
   = cbyResult
 
@@ -100,7 +100,7 @@ emptyProducerSet = mkProducerSet []
 restrictedBy :: ProducerSet -> Tag -> ProducerSet
 restrictedBy (ProducerSet ps) tag = ProducerSet $ M.filterWithKey (\k _ -> k == tag) ps
 
-udProd :: String 
+udProd :: Name 
 udProd = undefinedProducerName
 
 

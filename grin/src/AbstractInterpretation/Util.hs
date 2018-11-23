@@ -15,4 +15,10 @@ reverseInstructions = reverse . map (cata alg)
 
 reverseProgram :: HasDataFlowInfo s => s -> s
 reverseProgram = modifyInfo $ \p@AbstractProgram{..} ->
-  p { absInstructions = reverseInstructions absInstructions }
+  p { _absInstructions = reverseInstructions _absInstructions }
+
+converge :: (a -> a -> Bool) -> (a -> a) -> a -> a
+converge pred f x
+  | pred x x' = x
+  | otherwise = converge pred f x'
+  where x' = f x

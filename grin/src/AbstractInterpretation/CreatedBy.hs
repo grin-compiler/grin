@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings #-}
 module AbstractInterpretation.CreatedBy where
 
 import Control.Monad.Trans.Except
@@ -26,13 +26,13 @@ import AbstractInterpretation.HeapPointsTo hiding (codeGenVal, codeGen)
 
 -- HPT program with producer information about nodes
 -- for each node, it contains the node's possible producers in the first field
-newtype HPTWProducerInfo = HPTProducerInfo { _hptProg :: HPTProgram }
+newtype HPTWProducerInfo = HPTProducerInfo { _hptProg :: HPTProgram } deriving (Show)
 
 data CByProgram =
   CByProgram
   { _producerMap  :: Map.Map IR.Reg Name
   , _hptProgWProd :: HPTWProducerInfo
-  }
+  } deriving (Show)
 concat <$> mapM makeLenses [''CByProgram, ''HPTWProducerInfo]
 
 instance HasDataFlowInfo CByProgram where
@@ -124,7 +124,8 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
       | Undefined T_NodeSet{} <- lhs -> cgProducer leftExp v rightExp
       where 
         cgProducer lExp p rExp = do
-          R r <- lExp
+          reg <- lExp
+          let R r = reg
           addReg v r
           addProducer r v
           rExp

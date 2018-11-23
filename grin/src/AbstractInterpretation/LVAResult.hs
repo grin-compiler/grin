@@ -21,8 +21,8 @@ import qualified AbstractInterpretation.Reduce as R
 toLVAResult :: LVAProgram -> R.Computer -> LVAResult
 toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult
   { _memory   = V.map convertHeapNodeSet _memory
-  , _register = Map.map convertReg absRegisterMap
-  , _function = Map.map convertFunctionRegs absFunctionArgMap
+  , _register = Map.map convertReg _absRegisterMap
+  , _function = Map.map convertFunctionRegs _absFunctionArgMap
   }
   where
     isLive :: Set IR.Liveness -> Bool
@@ -40,7 +40,7 @@ toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult
     convertNodeSet :: R.NodeSet -> Liveness
     convertNodeSet (R.NodeSet ns) = NodeSet $ Map.mapKeys fromIR irTaggedMap
       where irTaggedMap = Map.map (Node . V.map isLive) ns
-            fromIR irTag = absTagMap Bimap.!> irTag
+            fromIR irTag = _absTagMap Bimap.!> irTag
 
     convertValue :: R.Value -> Liveness
     convertValue (R.Value vals ns)

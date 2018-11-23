@@ -15,6 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
+  default-extensions:  OverloadedStrings
   exposed-modules:
     AbstractInterpretation.CodeGen
     AbstractInterpretation.CByResult
@@ -22,7 +23,6 @@ library
     AbstractInterpretation.CByUtil
     AbstractInterpretation.CreatedBy
     AbstractInterpretation.HeapPointsTo
-    AbstractInterpretation.CodeGenMain
     AbstractInterpretation.HPTResult
     AbstractInterpretation.IR
     AbstractInterpretation.LiveVariable
@@ -33,10 +33,10 @@ library
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
     AbstractInterpretation.PrettyLVA
+    AbstractInterpretation.PrettySharing
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util
     AbstractInterpretation.Sharing
-    AbstractInterpretation.Model
     Grin.Grin
     Grin.Syntax
     Grin.SyntaxDefs
@@ -151,10 +151,12 @@ library
     extra,
     logict,
     QuickCheck,
+    quickcheck-instances,
     neat-interpolation,
     template-haskell,
     Diff,
-    random
+    random,
+    set-extra
 
   default-language:    Haskell2010
 
@@ -186,6 +188,7 @@ test-suite grin-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  default-extensions:  OverloadedStrings
   build-depends:       base
                      , containers
                      , filepath
@@ -196,6 +199,9 @@ test-suite grin-test
                      , QuickCheck
                      , deepseq
                      , vector
+                     , text
+                     , random
+                     , microlens
 
   other-modules:     CreatedBy.CreatedBySpec
 
@@ -288,9 +294,6 @@ test-suite grin-test
                      , Parse.Tests.Util
 
                      , Transformations.Simplifying.RegisterIntroductionSpec
-                     , text
-                     , random
-  other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
                      , Transformations.Simplifying.RightHoistFetchSpec

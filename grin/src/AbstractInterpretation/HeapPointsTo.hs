@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, TemplateHaskell, OverloadedStrings #-}
 module AbstractInterpretation.HeapPointsTo where
 
 import Control.Monad.Trans.Except
@@ -22,7 +22,7 @@ import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
 
-data HPTProgram = HPTProgram { _absProg :: AbstractProgram }
+data HPTProgram = HPTProgram { _absProg :: AbstractProgram } deriving (Show)
 concat <$> mapM makeLenses [''HPTProgram]
 
 instance HasDataFlowInfo HPTProgram where
@@ -149,14 +149,14 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata f
     ProgramF defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
-      instructions <- stateDfi $ \s@AbstractProgram{..} -> (absInstructions, s {absInstructions = []})
+      instructions <- stateDfi $ \s@AbstractProgram{..} -> (_absInstructions, s {_absInstructions = []})
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       -- QUESTION: why do we reverse?
-      modify' $ modifyInfo $ \s@AbstractProgram{..} -> s {absInstructions = reverse absInstructions ++ instructions}
+      modify' $ modifyInfo $ \s@AbstractProgram{..} -> s {_absInstructions = reverse _absInstructions ++ instructions}
       pure Z
 
     EBindF leftExp lpat rightExp -> do

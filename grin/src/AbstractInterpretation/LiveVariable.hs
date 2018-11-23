@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings #-}
 module AbstractInterpretation.LiveVariable where
 
 import Control.Monad.Trans.Except
@@ -30,7 +30,7 @@ import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataF
 -- By default, every variable is dead.
 -- The data flows in two directions: the liveness information flows backwards,
 -- the structural information flows forward.
-newtype LVAProgram = LVAProgram { _absProg :: AbstractProgram }
+newtype LVAProgram = LVAProgram { _absProg :: AbstractProgram } deriving (Show)
 concat <$> mapM makeLenses [''LVAProgram]
 
 instance HasDataFlowInfo LVAProgram where
@@ -50,12 +50,6 @@ doNothing = pure ()
 
 emptyReg :: HasDataFlowInfo s => CG s IR.Reg
 emptyReg = newReg
-
-isPointer :: IR.Predicate
-isPointer = IR.ValueIn (IR.Range 0 (maxBound :: Int32))
-
-isNotPointer :: IR.Predicate
-isNotPointer = IR.ValueIn (IR.Range (minBound :: Int32) 0)
 
 -- Tests whether the given register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
@@ -88,15 +82,6 @@ setLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
 setLive r = do
   setBasicValLive r
   emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
-
--- For simple types, copies only pointer information
--- For nodes, copies the structure and the pointer information in the fields
-copyStructureWithPtrInfo :: IR.Reg -> IR.Reg -> IR.Instruction
-copyStructureWithPtrInfo srcReg dstReg = IR.ConditionalMove
-  { srcReg    = srcReg
-  , predicate = isPointer
-  , dstReg    = dstReg
-  }
 
 {- Data flow info propagation for node pattern:
    case nodeReg of 

@@ -7,7 +7,7 @@ import Grin.Grin
 import Test.IO
 import Test.Hspec
 
-import AbstractInterpretation.Reduce (evalDataFlowInfo)
+import AbstractInterpretation.Reduce (ComputationResult(..),evalDataFlowInfo)
 import AbstractInterpretation.LiveVariable
 import AbstractInterpretation.LVAResult
 
@@ -103,5 +103,5 @@ runTestsFrom fromCurDir = testGroup lvaTestName $
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
   | Right lvaProgram <- codeGen prog
-  , computer <- evalDataFlowInfo lvaProgram
+  , computer <- _crComp . evalDataFlowInfo $ lvaProgram
   = toLVAResult lvaProgram computer

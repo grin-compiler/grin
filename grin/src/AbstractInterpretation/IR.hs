@@ -15,6 +15,9 @@ import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
 import Data.Set (Set)
 
+import Lens.Micro.Platform
+import Lens.Micro.Internal
+
 import qualified Grin.Grin as Grin
 import Grin.Grin (Name)
 
@@ -24,16 +27,10 @@ newtype Mem = Mem Word32 deriving (Generic, NFData, Eq, Ord, Show)
 data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
-<<<<<<< HEAD
   | AllFields
   deriving (Generic, NFData, Eq, Ord, Show)
 
 newtype Tag = Tag Word32 deriving (Generic, NFData, Eq, Ord, Show)
-=======
-  | Locations     -- Project the locations from an abstract value
-  | NodeLocations -- Project the locations from nodes stored in an abstract values
-  deriving Show
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
 type SimpleType = Int32
 type Producer   = Int32
@@ -81,7 +78,6 @@ data Instruction
     , dstSelector :: Selector -- ^ the seleced tag must exist
     , dstReg      :: Reg
     }
-<<<<<<< HEAD
   | Move
     { srcReg      :: Reg
     , dstReg      :: Reg
@@ -98,11 +94,6 @@ data Instruction
     { srcReg      :: Reg
     , predicate   :: Predicate
     , dstReg      :: Reg
-=======
-  | Move -- ^ extends the destination register with the source register
-    { srcReg        :: Reg
-    , dstReg        :: Reg
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
     }
   | Fetch -- ^ copy mem (node) content addressed by SRC reg location part to DST register node part
     { addressReg  :: Reg
@@ -151,45 +142,24 @@ instance HasDataFlowInfo AbstractProgram where
   getDataFlowInfo = id
   modifyInfo f    = f
 
-<<<<<<< HEAD
 data AbstractProgram
   = AbstractProgram
-  { absMemoryCounter    :: Word32
-  , absRegisterCounter  :: Word32
-  , absRegisterMap      :: Map.Map Name Reg
-  , absInstructions     :: [Instruction]
-  , absFunctionArgMap   :: Map.Map Name (Reg, [Reg])
-  , absTagMap           :: Bimap.Bimap Grin.Tag Tag
+  { _absMemoryCounter    :: Word32
+  , _absRegisterCounter  :: Word32
+  , _absRegisterMap      :: Map.Map Name Reg
+  , _absInstructions     :: [Instruction]
+  , _absFunctionArgMap   :: Map.Map Name (Reg, [Reg])
+  , _absTagMap           :: Bimap.Bimap Grin.Tag Tag
   }
   deriving Show
+
+concat <$> mapM makeLenses [''AbstractProgram]
 
 emptyAbstractProgram = AbstractProgram
-  { absMemoryCounter    = 0
-  , absRegisterCounter  = 0
-  , absRegisterMap      = Map.empty
-  , absInstructions     = []
-  , absFunctionArgMap   = Map.empty
-  , absTagMap           = Bimap.empty
-=======
-data HPTProgram
-  = HPTProgram
-  { hptMemoryCounter    :: Word32
-  , hptRegisterCounter  :: Word32
-  , hptRegisterMap      :: Map.Map Name Reg
-  , hptInstructions     :: [Instruction]
-  , hptFunctionArgMap   :: Map.Map Name (Reg, [Reg])
-  , hptTagMap           :: Bimap.Bimap Grin.Tag Tag
-  , hptSharingReg       :: Maybe Reg
-  }
-  deriving Show
-
-emptyHPTProgram = HPTProgram
-  { hptMemoryCounter    = 0
-  , hptRegisterCounter  = 0
-  , hptRegisterMap      = Map.empty
-  , hptInstructions     = []
-  , hptFunctionArgMap   = Map.empty
-  , hptTagMap           = Bimap.empty
-  , hptSharingReg       = Nothing
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
+  { _absMemoryCounter    = 0
+  , _absRegisterCounter  = 0
+  , _absRegisterMap      = Map.empty
+  , _absInstructions     = []
+  , _absFunctionArgMap   = Map.empty
+  , _absTagMap           = Bimap.empty
   }

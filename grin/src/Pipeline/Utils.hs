@@ -10,6 +10,7 @@ import Pipeline.Definitions
 
 import Grin.Grin
 import Grin.TypeEnvDefs
+import AbstractInterpretation.Sharing
 import AbstractInterpretation.CByResultTypes    
 import AbstractInterpretation.LVAResultTypes
 
@@ -17,6 +18,17 @@ pipelineLog :: String -> PipelineM ()
 pipelineLog str = do
   shouldLog <- view poLogging
   when shouldLog $ liftIO $ putStrLn str
+
+pipelineLogNoLn :: String -> PipelineM ()
+pipelineLogNoLn str = do
+  shouldLog <- view poLogging
+  when shouldLog $ liftIO $ putStr str
+
+pipelineLogIterations :: Int -> PipelineM ()
+pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n
+
+
+-- TODO: Refactor these into some kind of Maybe monad
 
 withPState :: (PState -> Maybe a) -> String -> (a -> PipelineM ()) -> PipelineM ()
 withPState selector err action = do 
@@ -34,6 +46,9 @@ withCByResult = withPState _psCByResult $ notAvailableMsg "Created-by analysis r
 
 withLVAResult :: (LVAResult -> PipelineM ()) -> PipelineM ()
 withLVAResult = withPState _psLVAResult $ notAvailableMsg "Live variable analysis result"
+
+withSharing :: (SharingResult -> PipelineM ()) -> PipelineM () 
+withSharing = withPState _psSharingResult $ notAvailableMsg "Sharing analysis result"
   
 withTyEnvCByLVA :: 
   (TypeEnv -> CByResult -> LVAResult -> PipelineM ()) -> 
@@ -51,6 +66,14 @@ withTyEnvLVA f =
   withTypeEnv $ \te -> 
     withLVAResult $ \lva -> 
       f te lva
+
+withTyEnvSharing :: 
+  (TypeEnv -> SharingResult -> PipelineM ()) -> 
+  PipelineM ()
+withTyEnvSharing f = 
+  withTypeEnv $ \te -> 
+    withSharing $ \shLocs -> 
+      f te shLocs
 
 defaultOptimizations :: [Transformation]
 defaultOptimizations =
@@ -97,3 +120,27 @@ defaultCleanUp =
 
 debugPipeline :: [PipelineStep] -> [PipelineStep]
 debugPipeline ps = [PrintGrin id] ++ ps ++ [PrintGrin id]
+
+debugPipelineState :: PipelineM ()
+debugPipelineState = do
+  ps <- get
+  liftIO $ print ps
+
+printingSteps :: [PipelineStep]
+printingSteps = 
+  [ HPT PrintAbstractProgram
+  , HPT PrintAbstractResult
+  , CBy PrintAbstractProgram
+  , CBy PrintAbstractResult
+  , LVA PrintAbstractProgram
+  , LVA PrintAbstractResult
+  , Sharing PrintSharingResult
+  , PrintTypeEnv
+  , PrintAST
+  , PrintErrors
+  , PrintTypeAnnots
+  , DebugPipelineState
+  ]
+
+isPrintingStep :: PipelineStep -> Bool 
+isPrintingStep = flip elem printingSteps

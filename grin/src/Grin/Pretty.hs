@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, OverloadedStrings #-}
 module Grin.Pretty
   ( pretty
   , printGrin
@@ -29,7 +29,7 @@ import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
 import Grin.Grin
-import Grin.TypeEnv
+import Grin.TypeEnvDefs
 import Grin.EffectMap
 
 import Grin.Parse
@@ -83,7 +83,7 @@ instance Pretty Exp where
 instance Pretty Val where
   pretty = \case
     ConstTagNode tag args -> parens $ hsep (pretty tag : map pretty args)
-    VarTagNode name args  -> parens $ hsep (text name : map pretty args)
+    VarTagNode name args  -> parens $ hsep (pretty name : map pretty args)
     ValTag tag   -> pretty tag
     Unit         -> parens empty
     -- simple val
@@ -140,15 +140,13 @@ instance Pretty Type where
 
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
-    [ yellow (text "Location (* is shared)") <$$> indent 4 (prettyKeyValue
-         $ map (\(k, v) -> (if k `Set.member` _sharing then (pretty k) <> text "*" else pretty k, v))
-         $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
+    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
     , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
 
 instance Pretty Effect where 
-  pretty (Effectful fun) = text $ "effectful " ++ fun 
+  pretty (Effectful fun) = pretty $ "effectful " <> fun 
   pretty (Update locs)   = text "updates " <+> list (map (cyan . int) locs)
   pretty (Store locs)    = text "stores " <+> list (map (cyan . int) locs)
 
@@ -163,4 +161,4 @@ prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
 prettySimplePair (x, y) = pretty x <> pretty y
 
 prettyFunction :: Pretty a => (Name, (a, Vector a)) -> Doc
-prettyFunction (name, (ret, args)) = text name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
+prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))

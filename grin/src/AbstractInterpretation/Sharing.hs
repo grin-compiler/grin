@@ -1,16 +1,22 @@
-{-# LANGUAGE LambdaCase #-}
-module AbstractInterpretation.Sharing
-  ( sharingCodeGen
-  ) where
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
+module AbstractInterpretation.Sharing where
+    
+import Data.Set (Set)
+import Data.Map (Map)
+import Data.Vector (Vector)
+import qualified Data.Set as Set
+import qualified Data.Map as Map
+import qualified Data.Vector as Vec
+
+import qualified Data.Set.Extra as Set
+
+import Data.Maybe
+import Data.Foldable
+import Data.Functor.Foldable
 
 import Grin.Syntax
-import Data.Functor.Foldable
-import AbstractInterpretation.CodeGen
-import Data.Foldable
-import AbstractInterpretation.IR as IR
-
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import Grin.TypeEnvDefs
+import AbstractInterpretation.Util (converge)
 
 {-
 [x] Calc non-linear variables, optionally ignoring updates.
@@ -32,12 +38,14 @@ import qualified Data.Set as Set
 [x] Remove Mode for calcNonLinearVars
 -}
 
+type SharingResult = Set Loc
+
 -- | Calc non linear variables, ignores variables that are used in update locations
 -- This is an important difference, if a variable would become non-linear due to
--- being subject to an update, that would make the sharing analysis incorect.
+-- being subject to an update, that would make the sharing analysis incorrect.
 -- One possible improvement is to count the updates in a different set and make a variable
--- linear if it subject to an update more than once. But that could not happen, thus the only
--- introdcution of new updates comes from inlining the eval.
+-- linear if it is subject to an update more than once. But that could not happen, thus the only
+-- introdcution of new updates comes from inlining eval.
 calcNonLinearNonUpdateLocVariables :: Exp -> Set.Set Name
 calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
   where
@@ -57,19 +65,22 @@ calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>
       VarTagNode v ps -> union $ fmap seen (Var v : ps)
       _ -> Map.empty
 
-sharingCodeGen :: IR.Reg -> Exp -> CG ()
-sharingCodeGen s e = do
-  forM_ nonLinearVars $ \name -> do
-    -- For all non-linear variables set the locations as shared.
-    nonLinearVarReg <- getReg name
-    nonLinearVarLocReg <- newReg
-    emit $ IR.Project Locations nonLinearVarReg nonLinearVarLocReg
-    emit $ IR.Move nonLinearVarLocReg s
+calcSharedLocations :: TypeEnv -> Exp -> Set Loc
+calcSharedLocations TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) origShVarLocs where
+  nonLinearVars = calcNonLinearNonUpdateLocVariables e
+  shVarTypes    = Set.mapMaybe (`Map.lookup` _variable) $ nonLinearVars
+  origShVarLocs = onlyLocations . onlySimpleTys $ shVarTypes
 
-  pointsToLocReg <- newReg
-  pointsToNodeReg <- newReg
-  emit $ IR.Fetch s pointsToNodeReg
-  emit $ IR.Project IR.NodeLocations pointsToNodeReg pointsToLocReg
-  emit $ IR.Move pointsToLocReg s
-  where
-    nonLinearVars = calcNonLinearNonUpdateLocVariables e
+  onlySimpleTys :: Set Type -> Set SimpleType
+  onlySimpleTys tys = Set.fromList [ sty | T_SimpleType sty <- Set.toList tys ]
+
+  onlyLocations :: Set SimpleType -> Set Loc
+  onlyLocations stys = Set.fromList $ concat [ ls | T_Location ls <- Set.toList stys ]
+
+  fetchLocs :: Loc -> Set Loc
+  fetchLocs l = onlyLocations . fieldsFromNodeSet . fromMaybe (error msg) . (Vec.!?) _location $ l
+    where msg = "Sharing: Invalid heap index: " ++ show l
+          
+  fieldsFromNodeSet :: NodeSet -> Set SimpleType
+  fieldsFromNodeSet = Set.fromList . concatMap Vec.toList . Map.elems
+  

@@ -1,6 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Test.Util where
 
 import System.FilePath
+
+import Data.Text (Text)
+import qualified Data.Text.IO as T (readFile) 
 
 import Grin.Grin
 import Grin.Parse
@@ -53,6 +57,6 @@ mkBeforeAfterTestCase name beforeDir afterDir = (before, after, specFun)
   where before = beforeDir </> name <.> "grin"
         after  = afterDir  </> name <.> "grin"
         specFun after' transformed = do
-          expected <- runIO $ readFile after'
+          expected <- runIO $ T.readFile after'
           let expected' = parseProg expected
           it name $ transformed `sameAs` expected'

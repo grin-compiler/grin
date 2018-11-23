@@ -7,6 +7,9 @@ module Test.IO where
 
 import System.FilePath
 
+import Data.Text (Text)
+import qualified Data.Text.IO as T (readFile)
+
 import Grin.Grin
 import Grin.Parse
 
@@ -29,9 +32,9 @@ stackTest = "test"
 readProgram :: FilePath -> IO Exp
 readProgram = readProgramWith parseProg
 
-readProgramWith :: (String -> a) -> FilePath -> IO a
+readProgramWith :: (Text -> a) -> FilePath -> IO a
 readProgramWith parse fp = do
-  src <- readFile fp
+  src <- T.readFile fp
   return $ parse src
 
 withCurDir :: FilePath -> FilePath -> FilePath
@@ -42,7 +45,7 @@ withCurDir curDir fp = if curDir == stackTest
 testGroup :: String -> Spec -> IO () 
 testGroup name tests = hspec $ describe name tests
 
-mkSpecFromWith' :: (String -> a)
+mkSpecFromWith' :: (Text -> a)
                 -> FilePath
                 -> (a -> b)
                 -> [FilePath]

@@ -2,6 +2,8 @@ module Parse.Tests.Interleaved where
 
 import System.FilePath
 
+import Data.Text (pack)
+
 import Grin.Grin
 import Grin.Parse
 import Grin.Pretty
@@ -20,7 +22,7 @@ interleavedSrc = parseExamples </> "interleaved.grin"
 -- if the AST from (1) and (2) are the same, then the test passes
 interleavedAstParseSpec :: Exp -> Spec
 interleavedAstParseSpec ast = it "interleaved_ast_parse" $ ast `sameAs` ast'
-  where ast' = parseProg . show . WPP $ ast
+  where ast' = parseProg . pack . show . WPP $ ast
 
 -- this is just comparing the two parsing methods
 -- parsing type annotations interleaved with code
@@ -28,4 +30,4 @@ interleavedAstParseSpec ast = it "interleaved_ast_parse" $ ast `sameAs` ast'
 -- if both yield the same result, then the test passes 
 interleavedTypeEnvParseSpec :: TypeEnv -> Spec
 interleavedTypeEnvParseSpec env = it "interleaved_type_env_parse" $ env `sameAs` env'
-  where env' = parseTypeEnv . show . WPP $ env
+  where env' = parseTypeEnv . pack . show . WPP $ env

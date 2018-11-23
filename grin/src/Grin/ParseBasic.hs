@@ -1,9 +1,13 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Grin.ParseBasic where
 
 import Data.Set (Set)
 import Data.Vector (Vector)
 import qualified Data.Set    as Set
 import qualified Data.Vector as Vec
+
+import Data.Text (Text)
+import Data.Text.Short (ShortText, pack)
 import Data.Void 
 
 import Control.Monad (void)
@@ -14,7 +18,7 @@ import Text.Megaparsec.Char
 import Grin.Grin
 import Grin.TypeEnvDefs
 
-type Parser = Parsec Void String
+type Parser = Parsec Void Text
 
 keywords = Set.fromList 
   [ "case", "of"
@@ -25,7 +29,7 @@ keywords = Set.fromList
   , "#undefined"
   ] `Set.union` simpleTypes
 
-simpleTypes = Set.fromList 
+simpleTypes = Set.fromList . map pack $ 
   [ show T_Int64, show T_Word64, show T_Float
   , show T_Bool,  show T_Unit
   , "T_Location", show T_Dead
@@ -41,7 +45,7 @@ sc :: Parser ()
 sc = L.space (void spaceChar) lineComment blockComment
 
 sc' :: Parser ()
-sc' = L.space (void $ oneOf " \t") lineComment blockComment
+sc' = L.space (void $ oneOf (" \t" :: String)) lineComment blockComment
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc'
@@ -97,14 +101,14 @@ anySingleBut t = satisfy (/= t)
 
 -- grin syntax
 
--- TODO: unify var and con + support quotted syntax which allow any character
-var :: Parser String
-var = try $ lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf "'_.:!@{}$-")) >>= \x -> case Set.member x keywords of
-  True -> fail $ "keyword: " ++ x
+-- TODO: unify var and con + support quoted syntax which allow any character
+var :: Parser ShortText
+var = try $ packName <$> lexeme ((:) <$> lowerChar <*> many (alphaNumChar <|> oneOf ("'_.:!@{}$-" :: String))) >>= \x -> case Set.member x keywords of
+  True -> fail $ "keyword: " ++ unpackName x
   False -> return x
 
-con :: Parser String
-con = lexeme $ some (alphaNumChar <|> oneOf "_.{}")
+con :: Parser ShortText
+con = lexeme $ packName <$> some (alphaNumChar <|> oneOf ("_.{}" :: String))
 
 tag :: Parser Tag
 tag = Tag C <$ char 'C' <*> con <|>

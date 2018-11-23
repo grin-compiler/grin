@@ -72,6 +72,8 @@ pipelineOpts =
   <|> flg (LVA CompileToAbstractProgram) "compile-lva" "Compiles live variable analysis machine"
   <|> flg (LVA PrintAbstractProgram) "print-lva-code" "Prints thelive variabley analysis machine"
   <|> flg (LVA RunAbstractProgramPure) "run-lva-pure" "Runs the live variable analysis machine via pure interpreter"
+  <|> flg (Sharing ComputeSharing) "compute-sharing" "Runs the sharing analysis"
+  <|> flg (Sharing PrintSharingResult) "print-sharing-result" "Prints the sharing analysis result"
   <|> flg (LVA PrintAbstractResult) "print-lva-result" "Prints the live variable analysis result"
   <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"

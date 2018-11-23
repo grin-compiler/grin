@@ -32,11 +32,7 @@ prettyHPTNode :: (Tag, Vector (Set R.SimpleType)) -> Doc
 prettyHPTNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
 
 prettyHPTFunction :: (Name, (R.TypeSet, Vector R.TypeSet)) -> Doc
-<<<<<<< HEAD
 prettyHPTFunction = prettyFunction
-=======
-prettyHPTFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
 instance Pretty R.NodeSet where
   pretty (R.NodeSet m) = prettyBracedList (map prettyHPTNode $ Map.toList m)
@@ -46,9 +42,7 @@ instance Pretty R.TypeSet where
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
-    [ yellow (text "Heap (* is shared)") <$$> indent 4 (prettyKeyValue
-         $ map (\(k, v) -> (if k `Set.member` _sharing then (pretty k) <> text "*" else pretty k, v))
-         $ zip [(0 :: Int)..] $ V.toList _memory)
+    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ V.toList _memory)
     , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList  _register)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyHPTFunction $ Map.toList _function)
     ]

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 module Grin.ParseTypeEnv (typeAnnot, parseTypeEnv, parseMarkedTypeEnv) where
 
 import Data.Map (Map)
@@ -12,6 +12,8 @@ import Data.List
 import Data.Char
 import Data.Void 
 import Data.Monoid
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Control.Monad (void)
 
@@ -22,7 +24,6 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 
 import Grin.Grin
-import Grin.TypeEnv (emptyTypeEnv)
 import Grin.TypeEnvDefs hiding (location, nodeSet, simpleType)
 import qualified Grin.TypeEnvDefs as Env
 import Grin.ParseBasic
@@ -116,23 +117,23 @@ entriesToTypeEnv xs = flip execState emptyTypeEnv $ do
     Location _ _  -> pure ()  
 
 -- parses a type environment (without code)
-parseTypeEnv :: String -> TypeEnv
+parseTypeEnv :: Text -> TypeEnv
 parseTypeEnv src = either (error . parseErrorPretty' src) id 
                  . runParser typeEnv ""
                  $ src
 
 -- parses type marked type annotations (even interleaved with code)
-parseMarkedTypeEnv :: String -> TypeEnv
+parseMarkedTypeEnv :: Text -> TypeEnv
 parseMarkedTypeEnv src = either (error . parseErrorPretty' src) id 
                        . runParser markedTypeEnv ""
                        . withoutCodeLines
                        $ src
 
-withoutCodeLines :: String -> String 
-withoutCodeLines = unlines
+withoutCodeLines :: Text -> Text 
+withoutCodeLines = T.unlines
                  . map skipIfCode
-                 . lines
+                 . T.lines
   where skipIfCode line
-          | ('%':_) <- dropWhile isSpace line = line
+          | Just ('%',_) <- T.uncons . T.dropWhile isSpace $ line = line
           | otherwise = "" 
 

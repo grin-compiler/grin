@@ -20,4 +20,4 @@ data Effect
 
 -- | Mapping of function names to their respective side effects.
 newtype EffectMap = EffectMap (Map Name (Set Effect))
-  deriving (Eq, Ord, Show, Monoid)
+  deriving (Eq, Ord, Show, Semigroup, Monoid)

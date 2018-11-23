@@ -29,16 +29,12 @@ data SimpleType
   | T_Float
   | T_Bool
   | T_Unit
-<<<<<<< HEAD
-  | T_Location Int
+  | T_Location Loc
   | T_UnspecifiedLocation
   {- NOTE: The local value can be used for any analysis-specific computation,
            but cannot be propagated to the type checking phase.
   -}
   | Local HPTLocal
-=======
-  | T_Location Loc
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
   deriving (Eq, Ord, Show)
 
 data HPTLocal = UndefinedProducer
@@ -86,7 +82,6 @@ data HPTResult
   { _memory   :: Vector NodeSet
   , _register :: Map Name TypeSet
   , _function :: Map Name (TypeSet, Vector TypeSet)
-  , _sharing  :: Set Loc
   }
   deriving (Eq, Show)
 
@@ -117,15 +112,15 @@ _T_Location _ rest           = pure rest
 toHPTResult :: HPTProgram -> R.Computer -> HPTResult
 toHPTResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = HPTResult
   { _memory   = V.map convertNodeSet _memory
-  , _register = Map.map convertReg absRegisterMap
-  , _function = Map.map convertFunctionRegs absFunctionArgMap
+  , _register = Map.map convertReg _absRegisterMap
+  , _function = Map.map convertFunctionRegs _absFunctionArgMap
   }
   where
     convertReg :: Reg -> TypeSet
     convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
 
     convertNodeSet :: R.NodeSet -> NodeSet
-    convertNodeSet (R.NodeSet a) = NodeSet $ Map.fromList [(absTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
+    convertNodeSet (R.NodeSet a) = NodeSet $ Map.fromList [(_absTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
 
     convertSimpleType :: Set IR.SimpleType -> Set SimpleType
     convertSimpleType = Set.map toSimpleType

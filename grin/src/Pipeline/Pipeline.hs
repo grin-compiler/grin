@@ -7,6 +7,7 @@ module Pipeline.Pipeline
 
 import Prelude
 import Control.Monad
+import Data.Text (Text)
 import Data.Maybe (maybe, fromJust, fromMaybe)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
@@ -46,18 +47,14 @@ import qualified AbstractInterpretation.LVAResult as LVA
 import AbstractInterpretation.PrettyCBy
 import AbstractInterpretation.PrettyHPT
 import AbstractInterpretation.PrettyLVA
-import qualified AbstractInterpretation.PrettyIR as HPT
-<<<<<<< HEAD
+import AbstractInterpretation.PrettySharing
+import AbstractInterpretation.Sharing
+import AbstractInterpretation.Reduce (Computer, ComputationResult(..), evalDataFlowInfo)
+import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.CreatedBy    as CBy
 import qualified AbstractInterpretation.LiveVariable as LVA
-import qualified AbstractInterpretation.Reduce as R
-=======
-import qualified AbstractInterpretation.IR as HPT
-import qualified AbstractInterpretation.CodeGenMain as HPT
-import qualified AbstractInterpretation.Reduce as HPT
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -91,46 +88,6 @@ import System.Random
 import Data.Time.Clock
 import Data.Fixed
 
-<<<<<<< HEAD
-=======
-type RenameVariablesMap = Map String String
-
-data Transformation
-  -- Simplifying
-  = RegisterIntroduction
-  | Vectorisation
-  | SplitFetch
-  | CaseSimplification
-  | RightHoistFetch
-  | InlineEval
-  | InlineApply
-  | InlineBuiltins
-  -- Misc
-  | GenerateEval
-  | BindNormalisation
-  | ConstantFolding
-  | UnitPropagation
-  | MangleNames
-  -- Optimizations
-  | EvaluatedCaseElimination
-  | TrivialCaseElimination
-  | SparseCaseOptimisation
-  | UpdateElimination
-  | NonSharedElimination
-  | CopyPropagation
-  | ConstantPropagation
-  | DeadProcedureElimination
-  | DeadParameterElimination
-  | DeadVariableElimination
-  | CommonSubExpressionElimination
-  | CaseCopyPropagation
-  | CaseHoisting
-  | GeneralizedUnboxing
-  | ArityRaising
-  | LateInlining
-  deriving (Enum, Eq, Ord, Show)
-
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
 noTypeEnv f (t, e) = (t, f e)
 
@@ -169,122 +126,13 @@ transformation n = \case
   ArityRaising                    -> noEffectMap arityRaising
   LateInlining                    -> noEffectMap lateInlining
   UnitPropagation                 -> noEffectMap unitPropagation
-  NonSharedElimination            -> noEffectMap nonSharedElimination
 
-<<<<<<< HEAD
-=======
-newtype Hidden a = H a
-
-instance Show (Hidden a) where
-  show _ = "(hidden)"
-
-instance Eq (Hidden a) where
-  _ == _ = True
-
-data HPTStep
-  = CompileHPT
-  | PrintHPTCode
-  | RunHPTPure
-  | PrintHPTResult
-  deriving (Eq, Show)
-
-data EffectStep
-  = CalcEffectMap
-  | PrintEffectMap
-  deriving (Eq, Show)
-
-data PipelineStep
-  = HPT HPTStep
-  | Eff EffectStep
-  | T Transformation
-  | Pass [PipelineStep]
-  | PrintGrinH (Hidden (Doc -> Doc))
-  | PureEval
-  | JITLLVM
-  | PrintAST
-  | SaveLLVM Bool FilePath
-  | SaveGrin FilePath
-  | DebugTransformationH (Hidden (Exp -> Exp))
-  | Statistics
-  | PrintTypeEnv
-  | SaveTypeEnv
-  | Lint
-  | ConfluenceTest
-  | DebugPipelineState
-  deriving (Eq, Show)
-
-pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
-pattern PrintGrin c <- PrintGrinH (H c)
-  where PrintGrin c =  PrintGrinH (H c)
-
-pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
-pattern DebugTransformation t <- DebugTransformationH (H t)
-  where DebugTransformation t =  DebugTransformationH (H t)
-
-data PipelineOpts = PipelineOpts
-  { _poOutputDir    :: FilePath
-  , _poFailOnLint   :: Bool
-  , _poLogging      :: Bool
-  , _poSaveTypeEnv  :: Bool
-  , _poStatistics   :: Bool
-  }
-
-defaultOpts :: PipelineOpts
-defaultOpts = PipelineOpts
-  { _poOutputDir    = ".grin-output"
-  , _poFailOnLint   = True
-  , _poLogging      = True
-  , _poSaveTypeEnv  = False
-  , _poStatistics   = False
-  }
-
-type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
-data PState = PState
-    { _psExp        :: Exp
-    , _psTransStep  :: Int
-    , _psSaveIdx    :: Int
-    , _psHPTProgram :: Maybe HPT.HPTProgram
-    , _psHPTResult  :: Maybe HPT.HPTResult
-    , _psTypeEnv    :: Maybe TypeEnv
-    , _psEffectMap  :: Maybe EffectMap
-    , _psErrors     :: [String]
-    } deriving (Show)
-
-makeLenses ''PState
-makeLenses ''PipelineOpts
-
-data PipelineEff
-  = None
-  | ExpChanged
-  deriving (Eq, Show)
-
-_None :: Traversal' PipelineEff ()
-_None f None = const None <$> f ()
-_None _ rest = pure rest
-
-_ExpChanged :: Traversal' PipelineEff ()
-_ExpChanged f ExpChanged = const ExpChanged <$> f ()
-_ExpChanged _ rest       = pure rest
-
-pipelineLog :: String -> PipelineM ()
-pipelineLog str = do
-  shouldLog <- view poLogging
-  when shouldLog $ liftIO $ putStrLn str
-
-pipelineLogNoLn :: String -> PipelineM ()
-pipelineLogNoLn str = do
-  shouldLog <- view poLogging
-  when shouldLog $ liftIO $ putStr str
-
-
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
-  let specialPrint = [HPT PrintHPTCode, HPT PrintHPTResult, PrintGrin id, PrintAST, PrintTypeEnv]
   case p of
-    Pass{}  -> pure () -- each pass step will be printed anyway
-    _ | p `elem` specialPrint -> pipelineLog $ printf "PipelineStep: %-50s" (show p)
-    _ -> pipelineLogNoLn $ printf "PipelineStep: %-50s" (show p)
+    Pass{}               -> pure () -- each pass step will be printed anyway
+    _ | isPrintingStep p -> pipelineLog $ printf "PipelineStep: %-35s" (show p)
+    _                    -> pipelineLogNoLn $ printf "PipelineStep: %-35" (show p)
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
@@ -310,6 +158,9 @@ pipelineStep p = do
       RunAbstractProgramPure   -> runLVAPure
       PrintAbstractResult      -> printLVAResult
     RunCByWithLVA -> runCByWithLVAPure
+    Sharing step -> case step of 
+      ComputeSharing     -> computeSharing
+      PrintSharingResult -> printSharingResult
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -329,13 +180,10 @@ pipelineStep p = do
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
     ConfluenceTest  -> confluenceTest
-<<<<<<< HEAD
     PrintErrors     -> do 
       errors <- use psErrors
       pipelineLog $ unlines $ "errors:" : errors
-=======
     DebugPipelineState -> debugPipelineState
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
   after <- use psExp
   let eff = if before == after then None else ExpChanged
       showMS :: Rational -> String
@@ -381,10 +229,10 @@ compileHPT = do
   -}
 
 printAbsProg a = do
-  pipelineLog $ show $ HPT.prettyInstructions (Just a) . IR.absInstructions $ a
-  pipelineLog $ printf "memory size    %d" $ IR.absMemoryCounter a
-  pipelineLog $ printf "register count %d" $ IR.absRegisterCounter a
-  pipelineLog $ printf "variable count %d" $ Map.size $ IR.absRegisterMap a
+  pipelineLog $ show $ IR.prettyInstructions (Just a) . IR._absInstructions $ a
+  pipelineLog $ printf "memory size    %d" $ IR._absMemoryCounter a
+  pipelineLog $ printf "register count %d" $ IR._absRegisterCounter a
+  pipelineLog $ printf "variable count %d" $ Map.size $ IR._absRegisterMap a
 
 printHPTCode :: PipelineM ()
 printHPTCode = do
@@ -400,13 +248,9 @@ runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
   Just hptProgram -> do
-<<<<<<< HEAD
-    let hptResult = R.evalDataFlowInfo hptProgram
-=======
-    let (hptResult, hptInfo) = HPT.evalHPT hptProgram
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
-        result = HPT.toHPTResult hptProgram hptResult
-    pipelineLogNoLn $ unwords ["iterations:", show (HPT.hptIterations hptInfo), ""]
+    let ComputationResult{..} = evalDataFlowInfo hptProgram
+        result = HPT.toHPTResult hptProgram _crComp
+    pipelineLogIterations _crIter
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
       Right te  -> psTypeEnv .= Just te
@@ -434,12 +278,13 @@ printCByResult = use psCByResult >>= \case
   Nothing -> pure ()
   Just result -> pipelineLog $ show $ pretty result
 
-runCByPureWith :: (CBy.CByProgram -> R.Computer -> CBy.CByResult) -> PipelineM ()
+runCByPureWith :: (CBy.CByProgram -> Computer -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
   Just cbyProgram -> do
-    let cbyResult = R.evalDataFlowInfo cbyProgram
-        result = toCByResult cbyProgram cbyResult
+    let ComputationResult{..} = evalDataFlowInfo cbyProgram
+        result = toCByResult cbyProgram _crComp
+    pipelineLogIterations _crIter
     psCByResult .= Just result
     case typeEnvFromHPTResult (CBy._hptResult result) of
       Right te  -> psTypeEnv .= Just te
@@ -484,11 +329,21 @@ runLVAPure :: PipelineM ()
 runLVAPure = use psLVAProgram >>= \case
   Nothing -> psLVAResult .= Nothing
   Just lvaProgram -> do
-    let lvaResult = R.evalDataFlowInfo lvaProgram
-        result = LVA.toLVAResult lvaProgram lvaResult
+    let ComputationResult{..} = evalDataFlowInfo lvaProgram
+        result = LVA.toLVAResult lvaProgram _crComp
+    pipelineLogIterations _crIter
     psLVAResult .= Just result
 
+computeSharing :: PipelineM ()
+computeSharing = do 
+  exp <- use psExp
+  withTypeEnv $ \tyEnv -> 
+    psSharingResult .= Just (calcSharedLocations tyEnv exp)
 
+printSharingResult :: PipelineM ()
+printSharingResult = do 
+  withTyEnvSharing $ \tyEnv shRes -> 
+    pipelineLog $ show $ prettySharingResult tyEnv shRes
 
 
 parseTypeAnnots :: PipelineM () 
@@ -526,6 +381,14 @@ statistics = do
   saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
 transformationM :: Transformation -> PipelineM ()
+transformationM NonSharedElimination = do 
+  e <- use psExp 
+  withTyEnvSharing $ \tyEnv shRes -> do
+    let e' = nonSharedElimination shRes tyEnv e
+    psExp .= e'
+    psTransStep %= (+1)
+
+
 transformationM DeadCodeElimination = do 
   withTyEnvCByLVA $ \typeEnv cbyResult lvaResult -> do
 
@@ -661,20 +524,16 @@ lintGrin mPhaseName = do
   -- print errors
   errors <- use psErrors
   unless (Prelude.null errors) $ void $ do
-<<<<<<< HEAD
     failOnLintError <- view poFailOnLint
     when failOnLintError $ void $ do
       pipelineLog $ show $ prettyLintExp lintExp
       pipelineStep $ HPT PrintAbstractResult
-=======
-    saveTransformationInfo "Lint" $ prettyLintExp lintExp
-    mHptResult <- use psHPTResult
-    saveTransformationInfo "HPT-Result" mHptResult
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
     case mPhaseName of
       Just phaseName  -> pipelineLog $ printf "error after %s:\n%s" phaseName (unlines errors)
       Nothing         -> pipelineLog $ printf "error:\n%s" (unlines errors)
-    failOnLintError <- view poFailOnLint
+    saveTransformationInfo "Lint" $ prettyLintExp lintExp
+    mHptResult <- use psHPTResult
+    saveTransformationInfo "HPT-Result" mHptResult
     when failOnLintError $ do
       -- FIXME: reenable after: undefined support ; transformation to inject default alts for pattern match errors
       -- liftIO $ die "illegal code"
@@ -684,20 +543,10 @@ lintGrin mPhaseName = do
 
 -- Generate random pipeline based on the transformationWhitelist, the pipeline reaches a fixpoint
 -- and returns the list of transformation that helped to reach the fixpoint.
-<<<<<<< HEAD
-randomPipeline :: PipelineM [Transformation]
-randomPipeline = do
-  runBasicAnalyses
-=======
 randomPipeline :: StdGen -> PipelineM [Transformation]
 randomPipeline seed = do
   liftIO $ setStdGen seed
-  mapM_ pipelineStep
-    [ HPT CompileHPT
-    , HPT RunHPTPure
-    , Eff CalcEffectMap
-    ]
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
+  runBasicAnalyses
   go transformationWhitelist []
   where
     go :: [Transformation] -> [Transformation] -> PipelineM [Transformation]
@@ -803,51 +652,29 @@ confluenceTest = do
   pipelineLog "\nSecond transformation permutation:"
   pipelineLog $ show pipeline2
 
-<<<<<<< HEAD
-runPipeline :: PipelineOpts -> Maybe String -> Exp -> PipelineM a -> IO (a, Exp)
+runPipeline :: PipelineOpts -> Maybe Text -> Exp -> PipelineM a -> IO (a, Exp)
 runPipeline o s e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
   start = PState
-    { _psSrc        = s
-    , _psExp        = e
-    , _psTransStep  = 0
-    , _psSaveIdx    = 0
-    , _psHPTProgram = Nothing
-    , _psHPTResult  = Nothing
-    , _psCByProgram = Nothing
-    , _psCByResult  = Nothing
-    , _psLVAProgram = Nothing
-    , _psLVAResult  = Nothing
-    , _psTypeEnv    = Nothing
-    , _psTypeAnnots = Nothing
-    , _psEffectMap  = Nothing
-    , _psErrors     = []
+    { _psSrc            = s
+    , _psExp            = e
+    , _psTransStep      = 0
+    , _psSaveIdx        = 0
+    , _psHPTProgram     = Nothing
+    , _psHPTResult      = Nothing
+    , _psCByProgram     = Nothing
+    , _psCByResult      = Nothing
+    , _psLVAProgram     = Nothing
+    , _psLVAResult      = Nothing
+    , _psSharingResult  = Nothing
+    , _psTypeEnv        = Nothing
+    , _psTypeAnnots     = Nothing
+    , _psEffectMap      = Nothing
+    , _psErrors         = []
     }
-=======
-debugPipelineState :: PipelineM ()
-debugPipelineState = do
-  ps <- MonadState.get
-  liftIO $ print ps
-
-runPipeline :: PipelineOpts -> Exp -> PipelineM a -> IO (a, Exp)
-runPipeline o e m = do
-  createDirectoryIfMissing True (_poOutputDir o)
-  fmap (second _psExp) $ flip runStateT start $ runReaderT m o
-  where
-    start = PState
-      { _psExp        = e
-      , _psTransStep  = 0
-      , _psSaveIdx    = 0
-      , _psHPTProgram = Nothing
-      , _psHPTResult  = Nothing
-      , _psTypeEnv    = Nothing
-      , _psEffectMap  = Nothing
-      , _psErrors     = []
-      }
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
-pipeline :: PipelineOpts -> Maybe String -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
+pipeline :: PipelineOpts -> Maybe Text -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
 pipeline o s e ps = do
   print ps
   runPipeline o s e $ mapM (\p -> (,) p <$> pipelineStep p) ps
@@ -869,53 +696,20 @@ optimizeWithPM o e ps onChange cleanUp = loop e where
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
         lintGrin . Just $ show p
-<<<<<<< HEAD
         mapM pipelineStep cleanUp
         mapM pipelineStep onChange
-=======
-        pipelineStep $ Eff CalcEffectMap
-        when (o ^. poStatistics) $ void $ pipelineStep Statistics
-        when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
       pure eff
     -- Run loop again on change
     pipelineStep $ PrintGrin id
+    when (o ^. poStatistics)  $ void $ pipelineStep Statistics
+    when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
     e' <- use psExp
     if mangleNames e == mangleNames e'
       then void $ mapM pipelineStep cleanUp
       else loop e'
 
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
-<<<<<<< HEAD
 optimize o e pre post = optimizeWith o e pre defaultOptimizations defaultOnChange defaultCleanUp post where
-=======
-optimize o e pre post = optimizeWith o e pre optimizations post where
-  optimizations =
-    [ BindNormalisation
-    , EvaluatedCaseElimination
-    , TrivialCaseElimination
-    , SparseCaseOptimisation
-    , UpdateElimination
-    , NonSharedElimination
-    , CopyPropagation
-    , ConstantPropagation
-    , DeadProcedureElimination
-    , DeadVariableElimination
-    , DeadParameterElimination
-    , CommonSubExpressionElimination
-    , CaseCopyPropagation
-    , CaseHoisting
-    , GeneralizedUnboxing
-    , ArityRaising
-    , InlineEval
-    , InlineApply
-    , LateInlining
-    ]
-
-optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> IO Exp
-optimizeWith o e pre optimizations post = fmap snd $ runPipeline o e $ do
-  lintGrin $ Just "init"
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
 optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> IO Exp
 optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipeline o Nothing e $ do

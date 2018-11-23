@@ -168,7 +168,7 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
     let pMap = _producerMap . _producers $ cbyResult
     pSet <- _producerSet <$> lookupExcept (notFoundInPMap v) v pMap
     flip catchE (const $ pure $ repeat False) $ do
-      (p:_) <- Set.toList  <$> lookupExcept (notFoundInPSet t) t pSet
+      ~(p:_) <- Set.toList  <$> lookupExcept (notFoundInPSet t) t pSet
       liveness <- lookupWithDoubleKeyExcept (notFoundLiveness p t) p t gblLiveness
       pure $ Vec.toList liveness
 

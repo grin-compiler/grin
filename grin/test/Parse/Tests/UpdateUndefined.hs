@@ -2,6 +2,8 @@ module Parse.Tests.UpdateUndefined where
 
 import System.FilePath
 
+import Data.Text (pack)
+
 import Grin.Grin
 import Grin.Parse
 import Grin.Pretty
@@ -20,4 +22,4 @@ updateUndefinedSrc = parseExamples </> "update_undefined.grin"
 -- if the AST from (1) and (2) are the same, then the test passes
 updateUndefinedAstParseSpec :: Exp -> Spec
 updateUndefinedAstParseSpec ast = it "update_undefined_ast_parse" $ ast `sameAs` ast'
-  where ast' = parseProg . show . WPP $ ast
+  where ast' = parseProg . pack . show . WPP $ ast

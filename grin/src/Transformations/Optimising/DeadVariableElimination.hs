@@ -36,9 +36,10 @@ data DeletedEntities = DeletedEntities
   }
   deriving (Eq, Ord, Show)
 
-instance Monoid (DeletedEntities) where 
+instance Monoid DeletedEntities where 
   mempty = DeletedEntities mempty mempty 
-  mappend (DeletedEntities vars1 locs1) (DeletedEntities vars2 locs2) = 
+instance Semigroup DeletedEntities where
+  (<>) (DeletedEntities vars1 locs1) (DeletedEntities vars2 locs2) = 
     DeletedEntities (vars1 <> vars2) (locs1 <> locs2)
 
 concat <$> mapM makeLenses [''DeletedEntities]

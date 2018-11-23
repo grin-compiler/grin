@@ -93,12 +93,7 @@ prettySelector :: Maybe IRMap -> Selector -> Doc
 prettySelector mirm = \case
   NodeItem tag idx          -> prettyTag mirm tag <> brackets (pretty idx)
   ConditionAsSelector cond  -> prettyCondition mirm cond
-<<<<<<< HEAD
   AllFields                 -> text "all fields"
-=======
-  Locations                 -> text "Location"
-  NodeLocations             -> text "NodeLocation"
->>>>>>> 4a406cb3fd338669430d10b2fcc2e3876c672f70
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
@@ -152,6 +147,6 @@ prettyInstructions :: HasDataFlowInfo a => Maybe a -> [Instruction] -> Doc
 prettyInstructions mDfi = vsep . map (prettyInstruction mirm) where
   mirm = fmap (toIRMap . getDataFlowInfo) mDfi
   toIRMap hpt = IRMap
-    { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ absRegisterMap hpt]
-    , irmTagMap       = absTagMap hpt
+    { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ _absRegisterMap hpt]
+    , irmTagMap       = _absTagMap hpt
     }

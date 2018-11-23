@@ -39,5 +39,5 @@ runTestsFrom fromCurDir = testGroup hptTestName $
 calcHPTResult :: Exp -> HPTResult
 calcHPTResult prog
   | Right hptProgram <- codeGen prog
-  , computer <- evalDataFlowInfo hptProgram
+  , computer <- _crComp . evalDataFlowInfo $ hptProgram
   = toHPTResult hptProgram computer

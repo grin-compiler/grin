@@ -1,9 +1,11 @@
-{-# LANGUAGE TupleSections, LambdaCase #-}
+{-# LANGUAGE TupleSections, LambdaCase, OverloadedStrings #-}
 
 module Grin.ParseAST (parseGrin, parseProg, parseDef, parseExpr) where
 
 import Data.Char
 import Data.Void
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Control.Applicative (empty)
 import Control.Monad (void, mzero)
@@ -52,7 +54,7 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
       Var _            -> True
       _                -> False
 
-primNameOrDefName = ('_':) <$ char '_' <*> var <|> var
+primNameOrDefName = ("_"<>) <$ char '_' <*> var <|> var
 
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 
@@ -88,23 +90,23 @@ satisfyM pred parser = do
 grinModule :: Parser Exp
 grinModule = Program <$> many def <* sc <* eof
 
-parseGrin :: String -> String -> Either (ParseError Char Void) Exp
+parseGrin :: String -> Text -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename (withoutTypeAnnots content)
 
-parseProg :: String -> Exp
+parseProg :: Text -> Exp
 parseProg src = either (error . parseErrorPretty' src) id . parseGrin "" $ withoutTypeAnnots src
 
-parseDef :: String -> Exp
+parseDef :: Text -> Exp
 parseDef src = either (error . parseErrorPretty' src) id . runParser def "" $ withoutTypeAnnots src
 
-parseExpr :: String -> Exp
+parseExpr :: Text -> Exp
 parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1) "" $ withoutTypeAnnots src
 
 
-withoutTypeAnnots :: String -> String 
-withoutTypeAnnots = unlines
+withoutTypeAnnots :: Text -> Text 
+withoutTypeAnnots = T.unlines
                   . map skipIfAnnot
-                  . lines
+                  . T.lines
   where skipIfAnnot line
-          | ('%':_) <- dropWhile isSpace line = "" 
+          | Just ('%',_) <- T.uncons . T.dropWhile isSpace $ line = "" 
           | otherwise = line

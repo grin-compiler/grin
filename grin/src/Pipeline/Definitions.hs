@@ -3,6 +3,8 @@ module Pipeline.Definitions where
 
 import System.FilePath
 
+import Data.Text (Text)
+
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Strict
 
@@ -14,6 +16,7 @@ import Text.PrettyPrint.ANSI.Leijen (Doc)
 import Grin.Grin
 import Grin.EffectMap
 import Grin.TypeEnvDefs
+import AbstractInterpretation.Sharing
 import AbstractInterpretation.HeapPointsTo
 import AbstractInterpretation.CreatedBy    
 import AbstractInterpretation.LiveVariable
@@ -43,6 +46,7 @@ data Transformation
   | TrivialCaseElimination
   | SparseCaseOptimisation
   | UpdateElimination
+  | NonSharedElimination
   | CopyPropagation
   | ConstantPropagation
   | DeadCodeElimination
@@ -76,6 +80,11 @@ data AbstractComputationStep
   | PrintAbstractResult
   deriving (Eq, Show)
 
+data SharingAnalysisStep
+  = ComputeSharing 
+  | PrintSharingResult
+  deriving (Eq, Show)
+
 data EffectStep
   = CalcEffectMap
   | PrintEffectMap
@@ -86,6 +95,7 @@ data PipelineStep
   | HPT AbstractComputationStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
+  | Sharing SharingAnalysisStep
   | RunCByWithLVA
   | Eff EffectStep
   | T Transformation
@@ -101,9 +111,11 @@ data PipelineStep
   | ParseTypeAnnots
   | PrintTypeAnnots
   | PrintTypeEnv
+  | SaveTypeEnv
   | Lint
   | ConfluenceTest
   | PrintErrors
+  | DebugPipelineState
   deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
@@ -115,35 +127,40 @@ pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
 
 data PipelineOpts = PipelineOpts
-  { _poOutputDir  :: FilePath
-  , _poFailOnLint :: Bool
-  , _poLogging    :: Bool
+  { _poOutputDir   :: FilePath
+  , _poFailOnLint  :: Bool
+  , _poLogging     :: Bool
+  , _poSaveTypeEnv :: Bool
+  , _poStatistics  :: Bool
   }
 
 defaultOpts :: PipelineOpts
 defaultOpts = PipelineOpts
-  { _poOutputDir  = "./"
-  , _poFailOnLint = True
-  , _poLogging    = True
+  { _poOutputDir   = ".grin-output"
+  , _poFailOnLint  = True
+  , _poLogging     = True
+  , _poSaveTypeEnv = False
+  , _poStatistics  = False
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
-    { _psSrc        :: Maybe String
-    , _psExp        :: Exp
-    , _psTransStep  :: Int
-    , _psSaveIdx    :: Int
-    , _psHPTProgram :: Maybe HPTProgram
-    , _psHPTResult  :: Maybe HPTResult
-    , _psCByProgram :: Maybe CByProgram
-    , _psCByResult  :: Maybe CByResult
-    , _psLVAProgram :: Maybe LVAProgram
-    , _psLVAResult  :: Maybe LVAResult
-    , _psTypeEnv    :: Maybe TypeEnv
-    , _psTypeAnnots :: Maybe TypeEnv
-    , _psEffectMap  :: Maybe EffectMap
-    , _psErrors     :: [String]
-    }
+    { _psSrc           :: Maybe Text
+    , _psExp           :: Exp
+    , _psTransStep     :: Int
+    , _psSaveIdx       :: Int
+    , _psHPTProgram    :: Maybe HPTProgram
+    , _psHPTResult     :: Maybe HPTResult
+    , _psCByProgram    :: Maybe CByProgram
+    , _psCByResult     :: Maybe CByResult
+    , _psLVAProgram    :: Maybe LVAProgram
+    , _psLVAResult     :: Maybe LVAResult
+    , _psSharingResult :: Maybe SharingResult
+    , _psTypeEnv       :: Maybe TypeEnv
+    , _psTypeAnnots    :: Maybe TypeEnv
+    , _psEffectMap     :: Maybe EffectMap
+    , _psErrors        :: [String]
+    } deriving (Show)
 
 makeLenses ''PState
 makeLenses ''PipelineOpts

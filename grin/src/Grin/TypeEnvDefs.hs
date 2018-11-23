@@ -14,13 +14,15 @@ import Lens.Micro.Platform
 
 import Grin.SyntaxDefs
 
+type Loc = Int
+
 data SimpleType
   = T_Int64
   | T_Word64
   | T_Float
   | T_Bool
   | T_Unit
-  | T_Location {_locations :: [Int]}
+  | T_Location {_locations :: [Loc]}
   | T_UnspecifiedLocation
   | T_Dead
   deriving (Generic, NFData, Eq, Ord, Show)
@@ -47,3 +49,6 @@ data TypeEnv
   deriving (Eq, Show)
 
 concat <$> mapM makeLenses [''TypeEnv, ''Type, ''SimpleType]
+
+emptyTypeEnv :: TypeEnv
+emptyTypeEnv = TypeEnv mempty mempty mempty

@@ -66,7 +66,7 @@ emptyEnv = Env
   , _envBlockInstructions = mempty
   , _envBlockOrder        = mempty
   , _envTempCounter       = 0
-  , _envTypeEnv           = TypeEnv.TypeEnv mempty mempty mempty mempty
+  , _envTypeEnv           = TypeEnv.emptyTypeEnv
   , _envTagMap            = mempty
   }
 
