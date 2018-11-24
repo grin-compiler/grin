@@ -204,6 +204,7 @@ test-suite grin-test
                      , ParserSpec
                      , AbstractInterpretation.IRSpec
                      , AbstractInterpretation.OptimiseHPTSpec
+                     , AbstractInterpretation.SharingSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
