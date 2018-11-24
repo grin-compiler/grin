@@ -86,7 +86,7 @@ markedTypeEnvEntries = many $ markedTypeEnvEntry <* sc
 typeEnv :: Parser TypeEnv 
 typeEnv = entriesToTypeEnv <$> 
             (sc *> header "Location" *> many' location) <>
-                  (header "Variable" *> many' varType) <>
+                  (header "Variable" *> many' (try varType)) <>
                   (header "Function" *> many' functionType)
             <* eof
   where header w = L.lexeme sc $ string w 
