@@ -45,9 +45,9 @@ library
     Grin.TH
     Grin.Lint
     Grin.Parse
-    Grin.ParseAST
-    Grin.ParseBasic
-    Grin.ParseTypeEnv
+    Grin.Parse.AST
+    Grin.Parse.Basic
+    Grin.Parse.TypeEnv
     Grin.Pretty
     Grin.PrettyLint
     Grin.Statistics

@@ -27,8 +27,8 @@ spec = do
     it "is instruction order independent" $
       forAll (randomizeInstructions . _absInstructions ._absProg $ hptProgram0) $ \randomised ->
         let hptProgram1 = set (absProg.absInstructions) randomised  hptProgram0
-            ComputationResult comp0 iters0 = evalDataFlowInfo hptProgram0
-            ComputationResult comp1 iters1 = evalDataFlowInfo hptProgram1
+            AbsIntResult comp0 iters0 = evalDataFlowInfo hptProgram0
+            AbsIntResult comp1 iters1 = evalDataFlowInfo hptProgram1
         in label (printf "HPT iterations %d/%d" iters0 iters1)
                  $ comp0 == comp1
 

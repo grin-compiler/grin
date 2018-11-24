@@ -36,8 +36,7 @@ data CByProgram =
 concat <$> mapM makeLenses [''CByProgram, ''HPTWProducerInfo]
 
 instance HasDataFlowInfo CByProgram where
-  getDataFlowInfo = getDataFlowInfo . _hptProg . _hptProgWProd
-  modifyInfo f    = over (hptProgWProd.hptProg) (modifyInfo f)
+  dataFlowInfo = hptProgWProd.hptProg.dataFlowInfo
 
 emptyCByProgram :: CByProgram
 emptyCByProgram = CByProgram Map.empty (HPTProducerInfo emptyHPTProgram)
@@ -190,7 +189,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
             irTag <- getTag tag
             altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+              forM_ scrutRegMapping $ \(name, _) -> do
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 -- NOTE: We just create a new empty register, and associate it with the scrutinee in this alternative. Then we annotate the register with restricted properties of the scrutinee.
@@ -210,7 +209,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
           LitPat lit -> do
             altInstructions <- codeGenAlt $
               -- restrict scrutinee to alternative's domain
-              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+              forM_ scrutRegMapping $ \(name, _) -> do
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 emit IR.Project
@@ -224,7 +223,7 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
             altInstructions <- codeGenAlt $
               -- restrict scrutinee to alternative's domain
-              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+              forM_ scrutRegMapping $ \(name, _) -> do
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 emit IR.Project

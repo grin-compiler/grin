@@ -26,8 +26,7 @@ data HPTProgram = HPTProgram { _absProg :: AbstractProgram } deriving (Show)
 concat <$> mapM makeLenses [''HPTProgram]
 
 instance HasDataFlowInfo HPTProgram where
-  getDataFlowInfo = _absProg
-  modifyInfo      = over absProg
+  dataFlowInfo = absProg
 
 emptyHPTProgram :: HPTProgram
 emptyHPTProgram = HPTProgram emptyAbstractProgram
@@ -221,7 +220,7 @@ codeGenM = cata folder where
             irTag <- getTag tag
             altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+              forM_ scrutRegMapping $ \(name, _) -> do
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 -- NOTE: We just create a new empty register, and associate it with the scrutinee in this alternative. Then we annotate the register with restricted properties of the scrutinee.
@@ -241,7 +240,7 @@ codeGenM = cata folder where
           LitPat lit -> do
             altInstructions <- codeGenAlt $
               -- restrict scrutinee to alternative's domain
-              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+              forM_ scrutRegMapping $ \(name, _) -> do
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 emit IR.Project
@@ -256,7 +255,7 @@ codeGenM = cata folder where
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
             altInstructions <- codeGenAlt $
               -- restrict scrutinee to alternative's domain
-              flip (maybe (pure ())) scrutRegMapping $ \(name, _) -> do
+              forM_ scrutRegMapping $ \(name, _) -> do
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 emit IR.Project

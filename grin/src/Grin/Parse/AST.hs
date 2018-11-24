@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections, LambdaCase, OverloadedStrings #-}
 
-module Grin.ParseAST (parseGrin, parseProg, parseDef, parseExpr) where
+module Grin.Parse.AST (parseGrin, parseProg, parseDef, parseExpr) where
 
 import Data.Char
 import Data.Void
@@ -15,8 +15,8 @@ import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
 
 import Grin.Grin
-import Grin.ParseBasic
-import Grin.ParseTypeEnv  
+import Grin.Parse.Basic
+import Grin.Parse.TypeEnv  
 
 -- grin syntax
 

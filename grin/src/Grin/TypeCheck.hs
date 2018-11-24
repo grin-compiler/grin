@@ -22,7 +22,7 @@ import AbstractInterpretation.HPTResult
 import qualified Grin.TypeEnv as TypeEnv
 
 import AbstractInterpretation.IR (HasDataFlowInfo(..))
-import AbstractInterpretation.Reduce (ComputationResult(..))
+import AbstractInterpretation.Reduce (AbstractInterpretationResult(..))
 import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.HPTResult as HPT
 import qualified AbstractInterpretation.Reduce as R

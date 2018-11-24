@@ -103,7 +103,7 @@ codeGenAlt (mName, reg) restrict before altM after restore =
     before altReg
     altResult <- altM
     after altResult
-    maybe (pure ()) (restore reg) mName
+    mapM_ (restore reg) mName
 
 emitMove :: HasDataFlowInfo s => IR.Reg -> IR.Reg -> CG s () 
 emitMove src dst = emit IR.Move { srcReg = src, dstReg = dst }

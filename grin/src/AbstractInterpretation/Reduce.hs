@@ -35,14 +35,14 @@ data Computer
   }
   deriving (Eq, Show)
 
-data ComputationResult 
-  = ComputationResult
+data AbstractInterpretationResult 
+  = AbsIntResult
   { _crComp :: Computer 
   , _crIter :: !Int
   }
   deriving (Eq, Show)
 
-concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer, ''ComputationResult]
+concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer, ''AbstractInterpretationResult]
 
 type AbstractComputation = State Computer
 
@@ -290,13 +290,13 @@ evalInstruction = \case
     CNodeItem tag idx val -> selectReg dstReg.nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-evalDataFlowInfoWith :: HasDataFlowInfo s => Computer -> s -> ComputationResult
+evalDataFlowInfoWith :: HasDataFlowInfo s => Computer -> s -> AbstractInterpretationResult
 evalDataFlowInfoWith comp (getDataFlowInfo -> AbstractProgram{..})
-  = converge ((==) `on` _crComp) step (ComputationResult comp 0)
+  = converge ((==) `on` _crComp) step (AbsIntResult comp 0)
   where nextComputer c = execState (mapM_ evalInstruction _absInstructions) c
-        step ComputationResult{..} = ComputationResult (nextComputer _crComp) (succ _crIter)
+        step AbsIntResult{..} = AbsIntResult (nextComputer _crComp) (succ _crIter)
 
-evalDataFlowInfo :: HasDataFlowInfo s => s -> ComputationResult
+evalDataFlowInfo :: HasDataFlowInfo s => s -> AbstractInterpretationResult
 evalDataFlowInfo dfi@(getDataFlowInfo -> AbstractProgram{..}) =
   evalDataFlowInfoWith emptyComputer dfi
   where

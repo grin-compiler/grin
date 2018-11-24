@@ -1,7 +1,7 @@
 module Grin.Parse 
-  ( module Grin.ParseAST 
-  , module Grin.ParseTypeEnv 
+  ( module Grin.Parse.AST 
+  , module Grin.Parse.TypeEnv 
   ) where 
 
-import Grin.ParseAST
-import Grin.ParseTypeEnv
+import Grin.Parse.AST
+import Grin.Parse.TypeEnv

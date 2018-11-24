@@ -57,8 +57,7 @@ data SharingProgram = SharingProgram
 concat <$> mapM makeLenses [''SharingProgram]
 
 instance HasDataFlowInfo SharingProgram where
-  getDataFlowInfo = getDataFlowInfo . _hptProg
-  modifyInfo f    = over (hptProg . HPT.absProg) (modifyInfo f) 
+  dataFlowInfo = hptProg.dataFlowInfo 
 
 sharingRegisterName :: Name 
 sharingRegisterName = "__sharing__register__"

@@ -27,8 +27,8 @@ spec = do
     it "creates a code that runs no worse than the original" $ do
       let absProgram1 = optimiseAbstractProgram absProgram0
       let absProgram2 = optimiseAbstractProgram absProgram1
-          ComputationResult comp0 iters0 = evalDataFlowInfo absProgram0
-          ComputationResult comp2 iters2 = evalDataFlowInfo absProgram2
+          AbsIntResult comp0 iters0 = evalDataFlowInfo absProgram0
+          AbsIntResult comp2 iters2 = evalDataFlowInfo absProgram2
       comp2 `shouldBe` comp0
       (compare iters2 iters0) `shouldSatisfy` (`elem` [LT,EQ])
 

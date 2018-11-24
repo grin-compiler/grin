@@ -1,5 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
+{-# LANGUAGE DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
 module AbstractInterpretation.IR where
@@ -8,8 +8,6 @@ import Data.Int
 import Data.Word
 
 import Data.Functor.Foldable.TH
-import Control.DeepSeq
-import GHC.Generics (Generic)
 
 import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
@@ -21,16 +19,16 @@ import Lens.Micro.Internal
 import qualified Grin.Grin as Grin
 import Grin.Grin (Name)
 
-newtype Reg = Reg Word32 deriving (Generic, NFData, Eq, Ord, Show)
-newtype Mem = Mem Word32 deriving (Generic, NFData, Eq, Ord, Show)
+newtype Reg = Reg Word32 deriving (Eq, Ord, Show)
+newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
 
 data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
   | AllFields
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
-newtype Tag = Tag Word32 deriving (Generic, NFData, Eq, Ord, Show)
+newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
 
 type SimpleType = Int32
 type Producer   = Int32
@@ -45,20 +43,20 @@ data Condition
   -- NOTE: "non-deterministic" selector for Any?
   | Any               Predicate
   | All               Predicate
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
 data Predicate
   = TagIn    (Set Tag)
   | TagNotIn (Set Tag)
   | ValueIn    Range
   | ValueNotIn Range
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
 -- inclusive lower, exclusive upper bound
 data Range = Range { from :: Int32
                    , to   :: Int32
                    }
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
 -- TODO: error checking + validation ; DECISION: catch syntactical error at compile time ; the analyis will not be restrictive ; there will not be runtime checks
 
@@ -122,25 +120,28 @@ data Instruction
     { dstReg      :: Reg
     , constant    :: Constant
     }
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
 data Constant
   = CSimpleType   SimpleType
   | CHeapLocation Mem
   | CNodeType     Tag Int {-arity-}
   | CNodeItem     Tag Int {-node item index-} Int32 {-simple type, location, or incase of Cby: producer-}
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
 makeBaseFunctor ''Instruction
 
 class HasDataFlowInfo a where
+  dataFlowInfo :: Lens' a AbstractProgram
+  
   getDataFlowInfo :: a -> AbstractProgram
-  modifyInfo :: (AbstractProgram -> AbstractProgram) -> a -> a
+  getDataFlowInfo = view dataFlowInfo
 
+  modifyInfo :: (AbstractProgram -> AbstractProgram) -> a -> a 
+  modifyInfo = over dataFlowInfo
 
 instance HasDataFlowInfo AbstractProgram where
-  getDataFlowInfo = id
-  modifyInfo f    = f
+  dataFlowInfo = id
 
 data AbstractProgram
   = AbstractProgram

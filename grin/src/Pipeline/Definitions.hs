@@ -154,7 +154,9 @@ data PState = PState
     , _psLVAResult      :: Maybe LVAResult
     , _psSharingProgram :: Maybe SharingProgram
     , _psSharingResult  :: Maybe SharingResult
+    -- the type environment calculated by HPT
     , _psTypeEnv        :: Maybe TypeEnv
+    -- the type environment parsed from the source code
     , _psTypeAnnots     :: Maybe TypeEnv
     , _psEffectMap      :: Maybe EffectMap
     , _psErrors         :: [String]

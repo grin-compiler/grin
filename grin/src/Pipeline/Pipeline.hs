@@ -51,7 +51,7 @@ import AbstractInterpretation.PrettyHPT
 import AbstractInterpretation.PrettyLVA
 import AbstractInterpretation.PrettySharing
 import AbstractInterpretation.Sharing
-import AbstractInterpretation.Reduce (Computer, ComputationResult(..), evalDataFlowInfo)
+import AbstractInterpretation.Reduce (Computer, AbstractInterpretationResult(..), evalDataFlowInfo)
 import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo as HPT
@@ -146,30 +146,30 @@ pipelineStep p = do
       mapM_ pipelineStep prePipeline
       optimizeWithPM opts grin (fmap T defaultOptimizations) defaultOnChange defaultCleanUp
     HPT step -> case step of
-      CompileToAbstractProgram -> compileHPT
+      CompileToAbstractProgram -> compileAbstractProgram HPT.codeGen psHPTProgram
       OptimiseAbstractProgram  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
-      PrintAbstractProgram     -> printHPTCode
+      PrintAbstractProgram     -> printAbstractProgram psHPTProgram
       RunAbstractProgramPure   -> runHPTPure
-      PrintAbstractResult      -> printHPTResult
+      PrintAbstractResult      -> printAnalysisResult psHPTResult
     CBy step -> case step of
-      CompileToAbstractProgram -> compileCBy
+      CompileToAbstractProgram -> compileAbstractProgram CBy.codeGen psCByProgram
       OptimiseAbstractProgram  -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
-      PrintAbstractProgram     -> printCByCode
+      PrintAbstractProgram     -> printAbstractProgram psCByProgram
       RunAbstractProgramPure   -> runCByPure
-      PrintAbstractResult      -> printCByResult
+      PrintAbstractResult      -> printAnalysisResult psCByResult
     LVA step -> case step of
-      CompileToAbstractProgram -> compileLVA
+      CompileToAbstractProgram -> compileAbstractProgram LVA.codeGen psLVAProgram
       OptimiseAbstractProgram  -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
-      PrintAbstractProgram     -> printLVACode
+      PrintAbstractProgram     -> printAbstractProgram psLVAProgram
       RunAbstractProgramPure   -> runLVAPure
-      PrintAbstractResult      -> printLVAResult
+      PrintAbstractResult      -> printAnalysisResult psLVAResult
     RunCByWithLVA -> runCByWithLVAPure
     Sharing step -> case step of 
-      CompileToAbstractProgram -> compileSharing
+      CompileToAbstractProgram -> compileAbstractProgram Sharing.codeGen psSharingProgram
       OptimiseAbstractProgram  -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
-      PrintAbstractProgram     -> printSharingCode
+      PrintAbstractProgram     -> printAbstractProgram psSharingProgram
       RunAbstractProgramPure   -> runSharingPure
-      PrintAbstractResult      -> printSharingResult
+      PrintAbstractResult      -> printAnalysisResult psSharingResult
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -219,24 +219,6 @@ printEffectMap = do
   effs <- fromMaybe (traceShow "No effect map is available" mempty) <$> use psEffectMap
   pipelineLog $ show $ pretty effs
 
-compileHPT :: PipelineM ()
-compileHPT = do
-  grin <- use psExp
-  case HPT.codeGen grin of
-    Right hptProgram ->
-      psHPTProgram .= Just hptProgram
-    Left e -> do
-      psErrors %= (e:)
-      psHPTProgram .= Nothing
-  {-
-  let nonlinearSet  = nonlinearVariables grin
-      countMap      = countVariableUse grin
-  --pPrint countMap
-  --pPrint nonlinearSet
-  liftIO $ putStrLn "non-linear variables:"
-  liftIO $ print . pretty $ nonlinearSet
-  -}
-
 optimiseAbsProgWith :: IR.HasDataFlowInfo a => Lens' PState (Maybe a) -> String -> PipelineM ()
 optimiseAbsProgWith getProg err = do
   mProg <- use getProg
@@ -244,27 +226,39 @@ optimiseAbsProgWith getProg err = do
     Just prog -> getProg._Just %= IR.modifyInfo optimiseAbstractProgram
     Nothing   -> pipelineLog err
 
+compileAbstractProgram :: (Exp -> Either String prog) -> (Lens' PState (Maybe prog)) -> PipelineM ()
+compileAbstractProgram codeGen accessProg = do
+  grin <- use psExp
+  case codeGen grin of
+    Right absProg ->
+      accessProg .= Just absProg
+    Left e -> do
+      psErrors %= (e:)
+      accessProg .= Nothing
+
+printAbsProg :: IR.AbstractProgram -> PipelineM ()
 printAbsProg a = do
   pipelineLog $ show $ IR.prettyInstructions (Just a) . IR._absInstructions $ a
   pipelineLog $ printf "memory size    %d" $ IR._absMemoryCounter a
   pipelineLog $ printf "register count %d" $ IR._absRegisterCounter a
   pipelineLog $ printf "variable count %d" $ Map.size $ IR._absRegisterMap a
 
-printHPTCode :: PipelineM ()
-printHPTCode = do
-  hptProgram <- use psHPTProgram
-  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) hptProgram
+printAbstractProgram :: IR.HasDataFlowInfo a => (Lens' PState (Maybe a)) -> PipelineM ()
+printAbstractProgram accessProg = do
+  progM <- use accessProg
+  mapM_ (printAbsProg . IR.getDataFlowInfo) progM
 
-printHPTResult :: PipelineM ()
-printHPTResult = use psHPTResult >>= \case
+printAnalysisResult :: Pretty res => (Lens' PState (Maybe res)) -> PipelineM ()
+printAnalysisResult accessRes = use accessRes >>= \case
   Nothing -> pure ()
   Just result -> pipelineLog $ show $ pretty result
+
 
 runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
   Just hptProgram -> do
-    let ComputationResult{..} = evalDataFlowInfo hptProgram
+    let AbsIntResult{..} = evalDataFlowInfo hptProgram
         result = HPT.toHPTResult hptProgram _crComp
     pipelineLogIterations _crIter
     psHPTResult .= Just result
@@ -274,31 +268,12 @@ runHPTPure = use psHPTProgram >>= \case
         psErrors %= (err :)
         psTypeEnv .= Nothing
 
-compileCBy :: PipelineM ()
-compileCBy = do
-  grin <- use psExp
-  case CBy.codeGen grin of
-    Right cbyProgram ->
-      psCByProgram .= Just cbyProgram
-    Left e -> do
-      psErrors %= (e:)
-      psCByProgram .= Nothing
-
-printCByCode :: PipelineM ()
-printCByCode = do
-  cbyProgM <- use psCByProgram
-  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) cbyProgM
-
-printCByResult :: PipelineM ()
-printCByResult = use psCByResult >>= \case
-  Nothing -> pure ()
-  Just result -> pipelineLog $ show $ pretty result
 
 runCByPureWith :: (CBy.CByProgram -> Computer -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
   Just cbyProgram -> do
-    let ComputationResult{..} = evalDataFlowInfo cbyProgram
+    let AbsIntResult{..} = evalDataFlowInfo cbyProgram
         result = toCByResult cbyProgram _crComp
     pipelineLogIterations _crIter
     psCByResult .= Just result
@@ -321,61 +296,21 @@ runCByWithLVAPure = do
     Just lvaResult -> runCByPureWith (CBy.toCByResultWithLiveness lvaResult)
 
 
-compileLVA :: PipelineM ()
-compileLVA = do
-  grin <- use psExp
-  case LVA.codeGen grin of
-    Right lvaProgram ->
-      psLVAProgram .= Just lvaProgram
-    Left e -> do
-      psErrors %= (e:)
-      psLVAProgram .= Nothing
-
-printLVACode :: PipelineM ()
-printLVACode = do
-  lvaProgM <- use psLVAProgram
-  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) lvaProgM
-
-printLVAResult :: PipelineM ()
-printLVAResult = use psLVAResult >>= \case
-  Nothing -> pure ()
-  Just result -> pipelineLog $ show $ pretty result
-
 runLVAPure :: PipelineM ()
 runLVAPure = use psLVAProgram >>= \case
   Nothing -> psLVAResult .= Nothing
   Just lvaProgram -> do
-    let ComputationResult{..} = evalDataFlowInfo lvaProgram
+    let AbsIntResult{..} = evalDataFlowInfo lvaProgram
         result = LVA.toLVAResult lvaProgram _crComp
     pipelineLogIterations _crIter
     psLVAResult .= Just result
 
 
-compileSharing :: PipelineM ()
-compileSharing = do
-  grin <- use psExp
-  case Sharing.codeGen grin of
-    Right shProgram ->
-      psSharingProgram .= Just shProgram
-    Left e -> do
-      psErrors %= (e:)
-      psSharingProgram .= Nothing
-
-printSharingCode :: PipelineM ()
-printSharingCode = do
-  shProgM <- use psSharingProgram
-  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) shProgM
-
-printSharingResult :: PipelineM ()
-printSharingResult = use psSharingResult >>= \case
-  Nothing -> pure ()
-  Just result -> pipelineLog $ show $ pretty result
-
 runSharingPureWith :: (Sharing.SharingProgram -> Computer -> Sharing.SharingResult) -> PipelineM ()
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
   Nothing -> psSharingResult .= Nothing
   Just shProgram -> do
-    let ComputationResult{..} = evalDataFlowInfo shProgram
+    let AbsIntResult{..} = evalDataFlowInfo shProgram
         result = toSharingResult shProgram _crComp
     pipelineLogIterations _crIter
     psSharingResult .= Just result
@@ -740,8 +675,8 @@ optimizeWithPM o e ps onChange cleanUp = loop e where
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
         lintGrin . Just $ show p
-        mapM pipelineStep cleanUp
-        mapM pipelineStep onChange
+        mapM_ pipelineStep cleanUp
+        mapM_ pipelineStep onChange
       pure eff
     -- Run loop again on change
     pipelineStep $ PrintGrin id
@@ -749,7 +684,7 @@ optimizeWithPM o e ps onChange cleanUp = loop e where
     when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
     e' <- use psExp
     if mangleNames e == mangleNames e'
-      then void $ mapM pipelineStep cleanUp
+      then mapM_ pipelineStep cleanUp
       else loop e'
 
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp

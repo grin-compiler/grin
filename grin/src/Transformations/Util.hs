@@ -99,32 +99,18 @@ mapValValM :: Monad m => (Val -> m Val) -> Val -> m Val
 mapValValM f val = do 
   val' <- f val
   case val' of  
-    ConstTagNode tag vals -> do 
-      vals' <- mapM (mapValValM f) vals
-      pure $ ConstTagNode tag vals'
-    VarTagNode name vals -> do 
-      vals' <- mapM (mapValValM f) vals
-      pure $ VarTagNode name vals'
+    ConstTagNode tag vals -> ConstTagNode tag <$> mapM (mapValValM f) vals
+    VarTagNode name vals  -> VarTagNode  name <$> mapM (mapValValM f) vals
     v -> pure v
 
 mapValsExpM :: Monad m => (Val -> m Val) -> Exp -> m Exp
 mapValsExpM f = \case
-  ECase val alts -> do
-    val' <- f val
-    pure $ ECase val' alts
-  SApp name vals -> do 
-    vals' <- mapM f vals
-    pure $ SApp name vals'
-  SReturn val -> do 
-    val' <- f val
-    pure $ SReturn val'
-  SStore val -> do
-    val' <- f val
-    pure $ SStore val'
-  SUpdate name val -> do 
-    val' <- f val
-    pure $ SUpdate name val'
-  exp -> pure exp
+  ECase val alts   -> flip ECase alts <$> f val
+  SApp name vals   -> SApp name <$> mapM f vals
+  SReturn val      -> SReturn <$> f val
+  SStore val       -> SStore <$> f val
+  SUpdate name val -> SUpdate name <$> f val
+  exp              -> pure exp
 
 mapNameUseExp :: (Name -> Name) -> Exp -> Exp
 mapNameUseExp f = \case

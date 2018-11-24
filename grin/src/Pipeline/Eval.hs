@@ -14,7 +14,7 @@ import qualified Reducer.LLVM.JIT as LLVM
 import qualified Reducer.LLVM.CodeGen as LLVM
 import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.HPTResult as HPT
-import AbstractInterpretation.Reduce (ComputationResult(..), evalDataFlowInfo)
+import AbstractInterpretation.Reduce (AbstractInterpretationResult(..), evalDataFlowInfo)
 import AbstractInterpretation.IR (HasDataFlowInfo(..))
 
 data Reducer

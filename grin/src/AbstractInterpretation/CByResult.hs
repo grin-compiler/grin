@@ -35,9 +35,6 @@ type NodeP    = Node
 -- typeSet with producer info for its nodeSet
 type TypeSetP = TypeSet
 
-mapSnd :: (b -> c) -> (a, b) -> (a, c)
-mapSnd f (x,y) = (x, f y)
-
 regToProd :: Reg -> Producer
 regToProd (Reg i) = fromIntegral i
 

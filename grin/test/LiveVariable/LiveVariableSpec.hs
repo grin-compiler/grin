@@ -7,7 +7,7 @@ import Grin.Grin
 import Test.IO
 import Test.Hspec
 
-import AbstractInterpretation.Reduce (ComputationResult(..),evalDataFlowInfo)
+import AbstractInterpretation.Reduce (AbstractInterpretationResult(..),evalDataFlowInfo)
 import AbstractInterpretation.LiveVariable
 import AbstractInterpretation.LVAResult
 

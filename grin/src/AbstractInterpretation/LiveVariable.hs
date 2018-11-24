@@ -34,8 +34,7 @@ newtype LVAProgram = LVAProgram { _absProg :: AbstractProgram } deriving (Show)
 concat <$> mapM makeLenses [''LVAProgram]
 
 instance HasDataFlowInfo LVAProgram where
-  getDataFlowInfo = _absProg
-  modifyInfo      = over absProg
+  dataFlowInfo = absProg
 
 emptyLVAProgram :: LVAProgram
 emptyLVAProgram = LVAProgram IR.emptyAbstractProgram
