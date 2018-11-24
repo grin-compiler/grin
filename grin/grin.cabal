@@ -29,6 +29,8 @@ library
     AbstractInterpretation.LVAResult
     AbstractInterpretation.LVAResultTypes
     AbstractInterpretation.LVAUtil
+    AbstractInterpretation.Sharing
+    AbstractInterpretation.SharingResult
     AbstractInterpretation.PrettyCBy
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
@@ -36,7 +38,6 @@ library
     AbstractInterpretation.PrettySharing
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util
-    AbstractInterpretation.Sharing
     AbstractInterpretation.OptimiseAbstractProgram
     Grin.Grin
     Grin.Syntax

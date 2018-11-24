@@ -1,6 +1,9 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, OverloadedStrings #-}
 module AbstractInterpretation.Sharing where
     
+import Control.Monad.State
+import Control.Monad.Trans.Except
+
 import Data.Set (Set)
 import Data.Map (Map)
 import Data.Vector (Vector)
@@ -14,9 +17,17 @@ import Data.Maybe
 import Data.Foldable
 import Data.Functor.Foldable
 
+import Lens.Micro.Platform
+import Lens.Micro.Internal
+
 import Grin.Syntax
 import Grin.TypeEnvDefs
 import AbstractInterpretation.Util (converge)
+import AbstractInterpretation.CodeGen
+import AbstractInterpretation.HeapPointsTo (HPTProgram(..), emptyHPTProgram)
+import qualified AbstractInterpretation.HeapPointsTo as HPT
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
+import qualified AbstractInterpretation.IR as IR
 
 {-
 [x] Calc non-linear variables, optionally ignoring updates.
@@ -38,7 +49,24 @@ import AbstractInterpretation.Util (converge)
 [x] Remove Mode for calcNonLinearVars
 -}
 
-type SharingResult = Set Loc
+data SharingProgram = SharingProgram 
+  { _hptProg   :: HPTProgram
+  , _shRegName :: Name
+  } deriving (Show)
+
+concat <$> mapM makeLenses [''SharingProgram]
+
+instance HasDataFlowInfo SharingProgram where
+  getDataFlowInfo = getDataFlowInfo . _hptProg
+  modifyInfo f    = over (hptProg . HPT.absProg) (modifyInfo f) 
+
+sharingRegisterName :: Name 
+sharingRegisterName = "__sharing__register__"
+
+emptySharingProgram :: SharingProgram
+emptySharingProgram = SharingProgram emptyHPTProgram sharingRegisterName
+
+type ResultSh = Result SharingProgram
 
 -- | Calc non linear variables, ignores variables that are used in update locations
 -- This is an important difference, if a variable would become non-linear due to
@@ -46,7 +74,7 @@ type SharingResult = Set Loc
 -- One possible improvement is to count the updates in a different set and make a variable
 -- linear if it is subject to an update more than once. But that could not happen, thus the only
 -- introdcution of new updates comes from inlining eval.
-calcNonLinearNonUpdateLocVariables :: Exp -> Set.Set Name
+calcNonLinearNonUpdateLocVariables :: Exp -> Set Name
 calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
   where
     union = Map.unionsWith (+)
@@ -65,8 +93,8 @@ calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>
       VarTagNode v ps -> union $ fmap seen (Var v : ps)
       _ -> Map.empty
 
-calcSharedLocations :: TypeEnv -> Exp -> Set Loc
-calcSharedLocations TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) origShVarLocs where
+calcSharedLocationsPure :: TypeEnv -> Exp -> Set Loc
+calcSharedLocationsPure TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) origShVarLocs where
   nonLinearVars = calcNonLinearNonUpdateLocVariables e
   shVarTypes    = Set.mapMaybe (`Map.lookup` _variable) $ nonLinearVars
   origShVarLocs = onlyLocations . onlySimpleTys $ shVarTypes
@@ -84,3 +112,37 @@ calcSharedLocations TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) orig
   fieldsFromNodeSet :: NodeSet -> Set SimpleType
   fieldsFromNodeSet = Set.fromList . concatMap Vec.toList . Map.elems
   
+
+sharingCodeGen :: Exp -> CG SharingProgram ()
+sharingCodeGen e = do
+  shReg <- newReg
+  n     <- use shRegName
+  addReg n shReg
+  forM_ nonLinearVars $ \name -> do
+    -- For all non-linear variables set the locations as shared.
+    nonLinearVarReg <- getReg name
+    -- this will copy node field info as well, but we will only use "simpleType" info
+    emit $ copyStructureWithPtrInfo nonLinearVarReg shReg
+
+  mergedFields    <- newReg
+  pointsToNodeReg <- newReg
+  emit IR.Fetch
+    { addressReg = shReg
+    , dstReg     = pointsToNodeReg
+    }
+  emit IR.Project 
+    { srcReg      = pointsToNodeReg
+    , srcSelector = IR.AllFields
+    , dstReg      = mergedFields
+    }
+  emit $ copyStructureWithPtrInfo mergedFields shReg
+  where
+    nonLinearVars = calcNonLinearNonUpdateLocVariables e
+
+codeGenM :: Exp -> CG SharingProgram () 
+codeGenM e = do 
+  void $ zoom hptProg (HPT.codeGenM e)
+  sharingCodeGen e
+
+codeGen :: Exp -> Either String SharingProgram 
+codeGen = (\(a,s) -> s<$a) . flip runState emptySharingProgram . runExceptT . codeGenM

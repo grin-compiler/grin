@@ -10,9 +10,9 @@ import Pipeline.Definitions
 
 import Grin.Grin
 import Grin.TypeEnvDefs
-import AbstractInterpretation.Sharing
 import AbstractInterpretation.CByResultTypes    
 import AbstractInterpretation.LVAResultTypes
+import AbstractInterpretation.SharingResult
 
 pipelineLog :: String -> PipelineM ()
 pipelineLog str = do
@@ -134,7 +134,8 @@ printingSteps =
   , CBy PrintAbstractResult
   , LVA PrintAbstractProgram
   , LVA PrintAbstractResult
-  , Sharing PrintSharingResult
+  , Sharing PrintAbstractProgram
+  , Sharing PrintAbstractResult
   , PrintTypeEnv
   , PrintAST
   , PrintErrors

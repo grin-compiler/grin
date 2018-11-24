@@ -16,13 +16,14 @@ import Text.PrettyPrint.ANSI.Leijen (Doc)
 import Grin.Grin
 import Grin.EffectMap
 import Grin.TypeEnvDefs
-import AbstractInterpretation.Sharing
 import AbstractInterpretation.HeapPointsTo
 import AbstractInterpretation.CreatedBy    
 import AbstractInterpretation.LiveVariable
+import AbstractInterpretation.Sharing
 import AbstractInterpretation.HPTResult
 import AbstractInterpretation.CByResultTypes    
 import AbstractInterpretation.LVAResultTypes
+import AbstractInterpretation.SharingResult
 
 data Transformation
   -- Simplifying
@@ -81,11 +82,6 @@ data AbstractComputationStep
   | PrintAbstractResult
   deriving (Eq, Show)
 
-data SharingAnalysisStep
-  = ComputeSharing 
-  | PrintSharingResult
-  deriving (Eq, Show)
-
 data EffectStep
   = CalcEffectMap
   | PrintEffectMap
@@ -96,7 +92,7 @@ data PipelineStep
   | HPT AbstractComputationStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
-  | Sharing SharingAnalysisStep
+  | Sharing AbstractComputationStep
   | RunCByWithLVA
   | Eff EffectStep
   | T Transformation
@@ -146,21 +142,22 @@ defaultOpts = PipelineOpts
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
-    { _psSrc           :: Maybe Text
-    , _psExp           :: Exp
-    , _psTransStep     :: Int
-    , _psSaveIdx       :: Int
-    , _psHPTProgram    :: Maybe HPTProgram
-    , _psHPTResult     :: Maybe HPTResult
-    , _psCByProgram    :: Maybe CByProgram
-    , _psCByResult     :: Maybe CByResult
-    , _psLVAProgram    :: Maybe LVAProgram
-    , _psLVAResult     :: Maybe LVAResult
-    , _psSharingResult :: Maybe SharingResult
-    , _psTypeEnv       :: Maybe TypeEnv
-    , _psTypeAnnots    :: Maybe TypeEnv
-    , _psEffectMap     :: Maybe EffectMap
-    , _psErrors        :: [String]
+    { _psSrc            :: Maybe Text
+    , _psExp            :: Exp
+    , _psTransStep      :: Int
+    , _psSaveIdx        :: Int
+    , _psHPTProgram     :: Maybe HPTProgram
+    , _psHPTResult      :: Maybe HPTResult
+    , _psCByProgram     :: Maybe CByProgram
+    , _psCByResult      :: Maybe CByResult
+    , _psLVAProgram     :: Maybe LVAProgram
+    , _psLVAResult      :: Maybe LVAResult
+    , _psSharingProgram :: Maybe SharingProgram
+    , _psSharingResult  :: Maybe SharingResult
+    , _psTypeEnv        :: Maybe TypeEnv
+    , _psTypeAnnots     :: Maybe TypeEnv
+    , _psEffectMap      :: Maybe EffectMap
+    , _psErrors         :: [String]
     } deriving (Show)
 
 makeLenses ''PState

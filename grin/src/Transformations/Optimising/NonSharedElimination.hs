@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
 module Transformations.Optimising.NonSharedElimination where
 
 {-
@@ -12,12 +12,12 @@ import qualified Data.Set as Set
 
 import Grin.Grin
 import Grin.TypeEnv
-import AbstractInterpretation.Sharing
+import AbstractInterpretation.SharingResult
 
 
 
 nonSharedElimination :: SharingResult -> TypeEnv -> Exp -> Exp
-nonSharedElimination shLocs te = cata skipUpdate where
+nonSharedElimination SharingResult{..} te = cata skipUpdate where
 
   -- Remove bind when the parameter points to non-shared locations only.
   skipUpdate :: ExpF Exp -> Exp
@@ -27,4 +27,4 @@ nonSharedElimination shLocs te = cata skipUpdate where
     exp -> embed exp
 
   notShared :: Loc -> Bool
-  notShared l = not $ Set.member l shLocs
+  notShared l = not $ Set.member l _sharedLocs

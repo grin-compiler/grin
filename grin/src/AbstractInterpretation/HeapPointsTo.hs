@@ -143,7 +143,10 @@ codeGenPrimOp name funResultReg funArgRegs = do
 
 
 codeGen :: Exp -> Either String HPTProgram
-codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . cata folder where
+codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . codeGenM
+
+codeGenM :: Exp -> CG HPTProgram ResultHPT
+codeGenM = cata folder where
   folder :: ExpF (CG HPTProgram ResultHPT) -> CG HPTProgram ResultHPT
   folder = \case
     ProgramF defs -> sequence_ defs >> pure Z

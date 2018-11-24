@@ -44,6 +44,7 @@ import Transformations.Simplifying.ProducerNameIntroduction
 import qualified AbstractInterpretation.HPTResult as HPT
 import qualified AbstractInterpretation.CByResult as CBy
 import qualified AbstractInterpretation.LVAResult as LVA
+import qualified AbstractInterpretation.SharingResult as Sharing
 import AbstractInterpretation.OptimiseAbstractProgram
 import AbstractInterpretation.PrettyCBy
 import AbstractInterpretation.PrettyHPT
@@ -56,6 +57,7 @@ import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo as HPT
 import qualified AbstractInterpretation.CreatedBy    as CBy
 import qualified AbstractInterpretation.LiveVariable as LVA
+import qualified AbstractInterpretation.Sharing      as Sharing
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -163,8 +165,11 @@ pipelineStep p = do
       PrintAbstractResult      -> printLVAResult
     RunCByWithLVA -> runCByWithLVAPure
     Sharing step -> case step of 
-      ComputeSharing     -> computeSharing
-      PrintSharingResult -> printSharingResult
+      CompileToAbstractProgram -> compileSharing
+      OptimiseAbstractProgram  -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
+      PrintAbstractProgram     -> printSharingCode
+      RunAbstractProgramPure   -> runSharingPure
+      PrintAbstractResult      -> printSharingResult
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -345,16 +350,43 @@ runLVAPure = use psLVAProgram >>= \case
     pipelineLogIterations _crIter
     psLVAResult .= Just result
 
-computeSharing :: PipelineM ()
-computeSharing = do 
-  exp <- use psExp
-  withTypeEnv $ \tyEnv -> 
-    psSharingResult .= Just (calcSharedLocations tyEnv exp)
+
+compileSharing :: PipelineM ()
+compileSharing = do
+  grin <- use psExp
+  case Sharing.codeGen grin of
+    Right shProgram ->
+      psSharingProgram .= Just shProgram
+    Left e -> do
+      psErrors %= (e:)
+      psSharingProgram .= Nothing
+
+printSharingCode :: PipelineM ()
+printSharingCode = do
+  shProgM <- use psSharingProgram
+  maybe (pure ()) (printAbsProg . IR.getDataFlowInfo) shProgM
 
 printSharingResult :: PipelineM ()
-printSharingResult = do 
-  withTyEnvSharing $ \tyEnv shRes -> 
-    pipelineLog $ show $ prettySharingResult tyEnv shRes
+printSharingResult = use psSharingResult >>= \case
+  Nothing -> pure ()
+  Just result -> pipelineLog $ show $ pretty result
+
+runSharingPureWith :: (Sharing.SharingProgram -> Computer -> Sharing.SharingResult) -> PipelineM ()
+runSharingPureWith toSharingResult = use psSharingProgram >>= \case
+  Nothing -> psSharingResult .= Nothing
+  Just shProgram -> do
+    let ComputationResult{..} = evalDataFlowInfo shProgram
+        result = toSharingResult shProgram _crComp
+    pipelineLogIterations _crIter
+    psSharingResult .= Just result
+    case typeEnvFromHPTResult (Sharing._hptResult result) of
+      Right te  -> psTypeEnv .= Just te
+      Left err  -> do
+        psErrors %= (err :)
+        psTypeEnv .= Nothing
+    
+runSharingPure :: PipelineM ()
+runSharingPure = runSharingPureWith Sharing.toSharingResult
 
 
 parseTypeAnnots :: PipelineM () 
@@ -677,6 +709,7 @@ runPipeline o s e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m
     , _psLVAProgram     = Nothing
     , _psLVAResult      = Nothing
     , _psSharingResult  = Nothing
+    , _psSharingProgram = Nothing
     , _psTypeEnv        = Nothing
     , _psTypeAnnots     = Nothing
     , _psEffectMap      = Nothing
