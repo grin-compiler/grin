@@ -81,6 +81,7 @@ defaultOptimizations =
   , TrivialCaseElimination
   , SparseCaseOptimisation
   , UpdateElimination
+  , NonSharedElimination
   , CopyPropagation
   , ConstantPropagation
   , SimpleDeadFunctionElimination
@@ -105,6 +106,8 @@ defaultOnChange =
   , CBy RunAbstractProgramPure
   , LVA CompileToAbstractProgram
   , LVA RunAbstractProgramPure
+  , Sharing CompileToAbstractProgram
+  , Sharing RunAbstractProgramPure
   , T UnitPropagation
   , Eff CalcEffectMap
   ]

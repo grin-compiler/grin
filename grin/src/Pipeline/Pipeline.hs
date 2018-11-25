@@ -562,6 +562,7 @@ randomPipeline seed = do
         , TrivialCaseElimination
         , SparseCaseOptimisation
         , UpdateElimination
+        , NonSharedElimination
         , CopyPropagation
         , ConstantPropagation
         , SimpleDeadFunctionElimination
@@ -578,8 +579,8 @@ randomPipeline seed = do
 
     runBasicAnalyses :: PipelineM ()
     runBasicAnalyses = mapM_ pipelineStep
-      [ HPT CompileToAbstractProgram
-      , HPT RunAbstractProgramPure
+      [ Sharing CompileToAbstractProgram
+      , Sharing RunAbstractProgramPure
       , Eff CalcEffectMap
       ]
 
