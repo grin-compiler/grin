@@ -43,25 +43,33 @@ spec = do
           n13' <- sum 0 1 1000
           _prim_int_print n13'
 
-        sum p101 p111 p112 =
-          b1' <- _prim_int_gt p111 p112
+        sum p101 p11.1.arity.1.6.arity.1 p11.1.arity.2.6.arity.1 =
+          b1' <- _prim_int_gt p11.1.arity.1.6.arity.1 p11.1.arity.2.6.arity.1
           case b1' of
             #True ->
               pure p101
             #False ->
-              n4' <- _prim_int_add p111 1
-              n7'_2 <- _prim_int_add p101 p111
-              sum n7'_2 n4' p112
+              n4' <- _prim_int_add p11.1.arity.1.6.arity.1 1
+              n7'_2 <- _prim_int_add p101 p11.1.arity.1.6.arity.1
+              sum n7'_2 n4' p11.1.arity.2.6.arity.1
       |]
     let ppln =
-          [ Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          [ T InlineEval
+          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T ArityRaising
+          , T BindNormalisation
+          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , T CommonSubExpressionElimination
           , T CopyPropagation
           , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T SimpleDeadVariableElimination
           , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T ArityRaising
+          , T BindNormalisation
+          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , T CommonSubExpressionElimination
           , T CopyPropagation
+          , T ConstantFolding
           , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T SimpleDeadVariableElimination
           ]
