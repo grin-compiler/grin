@@ -62,14 +62,9 @@ undefinedProducerName = "#undefined"
 codeGenNodeTypeCBy :: HasDataFlowInfo s => 
                       Tag -> Vector SimpleType -> CG s IR.Reg 
 codeGenNodeTypeCBy tag ts = do 
-  let ts' = Vec.toList ts
-  r <- newReg
   irTag <- getTag tag
-  argRegs <- mapM codeGenSimpleType ts'
-  emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length argRegs + 1)}
+  r <- codeGenTaggedNodeType tag ts
   emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag 0 undefinedProducer}
-  forM_ (zip [1..] argRegs) $ \(idx, argReg) -> 
-    emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
   pure r
 
 codeGenVal :: Val -> CG CByProgram IR.Reg

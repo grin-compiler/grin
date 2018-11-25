@@ -18,6 +18,7 @@ import LiveVariable.Tests.CaseMinNodes
 import LiveVariable.Tests.CaseNested
 import LiveVariable.Tests.CaseRestricted
 import LiveVariable.Tests.CaseRestrictedNodes
+import LiveVariable.Tests.DeadTags
 import LiveVariable.Tests.Fields
 import LiveVariable.Tests.FunctionCall1
 import LiveVariable.Tests.FunctionCall2
@@ -57,6 +58,7 @@ runTestsFrom fromCurDir = testGroup lvaTestName $
     , caseNestedSrc
     , caseRestrictedSrc
     , caseRestrictedNodesSrc
+    , deadTagsSrc
     , fieldsSrc
     , functionCall1Src
     , functionCall2Src
@@ -81,6 +83,7 @@ runTestsFrom fromCurDir = testGroup lvaTestName $
     , caseNestedSpec
     , caseRestrictedSpec
     , caseRestrictedNodesSpec
+    , deadTagsSpec
     , fieldsSpec
     , functionCall1Spec
     , functionCall2Spec

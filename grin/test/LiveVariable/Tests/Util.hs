@@ -40,9 +40,28 @@ liveLoc = BasicVal True
 deadLoc :: Liveness
 deadLoc = BasicVal False
 
-node :: [Bool] -> Node
-node = Node . V.fromList
+-- Nodes with tag liveness info
+node' :: [Bool] -> Node
+node' [] = error "Please provide tag liveness"
+node' (tagLv:fieldsLv) = Node tagLv (V.fromList fieldsLv)
 
+-- Node sets with tag liveness info
+nodeSet' :: [(Tag,[Bool])] -> Liveness
+nodeSet' = NodeSet . M.fromList . map (\(t,fs) -> (t, node' fs))
+
+-- Node with dead tag and dead fields
+deadNode :: Int -> Node 
+deadNode = Node <$> const False <*> flip V.replicate False 
+
+-- Node set with dead tags and dead fields
+deadNodeSet :: [(Tag,Int)] -> Liveness
+deadNodeSet = NodeSet . M.fromList . map (\(t,n) -> (t, deadNode n))
+
+-- Node with live tag
+node :: [Bool] -> Node
+node = Node <$> const True <*> V.fromList
+
+-- Node set with live tags
 nodeSet :: [(Tag,[Bool])] -> Liveness
 nodeSet = NodeSet . M.fromList . map (\(t,fs) -> (t, node fs))
 

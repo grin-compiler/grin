@@ -535,13 +535,17 @@ randomPipeline seed = do
       pipelineStep $ T BindNormalisation
       pure $ reverse result
     go available res = do
+      exp <- use psExp
       t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
-      when (needsCByLVA t) $ do 
-        runNameIntro
-        runCByLVA
-      eff <- pipelineStep (T t)
-      when (needsCleanup t) $ do 
-        runCleanup
+      eff <- if needsCByLVA t 
+        then do
+          runNameIntro
+          runCByLVA
+          pipelineStep (T t)
+          runCleanup
+          exp' <- use psExp
+          pure $ if exp == exp' then None else ExpChanged
+        else pipelineStep (T t)
       case eff of
         None -> go (available Data.List.\\ [t]) res
         ExpChanged -> do
@@ -558,10 +562,12 @@ randomPipeline seed = do
         , TrivialCaseElimination
         , SparseCaseOptimisation
         , UpdateElimination
+        , CopyPropagation
         , ConstantPropagation
-        , DeadCodeElimination
         , SimpleDeadFunctionElimination
         , SimpleDeadParameterElimination
+        , SimpleDeadVariableElimination
+        , DeadCodeElimination
         , CommonSubExpressionElimination
         , CaseCopyPropagation
         , CaseHoisting

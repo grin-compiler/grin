@@ -246,6 +246,7 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadVariable.AppSimple
                      , DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
                      , DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
+                     , DeadCodeElimination.Tests.DeadVariable.PatternMatch
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceApp
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceCase
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec
@@ -270,6 +271,7 @@ test-suite grin-test
                      , LiveVariable.Tests.CaseNested
                      , LiveVariable.Tests.CaseRestricted
                      , LiveVariable.Tests.CaseRestrictedNodes
+                     , LiveVariable.Tests.DeadTags
                      , LiveVariable.Tests.Fields
                      , LiveVariable.Tests.FunctionCall1
                      , LiveVariable.Tests.FunctionCall2

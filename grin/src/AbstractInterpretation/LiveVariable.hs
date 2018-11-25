@@ -63,6 +63,15 @@ setBasicValLiveInst r = IR.Set { dstReg = r, constant = IR.CSimpleType live }
 setBasicValLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
 setBasicValLive = emit . setBasicValLiveInst
 
+setTagLive :: IR.Tag -> IR.Reg -> CG LVAProgram ()
+setTagLive tag reg = do 
+  tmp <- newReg 
+  setBasicValLive tmp 
+  emit IR.Extend 
+    { srcReg      = tmp
+    , dstSelector = IR.NodeItem tag 0
+    , dstReg      = reg
+    }
 
 -- In order to Extend a node field, or Project into it, we need that field to exist.
 -- This function initializes a node in the register with a given tag and arity.
@@ -110,8 +119,8 @@ codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
     irTag <- getTag tag
-    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals)}
-    forM_ (zip [0..] vals) $ \(idx, val) -> case val of
+    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals + 1)}
+    forM_ (zip [1..] vals) $ \(idx, val) -> case val of
       Var name -> do
         tmp    <- newReg
         valReg <- getReg name
@@ -148,7 +157,7 @@ codeGenVal = \case
     pure r
   Undefined t -> do 
     r <- newReg
-    typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
+    typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenTaggedNodeType) t
     emit $ copyStructureWithPtrInfo typed r
     pure r
   val -> throwLVA $ "unsupported value " ++ show val
@@ -191,7 +200,8 @@ codeGen = fmap reverseProgram
           Var name -> addReg name r
           ConstTagNode tag args -> do
             irTag <- getTag tag
-            bindInstructions <- codeGenBlock_ $ forM (zip [0..] args) $ \(idx, arg) ->
+            setTagLive irTag r
+            bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) ->
               case arg of
                 Var name -> do
                   argReg <- newReg
@@ -283,9 +293,10 @@ codeGen = fmap reverseProgram
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
-            altInstructions <- codeGenAltExists irTag $ \altScrutReg ->
+            altInstructions <- codeGenAltExists irTag $ \altScrutReg -> do
+              setTagLive irTag altScrutReg
               -- bind pattern variables
-              forM_ (zip [0..] vars) $ \(idx, name) -> do
+              forM_ (zip [1..] vars) $ \(idx, name) -> do
                 argReg <- newReg
                 addReg name argReg
                 nodePatternDataFlow argReg altScrutReg irTag idx

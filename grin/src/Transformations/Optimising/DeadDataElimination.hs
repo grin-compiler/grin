@@ -68,7 +68,7 @@ lookupNodeLivenessM v t lvaResult = do
   lvInfo <- lookupExcept (noLiveness v) v . _register $ lvaResult
   case lvInfo of 
     NodeSet taggedLiveness ->
-      _node <$> lookupExcept (noLivenessTag v t) t taggedLiveness
+      _fields <$> lookupExcept (noLivenessTag v t) t taggedLiveness
     _ -> throwE $ notANode v
   where noLiveness    v   = noLivenessMsg ++ show (PP v)
         noLivenessTag v t = noLivenessMsg ++ show (PP v) ++ " with tag " ++ show (PP t)

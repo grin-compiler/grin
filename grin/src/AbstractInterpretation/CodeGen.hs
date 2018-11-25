@@ -156,6 +156,20 @@ codeGenNodeSetWith cgNodeTy ns = do
   forM_ nodeRegs (`emitMove` r)
   pure r
 
+-- Generate a node type from type information,
+-- but preserve the first field for tag information.
+codeGenTaggedNodeType :: HasDataFlowInfo s => 
+                         Tag -> Vector SimpleType -> CG s IR.Reg 
+codeGenTaggedNodeType tag ts = do 
+  let ts' = Vec.toList ts
+  r <- newReg
+  irTag <- getTag tag
+  argRegs <- mapM codeGenSimpleType ts'
+  emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length argRegs + 1)}
+  forM_ (zip [1..] argRegs) $ \(idx, argReg) -> 
+    emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
+  pure r
+
 codeGenType :: HasDataFlowInfo s => 
                (SimpleType -> CG s IR.Reg) ->
                (NodeSet -> CG s IR.Reg) ->
