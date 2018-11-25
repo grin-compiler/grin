@@ -33,6 +33,20 @@ spec = do
       |]
     (pni before) `sameAs` after
 
+  it "fetch" $ do
+    let before = [prog|
+      grinMain p =
+        (CInt n) <- fetch p
+        pure n
+      |]
+    let after = [prog|
+      grinMain p =
+        v.0 <- fetch p
+        (CInt n) <- pure v.0
+        pure n
+      |]
+    (pni before) `sameAs` after
+
   it "update" $ do
     let before = [prog|
       grinMain =

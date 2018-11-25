@@ -48,10 +48,33 @@ Unspecified location:
   - refactor dead code elimination so that is uses unspec loc for the types of #undefined
 
 Producer name introduction:
+  - PNI introduces new variables at each producer site
+  - after PNI, the created-by analysis can be run on the resulting code
+  - PNI also introduces new variables for bindings with a fetch left-hand side
+  - this makes DVE and DDE simpler to implement (*)
+
   - applying PNI multiple times can result in a lot of redundant code
   - we can eliminate this redundancy by applying Copy Progagation & Simple Dead Variable Elimination
   - but, we hae to exclude these two transformation from the optimizing pipeline
   - and run them manually each time a transformation changes the AST
+
+  (* DDE and DVE simplification): 
+    - DDE needs to remove dead fields from node patterns
+    - for this, it needs liveness and producer information
+    - for bindings of form: (CInt n) <- fetch p
+      - DDE would have to look through the pointer p
+      - derefernce it, and collect the information for the variable pointed at by it
+      - using this information, it could remove the dead fields of the pattern
+    - instead, we make sure that all fetch-bindings can only have variable patterns, so that producer information can flow more easily
+
+    - DVE needs to remove dead bindings and replace all occurences of deleted variables with #undefineds
+    - fetch accepts only names as its first parameter, so we cannot replace them with #undefined
+      (since #undefined is a value)
+    - this is not a problem, since DVE can remove such bindings altogether IF the pattern is only a variable
+    - however, if have a binding of form: (CInt n) <- fetch p
+      - DVE would have to collect all names in the node pattern
+      - and replace all those as well
+    - instead, we make sure that all fetch-bindings can only have variable patterns, so that replacing dead variables is simpler
 
 Avoid looping optimization:
   - use taboo sets of previous ASTs

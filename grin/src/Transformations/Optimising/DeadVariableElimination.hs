@@ -54,6 +54,11 @@ deadVariableElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
 deadVariableElimination lvaResult tyEnv 
   = runTrf . (deleteDeadBindings lvaResult tyEnv >=> replaceDeletedVars tyEnv)
 
+{- NOTE: Fetches do not have to be handled separately, 
+   since producer name introduction guarantees
+   that all bindings with a fetch LHS will have a Var PAT 
+   (handled by the last case in alg).
+-}
 deleteDeadBindings :: LVAResult -> TypeEnv -> Exp -> Trf Exp 
 deleteDeadBindings lvaResult tyEnv = cataM alg where 
   alg :: ExpF Exp -> Trf Exp 
