@@ -163,6 +163,7 @@ phase2 n arityData = flip evalState 0 . cata change where
             newPs = flip concatMap psi $ \case
               (_, Var n) | Just (t, jth) <- Map.lookup n nsi -> Var <$> newParNames n jth
               (i, Var n) | Just (t, jth) <- Map.lookup i qsi -> Var <$> fetchParNames n idx jth
+              (i, Undefined{}) | Just (_, jth) <- Map.lookup i qsi -> replicate jth (Undefined dead_t)
               (_, other) -> [other]
             fetches = flip mapMaybe psi $ \case
               (_, Var n) | Just _ <- Map.lookup n nsi -> Nothing

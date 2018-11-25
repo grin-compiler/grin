@@ -315,6 +315,7 @@ test-suite grin-test
                      , Transformations.Optimising.CSESpec
                      , Transformations.Optimising.GeneralizedUnboxingSpec
                      , Transformations.Optimising.ArityRaisingSpec
+                     , Transformations.Optimising.ArityRaisingSimpleSpec
                      , Transformations.Optimising.SimpleDeadFunctionEliminationSpec
                      , Transformations.Optimising.SimpleDeadParameterEliminationSpec
                      , Transformations.Optimising.SimpleDeadVariableEliminationSpec

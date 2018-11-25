@@ -91,8 +91,8 @@ Liveness tracking at pattern matching:
 
 TODO:
   HIGH:
-    - for analyses handle Unit arg in ConstTagNode bindings
     - make sure that all transformations handles #undefineds and unspecified locations correctly
+      - make sure GeneralizedUnboxing handles #undefineds
     - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
     - apply inlining should also inline ap
     - implement type safe undefined node generation for tests (Test.Test) 
@@ -119,6 +119,7 @@ TODO:
     - if last argument is deleted, then do ... ?
   
 Archive:
+  ✘ for analyses handle Unit arg in ConstTagNode bindings (not needed, since node fields can only be simple values) @cancelled(18-11-26 00:25) @project(TODO.HIGH)
   ✔ refactor out utility code pieces from Pipeline.hs @done(18-11-19 00:22) @project(TODO.LOW)
   ✔ for DVE, implement proper liveness lookup for bindings @done(18-11-19 00:22) @project(TODO.HIGH)
   ✔ in LVA, propagate liveness for tags as well @done(18-11-18 18:01) @project(TODO.HIGH)
