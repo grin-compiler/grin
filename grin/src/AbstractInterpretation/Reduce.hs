@@ -37,8 +37,8 @@ data Computer
 
 data AbstractInterpretationResult 
   = AbsIntResult
-  { _crComp :: Computer 
-  , _crIter :: !Int
+  { _airComp :: Computer 
+  , _airIter :: !Int
   }
   deriving (Eq, Show)
 
@@ -292,9 +292,9 @@ evalInstruction = \case
 
 evalDataFlowInfoWith :: HasDataFlowInfo s => Computer -> s -> AbstractInterpretationResult
 evalDataFlowInfoWith comp (getDataFlowInfo -> AbstractProgram{..})
-  = converge ((==) `on` _crComp) step (AbsIntResult comp 0)
+  = converge ((==) `on` _airComp) step (AbsIntResult comp 0)
   where nextComputer c = execState (mapM_ evalInstruction _absInstructions) c
-        step AbsIntResult{..} = AbsIntResult (nextComputer _crComp) (succ _crIter)
+        step AbsIntResult{..} = AbsIntResult (nextComputer _airComp) (succ _airIter)
 
 evalDataFlowInfo :: HasDataFlowInfo s => s -> AbstractInterpretationResult
 evalDataFlowInfo dfi@(getDataFlowInfo -> AbstractProgram{..}) =

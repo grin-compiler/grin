@@ -259,8 +259,8 @@ runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
   Just hptProgram -> do
     let AbsIntResult{..} = evalDataFlowInfo hptProgram
-        result = HPT.toHPTResult hptProgram _crComp
-    pipelineLogIterations _crIter
+        result = HPT.toHPTResult hptProgram _airComp
+    pipelineLogIterations _airIter
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
       Right te  -> psTypeEnv .= Just te
@@ -274,8 +274,8 @@ runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
   Just cbyProgram -> do
     let AbsIntResult{..} = evalDataFlowInfo cbyProgram
-        result = toCByResult cbyProgram _crComp
-    pipelineLogIterations _crIter
+        result = toCByResult cbyProgram _airComp
+    pipelineLogIterations _airIter
     psCByResult .= Just result
     case typeEnvFromHPTResult (CBy._hptResult result) of
       Right te  -> psTypeEnv .= Just te
@@ -301,8 +301,8 @@ runLVAPure = use psLVAProgram >>= \case
   Nothing -> psLVAResult .= Nothing
   Just lvaProgram -> do
     let AbsIntResult{..} = evalDataFlowInfo lvaProgram
-        result = LVA.toLVAResult lvaProgram _crComp
-    pipelineLogIterations _crIter
+        result = LVA.toLVAResult lvaProgram _airComp
+    pipelineLogIterations _airIter
     psLVAResult .= Just result
 
 
@@ -311,8 +311,8 @@ runSharingPureWith toSharingResult = use psSharingProgram >>= \case
   Nothing -> psSharingResult .= Nothing
   Just shProgram -> do
     let AbsIntResult{..} = evalDataFlowInfo shProgram
-        result = toSharingResult shProgram _crComp
-    pipelineLogIterations _crIter
+        result = toSharingResult shProgram _airComp
+    pipelineLogIterations _airIter
     psSharingResult .= Just result
     case typeEnvFromHPTResult (Sharing._hptResult result) of
       Right te  -> psTypeEnv .= Just te

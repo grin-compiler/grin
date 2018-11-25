@@ -81,7 +81,7 @@ cbyExamples = "CreatedBy" </> "examples"
 calcCByResult :: Exp -> CByResult
 calcCByResult prog
   | Right cbyProgram <- codeGen prog
-  , computer <- _crComp . evalDataFlowInfo $ cbyProgram
+  , computer <- _airComp . evalDataFlowInfo $ cbyProgram
   , cbyResult <- toCByResult cbyProgram computer
   = cbyResult
 

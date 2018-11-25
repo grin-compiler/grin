@@ -78,7 +78,7 @@ calcSharedLocations = _sharedLocs . calcSharingResult
 calcSharingResult :: Exp -> SharingResult
 calcSharingResult prog
   | Right shProgram <- codeGen prog
-  , computer <- _crComp . evalDataFlowInfo $ shProgram
+  , computer <- _airComp . evalDataFlowInfo $ shProgram
   , shResult <- toSharingResult shProgram computer
   = shResult
 

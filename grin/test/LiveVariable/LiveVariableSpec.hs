@@ -103,5 +103,5 @@ runTestsFrom fromCurDir = testGroup lvaTestName $
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
   | Right lvaProgram <- codeGen prog
-  , computer <- _crComp . evalDataFlowInfo $ lvaProgram
+  , computer <- _airComp . evalDataFlowInfo $ lvaProgram
   = toLVAResult lvaProgram computer
