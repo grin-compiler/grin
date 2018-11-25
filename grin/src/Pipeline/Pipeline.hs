@@ -126,7 +126,7 @@ transformation n = \case
   CaseCopyPropagation             -> noEffectMap $ noTypeEnv caseCopyPropagation
   CaseHoisting                    -> noEffectMap caseHoisting
   GeneralizedUnboxing             -> noEffectMap generalizedUnboxing
-  ArityRaising                    -> noEffectMap (arityRaising n)
+  ArityRaising                    -> noEffectMap arityRaising
   LateInlining                    -> noEffectMap lateInlining
   UnitPropagation                 -> noEffectMap unitPropagation
 
@@ -346,6 +346,7 @@ saveTransformationInfo name content = do
   outputDir <- view poOutputDir
   let fname = printf "%03d.%s" n name
   liftIO $ do
+    createDirectoryIfMissing True outputDir
     writeFile (outputDir </> fname) $ show $ plain $ pretty content
 
 saveTypeEnv :: PipelineM ()

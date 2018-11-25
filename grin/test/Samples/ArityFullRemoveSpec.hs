@@ -14,7 +14,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   -- TODO: Reenable before merge
-  xit "multi indirection - full remove" $ do
+  it "multi indirection - full remove" $ do
     let before = [prog|
         grinMain =
           p2 <- store (CInt 1)
@@ -57,9 +57,12 @@ spec = do
           [ Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T ArityRaising
           , T CopyPropagation
+          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T SimpleDeadVariableElimination
+          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T ArityRaising
           , T CopyPropagation
+          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T SimpleDeadVariableElimination
           ]
     (pipelineInfo, transformed) <- pipeline defaultOpts Nothing before ppln
