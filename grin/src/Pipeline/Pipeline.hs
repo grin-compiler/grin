@@ -66,6 +66,7 @@ import Data.Bifunctor
 
 import qualified Data.Bimap as Bimap
 import Data.Map as Map
+import Data.Set as Set
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
 
@@ -266,6 +267,7 @@ runHPTPure = use psHPTProgram >>= \case
       Right te  -> psTypeEnv .= Just te
       Left err  -> do
         psErrors %= (err :)
+        liftIO $ printf "type-env error: %s" err
         psTypeEnv .= Nothing
 
 
