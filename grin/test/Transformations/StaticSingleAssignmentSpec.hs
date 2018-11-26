@@ -39,4 +39,4 @@ spec = do
             prim_int_add p3_3 3
           prim_int_add p3 4
       |]
-    (singleStaticAssignment before) `sameAs` after
+    (staticSingleAssignment before) `sameAs` after

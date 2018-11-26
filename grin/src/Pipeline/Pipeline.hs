@@ -65,8 +65,8 @@ import System.Process
 import Data.Bifunctor
 
 import qualified Data.Bimap as Bimap
-import Data.Map as Map
-import Data.Set as Set
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import LLVM.Pretty (ppllvm)
 import qualified Data.Text.Lazy.IO as Text
 

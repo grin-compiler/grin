@@ -15,8 +15,8 @@ import Transformations.Util
 type VarM a = State (Set.Set Name, Int) a
 
 
-singleStaticAssignment :: Exp -> Exp
-singleStaticAssignment e = flip evalState (mempty, 1) $
+staticSingleAssignment :: Exp -> Exp
+staticSingleAssignment e = flip evalState (mempty, 1) $
   do cata functionNames e
      anaM build (mempty, e)
   where
