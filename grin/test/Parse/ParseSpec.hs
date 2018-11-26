@@ -22,25 +22,25 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-parseTestName :: String 
+parseTestName :: String
 parseTestName = "Parse"
 
 runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = testGroup parseTestName $ do
-  mkSpecFromWith fromCurDir id 
-    [ interleavedSrc 
+  mkSpecFromWith fromCurDir id
+    [ interleavedSrc
     , pureUndefinedSrc
     , storeUndefinedSrc
     , updateUndefinedSrc
-    ] 
+    ]
     [ interleavedAstParseSpec
     , pureUndefinedAstParseSpec
     , storeUndefinedAstParseSpec
     , updateUndefinedAstParseSpec
     ]
-  mkSpecFromWith' parseMarkedTypeEnv fromCurDir id 
-    [ interleavedSrc 
-    ] 
+  mkSpecFromWith' parseMarkedTypeEnv fromCurDir id
+    [ interleavedSrc
+    ]
     [ interleavedTypeEnvParseSpec
     ]
 

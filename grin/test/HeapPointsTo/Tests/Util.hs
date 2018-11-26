@@ -1,4 +1,4 @@
-module HeapPointsTo.Tests.Util where 
+module HeapPointsTo.Tests.Util where
 
 import System.FilePath
 
@@ -34,20 +34,20 @@ loc = tySetFromTypes . pure . locT
 mkNode :: [[SimpleType]] -> Node
 mkNode = V.fromList . map S.fromList
 
-mkNodeSet :: [(Tag, [[SimpleType]])] -> NodeSet 
-mkNodeSet = NodeSet . M.fromList . map (\(t,v) -> (t,mkNode v)) 
+mkNodeSet :: [(Tag, [[SimpleType]])] -> NodeSet
+mkNodeSet = NodeSet . M.fromList . map (\(t,v) -> (t,mkNode v))
 
-mkTySet :: [(Tag, [[SimpleType]])] -> TypeSet 
+mkTySet :: [(Tag, [[SimpleType]])] -> TypeSet
 mkTySet = tySetFromNodeSet . mkNodeSet
 
-tySetFromNodeSet :: NodeSet -> TypeSet 
+tySetFromNodeSet :: NodeSet -> TypeSet
 tySetFromNodeSet = TypeSet mempty
 
-tySetFromTypes :: [SimpleType] -> TypeSet 
+tySetFromTypes :: [SimpleType] -> TypeSet
 tySetFromTypes = flip TypeSet mempty . S.fromList
 
 mkFun :: (TypeSet, [TypeSet]) -> (TypeSet, Vector TypeSet)
 mkFun (t,ts) = (t, V.fromList ts)
 
 mkSimpleMain :: SimpleType -> (TypeSet, Vector TypeSet)
-mkSimpleMain t = (tySetFromTypes [t], mempty) 
+mkSimpleMain t = (tySetFromTypes [t], mempty)

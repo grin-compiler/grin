@@ -25,10 +25,10 @@ import AbstractInterpretation.CByResultTypes
 import Transformations.Util
 
 {- NOTE: The functions in this module handle #undefined producers
-         as well. This means that the producer groupings will 
+         as well. This means that the producer groupings will
          include a variable named "#undefined" if any undefined
          values appear in the code
--} 
+-}
 
 -- An untyped representation of the ProducerGraph (easier to handle).
 type ProducerGraph' = Map Name (Map Tag (Set Name))
@@ -68,7 +68,7 @@ groupActiveProducers lvaResult prodMap = toProducerGraph groupedProducers where
 
   basicGraph :: ProducerGraph'
   basicGraph = mkBasicProdGraph prodMap
-  
+
   activeProds :: Set Name
   activeProds = collectActiveProducers lvaResult prodMap
 
@@ -92,7 +92,7 @@ collectProducers = mconcat
 -- Selects the active producers from a producer set.
 -- A producers is active if at least one of its tags has a live field.
 -- Producers are grouped by tags for each consumer, which means
--- only producers with active tags will be grouped. As a consequence, 
+-- only producers with active tags will be grouped. As a consequence,
 -- we do not have to (explicitly) consider tag liveness info here.
 selectActiveProducers :: LVAResult -> Set Name -> Set Name
 selectActiveProducers lvaResult prods = Map.keysSet

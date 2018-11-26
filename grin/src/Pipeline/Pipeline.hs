@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes #-}
 module Pipeline.Pipeline
- ( module Pipeline.Pipeline 
+ ( module Pipeline.Pipeline
  , module Pipeline.Definitions
  , module Pipeline.Utils
  ) where
@@ -140,7 +140,7 @@ pipelineStep p = do
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
-    Optimize -> do 
+    Optimize -> do
       let opts = defaultOpts { _poFailOnLint = True }
           prePipeline = defaultOnChange
       grin <- use psExp
@@ -165,7 +165,7 @@ pipelineStep p = do
       RunAbstractProgramPure   -> runLVAPure
       PrintAbstractResult      -> printAnalysisResult psLVAResult
     RunCByWithLVA -> runCByWithLVAPure
-    Sharing step -> case step of 
+    Sharing step -> case step of
       CompileToAbstractProgram -> compileAbstractProgram Sharing.codeGen psSharingProgram
       OptimiseAbstractProgram  -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
       PrintAbstractProgram     -> printAbstractProgram psSharingProgram
@@ -190,7 +190,7 @@ pipelineStep p = do
     Statistics      -> statistics
     Lint            -> lintGrin Nothing
     ConfluenceTest  -> confluenceTest
-    PrintErrors     -> do 
+    PrintErrors     -> do
       errors <- use psErrors
       pipelineLog $ unlines $ "errors:" : errors
     DebugPipelineState -> debugPipelineState
@@ -292,7 +292,7 @@ runCByWithLVAPure :: PipelineM ()
 runCByWithLVAPure = do
   runLVAPure
   use psLVAResult >>= \case
-    Nothing -> do 
+    Nothing -> do
       psCByResult .= Nothing
       psErrors %= ("LVA result is not availabe for cby-with-lva pass" :)
     Just lvaResult -> runCByPureWith (CBy.toCByResultWithLiveness lvaResult)
@@ -321,18 +321,18 @@ runSharingPureWith toSharingResult = use psSharingProgram >>= \case
       Left err  -> do
         psErrors %= (err :)
         psTypeEnv .= Nothing
-    
+
 runSharingPure :: PipelineM ()
 runSharingPure = runSharingPureWith Sharing.toSharingResult
 
 
-parseTypeAnnots :: PipelineM () 
-parseTypeAnnots = do 
+parseTypeAnnots :: PipelineM ()
+parseTypeAnnots = do
   Just src <- use psSrc
   psTypeAnnots .= Just (parseMarkedTypeEnv src)
 
-printTypeAnnots :: PipelineM () 
-printTypeAnnots = do 
+printTypeAnnots :: PipelineM ()
+printTypeAnnots = do
   Just typeEnv <- use psTypeAnnots
   pipelineLog . show . pretty $ typeEnv
 
@@ -362,22 +362,22 @@ statistics = do
   saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
 transformationM :: Transformation -> PipelineM ()
-transformationM NonSharedElimination = do 
-  e <- use psExp 
+transformationM NonSharedElimination = do
+  e <- use psExp
   withTyEnvSharing $ \tyEnv shRes -> do
     let e' = nonSharedElimination shRes tyEnv e
     psExp .= e'
     psTransStep %= (+1)
 
 
-transformationM DeadCodeElimination = do 
+transformationM DeadCodeElimination = do
   withTyEnvCByLVA $ \typeEnv cbyResult lvaResult -> do
 
     e <- use psExp
     case deadFunctionElimination lvaResult typeEnv e of
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
       Left  err -> psErrors %= (err:)
-    
+
     e  <- use psExp
     case deadDataElimination lvaResult cbyResult typeEnv e of
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
@@ -421,13 +421,13 @@ transformationM DeadDataElimination = do
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
       Left  err -> psErrors %= (err:)
 
-transformationM SparseCaseOptimisation = do 
+transformationM SparseCaseOptimisation = do
   e  <- use psExp
   withTypeEnv $ \typeEnv ->
     case sparseCaseOptimisation typeEnv e of
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
       Left  err -> psErrors %= (err:)
-  
+
 transformationM t = do
   --preconditionCheck t
   env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
@@ -539,7 +539,7 @@ randomPipeline seed = do
     go available res = do
       exp <- use psExp
       t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
-      eff <- if needsCByLVA t 
+      eff <- if needsCByLVA t
         then do
           runNameIntro
           runCByLVA
@@ -595,24 +595,24 @@ randomPipeline seed = do
       , Eff CalcEffectMap
       ]
 
-    runNameIntro :: PipelineM () 
-    runNameIntro = void . pipelineStep $ Pass 
+    runNameIntro :: PipelineM ()
+    runNameIntro = void . pipelineStep $ Pass
       [ T ProducerNameIntroduction
-      , T BindNormalisation 
+      , T BindNormalisation
       ]
 
     -- cleanup after producer name intro
-    runCleanup :: PipelineM () 
-    runCleanup = void . pipelineStep $ Pass 
-      [ T CopyPropagation 
+    runCleanup :: PipelineM ()
+    runCleanup = void . pipelineStep $ Pass
+      [ T CopyPropagation
       , T SimpleDeadVariableElimination
       ]
 
     needsCByLVA :: Transformation -> Bool
-    needsCByLVA DeadCodeElimination = True 
-    needsCByLVA _ = False 
+    needsCByLVA DeadCodeElimination = True
+    needsCByLVA _ = False
 
-    needsCleanup :: Transformation -> Bool 
+    needsCleanup :: Transformation -> Bool
     needsCleanup = needsCByLVA
 
 confluenceTest :: PipelineM ()
@@ -672,7 +672,7 @@ pipeline o s e ps = do
 -- it reaches a fixpoint where none of the pipeline transformations
 -- change the expression itself, the order of the transformations
 -- are defined in the pipeline list. When the expression changes,
--- it lints the resulting code, and performs a given sequence of 
+-- it lints the resulting code, and performs a given sequence of
 -- pipeline steps on it. Finally, it performs a cleanup sequence
 -- after each step.
 optimizeWithPM :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()

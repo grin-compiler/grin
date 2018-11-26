@@ -46,15 +46,15 @@ litToSimpleType = \case
   LFloat  {}  -> -4
   LBool   {}  -> -5
 
-codeGenNodeTypeHPT :: HasDataFlowInfo s => 
-                      Tag -> Vector SimpleType -> CG s IR.Reg 
-codeGenNodeTypeHPT tag ts = do 
+codeGenNodeTypeHPT :: HasDataFlowInfo s =>
+                      Tag -> Vector SimpleType -> CG s IR.Reg
+codeGenNodeTypeHPT tag ts = do
   let ts' = Vec.toList ts
   r <- newReg
   irTag <- getTag tag
   argRegs <- mapM codeGenSimpleType ts'
   emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length argRegs)}
-  forM_ (zip [0..] argRegs) $ \(idx, argReg) -> 
+  forM_ (zip [0..] argRegs) $ \(idx, argReg) ->
     emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
   pure r
 
@@ -69,7 +69,7 @@ codeGenVal = \case
         valReg <- getReg name
         emitExtendNodeItem valReg irTag idx r
       Lit lit -> emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
-      Undefined (T_SimpleType t) -> do 
+      Undefined (T_SimpleType t) -> do
         tmp <- codeGenSimpleType t
         emitExtendNodeItem tmp irTag idx r
       _ -> throwHPT $ "illegal node item value " ++ show val

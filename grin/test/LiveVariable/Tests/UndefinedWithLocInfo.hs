@@ -33,7 +33,7 @@ undefinedWithLocInfoExpected = LVAResult
   }
 
 undefinedWithLocInfoExpectedHeap :: Vector Liveness
-undefinedWithLocInfoExpectedHeap = V.fromList 
+undefinedWithLocInfoExpectedHeap = V.fromList
   [ cNilLiveness
   ]
 

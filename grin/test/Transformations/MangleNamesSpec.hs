@@ -17,14 +17,14 @@ spec = do
   it "simple" $ do
     let before = [prog|
       f x y =
-        z <- pure x 
+        z <- pure x
         w <- pure y
         u <- pure (CNode x y z w)
         pure u
       |]
     let after = [prog|
       name.0 name.1 name.2 =
-        name.3 <- pure name.1 
+        name.3 <- pure name.1
         name.4 <- pure name.2
         name.5 <- pure (CNode name.1 name.2 name.3 name.4)
         pure name.5

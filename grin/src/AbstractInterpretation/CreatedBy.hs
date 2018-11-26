@@ -55,13 +55,13 @@ registerToProducer (IR.Reg r) = fromIntegral r
 undefinedProducer :: IR.Producer
 undefinedProducer = -1723
 
-undefinedProducerName :: Name 
+undefinedProducerName :: Name
 undefinedProducerName = "#undefined"
 
 
-codeGenNodeTypeCBy :: HasDataFlowInfo s => 
-                      Tag -> Vector SimpleType -> CG s IR.Reg 
-codeGenNodeTypeCBy tag ts = do 
+codeGenNodeTypeCBy :: HasDataFlowInfo s =>
+                      Tag -> Vector SimpleType -> CG s IR.Reg
+codeGenNodeTypeCBy tag ts = do
   irTag <- getTag tag
   r <- codeGenTaggedNodeType tag ts
   emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag 0 undefinedProducer}
@@ -79,7 +79,7 @@ codeGenVal = \case
         valReg <- getReg name
         emitExtendNodeItem valReg irTag idx r
       Lit lit -> emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
-      Undefined (T_SimpleType t) -> do 
+      Undefined (T_SimpleType t) -> do
         tmp <- codeGenSimpleType t
         emitExtendNodeItem tmp irTag idx r
       _ -> throwCBy $ "illegal node item value " ++ show val
@@ -113,10 +113,10 @@ codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para f
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       pure Z
 
-    EBindF (SReturn lhs,leftExp) (Var v) (_,rightExp) 
+    EBindF (SReturn lhs,leftExp) (Var v) (_,rightExp)
       | ConstTagNode{}        <- lhs -> cgProducer leftExp v rightExp
       | Undefined T_NodeSet{} <- lhs -> cgProducer leftExp v rightExp
-      where 
+      where
         cgProducer lExp p rExp = do
           reg <- lExp
           let R r = reg

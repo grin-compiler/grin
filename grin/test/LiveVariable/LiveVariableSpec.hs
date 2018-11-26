@@ -46,7 +46,7 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-lvaTestName :: String 
+lvaTestName :: String
 lvaTestName = "Live Variable Analysis"
 
 runTestsFrom :: FilePath -> IO ()

@@ -25,11 +25,11 @@ data SharingResult
 concat <$> mapM makeLenses [''SharingResult]
 
 toSharingResult :: SharingProgram -> R.Computer -> SharingResult
-toSharingResult SharingProgram{..} comp = SharingResult hptResult' sharedLocs where 
+toSharingResult SharingProgram{..} comp = SharingResult hptResult' sharedLocs where
   hptResult  = toHPTResult _hptProg comp
   hptResult' = register %~ (Map.delete sharingRegisterName) $ hptResult
   shRegType  = Map.lookup sharingRegisterName . _register $ hptResult
-  sharedLocs = case shRegType of 
+  sharedLocs = case shRegType of
     Just (TypeSet sty _) -> onlyLocations sty
     Nothing -> error $ "Sharing register not found (" ++ show sharingRegisterName ++ ")"
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module Grin.TypeEnv 
-  ( module Grin.TypeEnv 
-  , module Grin.TypeEnvDefs 
+module Grin.TypeEnv
+  ( module Grin.TypeEnv
+  , module Grin.TypeEnvDefs
   ) where
 
 import Text.Printf
@@ -131,6 +131,6 @@ typeOfValTE typeEnv = \case
   bad -> error (show bad)
 
 ptrLocations :: TypeEnv -> Name -> [Loc]
-ptrLocations te p = case variableType te p of 
+ptrLocations te p = case variableType te p of
   T_SimpleType (T_Location locs) -> locs
   ty -> error $ "Variable " ++ show (PP p) ++ " should be a pointer, but instead it has type: " ++ show (PP ty)

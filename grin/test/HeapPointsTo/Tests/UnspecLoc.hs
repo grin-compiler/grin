@@ -1,4 +1,4 @@
-module HeapPointsTo.Tests.UnspecLoc where 
+module HeapPointsTo.Tests.UnspecLoc where
 
 import System.FilePath
 
@@ -22,7 +22,7 @@ import HeapPointsTo.Tests.Util
 unspecLocSrc :: FilePath
 unspecLocSrc = hptExamples </> "unspec_loc.grin"
 
-unspecLocSpec :: HPTResult -> Spec 
+unspecLocSpec :: HPTResult -> Spec
 unspecLocSpec found = it "unspec_loc" $ found `sameAs` unspecLocExpected
 
 unspecLocExpected :: HPTResult
@@ -38,11 +38,11 @@ nodeSetN1 = mkNodeSet [(cNode, [[unspecLocT]])]
 
 
 unspecLocExpectedHeap :: Vector NodeSet
-unspecLocExpectedHeap = V.fromList 
+unspecLocExpectedHeap = V.fromList
   [ nodeSetN0
   ]
 
-unspecLocExpectedRegisters :: Map Name TypeSet 
+unspecLocExpectedRegisters :: Map Name TypeSet
 unspecLocExpectedRegisters = M.fromList
   [ ("p0", tySetFromTypes [locT 0, unspecLocT])
   , ("p1", unspecLoc)

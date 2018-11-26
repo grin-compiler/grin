@@ -40,10 +40,10 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-producerGroupingTestName :: String 
+producerGroupingTestName :: String
 producerGroupingTestName = "Producer Grouping"
 
-ddeTestName :: String 
+ddeTestName :: String
 ddeTestName = "Dead Data Elimination"
 
 runTestsFrom :: FilePath -> IO ()
@@ -51,7 +51,7 @@ runTestsFrom fromCurDir = do
   testGroup producerGroupingTestName $ do
     mkSpecFromWith fromCurDir calcProducerGraphAll    [multiProdSimpleSrc] [multiProdSimpleAllSpec]
     mkSpecFromWith fromCurDir calcProducerGraphActive [multiProdSimpleSrc] [multiProdSimpleActiveSpec]
-  
+
   testGroup ddeTestName $
     mkBeforeAfterSpecFrom fromCurDir eliminateDeadData
       [ impossibleAltBefore
@@ -89,12 +89,12 @@ runTestsFrom fromCurDir = do
       ]
 
 calcProducerGraphAll :: Exp -> ProducerGraph
-calcProducerGraphAll = groupAllProducers 
-                    . _producers 
+calcProducerGraphAll = groupAllProducers
+                    . _producers
                     . calcCByResult
 
 calcProducerGraphActive :: Exp -> ProducerGraph
-calcProducerGraphActive 
+calcProducerGraphActive
   = uncurry groupActiveProducers
   . ((,) <$> calcLiveness <*> (_producers . calcCByResult))
 

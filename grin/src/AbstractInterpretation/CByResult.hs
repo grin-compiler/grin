@@ -42,7 +42,7 @@ toProdMap :: Map Reg Name -> Map Producer Name
 toProdMap = M.mapKeys regToProd
 
 -- Adds the undefined producer to a producer mapping
-withUndefined :: Map Producer Name -> Map Producer Name 
+withUndefined :: Map Producer Name -> Map Producer Name
 withUndefined = M.insert udProdId udProdName
   where udProdId   = fromIntegral undefinedProducer
         udProdName = undefinedProducerName
@@ -89,7 +89,7 @@ toCByResult cbyProg comp = CByResult hptResult producers groupedProducers
         regs = M.map simplifyTypeSet _register
         funs = M.map (over _1 simplifyTypeSet)
              . M.map (over _2 (V.map simplifyTypeSet))
-             $ _function 
+             $ _function
         hptResult = HPTResult mem regs funs
 
         producers = ProducerMap $ M.map (ProducerSet . getNamedProducer') _register

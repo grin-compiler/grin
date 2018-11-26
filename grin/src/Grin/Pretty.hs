@@ -158,12 +158,12 @@ instance Pretty TypeEnv where
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
 
-instance Pretty Effect where 
-  pretty (Effectful fun) = pretty $ "effectful " <> fun 
+instance Pretty Effect where
+  pretty (Effectful fun) = pretty $ "effectful " <> fun
   pretty (Update locs)   = text "updates " <+> list (map (cyan . int) locs)
   pretty (Store locs)    = text "stores " <+> list (map (cyan . int) locs)
 
-instance Pretty EffectMap where 
+instance Pretty EffectMap where
   pretty (EffectMap effects) = yellow (text "EffectMap") <$$>
     indent 4 (prettyKeyValue $ Map.toList effects)
 

@@ -14,22 +14,22 @@ import qualified Data.Bimap as Bimap
 
 import AbstractInterpretation.LVAResultTypes
 
-isNodeLive :: Node -> Bool 
+isNodeLive :: Node -> Bool
 isNodeLive = (||) <$> hasLiveTag <*> hasLiveField
 
-hasLiveTag :: Node -> Bool 
+hasLiveTag :: Node -> Bool
 hasLiveTag (Node tagLv fieldsLv) = tagLv
 
-hasLiveField :: Node -> Bool 
+hasLiveField :: Node -> Bool
 hasLiveField (Node tagLv fieldsLv) = or fieldsLv
 
-isLive :: Liveness -> Bool 
-isLive (BasicVal b) = b 
+isLive :: Liveness -> Bool
+isLive (BasicVal b) = b
 isLive (NodeSet  m) = any isNodeLive m
 
 -- | A function is only dead if its return value is dead
--- , and all of its parameters are dead as well. The case 
+-- , and all of its parameters are dead as well. The case
 -- when the return value is dead, but there is a live parameter
 -- means that the function has some kind of side effect.
-isFunDead :: (Liveness, Vector Liveness) -> Bool 
+isFunDead :: (Liveness, Vector Liveness) -> Bool
 isFunDead (retLv, argsLv) = not (isLive retLv || any isLive argsLv)

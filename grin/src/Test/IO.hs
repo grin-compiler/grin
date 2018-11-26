@@ -42,7 +42,7 @@ withCurDir curDir fp = if curDir == stackTest
   then "." </> fp
   else (curDir </> stackTest) </> fp
 
-testGroup :: String -> Spec -> IO () 
+testGroup :: String -> Spec -> IO ()
 testGroup name tests = hspec $ describe name tests
 
 mkSpecFromWith' :: (Text -> a)

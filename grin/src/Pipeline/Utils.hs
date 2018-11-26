@@ -10,7 +10,7 @@ import Pipeline.Definitions
 
 import Grin.Grin
 import Grin.TypeEnvDefs
-import AbstractInterpretation.CByResultTypes    
+import AbstractInterpretation.CByResultTypes
 import AbstractInterpretation.LVAResultTypes
 import AbstractInterpretation.SharingResult
 
@@ -31,12 +31,12 @@ pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n
 -- TODO: Refactor these into some kind of Maybe monad
 
 withPState :: (PState -> Maybe a) -> String -> (a -> PipelineM ()) -> PipelineM ()
-withPState selector err action = do 
+withPState selector err action = do
   substateM <- gets selector
-  maybe (pipelineLog err) action substateM 
+  maybe (pipelineLog err) action substateM
 
-notAvailableMsg :: String -> String 
-notAvailableMsg str = str ++ " in not available, skipping next step"  
+notAvailableMsg :: String -> String
+notAvailableMsg str = str ++ " in not available, skipping next step"
 
 withTypeEnv :: (TypeEnv -> PipelineM ()) -> PipelineM ()
 withTypeEnv = withPState _psTypeEnv $ notAvailableMsg "Type environment"
@@ -47,32 +47,32 @@ withCByResult = withPState _psCByResult $ notAvailableMsg "Created-by analysis r
 withLVAResult :: (LVAResult -> PipelineM ()) -> PipelineM ()
 withLVAResult = withPState _psLVAResult $ notAvailableMsg "Live variable analysis result"
 
-withSharing :: (SharingResult -> PipelineM ()) -> PipelineM () 
+withSharing :: (SharingResult -> PipelineM ()) -> PipelineM ()
 withSharing = withPState _psSharingResult $ notAvailableMsg "Sharing analysis result"
-  
-withTyEnvCByLVA :: 
-  (TypeEnv -> CByResult -> LVAResult -> PipelineM ()) -> 
+
+withTyEnvCByLVA ::
+  (TypeEnv -> CByResult -> LVAResult -> PipelineM ()) ->
   PipelineM ()
-withTyEnvCByLVA f = 
-  withTypeEnv $ \te -> 
-    withCByResult $ \cby -> 
-      withLVAResult $ \lva -> 
+withTyEnvCByLVA f =
+  withTypeEnv $ \te ->
+    withCByResult $ \cby ->
+      withLVAResult $ \lva ->
         f te cby lva
 
-withTyEnvLVA :: 
-  (TypeEnv -> LVAResult -> PipelineM ()) -> 
+withTyEnvLVA ::
+  (TypeEnv -> LVAResult -> PipelineM ()) ->
   PipelineM ()
-withTyEnvLVA f = 
-  withTypeEnv $ \te -> 
-    withLVAResult $ \lva -> 
+withTyEnvLVA f =
+  withTypeEnv $ \te ->
+    withLVAResult $ \lva ->
       f te lva
 
-withTyEnvSharing :: 
-  (TypeEnv -> SharingResult -> PipelineM ()) -> 
+withTyEnvSharing ::
+  (TypeEnv -> SharingResult -> PipelineM ()) ->
   PipelineM ()
-withTyEnvSharing f = 
-  withTypeEnv $ \te -> 
-    withSharing $ \shLocs -> 
+withTyEnvSharing f =
+  withTypeEnv $ \te ->
+    withSharing $ \shLocs ->
       f te shLocs
 
 defaultOptimizations :: [Transformation]
@@ -99,7 +99,7 @@ defaultOptimizations =
   ]
 
 defaultOnChange :: [PipelineStep]
-defaultOnChange = 
+defaultOnChange =
   [ T ProducerNameIntroduction
   , T BindNormalisation
   , CBy CompileToAbstractProgram
@@ -112,11 +112,11 @@ defaultOnChange =
   , Eff CalcEffectMap
   ]
 
--- Copy propagation, SDVE and bind normalisitaion 
--- together can clean up all unnecessary artifacts 
--- of producer name introduction. 
+-- Copy propagation, SDVE and bind normalisitaion
+-- together can clean up all unnecessary artifacts
+-- of producer name introduction.
 defaultCleanUp :: [PipelineStep]
-defaultCleanUp = 
+defaultCleanUp =
   [ T CopyPropagation
   , T SimpleDeadVariableElimination
   ]
@@ -130,7 +130,7 @@ debugPipelineState = do
   liftIO $ print ps
 
 printingSteps :: [PipelineStep]
-printingSteps = 
+printingSteps =
   [ HPT PrintAbstractProgram
   , HPT PrintAbstractResult
   , CBy PrintAbstractProgram
@@ -146,5 +146,5 @@ printingSteps =
   , DebugPipelineState
   ]
 
-isPrintingStep :: PipelineStep -> Bool 
+isPrintingStep :: PipelineStep -> Bool
 isPrintingStep = flip elem printingSteps

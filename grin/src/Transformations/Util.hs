@@ -96,9 +96,9 @@ mapValsExp f = \case
   exp               -> exp
 
 mapValValM :: Monad m => (Val -> m Val) -> Val -> m Val
-mapValValM f val = do 
+mapValValM f val = do
   val' <- f val
-  case val' of  
+  case val' of
     ConstTagNode tag vals -> ConstTagNode tag <$> mapM (mapValValM f) vals
     VarTagNode name vals  -> VarTagNode  name <$> mapM (mapValValM f) vals
     v -> pure v
@@ -224,15 +224,15 @@ collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
     goCPat (NodePat t args) = modify $ updateTagInfo t (length args)
     goCPat _ = pure ()
 
-lookupExcept :: (Monad m, Ord k) => 
-                String -> 
-                k -> Map k v -> 
+lookupExcept :: (Monad m, Ord k) =>
+                String ->
+                k -> Map k v ->
                 ExceptT String m v
 lookupExcept err k = maybe (throwE err) pure . Map.lookup k
 
-lookupExceptT :: (MonadTrans t, Monad m, Ord k) => 
-                 String -> 
-                 k -> Map k v -> 
+lookupExceptT :: (MonadTrans t, Monad m, Ord k) =>
+                 String ->
+                 k -> Map k v ->
                  t (ExceptT String m) v
 lookupExceptT err k = lift . lookupExcept err k
 
@@ -252,18 +252,18 @@ lookupWithDoubleKey :: (Ord k1, Ord k2) => k1 -> k2 -> Map k1 (Map k2 v) -> Mayb
 lookupWithDoubleKey k1 k2 m = Map.lookup k1 m >>= Map.lookup k2
 
 lookupWithDoubleKeyExcept :: (Monad m, Ord k1, Ord k2) =>
-                             String -> k1 -> k2 -> 
-                             Map k1 (Map k2 v) -> 
+                             String -> k1 -> k2 ->
+                             Map k1 (Map k2 v) ->
                              ExceptT String m v
 lookupWithDoubleKeyExcept err k1 k2 = maybe (throwE err) pure
                                     . lookupWithDoubleKey k1 k2
 
 lookupWithDoubleKeyExceptT :: (MonadTrans t, Monad m, Ord k1, Ord k2) =>
-                              String -> k1 -> k2 -> 
-                              Map k1 (Map k2 v) -> 
+                              String -> k1 -> k2 ->
+                              Map k1 (Map k2 v) ->
                               t (ExceptT String m) v
 lookupWithDoubleKeyExceptT err k1 k2 = lift . lookupWithDoubleKeyExcept err k1 k2
-       
+
 
 notFoundIn :: Show a => String -> a -> String -> String
 notFoundIn n1 x n2 = n1 ++ " " ++ show x ++ " not found in " ++ n2
@@ -273,28 +273,28 @@ markToRemove x True  = Just x
 markToRemove _ False = Nothing
 
 zipFilter :: [a] -> [Bool] -> [a]
-zipFilter xs = catMaybes . zipWith markToRemove xs 
+zipFilter xs = catMaybes . zipWith markToRemove xs
 
-bindToUndefineds :: Monad m => TypeEnv -> Exp -> [Name] -> ExceptT String m Exp 
+bindToUndefineds :: Monad m => TypeEnv -> Exp -> [Name] -> ExceptT String m Exp
 bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
 
-  bindToUndefined :: Monad m => Exp -> Name -> ExceptT String m Exp  
+  bindToUndefined :: Monad m => Exp -> Name -> ExceptT String m Exp
   bindToUndefined rhs v = do
     ty <- lookupExcept (notInTypeEnv v) v _variable
-    let ty' = simplifyType ty 
+    let ty' = simplifyType ty
     pure $ EBind (SReturn (Undefined ty')) (Var v) rhs
 
   notInTypeEnv v = "Variable " ++ show (PP v) ++ " was not found in the type environment."
 
 
-simplifySimpleType :: SimpleType -> SimpleType 
+simplifySimpleType :: SimpleType -> SimpleType
 simplifySimpleType (T_Location _) = T_UnspecifiedLocation
-simplifySimpleType t = t  
+simplifySimpleType t = t
 
-simplifyNodeSet :: NodeSet -> NodeSet 
+simplifyNodeSet :: NodeSet -> NodeSet
 simplifyNodeSet = fmap (fmap simplifySimpleType)
 
-simplifyType :: Type -> Type 
+simplifyType :: Type -> Type
 simplifyType (T_SimpleType st) = T_SimpleType $ simplifySimpleType st
-simplifyType (T_NodeSet    ns) = T_NodeSet $ simplifyNodeSet ns 
+simplifyType (T_NodeSet    ns) = T_NodeSet $ simplifyNodeSet ns
 simplifyType t = t

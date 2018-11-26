@@ -77,11 +77,11 @@ instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
 
-unifyEffectMap :: EffectMap -> EffectMap 
+unifyEffectMap :: EffectMap -> EffectMap
 unifyEffectMap (EffectMap effects) = EffectMap $ Map.map unifyEffectSet effects
 
 unifyEffectSet :: Set Effect -> Set Effect
-unifyEffectSet effects =  updates <> stores <> otherEffects where 
+unifyEffectSet effects =  updates <> stores <> otherEffects where
   updates   = if null updateLocs then mempty else Set.singleton (Update updateLocs)
   stores    = if null storeLocs  then mempty else Set.singleton (Store storeLocs)
 

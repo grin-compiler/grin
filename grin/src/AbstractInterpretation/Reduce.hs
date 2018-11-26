@@ -35,9 +35,9 @@ data Computer
   }
   deriving (Eq, Show)
 
-data AbstractInterpretationResult 
+data AbstractInterpretationResult
   = AbsIntResult
-  { _airComp :: Computer 
+  { _airComp :: Computer
   , _airIter :: !Int
   }
   deriving (Eq, Show)
@@ -214,7 +214,7 @@ evalInstruction = \case
           selectReg dstReg.nodeSet %= (mappend $ NodeSet filteredTagMap)
           selectReg dstReg.simpleType %= (mappend typeSet)
 
-    AllFields -> do 
+    AllFields -> do
       tagMap <- use $ selectTagMap srcReg
       -- the union of the value sets of all fields
       let mergedFields = mconcat . (map Data.Foldable.fold) . Map.elems $ tagMap

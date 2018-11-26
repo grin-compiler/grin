@@ -72,7 +72,7 @@ spec = describe "Sharing analysis" $ do
     let exptected = Set.fromList [1]
     result `shouldBe` exptected
 
-calcSharedLocations :: Exp -> Set Loc 
+calcSharedLocations :: Exp -> Set Loc
 calcSharedLocations = _sharedLocs . calcSharingResult
 
 calcSharingResult :: Exp -> SharingResult

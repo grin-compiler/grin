@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, OverloadedStrings #-}
 module AbstractInterpretation.Sharing where
-    
+
 import Control.Monad.State
 import Control.Monad.Trans.Except
 
@@ -49,7 +49,7 @@ import qualified AbstractInterpretation.IR as IR
 [x] Remove Mode for calcNonLinearVars
 -}
 
-data SharingProgram = SharingProgram 
+data SharingProgram = SharingProgram
   { _hptProg   :: HPTProgram
   , _shRegName :: Name
   } deriving (Show)
@@ -57,9 +57,9 @@ data SharingProgram = SharingProgram
 concat <$> mapM makeLenses [''SharingProgram]
 
 instance HasDataFlowInfo SharingProgram where
-  dataFlowInfo = hptProg.dataFlowInfo 
+  dataFlowInfo = hptProg.dataFlowInfo
 
-sharingRegisterName :: Name 
+sharingRegisterName :: Name
 sharingRegisterName = "__sharing__register__"
 
 emptySharingProgram :: SharingProgram
@@ -107,10 +107,10 @@ calcSharedLocationsPure TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) 
   fetchLocs :: Loc -> Set Loc
   fetchLocs l = onlyLocations . fieldsFromNodeSet . fromMaybe (error msg) . (Vec.!?) _location $ l
     where msg = "Sharing: Invalid heap index: " ++ show l
-          
+
   fieldsFromNodeSet :: NodeSet -> Set SimpleType
   fieldsFromNodeSet = Set.fromList . concatMap Vec.toList . Map.elems
-  
+
 
 sharingCodeGen :: Exp -> CG SharingProgram ()
 sharingCodeGen e = do
@@ -129,7 +129,7 @@ sharingCodeGen e = do
     { addressReg = shReg
     , dstReg     = pointsToNodeReg
     }
-  emit IR.Project 
+  emit IR.Project
     { srcReg      = pointsToNodeReg
     , srcSelector = IR.AllFields
     , dstReg      = mergedFields
@@ -138,10 +138,10 @@ sharingCodeGen e = do
   where
     nonLinearVars = calcNonLinearNonUpdateLocVariables e
 
-codeGenM :: Exp -> CG SharingProgram () 
-codeGenM e = do 
+codeGenM :: Exp -> CG SharingProgram ()
+codeGenM e = do
   void $ zoom hptProg (HPT.codeGenM e)
   sharingCodeGen e
 
-codeGen :: Exp -> Either String SharingProgram 
+codeGen :: Exp -> Either String SharingProgram
 codeGen = (\(a,s) -> s<$a) . flip runState emptySharingProgram . runExceptT . codeGenM

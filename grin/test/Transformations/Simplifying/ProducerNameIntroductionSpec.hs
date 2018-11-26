@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, QuasiQuotes #-}
-module Transformations.Simplifying.ProducerNameIntroductionSpec where 
+module Transformations.Simplifying.ProducerNameIntroductionSpec where
 
 import Transformations.BindNormalisation
 import Transformations.Simplifying.ProducerNameIntroduction
@@ -166,4 +166,3 @@ spec = do
     (pni before) `sameAs` after
 
 
-  

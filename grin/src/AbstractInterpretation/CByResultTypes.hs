@@ -36,7 +36,7 @@ instance Semigroup ProducerMap where
 newtype ProducerGraph = ProducerGraph { _producerGraph :: ProducerMap }
   deriving (Eq, Show)
 
-data GroupedProducers 
+data GroupedProducers
   = All ProducerGraph     -- All producers are grouped
   | Active ProducerGraph  -- Groups are calcualted only for active producers (inactive producers have only reflexive connections)
   deriving (Show)

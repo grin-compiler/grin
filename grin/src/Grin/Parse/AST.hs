@@ -16,7 +16,7 @@ import qualified Data.Set as Set
 
 import Grin.Grin
 import Grin.Parse.Basic
-import Grin.Parse.TypeEnv  
+import Grin.Parse.TypeEnv
 
 -- grin syntax
 
@@ -73,7 +73,7 @@ simpleValue = Lit <$> literal <|>
 value = Unit <$ op "()" <|>
         try (parens (ConstTagNode <$> tag <*> many simpleValue <|> VarTagNode <$> var <*> many simpleValue)) <|>
         ValTag <$> tag <|>
-        simpleValue 
+        simpleValue
 
 literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
@@ -105,10 +105,10 @@ parseExpr :: Text -> Exp
 parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1) "" $ withoutTypeAnnots src
 
 
-withoutTypeAnnots :: Text -> Text 
+withoutTypeAnnots :: Text -> Text
 withoutTypeAnnots = T.unlines
                   . map skipIfAnnot
                   . T.lines
   where skipIfAnnot line
-          | Just ('%',_) <- T.uncons . T.dropWhile isSpace $ line = "" 
+          | Just ('%',_) <- T.uncons . T.dropWhile isSpace $ line = ""
           | otherwise = line

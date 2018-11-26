@@ -22,7 +22,7 @@ prettyLiveness False = red   (text "DEAD")
 
 instance Pretty Node where
   pretty (Node t fs) = pTag <> pFields where
-    pTag    = parens . prettyLiveness $ t 
+    pTag    = parens . prettyLiveness $ t
     pFields = list . map prettyLiveness . V.toList $ fs
 
 instance Pretty Liveness where

@@ -75,7 +75,7 @@ isConstant = cata $ \case
   UnitF                     -> True
   LitF lit                  -> True
   _                         -> False
-  
+
 hasConstant :: Val -> Bool
 hasConstant = cata $ \case
   ValTagF{} -> True

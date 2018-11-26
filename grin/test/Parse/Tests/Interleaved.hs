@@ -27,7 +27,7 @@ interleavedAstParseSpec ast = it "interleaved_ast_parse" $ ast `sameAs` ast'
 -- this is just comparing the two parsing methods
 -- parsing type annotations interleaved with code
 -- and parsing pretty printed type environment
--- if both yield the same result, then the test passes 
+-- if both yield the same result, then the test passes
 interleavedTypeEnvParseSpec :: TypeEnv -> Spec
 interleavedTypeEnvParseSpec env = it "interleaved_type_env_parse" $ env `sameAs` env'
   where env' = parseTypeEnv . pack . show . WPP $ env

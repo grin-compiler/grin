@@ -2,8 +2,8 @@
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving, OverloadedStrings #-}
 
-module Grin.Syntax 
-  ( module Grin.Syntax 
+module Grin.Syntax
+  ( module Grin.Syntax
   , module Grin.SyntaxDefs
   ) where
 

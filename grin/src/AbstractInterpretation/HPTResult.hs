@@ -95,7 +95,7 @@ toSimpleType (-3) = T_Word64
 toSimpleType (-4) = T_Float
 toSimpleType (-5) = T_Bool
 toSimpleType (-6) = T_UnspecifiedLocation
-toSimpleType ty 
+toSimpleType ty
   | ty < 0    = Local $ toHPTLocal ty
   | otherwise = T_Location $ fromIntegral ty
 

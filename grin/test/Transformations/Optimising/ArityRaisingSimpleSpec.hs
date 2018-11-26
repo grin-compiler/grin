@@ -24,7 +24,7 @@ spec = do
   it "split_undefined" $ do
     let tyEnv = inferTypeEnv testProgBefore
     snd (arityRaising 0 (tyEnv,testProgBefore)) `sameAs` testProgAfter
-  
+
 testProgBefore :: Exp
 testProgBefore = [prog|
 grinMain =
@@ -82,7 +82,7 @@ sum p10 p11 =
           sum $ p14_2 p13_2
 |]
 
-testProgAfter :: Exp 
+testProgAfter :: Exp
 testProgAfter = [prog|
 grinMain =
   v.0 <- pure (CInt 0)

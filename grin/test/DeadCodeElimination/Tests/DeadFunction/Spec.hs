@@ -31,7 +31,7 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-dfeTestName :: String 
+dfeTestName :: String
 dfeTestName = "Dead Function Elimination"
 
 runTestsFrom :: FilePath -> IO ()
@@ -58,11 +58,11 @@ runTestsFrom fromCurDir = do
       ]
 
 eliminateDeadFunctions :: Exp -> Exp
-eliminateDeadFunctions e = 
+eliminateDeadFunctions e =
   fromRight fail
   . deadFunctionElimination lvaResult tyEnv
   $ e
-  where 
+  where
     fail = error "Dead function elimination failed. See the error logs for more information"
     lvaResult = calcLiveness e
     tyEnv = inferTypeEnv e

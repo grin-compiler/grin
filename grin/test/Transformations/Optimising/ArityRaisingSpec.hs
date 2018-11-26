@@ -369,7 +369,7 @@ spec = do
           e_v3.0 <- pure (CInt e_v3.0')
           update p5 e_v3.0
           _prim_int_print e_v3.0'
-        
+
         upto p6 p7 =
           e_v1.1 <- fetch p6
           (CInt n2') <- pure e_v1.1
@@ -384,7 +384,7 @@ spec = do
               p8 <- store (CInt n4')
               p9 <- store (Fupto p8 p7)
               pure (CCons p6 p9)
-        
+
         sum' p10 p11 =
           e_v1.3 <- fetch p11
           v1 <- case e_v1.3 of
@@ -419,7 +419,7 @@ spec = do
         e_v3.0 <- pure (CInt e_v3.0')
         update p5 e_v3.0
         _prim_int_print e_v3.0'
-      
+
       upto p6 p7 =
         e_v1.1 <- fetch p6
         (CInt n2') <- pure e_v1.1
@@ -434,7 +434,7 @@ spec = do
             p8 <- store (CInt n4')
             p9 <- store (Fupto p8 p7)
             pure (CCons p6 p9)
-      
+
       sum' p10 p11 =
         e_v1.3 <- fetch p11
         v1 <- case e_v1.3 of

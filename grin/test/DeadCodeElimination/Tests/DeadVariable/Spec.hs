@@ -40,7 +40,7 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-dveTestName :: String 
+dveTestName :: String
 dveTestName = "Dead Variable Elimination"
 
 runTestsFrom :: FilePath -> IO ()
@@ -94,11 +94,11 @@ runTestsFrom fromCurDir = do
       ]
 
 eliminateDeadVariables :: Exp -> Exp
-eliminateDeadVariables e = 
+eliminateDeadVariables e =
   fromRight fail
   . deadVariableElimination lvaResult tyEnv
   $ e
-  where 
+  where
     fail = error "Dead variable elimination failed. See the error logs for more information"
     lvaResult = calcLiveness e
     tyEnv = inferTypeEnv e

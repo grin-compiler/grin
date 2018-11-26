@@ -1,4 +1,4 @@
-module HeapPointsTo.Tests.Undefined where 
+module HeapPointsTo.Tests.Undefined where
 
 import System.FilePath
 
@@ -22,7 +22,7 @@ import HeapPointsTo.Tests.Util
 undefinedSrc :: FilePath
 undefinedSrc = hptExamples </> "undefined.grin"
 
-undefinedSpec :: HPTResult -> Spec 
+undefinedSpec :: HPTResult -> Spec
 undefinedSpec found = it "undefined" $ found `sameAs` undefinedExpected
 
 undefinedExpected :: HPTResult
@@ -39,13 +39,13 @@ locTP0 :: SimpleType
 locTP0 = locT 0
 
 undefinedExpectedHeap :: Vector NodeSet
-undefinedExpectedHeap = V.fromList 
+undefinedExpectedHeap = V.fromList
   [ mkNodeSet [(cNil, [])]
   , mkNodeSet [(cCons, [[T_Int64], [locTP0]])]
   , nodeSetN0
   ]
 
-undefinedExpectedRegisters :: Map Name TypeSet 
+undefinedExpectedRegisters :: Map Name TypeSet
 undefinedExpectedRegisters = M.fromList
   [ ("p0", loc 0)
   , ("p1", loc 1)

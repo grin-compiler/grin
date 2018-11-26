@@ -33,7 +33,7 @@ deadTagsExpected = LVAResult
   }
 
 deadTagsExpectedHeap :: Vector Liveness
-deadTagsExpectedHeap = V.fromList 
+deadTagsExpectedHeap = V.fromList
   [ livenessN2
   , livenessN3
   ]

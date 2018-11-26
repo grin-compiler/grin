@@ -22,22 +22,22 @@ data Env
 
 type M = State Env
 
-{- NOTE: We need two seperate traversals in order to 
+{- NOTE: We need two seperate traversals in order to
          first collect all names at definition sites,
          then to replace all names at use- and definition sites.
--} 
+-}
 mangleNames :: Exp -> Exp
 mangleNames e = evalState (collectNames >=> replaceNames $ e) (Env 0 mempty) where
 
   -- collects the names from deifinition sites
-  collectNames :: Exp -> M Exp 
-  collectNames = anaM coalg  where 
+  collectNames :: Exp -> M Exp
+  collectNames = anaM coalg  where
     coalg :: Exp -> M (ExpF Exp)
     coalg = fmap project . mapNameDefExpM defName
 
   -- replaces names at use- and deifinition sites
-  replaceNames :: Exp -> M Exp 
-  replaceNames = cataM alg  where 
+  replaceNames :: Exp -> M Exp
+  replaceNames = cataM alg  where
     alg :: ExpF Exp -> M Exp
     alg = (mapNameUseExpM useName >=> mapNameDefExpM useName) . embed
 

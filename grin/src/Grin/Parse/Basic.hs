@@ -8,7 +8,7 @@ import qualified Data.Vector as Vec
 
 import Data.Text (Text)
 import Data.Text.Short (ShortText, pack)
-import Data.Void 
+import Data.Void
 
 import Control.Monad (void)
 import Text.Megaparsec
@@ -20,7 +20,7 @@ import Grin.TypeEnvDefs
 
 type Parser = Parsec Void Text
 
-keywords = Set.fromList 
+keywords = Set.fromList
   [ "case", "of"
   , "fetch", "store", "update"
   , "if", "then", "else"
@@ -29,7 +29,7 @@ keywords = Set.fromList
   , "#undefined"
   ] `Set.union` simpleTypes
 
-simpleTypes = Set.fromList . map pack $ 
+simpleTypes = Set.fromList . map pack $
   [ show T_Int64, show T_Word64, show T_Float
   , show T_Bool,  show T_Unit
   , "T_Location", show T_Dead
@@ -92,10 +92,10 @@ set p = Set.fromList <$> bracedList p
 set1 :: Ord a => Parser a -> Parser (Set a)
 set1 p = Set.fromList <$> bracedList p
 
-anySingle :: MonadParsec e s m => m (Token s) 
+anySingle :: MonadParsec e s m => m (Token s)
 anySingle = satisfy (const True)
 
-anySingleBut :: MonadParsec e s m => Token s -> m (Token s) 
+anySingleBut :: MonadParsec e s m => Token s -> m (Token s)
 anySingleBut t = satisfy (/= t)
 
 

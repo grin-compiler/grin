@@ -133,11 +133,11 @@ makeBaseFunctor ''Instruction
 
 class HasDataFlowInfo a where
   dataFlowInfo :: Lens' a AbstractProgram
-  
+
   getDataFlowInfo :: a -> AbstractProgram
   getDataFlowInfo = view dataFlowInfo
 
-  modifyInfo :: (AbstractProgram -> AbstractProgram) -> a -> a 
+  modifyInfo :: (AbstractProgram -> AbstractProgram) -> a -> a
   modifyInfo = over dataFlowInfo
 
 instance HasDataFlowInfo AbstractProgram where

@@ -64,10 +64,10 @@ setBasicValLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
 setBasicValLive = emit . setBasicValLiveInst
 
 setTagLive :: IR.Tag -> IR.Reg -> CG LVAProgram ()
-setTagLive tag reg = do 
-  tmp <- newReg 
-  setBasicValLive tmp 
-  emit IR.Extend 
+setTagLive tag reg = do
+  tmp <- newReg
+  setBasicValLive tmp
+  emit IR.Extend
     { srcReg      = tmp
     , dstSelector = IR.NodeItem tag 0
     , dstReg      = reg
@@ -92,9 +92,9 @@ setLive r = do
   emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
 
 {- Data flow info propagation for node pattern:
-   case nodeReg of 
+   case nodeReg of
      (CNode argReg) -> ...
-   (CNode argReg) <- pure nodeReg 
+   (CNode argReg) <- pure nodeReg
 -}
 nodePatternDataFlow :: IR.Reg -> IR.Reg -> IR.Tag -> Int -> CG LVAProgram ()
 nodePatternDataFlow argReg nodeReg irTag idx = do
@@ -141,7 +141,7 @@ codeGenVal = \case
       Undefined (T_SimpleType t) -> do
         -- undefined values should not have specified location info
         -- this is here "just in case"
-        ptrInfo <- newReg 
+        ptrInfo <- newReg
         tmp     <- codeGenSimpleType t
         emit $ copyStructureWithPtrInfo tmp ptrInfo
         emitExtendNodeItem ptrInfo irTag idx r
@@ -155,7 +155,7 @@ codeGenVal = \case
     irTag <- getTag tag
     emit IR.Set { dstReg = r, constant = IR.CNodeType irTag 1 }
     pure r
-  Undefined t -> do 
+  Undefined t -> do
     r <- newReg
     typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenTaggedNodeType) t
     emit $ copyStructureWithPtrInfo typed r

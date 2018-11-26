@@ -14,14 +14,14 @@ spec :: Spec
 spec = runIO runTests
 
 runTests :: IO ()
-runTests = do 
+runTests = do
   DDE.runTestsFrom stackRoot
   DFE.runTestsFrom stackRoot
   DPE.runTestsFrom stackRoot
   DVE.runTestsFrom stackRoot
 
 runTestsGHCi :: IO ()
-runTestsGHCi = do 
+runTestsGHCi = do
   DDE.runTestsFrom stackTest
   DFE.runTestsFrom stackTest
   DPE.runTestsFrom stackTest

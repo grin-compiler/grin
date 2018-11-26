@@ -43,10 +43,10 @@ heapIndirectSimpleExpectedRegisters = M.fromList
   , ("n0", livenessN0)
   , ("p0", liveVal)
   , ("n1", livenessN1)
-  , ("r", livenessN0) 
+  , ("r", livenessN0)
   , ("x", deadVal)
   , ("xs", liveVal)
-  , ("xs'", livenessN0) 
+  , ("xs'", livenessN0)
   ]
   where livenessN0 = nodeSet [ (cNil, [])
                              ]

@@ -56,7 +56,7 @@ spec = do
         |]
       let Right transformed = sparseCaseOptimisation teBefore before
       ctx (teBefore, transformed) `sameAs` (ctx (teBefore, after))
-  
+
     it "default" $ do
       let teBefore = create $
             (newVar "v" $ T_NodeSet (Map.fromList [(Tag C "Cons", Vector.fromList [T_Int64, T_Location [1]])]))
@@ -74,7 +74,7 @@ spec = do
         |]
       let Right transformed = sparseCaseOptimisation teBefore before
       ctx (teBefore, transformed) `sameAs` (ctx (teBefore, after))
-  
+
     it "negative case with default" $ do
       let teBefore = create $
             (newVar "v" $ T_NodeSet (Map.fromList
@@ -96,7 +96,7 @@ spec = do
         |]
       let Right transformed = sparseCaseOptimisation teBefore before
       ctx (teBefore, transformed) `sameAs` (ctx (teBefore, after))
-  
+
     it "const tag node scrutinee" $ do
       let before = [expr|
           case (CNil) of

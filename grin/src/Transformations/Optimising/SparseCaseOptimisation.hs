@@ -17,7 +17,7 @@ sparseCaseOptimisation :: TypeEnv -> Exp -> Either String Exp
 sparseCaseOptimisation TypeEnv{..} = runExcept . anaM builder where
   builder :: Exp -> Except String (ExpF Exp)
   builder = \case
-    ECase scrut@(Var name) alts -> do 
+    ECase scrut@(Var name) alts -> do
       scrutType <- lookupExcept (notInTyEnv scrut) name _variable
       let alts' = filterAlts scrutType alts
       pure $ ECaseF scrut alts'
@@ -26,12 +26,12 @@ sparseCaseOptimisation TypeEnv{..} = runExcept . anaM builder where
           alts'     = filterAlts scrutType alts
       pure $ ECaseF scrut alts'
     ECase scrut@(Lit l) alts -> do
-      let scrutType = typeOfLit l 
-          alts'     = filterAlts scrutType alts 
+      let scrutType = typeOfLit l
+          alts'     = filterAlts scrutType alts
       pure $ ECaseF scrut alts'
     ECase scrut@(Undefined ty) alts -> do
       let alts' = filterAlts ty alts
-      pure $  ECaseF scrut alts' 
+      pure $  ECaseF scrut alts'
     ECase scrut _ -> throwE $ unsuppScrut scrut
     exp -> pure . project $ exp
 

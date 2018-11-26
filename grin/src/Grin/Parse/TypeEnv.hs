@@ -10,7 +10,7 @@ import qualified Data.Vector as Vec
 
 import Data.List
 import Data.Char
-import Data.Void 
+import Data.Void
 import Data.Monoid
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -48,13 +48,13 @@ simpleType = T_Int64 <$ kw "T_Int64" <|>
              T_Dead <$ kw "T_Dead"
 
 nodeType :: Parser (Tag, Vector SimpleType)
-nodeType = (,) <$> tag <*> vec simpleType 
+nodeType = (,) <$> tag <*> vec simpleType
 
-nodeSet :: Parser NodeSet 
+nodeSet :: Parser NodeSet
 nodeSet = Map.fromList <$> bracedList nodeType
 
-typeAnnot :: Parser Type 
-typeAnnot = try (T_SimpleType <$> simpleType) <|> 
+typeAnnot :: Parser Type
+typeAnnot = try (T_SimpleType <$> simpleType) <|>
             T_NodeSet <$> nodeSet
 
 functionTypeAnnot :: Parser (Type, Vector Type)
@@ -66,7 +66,7 @@ location :: Parser TypeEnvEntry
 location = Location <$> int <* op "->" <*> nodeSet
 
 varType :: Parser TypeEnvEntry
-varType = Variable <$> var <* op "->" <*> typeAnnot 
+varType = Variable <$> var <* op "->" <*> typeAnnot
 
 functionType :: Parser TypeEnvEntry
 functionType = Function <$> var <* op "::" <*> functionTypeAnnot
@@ -83,57 +83,57 @@ typeEnvEntries = many $ typeEnvEntry <* sc
 markedTypeEnvEntries :: Parser [TypeEnvEntry]
 markedTypeEnvEntries = many $ markedTypeEnvEntry <* sc
 
-typeEnv :: Parser TypeEnv 
-typeEnv = entriesToTypeEnv <$> 
+typeEnv :: Parser TypeEnv
+typeEnv = entriesToTypeEnv <$>
             (sc *> header "Location" *> many' location) <>
                   (header "Variable" *> many' (try varType)) <>
                   (header "Function" *> many' functionType)
             <* eof
-  where header w = L.lexeme sc $ string w 
+  where header w = L.lexeme sc $ string w
         many'  p = many $ L.lexeme sc p
 
-markedTypeEnv :: Parser TypeEnv 
+markedTypeEnv :: Parser TypeEnv
 markedTypeEnv = entriesToTypeEnv <$> (sc *> markedTypeEnvEntries <* eof)
 
 
 filterSortLocEntries :: [TypeEnvEntry] -> [TypeEnvEntry]
 filterSortLocEntries = sortBy cmpLoc . filter isLoc
-  where isLoc (Location _ _) = True 
-        isLoc _ = False 
+  where isLoc (Location _ _) = True
+        isLoc _ = False
 
         cmpLoc (Location n _) (Location m _) = compare n m
 
-locEntriesToHeapMap :: [TypeEnvEntry] -> Vector NodeSet 
+locEntriesToHeapMap :: [TypeEnvEntry] -> Vector NodeSet
 locEntriesToHeapMap entries = flip execState mempty $ forM entries' $
   \(Location _ t) -> modify $ flip Vec.snoc t
   where entries' = filterSortLocEntries entries
 
-entriesToTypeEnv :: [TypeEnvEntry] -> TypeEnv 
+entriesToTypeEnv :: [TypeEnvEntry] -> TypeEnv
 entriesToTypeEnv xs = flip execState emptyTypeEnv $ do
   Env.location .= locEntriesToHeapMap xs
-  forM_ xs $ \case 
-    Variable n t  -> variable %= Map.insert n t  
+  forM_ xs $ \case
+    Variable n t  -> variable %= Map.insert n t
     Function n ts -> function %= Map.insert n ts
-    Location _ _  -> pure ()  
+    Location _ _  -> pure ()
 
 -- parses a type environment (without code)
 parseTypeEnv :: Text -> TypeEnv
-parseTypeEnv src = either (error . parseErrorPretty' src) id 
+parseTypeEnv src = either (error . parseErrorPretty' src) id
                  . runParser typeEnv ""
                  $ src
 
 -- parses type marked type annotations (even interleaved with code)
 parseMarkedTypeEnv :: Text -> TypeEnv
-parseMarkedTypeEnv src = either (error . parseErrorPretty' src) id 
+parseMarkedTypeEnv src = either (error . parseErrorPretty' src) id
                        . runParser markedTypeEnv ""
                        . withoutCodeLines
                        $ src
 
-withoutCodeLines :: Text -> Text 
+withoutCodeLines :: Text -> Text
 withoutCodeLines = T.unlines
                  . map skipIfCode
                  . T.lines
   where skipIfCode line
           | Just ('%',_) <- T.uncons . T.dropWhile isSpace $ line = line
-          | otherwise = "" 
+          | otherwise = ""
 

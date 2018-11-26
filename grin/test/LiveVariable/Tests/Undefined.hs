@@ -33,7 +33,7 @@ undefinedExpected = LVAResult
   }
 
 undefinedExpectedHeap :: Vector Liveness
-undefinedExpectedHeap = V.fromList 
+undefinedExpectedHeap = V.fromList
   [ deadNodeSet [ (cNil, 0) ]
   , cConsBothDead
   ]
@@ -59,5 +59,5 @@ livenessN0 = cConsBothDead
 livenessN1 = cConsBothDead
 livenessN2 = nodeSet [ (cCons, [live, dead]) ]
 
-cConsBothDead :: Liveness 
+cConsBothDead :: Liveness
 cConsBothDead = deadNodeSet [ (cCons, 2) ]

@@ -31,7 +31,7 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-dpeTestName :: String 
+dpeTestName :: String
 dpeTestName = "Dead Parameter Elimination"
 
 runTestsFrom :: FilePath -> IO ()
@@ -58,11 +58,11 @@ runTestsFrom fromCurDir = do
       ]
 
 eliminateDeadParams :: Exp -> Exp
-eliminateDeadParams e = 
+eliminateDeadParams e =
   fromRight fail
   . deadParameterElimination lvaResult tyEnv
   $ e
-  where 
+  where
     fail = error "Dead parameter elimination failed. See the error logs for more information"
     lvaResult = calcLiveness e
     tyEnv = inferTypeEnv e

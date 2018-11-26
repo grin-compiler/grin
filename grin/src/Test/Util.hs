@@ -4,7 +4,7 @@ module Test.Util where
 import System.FilePath
 
 import Data.Text (Text)
-import qualified Data.Text.IO as T (readFile) 
+import qualified Data.Text.IO as T (readFile)
 
 import Grin.Grin
 import Grin.Parse
@@ -42,16 +42,16 @@ cFoo = Tag C "Foo"
 cBar :: Tag
 cBar = Tag C "Bar"
 
-cNil :: Tag 
+cNil :: Tag
 cNil = Tag C "Nil"
 
-cCons :: Tag 
+cCons :: Tag
 cCons = Tag C "Cons"
 
 -- name ~ name of the test case, and also the grin source file
 mkBeforeAfterTestCase :: String ->
                          FilePath ->
-                         FilePath -> 
+                         FilePath ->
                          (FilePath, FilePath, FilePath -> Exp -> Spec)
 mkBeforeAfterTestCase name beforeDir afterDir = (before, after, specFun)
   where before = beforeDir </> name <.> "grin"

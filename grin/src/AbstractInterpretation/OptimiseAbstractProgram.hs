@@ -85,7 +85,7 @@ absSortedNodes AbstractProgram{..}
   . flattenSCCs
   . stronglyConnComp
   . edgeSet
-  . concatMap edges 
+  . concatMap edges
   $ _absInstructions
   where
     edgeSet :: [(Node, Node)] -> [(Node, Node, [Node])]

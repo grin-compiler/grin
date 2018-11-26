@@ -33,10 +33,10 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-cbyProdTestName :: String 
+cbyProdTestName :: String
 cbyProdTestName = "Created-By producers"
 
-cbyTypeTestName :: String 
+cbyTypeTestName :: String
 cbyTypeTestName = "Created-By type info"
 
 runTestsFrom :: FilePath -> IO ()
@@ -66,7 +66,7 @@ runTestsFrom fromCurDir = do
       , unspecLocSpec
       ]
 
-  testGroup cbyTypeTestName $ 
+  testGroup cbyTypeTestName $
     mkSpecFromWith fromCurDir calcHPTResultWithCBy
       [ HPT.undefinedSrc
       , HPT.unspecLocSrc
@@ -88,7 +88,7 @@ calcCByResult prog
 calcProducers :: Exp -> ProducerMap
 calcProducers = _producers . calcCByResult
 
-calcHPTResultWithCBy :: Exp -> HPTResult 
+calcHPTResultWithCBy :: Exp -> HPTResult
 calcHPTResultWithCBy = _hptResult . calcCByResult
 
 mkProducerSet :: [(Tag, [Name])] -> ProducerSet
@@ -100,7 +100,7 @@ emptyProducerSet = mkProducerSet []
 restrictedBy :: ProducerSet -> Tag -> ProducerSet
 restrictedBy (ProducerSet ps) tag = ProducerSet $ M.filterWithKey (\k _ -> k == tag) ps
 
-udProd :: Name 
+udProd :: Name
 udProd = undefinedProducerName
 
 

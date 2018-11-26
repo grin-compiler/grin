@@ -23,7 +23,7 @@ runTests = runTestsFrom stackRoot
 runTestsGHCi :: IO ()
 runTestsGHCi = runTestsFrom stackTest
 
-hptTestName :: String 
+hptTestName :: String
 hptTestName = "Heap Points To"
 
 runTestsFrom :: FilePath -> IO ()

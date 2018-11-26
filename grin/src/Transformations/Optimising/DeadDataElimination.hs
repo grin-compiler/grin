@@ -38,20 +38,20 @@ import Transformations.Names
 -- (t,lv) -> t'
 -- we deleted the dead fields from a node with tag t with liveness lv
 -- then we introduced the new tag t' for this deleted node
-type TagMapping = Map (Tag, Vector Bool) Tag 
+type TagMapping = Map (Tag, Vector Bool) Tag
 type Trf = ExceptT String (StateT TagMapping NameM)
 
-execTrf :: Exp -> Trf a -> Either String a 
+execTrf :: Exp -> Trf a -> Either String a
 execTrf e = evalNameM e . flip evalStateT mempty . runExceptT
 
 getTag :: Tag -> Vector Bool -> Trf Tag
 getTag t lv
   | and lv = pure t
-getTag t@(Tag ty n) lv = do 
+getTag t@(Tag ty n) lv = do
   mt' <- gets $ Map.lookup (t,lv)
-  case mt' of 
+  case mt' of
     Just t' -> return t'
-    Nothing -> do 
+    Nothing -> do
       n' <- lift $ lift $ deriveNewName n
       let t' = Tag ty n'
       modify $ Map.insert (t,lv) t'
@@ -66,7 +66,7 @@ deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
 lookupNodeLivenessM :: Name -> Tag -> LVAResult -> Trf (Vector Bool)
 lookupNodeLivenessM v t lvaResult = do
   lvInfo <- lookupExcept (noLiveness v) v . _register $ lvaResult
-  case lvInfo of 
+  case lvInfo of
     NodeSet taggedLiveness ->
       _fields <$> lookupExcept (noLivenessTag v t) t taggedLiveness
     _ -> throwE $ notANode v
@@ -88,7 +88,7 @@ type GlobalLiveness = Map Name (Map Tag (Vector Bool))
  because the connectProds set will be empty for such variables.
 
  (1) - Here "dead variable" means a variable that was not analyzed.
- 
+
  NOTE: We will ignore undefined producers, since they should always be dead.
 -}
 calcGlobalLiveness :: LVAResult ->
@@ -140,7 +140,7 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
           (args',lv) <- deleteDeadFieldsM v t args
           let deletedArgs = args \\ args'
           e' <- bindToUndefineds tyEnv e deletedArgs
-          t' <- getTag t lv 
+          t' <- getTag t lv
           pure $ Alt (NodePat t' args') e'
         e -> pure e
       pure $ ECase (Var v) alts'
@@ -149,7 +149,7 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
       (args',lv) <- deleteDeadFieldsM v t args
       deletedArgs <- mapM fromVar (args \\ args')
       rhs' <- bindToUndefineds tyEnv rhs deletedArgs
-      t' <- getTag t lv 
+      t' <- getTag t lv
       pure $ EBind lhs (ConstTagNode t' args') rhs'
     e -> pure . embed $ e
 
@@ -161,7 +161,7 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
     pure (args', liveness)
 
   -- Returns "all dead" if it cannot find the tag
-  -- This way it handles impossible case alternatives 
+  -- This way it handles impossible case alternatives
   -- NOTE: could also be solved by prior sparse case optimisation
   lookupGlobalLivenessM :: Name -> Tag -> Trf [Bool]
   lookupGlobalLivenessM v t = do
@@ -173,7 +173,7 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
       pure $ Vec.toList liveness
 
   fromVar :: Val -> Trf Name
-  fromVar (Var v) = pure v 
+  fromVar (Var v) = pure v
   fromVar x = throwE $ show x ++ " is not a variable."
 
 -- For each producer, it dummifies all locally unused fields.
@@ -199,17 +199,17 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
       let indexedArgs = zip args [0..]
       args' <- zipWithM (dummify v t) indexedArgs (Vec.toList nodeLiveness)
       let args'' = zipFilter args' (Vec.toList globalNodeLiveness)
-      t' <- getTag t globalNodeLiveness 
+      t' <- getTag t globalNodeLiveness
       pure $ EBind (SReturn (ConstTagNode t' args'')) (Var v) rhs
     e -> pure . embed $ e
 
   -- extracts the active producer grouping from the CByResult
-  -- if not present, it calculates it (so it will always work with only the active producers) 
+  -- if not present, it calculates it (so it will always work with only the active producers)
   prodGraph :: ProducerGraph'
   prodGraph = case _groupedProducers cbyResult of
-    All _ -> fromProducerGraph 
-           . groupActiveProducers lvaResult 
-           . _producers 
+    All _ -> fromProducerGraph
+           . groupActiveProducers lvaResult
+           . _producers
            $ cbyResult
     Active activeProdGraph -> fromProducerGraph activeProdGraph
 
@@ -226,20 +226,20 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
 
   -- looks up a node variable's nth field's type for tag a ertain tag
   -- refers tyEnv in the global scope
-  lookupFieldTypeM :: Name -> Tag -> Int -> Trf SimpleType 
-  lookupFieldTypeM v tag idx = do 
+  lookupFieldTypeM :: Name -> Tag -> Int -> Trf SimpleType
+  lookupFieldTypeM v tag idx = do
     let varTypes = _variable tyEnv
     ty <- lookupExcept (notFoundInTyEnv v) v varTypes
-    case ty of 
-      T_NodeSet ns -> do 
+    case ty of
+      T_NodeSet ns -> do
         simpleTys <- lookupExcept (tag `notFoundInTySetFor` v) tag ns
         let fieldTy = simpleTys Vec.!? idx
         case fieldTy of
-          Just sty -> pure sty 
-          Nothing  -> throwE $ 
-            "Invalid field index (" ++ show idx ++ ") " ++ 
+          Just sty -> pure sty
+          Nothing  -> throwE $
+            "Invalid field index (" ++ show idx ++ ") " ++
             "for variable " ++ show (PP v) ++ " " ++
-            "with tag " ++ show (PP tag) 
+            "with tag " ++ show (PP tag)
       _ -> throwE $ "Variable " ++ show (PP v) ++ " does not have a node type set"
 
 

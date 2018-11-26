@@ -23,7 +23,7 @@ import AbstractInterpretation.LVAUtil
 
 type Trf = Except String
 
-runTrf :: Trf a -> Either String a 
+runTrf :: Trf a -> Either String a
 runTrf = runExcept
 
 -- P and F nodes are handled by Dead Data Elimination
@@ -36,18 +36,18 @@ deadParameterElimination lvaResult tyEnv = runTrf . cataM alg where
       let deletedArgs = args \\ liveArgs
       body' <- bindToUndefineds tyEnv body deletedArgs
       return $ Def f liveArgs body'
-    SAppF f args -> do 
+    SAppF f args -> do
       liveArgs <- onlyLiveArgs f args
       return $ SApp f liveArgs
     e -> pure . embed $ e
 
   onlyLiveArgs :: Name -> [a] -> Trf [a]
   onlyLiveArgs f args = do
-    argsLv <- lookupArgLivenessM f lvaResult  
+    argsLv <- lookupArgLivenessM f lvaResult
     return $ zipFilter args (Vec.toList argsLv)
 
 lookupArgLivenessM :: Name -> LVAResult -> Trf (Vector Bool)
 lookupArgLivenessM f LVAResult{..} = do
-  let funNotFound = "Function " ++ show f ++ " was not found in liveness analysis result" 
+  let funNotFound = "Function " ++ show f ++ " was not found in liveness analysis result"
   (_,argLv) <- lookupExcept funNotFound f _function
   return $ Vec.map isLive argLv

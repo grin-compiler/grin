@@ -50,8 +50,8 @@ nodeSet' :: [(Tag,[Bool])] -> Liveness
 nodeSet' = NodeSet . M.fromList . map (\(t,fs) -> (t, node' fs))
 
 -- Node with dead tag and dead fields
-deadNode :: Int -> Node 
-deadNode = Node <$> const False <*> flip V.replicate False 
+deadNode :: Int -> Node
+deadNode = Node <$> const False <*> flip V.replicate False
 
 -- Node set with dead tags and dead fields
 deadNodeSet :: [(Tag,Int)] -> Liveness
