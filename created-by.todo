@@ -1,0 +1,27 @@
+created by analysis:
+  - preconditions: - run after node naming
+                   - run before case simplification (currently run before all simplyfing transformations - except node naming)
+                   - run before any dead code elimination
+  - producer id <=> id of the register the value was produced into
+  - maintain a register id -> variable name mapping (so that producer names can be looked up after reduction)
+  - reinterpret "NodeSet" : map Tags to singleton Vector (Set Int32)s
+    - each node will have its producer info stored in its first field
+    - repr: Word32 reg <--> Int32 producer, could this be a problem?
+  - EBindF:
+    leftExp was Val:
+      introduce a new producer with the name of variable inside the binding
+      (make sure lpat can only be a variable name) IMPORTANT!!!
+    general case: same
+
+TESTS:
+  - write tests for nodeNaming
+
+questions:
+  - Does codeGenVal fail after register introduction? (and on ValTags as well)
+    - define ValTag case: CNodeItem tag 0 _ (the 0th item of a node is its tag, its type is "tag" - does not really matter)
+    - define VarTag case: - use current number of arguments as arity?
+                          -
+  - Can case alternatives have differently typed return values? (Lit <-> Node)
+  - can a tag be applied to different number of arguments?
+  - completely define Extend interpretation
+  - We need tag information (arity) during the analysis to define codeGenVal for

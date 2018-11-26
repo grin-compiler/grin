@@ -1,7 +1,11 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving, OverloadedStrings #-}
-module Grin.Syntax where
+
+module Grin.Syntax 
+  ( module Grin.Syntax 
+  , module Grin.SyntaxDefs
+  ) where
 
 import Data.Functor.Foldable.TH
 import Control.DeepSeq
@@ -12,30 +16,22 @@ import qualified Data.ByteString.Short as B
 import Lens.Micro.Platform
 import Data.Text.Short (ShortText, isPrefixOf)
 
+import Grin.SyntaxDefs
+import Grin.TypeEnvDefs
+
 data Name2
   = Name        B.ShortByteString
   | DerivedName B.ShortByteString Int
   | NewName     Name2 Int -- Block scope with shadowing support
   deriving (Ord, Eq, Show)
 
-type Name = ShortText
-
 isPrimName :: Name -> Bool
 isPrimName = isPrefixOf "_prim_"
 
--- * GRIN Tag
-
-data TagType = C | F | P Int {-missing parameter count-}
-  deriving (Generic, NFData, Eq, Ord, Show)
-
-data Tag = Tag
-  { tagType :: TagType
-  , tagName :: Name
-  }
-  deriving (Generic, NFData, Eq, Ord, Show)
-
 -- * GRIN Literal
 
+-- QUESTION: Now #undefined can be pattern matched on.
+-- Should the linter warn about this?
 data Lit
   = LInt64  Int64
   | LWord64 Word64
@@ -56,6 +52,7 @@ data Val
   -- simple val
   | Lit Lit                        -- HIGH level GRIN
   | Var Name                       -- HIGH level GRIN
+  | Undefined     Type
   deriving (Generic, NFData, Eq, Ord, Show)
 
 -- See: https://github.com/ekmett/recursion-schemes/blob/master/Data/Functor/Foldable/TH.hs#L31

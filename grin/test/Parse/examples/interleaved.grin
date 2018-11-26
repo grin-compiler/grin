@@ -1,0 +1,10 @@
+% grinMain :: T_Int64
+grinMain = 
+  % a -> T_Int64
+  a <- pure 5
+  % n -> {CInt[T_Int64]}
+  n <- pure (CInt a)
+  % 0 -> {CInt[T_Int64]}
+  % p -> {0}
+  p <- store n
+  pure 5

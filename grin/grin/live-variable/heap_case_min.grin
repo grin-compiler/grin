@@ -1,0 +1,5 @@
+grinMain =
+  p0 <- case (CBool 0) of
+    (CBool c1) -> store (CBool c1)
+  (CBool a1) <- fetch p0
+  pure a1

@@ -1,9 +1,14 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, OverloadedStrings #-}
 module Grin.Pretty
   ( pretty
   , printGrin
   , PP(..)
+  , WPP(..)
   , prettyKeyValue
+  , prettyBracedList
+  , prettySimplePair
+  , prettyFunction
+  , Pretty
   , showName
   ) where
 
@@ -26,7 +31,10 @@ import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
 import Grin.Grin
-import Grin.TypeEnv
+import Grin.TypeEnvDefs
+import Grin.EffectMap
+
+import Grin.Parse
 
 printGrin :: Exp -> IO ()
 printGrin = putDoc . pretty
@@ -35,6 +43,12 @@ printGrin = putDoc . pretty
 newtype PP a = PP a deriving Eq
 instance Pretty a => Show (PP a ) where
   show (PP a) = show . plain . pretty $ a
+
+-- Wide pretty printing, usefil for reparsing pretty-printed ASTs
+newtype WPP a = WPP a deriving Eq
+instance Pretty a => Show (WPP a ) where
+  show (WPP a) = flip displayS "" . renderPretty 0.4 200 . plain . pretty $ a
+
 
 keyword :: String -> Doc
 keyword = yellow . text
@@ -83,18 +97,19 @@ instance Pretty Val where
   pretty = \case
     ConstTagNode tag args -> parens $ hsep (pretty tag : map pretty args)
     VarTagNode name args  -> parens $ hsep (pretty name : map pretty args)
-    ValTag tag  -> pretty tag
-    Unit        -> parens empty
+    ValTag tag   -> pretty tag
+    Unit         -> parens empty
     -- simple val
-    Lit lit     -> pretty lit
-    Var name    -> pretty name
+    Lit lit      -> pretty lit
+    Var name     -> pretty name
+    Undefined ty -> parens $ text "#undefined" <+> text "::" <+> pretty ty
 
 instance Pretty Lit where
   pretty = \case
-    LInt64 a  -> integer $ fromIntegral a
-    LWord64 a -> integer (fromIntegral a) <> text "u"
-    LFloat a  -> float a
-    LBool a   -> text "#" <> text (show a)
+    LInt64 a   -> integer $ fromIntegral a
+    LWord64 a  -> integer (fromIntegral a) <> text "u"
+    LFloat a   -> float a
+    LBool a    -> text "#" <> text (show a)
 
 instance Pretty CPat where
   pretty = \case
@@ -124,14 +139,12 @@ prettyKeyValue kvList = vsep [fill 6 (pretty k) <+> text "->" <+> pretty v | (k,
 
 instance Pretty SimpleType where
   pretty = \case
-    T_Location l  -> encloseSep lbrace rbrace comma $ map (cyan . int) l
-    ty            -> red $ text $ show ty
+    T_UnspecifiedLocation -> red $ text "#ptr"
+    T_Location l -> encloseSep lbrace rbrace comma $ map (cyan . int) l
+    ty -> red $ text $ show ty
 
 prettyNode :: (Tag, Vector SimpleType) -> Doc
 prettyNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
-
-prettyFunction :: (Name, (Type, Vector Type)) -> Doc
-prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 instance Pretty Type where
   pretty = \case
@@ -140,9 +153,25 @@ instance Pretty Type where
 
 instance Pretty TypeEnv where
   pretty TypeEnv{..} = vsep
-    [ yellow (text "Location (* is shared)") <$$> indent 4 (prettyKeyValue
-         $ map (\(k, v) -> (if k `Set.member` _sharing then (pretty k) <> text "*" else pretty k, v))
-         $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
+    [ yellow (text "Location") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ map T_NodeSet $ V.toList _location)
     , yellow (text "Variable") <$$> indent 4 (prettyKeyValue $ Map.toList _variable)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
+
+instance Pretty Effect where 
+  pretty (Effectful fun) = pretty $ "effectful " <> fun 
+  pretty (Update locs)   = text "updates " <+> list (map (cyan . int) locs)
+  pretty (Store locs)    = text "stores " <+> list (map (cyan . int) locs)
+
+instance Pretty EffectMap where 
+  pretty (EffectMap effects) = yellow (text "EffectMap") <$$>
+    indent 4 (prettyKeyValue $ Map.toList effects)
+
+prettyBracedList :: [Doc] -> Doc
+prettyBracedList = encloseSep lbrace rbrace comma
+
+prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
+prettySimplePair (x, y) = pretty x <> pretty y
+
+prettyFunction :: Pretty a => (Name, (a, Vector a)) -> Doc
+prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))

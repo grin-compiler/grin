@@ -1,15 +1,21 @@
-{-# LANGUAGE LambdaCase, TupleSections, FlexibleContexts #-}
+{-# LANGUAGE LambdaCase, FlexibleContexts, RecordWildCards #-}
 module Transformations.Util where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import Data.Maybe
+
 import Control.Monad
+import Control.Monad.State
+import Control.Monad.Trans.Except
 import Control.Comonad
 import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
 
 import Grin.Grin
+import Grin.Pretty
+import Grin.TypeEnvDefs
 
 {-
   HINT: Name usage in Exp
@@ -42,7 +48,7 @@ foldNameUseExpF f = \case
   SAppF name vals   -> mconcat $ map (foldNamesVal f) vals
   SReturnF val      -> foldNamesVal f val
   SStoreF val       -> foldNamesVal f val
-  SUpdateF name val -> mconcat $ [f name, foldNamesVal f val]
+  SUpdateF name val -> mconcat [f name, foldNamesVal f val]
   SFetchIF name i   -> f name
   _                 -> mempty
 
@@ -88,6 +94,23 @@ mapValsExp f = \case
   SStore val        -> SStore $ f val
   SUpdate name val  -> SUpdate name $ f val
   exp               -> exp
+
+mapValValM :: Monad m => (Val -> m Val) -> Val -> m Val
+mapValValM f val = do 
+  val' <- f val
+  case val' of  
+    ConstTagNode tag vals -> ConstTagNode tag <$> mapM (mapValValM f) vals
+    VarTagNode name vals  -> VarTagNode  name <$> mapM (mapValValM f) vals
+    v -> pure v
+
+mapValsExpM :: Monad m => (Val -> m Val) -> Exp -> m Exp
+mapValsExpM f = \case
+  ECase val alts   -> flip ECase alts <$> f val
+  SApp name vals   -> SApp name <$> mapM f vals
+  SReturn val      -> SReturn <$> f val
+  SStore val       -> SStore <$> f val
+  SUpdate name val -> SUpdate name <$> f val
+  exp              -> pure exp
 
 mapNameUseExp :: (Name -> Name) -> Exp -> Exp
 mapNameUseExp f = \case
@@ -169,3 +192,109 @@ skipUnit :: ExpF Exp -> Exp
 skipUnit = \case
   EBindF (SReturn Unit) Unit rightExp -> rightExp
   exp -> embed exp
+
+newtype TagInfo = TagInfo { _tagArityMap :: Map.Map Tag Int }
+  deriving (Eq, Show)
+
+updateTagInfo :: Tag -> Int -> TagInfo -> TagInfo
+updateTagInfo t n ti@(TagInfo m) =
+  case Map.lookup t m of
+    Just arity | arity < n -> TagInfo $ Map.insert t n m
+    Nothing                -> TagInfo $ Map.insert t n m
+    _                      -> ti
+
+collectTagInfo :: Exp -> TagInfo
+collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
+  where
+    alg :: ExpF () -> State TagInfo ()
+    alg = \case
+      ECaseF val _   -> goVal val
+      SReturnF val   -> goVal val
+      SAppF _ vals   -> mapM_ goVal vals
+      SStoreF val    -> goVal val
+      SUpdateF _ val -> goVal val
+      AltF cpat _    -> goCPat cpat
+      _              -> pure ()
+
+    goVal :: Val -> State TagInfo ()
+    goVal (ConstTagNode t args) = modify $ updateTagInfo t (length args)
+    goVal _ = pure ()
+
+    goCPat :: CPat -> State TagInfo ()
+    goCPat (NodePat t args) = modify $ updateTagInfo t (length args)
+    goCPat _ = pure ()
+
+lookupExcept :: (Monad m, Ord k) => 
+                String -> 
+                k -> Map k v -> 
+                ExceptT String m v
+lookupExcept err k = maybe (throwE err) pure . Map.lookup k
+
+lookupExceptT :: (MonadTrans t, Monad m, Ord k) => 
+                 String -> 
+                 k -> Map k v -> 
+                 t (ExceptT String m) v
+lookupExceptT err k = lift . lookupExcept err k
+
+mapWithDoubleKey :: (Ord k1, Ord k2) =>
+                    (k1 -> k2 -> a -> b) ->
+                    Map k1 (Map k2 a) ->
+                    Map k1 (Map k2 b)
+mapWithDoubleKey f = Map.mapWithKey (\k1 m -> Map.mapWithKey (f k1) m)
+
+mapWithDoubleKeyM :: (Ord k1, Ord k2, Monad m) =>
+                     (k1 -> k2 -> a -> m b) ->
+                     Map k1 (Map k2 a) ->
+                     m (Map k1 (Map k2 b))
+mapWithDoubleKeyM f = sequence . Map.mapWithKey (\k1 m -> sequence $ Map.mapWithKey (f k1) m)
+
+lookupWithDoubleKey :: (Ord k1, Ord k2) => k1 -> k2 -> Map k1 (Map k2 v) -> Maybe v
+lookupWithDoubleKey k1 k2 m = Map.lookup k1 m >>= Map.lookup k2
+
+lookupWithDoubleKeyExcept :: (Monad m, Ord k1, Ord k2) =>
+                             String -> k1 -> k2 -> 
+                             Map k1 (Map k2 v) -> 
+                             ExceptT String m v
+lookupWithDoubleKeyExcept err k1 k2 = maybe (throwE err) pure
+                                    . lookupWithDoubleKey k1 k2
+
+lookupWithDoubleKeyExceptT :: (MonadTrans t, Monad m, Ord k1, Ord k2) =>
+                              String -> k1 -> k2 -> 
+                              Map k1 (Map k2 v) -> 
+                              t (ExceptT String m) v
+lookupWithDoubleKeyExceptT err k1 k2 = lift . lookupWithDoubleKeyExcept err k1 k2
+       
+
+notFoundIn :: Show a => String -> a -> String -> String
+notFoundIn n1 x n2 = n1 ++ " " ++ show x ++ " not found in " ++ n2
+
+markToRemove :: a -> Bool -> Maybe a
+markToRemove x True  = Just x
+markToRemove _ False = Nothing
+
+zipFilter :: [a] -> [Bool] -> [a]
+zipFilter xs = catMaybes . zipWith markToRemove xs 
+
+bindToUndefineds :: Monad m => TypeEnv -> Exp -> [Name] -> ExceptT String m Exp 
+bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
+
+  bindToUndefined :: Monad m => Exp -> Name -> ExceptT String m Exp  
+  bindToUndefined rhs v = do
+    ty <- lookupExcept (notInTypeEnv v) v _variable
+    let ty' = simplifyType ty 
+    pure $ EBind (SReturn (Undefined ty')) (Var v) rhs
+
+  notInTypeEnv v = "Variable " ++ show (PP v) ++ " was not found in the type environment."
+
+
+simplifySimpleType :: SimpleType -> SimpleType 
+simplifySimpleType (T_Location _) = T_UnspecifiedLocation
+simplifySimpleType t = t  
+
+simplifyNodeSet :: NodeSet -> NodeSet 
+simplifyNodeSet = fmap (fmap simplifySimpleType)
+
+simplifyType :: Type -> Type 
+simplifyType (T_SimpleType st) = T_SimpleType $ simplifySimpleType st
+simplifyType (T_NodeSet    ns) = T_NodeSet $ simplifyNodeSet ns 
+simplifyType t = t

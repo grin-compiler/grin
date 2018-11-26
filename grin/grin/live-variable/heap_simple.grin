@@ -1,0 +1,6 @@
+grinMain =
+  n <- pure (CTwo 0 1)
+  p <- store n
+  x <- fetch p
+  (CTwo a b) <- pure x
+  pure a

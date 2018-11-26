@@ -83,4 +83,5 @@ evalVal env = \case
                   x -> error $ "evalVal - invalid VarTagNode tag: " ++ show x
   ValTag tag  -> RT_ValTag tag
   Unit        -> RT_Unit
+  Undefined t -> RT_Undefined
   x -> error $ "evalVal: " ++ show x

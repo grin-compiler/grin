@@ -10,32 +10,36 @@ import Data.Monoid
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 import Lens.Micro
+import Data.List
 import Data.Maybe
 import Debug.Trace
 
 import Grin.Grin
 import Grin.TypeEnv
+import Grin.EffectMap
 import Transformations.Util
 
 
-effectMap :: (TypeEnv, Exp) -> Map Name (Set Effect)
-effectMap (te, e) = effectfulFunctions $ unMMap $ snd $ cata buildEffectMap e where
-  buildEffectMap :: ExpF (Set EffectWithCalls, MMap Name (Set EffectWithCalls)) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
+effectMap :: (TypeEnv, Exp) -> EffectMap
+effectMap (te, e) = unifyEffectMap . EffectMap $ effectfulFunctions $ unMMap $ snd $ para buildEffectMap e where
+  buildEffectMap :: ExpF (Exp, (Set EffectWithCalls, MMap Name (Set EffectWithCalls))) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
   buildEffectMap = \case
-    DefF name _ (effs, _) -> (mempty, MMap $ Map.singleton name effs)
-
+    DefF name _ (_,(effs, _)) -> (mempty, MMap $ Map.singleton name effs)
+    EBindF (SStore _,lhs) (Var v) (_,rhs)
+      | Just locs <- te ^? variable . at v . _Just . _T_SimpleType . _T_Location
+      -> let storeEff = (Set.singleton $ EffectW $ Store locs, mempty)
+         in lhs <> rhs <> storeEff
     -- FIXME: handle effectful primops properly
     SAppF "_prim_int_print" _  -> (Set.singleton (EffectW $ Effectful "_prim_int_print"), mempty)
-
-    SAppF name _
+    SAppF    name _
       | Just () <- te ^? function . at name . _Just . _ReturnType . _T_SimpleType . _T_Unit
       -> (Set.singleton (EffectW $ Effectful name), mempty)
       | otherwise
       -> (Set.singleton (CallsW name), mempty)
     SUpdateF name _
       | Just locs <- te ^? variable . at name . _Just . _T_SimpleType . _T_Location
-      -> (mempty, MMap $ Map.singleton name $ Set.singleton $ EffectW $ Update locs)
-    rest -> Data.Foldable.fold rest
+      -> (Set.singleton $ EffectW $ Update locs, mempty)
+    rest -> Data.Foldable.fold . fmap snd $ rest
 
 data EffectWithCalls
   = EffectW { toEffect :: Effect }
@@ -71,3 +75,21 @@ instance (Ord k, Semigroup m) => Semigroup (MMap k m) where
   (MMap m1) <> (MMap m2) = MMap (Map.unionWith (<>) m1 m2)
 instance (Ord k, Monoid m) => Monoid (MMap k m) where
   mempty = MMap mempty
+  mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)
+
+unifyEffectMap :: EffectMap -> EffectMap 
+unifyEffectMap (EffectMap effects) = EffectMap $ Map.map unifyEffectSet effects
+
+unifyEffectSet :: Set Effect -> Set Effect
+unifyEffectSet effects =  updates <> stores <> otherEffects where 
+  updates   = if null updateLocs then mempty else Set.singleton (Update updateLocs)
+  stores    = if null storeLocs  then mempty else Set.singleton (Store storeLocs)
+
+  updateLocs :: [Int]
+  updateLocs = nub . concat $ [ locs | (Update locs) <- Set.toList effects]
+
+  storeLocs :: [Int]
+  storeLocs  = nub . concat $ [ locs | (Store locs) <- Set.toList effects]
+
+  otherEffects :: Set Effect
+  otherEffects = Set.fromList [ eff | eff@(Effectful _) <- Set.toList effects]

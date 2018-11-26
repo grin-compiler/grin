@@ -79,20 +79,20 @@ spec = do
               sum n7'_2 n4' p112
       |]
     let ppln =
-          [ Pass [HPT CompileHPT, HPT RunHPTPure]
+          [ Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
           , T BindNormalisation
           , T ConstantPropagation
           , T BindNormalisation
           , T CommonSubExpressionElimination
           , T CopyPropagation
-          , T DeadVariableElimination
+          , T SimpleDeadVariableElimination
           , T ArityRaising
           , T CopyPropagation
-          , T DeadVariableElimination
+          , T SimpleDeadVariableElimination
           , T ArityRaising
           , T CopyPropagation
-          , T DeadVariableElimination
+          , T SimpleDeadVariableElimination
           ]
 
-    (pipelineInfo, transformed) <- pipeline defaultOpts before ppln
+    (pipelineInfo, transformed) <- pipeline defaultOpts Nothing before ppln
     transformed `sameAs` after

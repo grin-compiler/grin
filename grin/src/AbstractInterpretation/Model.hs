@@ -130,7 +130,7 @@ computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
       in result2
 
     oneStepSharing :: HPTResult -> HPTResult
-    oneStepSharing result@(HPTResult _ _ _ sharing) = result
+    oneStepSharing result@(HPTResult _ _ _ sharing) = result 
       { _sharing =
           sharing `Set.union`
           joinSets (Set.map locationsForRegister nonLinearVars `Set.union` Set.map locationsForHeap sharing)

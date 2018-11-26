@@ -1,0 +1,8 @@
+grinMain = 
+  p0 <- store (#undefined :: {CInt[T_Int64]})
+  p1 <- store (#undefined :: {CPair[T_Int64, T_Bool]})
+  p2 <- store (#undefined :: {CPair[T_Int64, {0}]})
+  p3 <- store (#undefined :: {CPair[T_Int64, {0,1}]})
+  p4 <- store (#undefined :: {CPair[T_Int64, #ptr]})
+  p5 <- store (#undefined :: {CTriplet[T_Int64, {0,1}, #ptr]})
+  pure 0

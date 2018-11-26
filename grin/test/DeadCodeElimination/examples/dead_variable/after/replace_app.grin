@@ -1,0 +1,5 @@
+grinMain = 
+  f (#undefined :: T_Int64) 5
+
+f x y = pure y
+  

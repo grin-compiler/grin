@@ -36,7 +36,7 @@ spec = do
     -}
 genPipeline :: Gen [PipelineStep]
 genPipeline = do
-  ([PrintGrin id, HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
+  ([PrintGrin id, HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]++) <$> (T <$$> transformations)
 --  ([HPT CompileHPT, HPT RunHPTPure]++) <$> (T <$$> transformations)
 
 shrinkPipeline :: [PipelineStep] -> [[PipelineStep]]

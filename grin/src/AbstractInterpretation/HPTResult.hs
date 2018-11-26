@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, DeriveFunctor, ViewPatterns #-}
 module AbstractInterpretation.HPTResult where
 
 import Data.Int
@@ -8,12 +8,18 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import qualified Data.Bimap as Bimap
 
 import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
+import AbstractInterpretation.HeapPointsTo (HPTProgram(..))
+import AbstractInterpretation.CreatedBy (undefinedProducer)
+import AbstractInterpretation.IR as IR hiding (Tag, SimpleType)
 import qualified Grin.TypeEnv as TypeEnv
+import qualified AbstractInterpretation.IR as IR (SimpleType)
+import qualified AbstractInterpretation.Reduce as R
 
 type Loc = Int
 
@@ -24,9 +30,27 @@ data SimpleType
   | T_Bool
   | T_Unit
   | T_Location Loc
+  | T_UnspecifiedLocation
+  {- NOTE: The local value can be used for any analysis-specific computation,
+           but cannot be propagated to the type checking phase.
+  -}
+  | Local HPTLocal
   deriving (Eq, Ord, Show)
 
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set SimpleType))} deriving (Eq, Ord, Show)
+data HPTLocal = UndefinedProducer
+  deriving (Eq, Ord, Show)
+
+fromHPTLocal :: HPTLocal -> IR.SimpleType
+fromHPTLocal UndefinedProducer   = undefinedProducer
+
+toHPTLocal :: IR.SimpleType -> HPTLocal
+toHPTLocal t
+  | t == undefinedProducer   = UndefinedProducer
+toHPTLocal t = error $ "IR simple type " ++ show t ++ " cannot be convert to HPTLocal"
+
+type    Node    = Vector (Set SimpleType)
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag Node}
+  deriving (Eq, Ord, Show)
 
 data TypeSet
   = TypeSet
@@ -58,21 +82,22 @@ data HPTResult
   { _memory   :: Vector NodeSet
   , _register :: Map Name TypeSet
   , _function :: Map Name (TypeSet, Vector TypeSet)
-  , _sharing  :: Set Loc
   }
   deriving (Eq, Show)
 
 concat <$> mapM makeLenses [''NodeSet, ''TypeSet, ''HPTResult]
 
-toSimpleType :: Int32 -> SimpleType
-toSimpleType ty | ty < 0 = case ty of
-  -1 -> T_Unit
-  -2 -> T_Int64
-  -3 -> T_Word64
-  -4 -> T_Float
-  -5 -> T_Bool
-  _ -> error $ "unknown type code " ++ show ty
-toSimpleType l = T_Location $ fromIntegral l
+-- Negative integers less than (-6) can represent any analysis-specific value.
+toSimpleType :: IR.SimpleType -> SimpleType
+toSimpleType (-1) = T_Unit
+toSimpleType (-2) = T_Int64
+toSimpleType (-3) = T_Word64
+toSimpleType (-4) = T_Float
+toSimpleType (-5) = T_Bool
+toSimpleType (-6) = T_UnspecifiedLocation
+toSimpleType ty 
+  | ty < 0    = Local $ toHPTLocal ty
+  | otherwise = T_Location $ fromIntegral ty
 
 type instance Index   (Vector a) = Int
 type instance IxValue (Vector a) = a
@@ -83,3 +108,25 @@ instance At (Vector a) where
 _T_Location :: Traversal' SimpleType Int
 _T_Location f (T_Location l) = T_Location <$> f l
 _T_Location _ rest           = pure rest
+
+toHPTResult :: HPTProgram -> R.Computer -> HPTResult
+toHPTResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = HPTResult
+  { _memory   = V.map convertNodeSet _memory
+  , _register = Map.map convertReg _absRegisterMap
+  , _function = Map.map convertFunctionRegs _absFunctionArgMap
+  }
+  where
+    convertReg :: Reg -> TypeSet
+    convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
+
+    convertNodeSet :: R.NodeSet -> NodeSet
+    convertNodeSet (R.NodeSet a) = NodeSet $ Map.fromList [(_absTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
+
+    convertSimpleType :: Set IR.SimpleType -> Set SimpleType
+    convertSimpleType = Set.map toSimpleType
+
+    convertValue :: R.Value -> TypeSet
+    convertValue (R.Value ty ns) = TypeSet (convertSimpleType ty) (convertNodeSet ns)
+
+    convertFunctionRegs :: (Reg, [Reg]) -> (TypeSet, Vector TypeSet)
+    convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])

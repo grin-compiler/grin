@@ -1,0 +1,13 @@
+grinMain = 
+  case (CInt (#undefined :: T_Int64)) of
+    (CInt c0) ->
+      n0 <- pure (CPair (#undefined :: T_Int64) 5)
+      p1 <- store (CPair (#undefined :: T_Int64) 5)
+      update p1 (CPair (#undefined :: T_Int64) 5)
+      y0 <- f (#undefined :: T_Int64)
+
+      (CPair c1 c2) <- pure n0 
+      (CPair x1 x2) <- fetch p1
+      pure (CLive c2 x2 y0) 
+
+f x = pure 0

@@ -1,0 +1,15 @@
+grinMain =
+  a0 <- pure 0
+  a1 <- pure 0
+  a2 <- pure 0
+  a3 <- pure 0
+  a4 <- pure 0
+  a5 <- pure 0
+  n0 <- pure (CThree.0 a1 a4)
+  (CThree.0 b1 b4) <- pure n0
+  b5 <- pure (#undefined :: T_Int64)
+  b3 <- pure (#undefined :: T_Int64)
+  b2 <- pure (#undefined :: T_Int64)
+  b0 <- pure (#undefined :: T_Int64)
+  r <- _prim_int_add b1 b4
+  pure r

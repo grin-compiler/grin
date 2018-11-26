@@ -22,3 +22,5 @@ cabal.project.local
 output/
 *.ibc
 *.agdai
+.output
+.grin-output/

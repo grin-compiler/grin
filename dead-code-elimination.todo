@@ -1,0 +1,152 @@
+Dead data elimination:
+  - for DDE, we assume that node name introduction has already taken place
+  - for dummy substitution LVA is sufficient
+  - for field deletion, CBy analysis is also required
+    - we have to scrutinize every case expression, and group the overlapping producers together
+    - in order to be able to delete a field (wtih a given tag), that field must be dead (with the given tag) for all producers in the group
+  - when deleting node fields, some expressions might still reference them
+  - so we must bind #undefineds to these names to produce semantically valid code 
+    (these will be cleaned up by DVE)
+
+Dead parameter elimination:
+  - delete dead parameters from function definitions
+  - delete the same arguments from function applications as well
+  - we have to bind #undefineds to the deleted function parameters inside the function body 
+    (see DDE reasoning)
+
+Dead function elimination:
+  - a function definition can be removed if its return value and all of its arguments are dead 
+  - a parameter can be live even though the return value is dead, if it has some sort of side effect
+    e.g.: it's a pointer that is updated, or a side-effecting primop is called on it
+  - replace funapp bindings with #undefined (where the function was deleted)
+  - when deleting a store, update #undefined types
+
+Dead variable elimination:
+  - for (y <- pure x) bindings, delete the binding if y is dead
+  - for (y <- fun args) bindings, we can only delete it, if fun's return value and all of its arguments are dead
+  - for (x <- fetch p) bindings, delete it if x is dead 
+  - for (p <- store x) bindings, delete it if p is dead 
+  - for (update p x), delete it if p is dead 
+  - when deleting a binding, replace all occurences of the deleted name with #undefined
+  - when deleting a store, update #undefined types
+
+Undefined:
+  - now #undefineds will only have type information down to the location level
+  - we will only know that the field/value is a pointer, but we won't know where it points
+  - this way, transformations won't invalidate #undefineds' types
+  - HPT will now have less information, but this should not be a problem (see next point)
+  - #undefineds should always have DEAD liveness 
+  - currently, after running all dead code eliminating transformations (in the right order), we should only see #undefineds in dead fields of certain nodes (producers)
+  - currently, all data flow analyses correctly handle #undefineds (even with location info)
+
+Unspecified location:
+  - a type representing a pointer without its target information
+  - unspecified locations are "skipped" during type checking
+  - fetching from or updating to an unspecified location propagates no type information during the analyses
+  - an empty simple typeset will result in a dead type during type checking
+    - this means that #undefined values should ALWAYS BE DEAD
+  - refactor dead code elimination so that is uses unspec loc for the types of #undefined
+
+Producer name introduction:
+  - PNI introduces new variables at each producer site
+  - after PNI, the created-by analysis can be run on the resulting code
+  - PNI also introduces new variables for bindings with a fetch left-hand side
+  - this makes DVE and DDE simpler to implement (*)
+
+  - applying PNI multiple times can result in a lot of redundant code
+  - we can eliminate this redundancy by applying Copy Progagation & Simple Dead Variable Elimination
+  - but, we hae to exclude these two transformation from the optimizing pipeline
+  - and run them manually each time a transformation changes the AST
+
+  (* DDE and DVE simplification): 
+    - DDE needs to remove dead fields from node patterns
+    - for this, it needs liveness and producer information
+    - for bindings of form: (CInt n) <- fetch p
+      - DDE would have to look through the pointer p
+      - derefernce it, and collect the information for the variable pointed at by it
+      - using this information, it could remove the dead fields of the pattern
+    - instead, we make sure that all fetch-bindings can only have variable patterns, so that producer information can flow more easily
+
+    - DVE needs to remove dead bindings and replace all occurences of deleted variables with #undefineds
+    - fetch accepts only names as its first parameter, so we cannot replace them with #undefined
+      (since #undefined is a value)
+    - this is not a problem, since DVE can remove such bindings altogether IF the pattern is only a variable
+    - however, if have a binding of form: (CInt n) <- fetch p
+      - DVE would have to collect all names in the node pattern
+      - and replace all those as well
+    - instead, we make sure that all fetch-bindings can only have variable patterns, so that replacing dead variables is simpler
+
+Avoid looping optimization:
+  - use taboo sets of previous ASTs
+  - let e' be the resulting AST after running all possible optimizations
+  - if e' is a member of the taboo set, then stop
+  - we shouls store hashes instead of entire ASTs
+  - we could choose an "optimal" AST from the loop
+
+Liveness tracking at pattern matching:
+  - currently when we pattern match on a concrete value of a node field we deem the given field LIVE
+  - but they are only LIVE if there is at least one other pattern match on the same field position with a different value 
+  - in the current implemtation, tags are trated differently:
+    - a tag is deemed LIVE iff we pattern matchd on it, and there is at least one LIVE field
+
+TODO:
+  HIGH:
+    - make sure that all transformations handles #undefineds and unspecified locations correctly
+      - make sure GeneralizedUnboxing handles #undefineds
+    - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
+    - apply inlining should also inline ap
+    - implement type safe undefined node generation for tests (Test.Test) 
+  
+  LOW:
+    - optimize pipeline, so that only the necessary analyses run before each transformation
+    - improve parse error message for "satisfyM" style parsing failures
+    - implement type env transformation for DDE
+    - linter should check whether calculated types match with annotations
+    - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
+  
+  NOTES:
+    - before optimising P nodes, make sure to test whether the current optimisations are unable to handle the task
+
+  QUESTIONS:
+    - do all P nodes of the same function have the same liveness?
+    (even after apply inlining)
+    - if they do, can their fields be deleted solely based on the function args' liveness?
+  
+  if they do:
+    - we don't have to introduce new names for them (probably same for F nodes)
+    - (args' == args after dde) and (l == no. live args of foo) and (n == no. args'): 
+    - PNfoo args --> P(l-n)foo args'
+    - if last argument is deleted, then do ... ?
+  
+Archive:
+  ✘ for analyses handle Unit arg in ConstTagNode bindings (not needed, since node fields can only be simple values) @cancelled(18-11-26 00:25) @project(TODO.HIGH)
+  ✔ refactor out utility code pieces from Pipeline.hs @done(18-11-19 00:22) @project(TODO.LOW)
+  ✔ for DVE, implement proper liveness lookup for bindings @done(18-11-19 00:22) @project(TODO.HIGH)
+  ✔ in LVA, propagate liveness for tags as well @done(18-11-18 18:01) @project(TODO.HIGH)
+  ✔ refactor randomPipeline so that it works similarly to optimizeWithPM @done(18-11-18 14:59) @project(TODO.LOW)
+  ✔ add copy propagation after DCE in pipeline @done(18-11-18 01:52) @project(TODO.LOW)
+  ✔ remove -t flag from analyses other than HPT (GrinCLI) @done(18-11-18 01:52) @project(TODO.LOW)
+  ✔ make sure, that all dead code elimination transfromations handle effectful functions correctly @done(18-11-17 19:45) @project(TODO.HIGH)
+  ✔ investigate mangle names issue @done(18-11-17 19:44) @project(TODO.HIGH)
+  ✔ improve SCO so that it handles all type of scrutinees @done(18-11-04 22:41) @project(TODO.HIGH)
+  ✔ add HPT tests to CBy tests @done(18-11-04 19:46) @project(TODO.LOW)
+  ✔ genProgWith (in Test.Test) -> readd dead parameter elimination @done(18-10-30 22:23) @project(TODO.LOW)
+  ✔ rename dead procedure elimination to dead function elimination @done(18-10-30 22:23) @project(TODO.LOW)
+  ✔ make sure, that dead procedure elimination does not produce semantically invalid code @done(18-10-29 10:31) @project(TODO.HIGH)
+  ✘ store variable name <-> heap location is a bijective mapping @cancelled(18-10-28 23:34)
+  ✘ make sure that dead (data/parameter/procedure/variable) elimination are executed after each other in the pipeline @cancelled(18-10-28 23:33)
+  ✔ fix confuence test behaviour for analysis based transformations @done(18-10-28 23:32)
+  ✔ lift Undefined to Val level @done(18-10-12 22:43) @project(TODO)
+  ✔ introduce type annotations @done(18-10-12 22:43) @project(TODO)
+  ✔ pretty print type annotations @done(18-10-12 22:45) @project(TODO)
+  ✔ introduce heap type annotations in the begininning of the program @done(18-10-12 22:43) @project(TODO)
+  ✔ write parser for type annotations @done(18-10-12 22:43) @project(TODO)
+  ✔ Grin.Grin FoldNames @done(18-10-14 00:56) @project(TODO)
+  ✔ rename node name introduction to producer name introduction @done(18-10-14 01:17) @project(TODO)
+  ✔ this transformation only has to introduce new name for producers, @done(18-10-14 01:17) @project(TODO)
+  ✘ write tests for node name introduction @cancelled(18-10-12 22:44) @project(TODO)
+  ✘ introduce new names for applications: @cancelled(18-10-12 22:44) @project(TODO)
+  ✔ implement heap type env parsing @done(18-10-12 22:44) @project(TODO)
+  ✔ implement annotated line type env parsing @done(18-10-12 22:44) @project(TODO)
+  ✔ extend HPT (and CBy) so that they gather type info from #undefined nodes @started(18-10-12 22:44) @done(18-10-14 00:52) @lasted(1d2h8m35s) @project(TODO)
+  ✔ tests for HPT, CBy with undefineds @done(18-10-14 00:52) @project(TODO)

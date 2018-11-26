@@ -1,0 +1,4 @@
+grinMain =
+  a <- pure 0
+  b <- pure 0
+  pure (CTwo a b)

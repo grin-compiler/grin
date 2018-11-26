@@ -1,0 +1,14 @@
+grinMain =
+  n0 <- pure (CBool 0)
+  n1 <- pure (CWord 0)
+  p0 <- case 0 of
+          0 -> store n0
+          1 -> store n1
+  n2 <- pure (CNode 0)
+  update p0 n2
+  n3 <- fetch p0
+  case n3 of
+    (CBool c0) -> pure c0
+    (CWord c1) -> pure 0
+    (CNode c2) -> pure c2
+    (CNope c3) -> pure c3

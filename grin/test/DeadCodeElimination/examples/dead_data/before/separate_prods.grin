@@ -1,0 +1,26 @@
+grinMain =
+  a0 <- pure 0
+  a1 <- pure 0
+  a2 <- pure 0
+
+  n0 <- pure (CThree a0 a1 a2)
+  n1 <- pure (CThree a0 a1 a2)
+  n2 <- pure (CThree a0 a1 a2)
+  n3 <- pure (CThree a0 a1 a2)
+  n4 <- pure (CThree a0 a1 a2)
+  n5 <- pure (CThree a0 a1 a2)
+  n6 <- pure (CThree a0 a1 a2)
+  n7 <- pure (CThree a0 a1 a2)
+
+  -- consumers
+  (CThree b0 b1 b2) <- pure n0
+  (CThree c0 c1 c2) <- pure n1
+  (CThree d0 d1 d2) <- pure n2
+  (CThree e0 e1 e2) <- pure n3
+  (CThree f0 f1 f2) <- pure n4
+  (CThree g0 g1 g2) <- pure n5
+  (CThree h0 h1 h2) <- pure n6
+  (CThree i0 i1 i2) <- pure n7
+
+  r <- pure (CLive b0 b1 b2 c0 d1 e2 f0 f1 g1 g2 h0 h2)
+  pure r

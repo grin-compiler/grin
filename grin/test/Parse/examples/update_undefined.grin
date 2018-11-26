@@ -1,0 +1,8 @@
+grinMain p = 
+  update p (#undefined :: {CInt[T_Int64]})
+  update p (#undefined :: {CPair[T_Int64, T_Bool]})
+  update p (#undefined :: {CPair[T_Int64, {0}]})
+  update p (#undefined :: {CPair[T_Int64, {0,1}]})
+  update p (#undefined :: {CPair[T_Int64, #ptr]})
+  update p (#undefined :: {CTriplet[T_Int64, {0,1}, #ptr]})
+  pure 0

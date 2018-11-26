@@ -5,24 +5,18 @@ import Data.Functor.Foldable as Foldable
 
 import Grin.Grin
 
--- Bind normalisation (EXTREMELY UGLY first version, REFACTORING NEEDED!)
 bindNormalisation :: Exp -> Exp
-bindNormalisation = ($ id) . snd . cata folder where
-  folder :: ExpF (Bool, (Exp -> Exp) -> Exp) -> (Bool, (Exp -> Exp) -> Exp)
-  folder = \case
+bindNormalisation = hylo alg coalg where
+  alg :: ExpF Exp -> Exp
+  alg (SBlockF e) = e
+  alg e = embed e
 
-    EBindF (hasSBlock, sexpf) pat (_, expf) -> case hasSBlock of
-      True  -> (False, \f -> sexpf $ \sexp -> EBind sexp pat (expf f))
-      False -> (False, \f -> EBind (sexpf id) pat (expf f))
+  coalg :: Exp -> ExpF Exp
+  coalg (EBind lhs1 pat1 rhs1)
+    | EBind lhs2 pat2 rhs2 <- rmBlocks lhs1
+    = SBlockF $ EBind lhs2 pat2 (EBind (SBlock rhs2) pat1 rhs1)
+  coalg e = project e
 
-    SBlockF (_, f) -> (True, f)
-    -- SimpleExp: return, app, case, store, fetch, update
-    SAppF name vals -> (False, \f -> f (SApp name vals))
-    SReturnF val -> (False, \f -> f (SReturn val))
-    SStoreF val -> (False, \f -> f (SStore val))
-    SFetchIF name index -> (False, \f -> f (SFetchI name index))
-    SUpdateF name val -> (False, \f -> f (SUpdate name val))
-    AltF cpat (_, expf) -> (False, \f -> f (Alt cpat (expf id)))
-    ECaseF val altsf -> (False, \f -> f (ECase val (map (($ id) . snd) altsf)))
-    DefF name args (_, expf) -> (False, \f -> f (Def name args (expf id)))
-    ProgramF defs -> (False, \f -> f (Program (map (($ id) . snd) defs)))
+  rmBlocks :: Exp -> Exp
+  rmBlocks (SBlock e) = rmBlocks e
+  rmBlocks e          = e

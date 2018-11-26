@@ -1,0 +1,16 @@
+grinMain = 
+  x0 <- pure (#undefined :: T_Int64)
+  x1 <- pure (#undefined :: T_Word64)
+  x4 <- pure (#undefined :: T_Float)
+  x2 <- pure (#undefined :: T_Bool)
+  x3 <- pure (#undefined :: T_Unit)
+  p0 <- pure (#undefined :: #ptr)
+  p1 <- pure (#undefined :: {0})
+  p2 <- pure (#undefined :: {0,1})
+  n0 <- pure (#undefined :: {CInt[T_Int64]})
+  n1 <- pure (#undefined :: {CPair[T_Int64, T_Bool]})
+  n2 <- pure (#undefined :: {CPair[T_Int64, {0}]})
+  n3 <- pure (#undefined :: {CPair[T_Int64, {0,1}]})
+  n4 <- pure (#undefined :: {CPair[T_Int64, #ptr]})
+  n5 <- pure (#undefined :: {CTriplet[T_Int64, {0,1}, #ptr]})
+  pure 0

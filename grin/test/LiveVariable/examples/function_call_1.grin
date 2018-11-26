@@ -1,0 +1,9 @@
+grinMain =
+  n <- pure (CFoo 0)
+  y <- f n
+  pure y
+
+f x =
+  case x of
+    (CFoo c0) -> pure c0
+    (CBar c1) -> pure 5

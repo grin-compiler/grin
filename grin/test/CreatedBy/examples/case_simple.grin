@@ -1,0 +1,11 @@
+grinMain =
+  a <- f 0
+  pure a
+
+
+f x =
+ case x of
+  0 -> x0 <- pure (CInt 5)
+       pure x0
+  1 -> x1 <- pure (CBool 0)
+       pure x1

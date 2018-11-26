@@ -1,0 +1,10 @@
+grinMain =
+  a <- pure 0
+  b <- pure 0
+  c <- pure 0
+  d <- pure 0
+  e <- pure 0
+  case a of
+    0 -> pure b
+    1 -> pure c
+    2 -> pure d

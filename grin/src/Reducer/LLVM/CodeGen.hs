@@ -98,11 +98,13 @@ codeGenVal val = case val of
   Lit lit     -> pure . ConstantOperand . codeGenLit $ lit
   Var name    -> do
                   Map.lookup name <$> gets _constantMap >>= \case
-                      -- QUESTION: what is this?
-                      Nothing -> do
-                                  ty <- getVarType name
-                                  pure $ LocalReference (cgLLVMType ty) (mkNameG name)
-                      Just operand  -> pure operand
+                    -- QUESTION: what is this?
+                    Nothing -> do
+                      ty <- getVarType name
+                      pure $ LocalReference (cgLLVMType ty) (mkNameG name)
+                    Just operand  -> pure operand
+
+  Undefined t -> pure . ConstantOperand . Undef . cgLLVMType. toCGType $ t
 
   _ -> error $ printf "codeGenVal: %s" (show $ pretty val)
 
@@ -297,6 +299,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       TypeEnv{..} <- gets _envTypeEnv
       let locs          = case Map.lookup name _variable of
             Just (T_SimpleType (T_Location l)) -> l
+            Just (T_SimpleType T_UnspecifiedLocation) -> []
             x -> error $ printf "variable %s can not be fetched, %s is not a location type" name (show $ pretty x)
           nodeSet       = mconcat [_location V.! loc | loc <- locs]
           resultCGType  = toCGType $ T_NodeSet nodeSet
@@ -456,6 +459,8 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
 
 codeGenTagSwitch tagVal nodeSet tagAltGen | [(tag, items)] <- Map.toList nodeSet = do
   uncurry O <$> tagAltGen tag items
+
+codeGenTagSwitch tagVal nodeSet tagAltGen = error $ "LLVM codegen: empty node set for " ++ show tagVal
 
 -- heap pointer related functions
 

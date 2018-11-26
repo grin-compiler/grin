@@ -1,0 +1,18 @@
+grinMain =
+  n0 <- f 0
+  n4 <- case n0 of
+    (CInt  c0) -> (CInt  b0) <- pure n0
+                  n1 <- f b0
+                  pure n1
+    (CBool c1) -> n2 <- f c1
+                  pure n2
+    #default   -> (CWord b1) <- pure n0
+                  n3 <- f b1
+                  pure n3
+  pure n4
+
+f x =
+  case x of
+    0 -> pure (CInt  0)
+    1 -> pure (CBool 0)
+    2 -> pure (CWord 0)

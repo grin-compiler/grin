@@ -1,0 +1,10 @@
+grinMain =
+  (CTwo a1 b1) <- f
+  n <- pure (COne a1)
+  pure n
+
+
+f =
+  a0 <- pure 0
+  b0 <- pure 0
+  pure (CTwo a0 b0)

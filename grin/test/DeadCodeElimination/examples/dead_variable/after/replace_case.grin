@@ -1,0 +1,3 @@
+grinMain = 
+  case (CInt (#undefined :: T_Int64)) of
+    (CInt c0) -> pure 0

@@ -1,0 +1,7 @@
+grinMain =
+  a0 <- pure (CBool 0)
+  p0 <- case a0 of
+    (CWord c0) -> store (CWord c0)
+    (CBool c1) -> store (CBool c1)
+  (CBool a1) <- fetch p0
+  pure a1

@@ -1,0 +1,6 @@
+grinMain = 
+  x0 <- pure 5
+  p0 <- store (CPair x0 5)
+  (CPair c0 c1) <- fetch p0 
+  pure c1
+  

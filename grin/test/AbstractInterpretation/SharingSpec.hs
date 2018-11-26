@@ -3,15 +3,19 @@
 {-# LANGUAGE QuasiQuotes     #-}
 module AbstractInterpretation.SharingSpec where
 
+import Data.Set (Set)
+import qualified Data.Set as Set
+
 import Test.Hspec
 import Grin.Grin
 import Grin.TH
-import Grin.Lint
-import Grin.TypeEnv
-import Grin.TypeCheck
 import Grin.Pretty
+import Grin.TypeEnvDefs (Loc)
 
-import qualified Data.Set as Set
+import AbstractInterpretation.Reduce
+import AbstractInterpretation.Sharing
+import AbstractInterpretation.SharingResult
+
 
 
 runTests :: IO ()
@@ -20,7 +24,7 @@ runTests = hspec spec
 spec :: Spec
 spec = describe "Sharing analysis" $ do
   it "has not changed for sum simple." $ do
-    let result = _sharing $ inferTypeEnv testProgram
+    let result = calcSharedLocations testProgram
     let exptected = Set.fromList [0,1,4,5]
     result `shouldBe` exptected
 
@@ -35,7 +39,7 @@ spec = describe "Sharing analysis" $ do
             v <- fetch l0
             pure ()
         |]
-    let result = _sharing $ inferTypeEnv code
+    let result = calcSharedLocations code
     let exptected = Set.fromList [0]
     result `shouldBe` exptected
 
@@ -49,7 +53,7 @@ spec = describe "Sharing analysis" $ do
             v <- fetch l1
             pure ()
         |]
-    let result = _sharing $ inferTypeEnv code
+    let result = calcSharedLocations code
     let exptected = Set.fromList [0,1]
     result `shouldBe` exptected
 
@@ -64,9 +68,19 @@ spec = describe "Sharing analysis" $ do
             fun l2
             pure ()
         |]
-    let result = _sharing $ inferTypeEnv code
+    let result = calcSharedLocations code
     let exptected = Set.fromList [1]
     result `shouldBe` exptected
+
+calcSharedLocations :: Exp -> Set Loc 
+calcSharedLocations = _sharedLocs . calcSharingResult
+
+calcSharingResult :: Exp -> SharingResult
+calcSharingResult prog
+  | Right shProgram <- codeGen prog
+  , computer <- _airComp . evalDataFlowInfo $ shProgram
+  , shResult <- toSharingResult shProgram computer
+  = shResult
 
 testProgram :: Exp
 testProgram = [prog|

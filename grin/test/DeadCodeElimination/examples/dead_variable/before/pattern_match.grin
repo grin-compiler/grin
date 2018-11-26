@@ -1,0 +1,10 @@
+grinMain =
+  x <- pure 0
+  n <- pure (CNode 0 0)
+  p <- store n
+  (CNode y z) <- pure n
+  (CNode v w) <- fetch p
+  0 <- pure x
+  u <- pure ()
+  () <- pure u
+  pure 0

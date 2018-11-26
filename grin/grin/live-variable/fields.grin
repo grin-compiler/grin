@@ -1,0 +1,11 @@
+grinMain =
+  a0 <- pure 0
+  a1 <- pure 1
+  n0 <- pure (CNode a0 a1)
+  case n0 of
+    (CNode c0 c1) -> n1 <- pure (CNode c0 c1)
+                     f n1
+
+f x =
+  case x of
+    (CNode c2 c3) -> pure c3 

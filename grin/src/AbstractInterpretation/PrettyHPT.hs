@@ -24,27 +24,25 @@ import qualified AbstractInterpretation.HPTResult as R
 
 instance Pretty R.SimpleType where
   pretty = \case
-    R.T_Location l  -> cyan . int $ fromIntegral l
-    ty              -> red $ text $ show ty
+    R.T_UnspecifiedLocation -> red $ text "#ptr"
+    R.T_Location l          -> cyan . int $ fromIntegral l
+    ty                      -> red $ text $ show ty
 
 prettyHPTNode :: (Tag, Vector (Set R.SimpleType)) -> Doc
 prettyHPTNode (tag, args) = pretty tag <> list (map pretty $ V.toList args)
 
 prettyHPTFunction :: (Name, (R.TypeSet, Vector R.TypeSet)) -> Doc
-prettyHPTFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
+prettyHPTFunction = prettyFunction
 
 instance Pretty R.NodeSet where
-  pretty (R.NodeSet m) = encloseSep lbrace rbrace comma (map prettyHPTNode $ Map.toList m)
+  pretty (R.NodeSet m) = prettyBracedList (map prettyHPTNode $ Map.toList m)
 
 instance Pretty R.TypeSet where
-  pretty (R.TypeSet ty (R.NodeSet ns)) = encloseSep lbrace rbrace comma (map prettyHPTNode (Map.toList ns) ++ map pretty (Set.toList ty))
+  pretty (R.TypeSet ty (R.NodeSet ns)) = prettyBracedList (map prettyHPTNode (Map.toList ns) ++ map pretty (Set.toList ty))
 
 instance Pretty R.HPTResult where
   pretty R.HPTResult{..} = vsep
-    [ yellow (text "Heap (* is shared)") <$$> indent 4 (prettyKeyValue
-         $ map (\(k, v) -> (if k `Set.member` _sharing then (pretty k) <> text "*" else pretty k, v))
-         $ zip [(0 :: Int)..] $ V.toList _memory)
+    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ V.toList _memory)
     , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList  _register)
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyHPTFunction $ Map.toList _function)
     ]
-

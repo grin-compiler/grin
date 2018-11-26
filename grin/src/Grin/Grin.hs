@@ -11,6 +11,7 @@ import Data.Maybe
 import qualified Data.Text.Short as TS
 
 import Grin.Syntax
+import Grin.TypeEnvDefs
 
 class FoldNames n where
   foldNames :: (Monoid m) => (Name -> m) -> n -> m
@@ -21,6 +22,7 @@ instance FoldNames Val where
     VarTagNode    name vals -> mconcat $ (f name) : (foldNames f <$> vals)
     ValTag        _tag      -> mempty
     Unit                    -> mempty
+    Undefined _             -> mempty
     -- simple val
     Lit lit                 -> mempty
     Var name                -> f name
@@ -73,6 +75,7 @@ isConstant = cata $ \case
   UnitF                     -> True
   LitF lit                  -> True
   _                         -> False
+  
 hasConstant :: Val -> Bool
 hasConstant = cata $ \case
   ValTagF{} -> True

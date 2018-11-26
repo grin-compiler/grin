@@ -1,0 +1,24 @@
+grinMain =
+  a0 <- pure 0
+  a1 <- pure 0
+  a2 <- pure 0
+  a3 <- pure 0
+  a4 <- pure 0
+  a5 <- pure 0
+
+  -- two producers
+  n0 <- pure (CThree a0 a1 a2)
+  n1 <- pure (CThree a3 a4 a5)
+
+  -- n01 has producers: n0, n1
+  n01 <- case 0 of
+    0 -> pure n0
+    1 -> pure n1
+
+  -- consumers
+  (CThree b0 b1 b2) <- pure n0
+  (CThree c0 c1 c2) <- pure n01
+  (CThree d0 d1 d2) <- pure n1
+
+  r <- pure (CLive c1)
+  pure r

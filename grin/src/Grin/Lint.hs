@@ -137,6 +137,8 @@ syntaxVal ctx = \case
     | ctx == ValCtx
     -> mapM_ (syntaxVal SimpleValCtx) args
 
+  Undefined _ -> pure ()
+
   _ | ctx == ValCtx
     -> pure ()
 

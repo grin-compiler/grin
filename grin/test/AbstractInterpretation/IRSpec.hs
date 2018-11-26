@@ -3,16 +3,19 @@
 {-# LANGUAGE QuasiQuotes     #-}
 module AbstractInterpretation.IRSpec where
 
-import Grin.Grin
-import Grin.TH
-import AbstractInterpretation.IR
-import AbstractInterpretation.Reduce
-import AbstractInterpretation.CodeGenMain
-
 import Control.Monad
 import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
+
+import Lens.Micro
+
+import Grin.Grin
+import Grin.TH
+import AbstractInterpretation.IR
+import AbstractInterpretation.Reduce
+import AbstractInterpretation.HeapPointsTo
+
 
 runTests :: IO ()
 runTests = hspec spec
@@ -22,12 +25,12 @@ spec = do
   describe "HPT calculation" $ do
     let Right hptProgram0 = codeGen testProgram
     it "is instruction order independent" $
-      forAll (randomizeInstructions (hptInstructions hptProgram0)) $ \randomised ->
-        let hptProgram1 = hptProgram0 { hptInstructions = randomised }
-            (computer0, (HPTInfo hptIterations0)) = evalHPT hptProgram0
-            (computer1, (HPTInfo hptIterations1)) = evalHPT hptProgram1
-        in label (printf "HPT iterations %d/%d" hptIterations1 hptIterations0)
-                 $ computer0 == computer1
+      forAll (randomizeInstructions . _absInstructions ._absProg $ hptProgram0) $ \randomised ->
+        let hptProgram1 = set (absProg.absInstructions) randomised  hptProgram0
+            AbsIntResult comp0 iters0 = evalDataFlowInfo hptProgram0
+            AbsIntResult comp1 iters1 = evalDataFlowInfo hptProgram1
+        in label (printf "HPT iterations %d/%d" iters0 iters1)
+                 $ comp0 == comp1
 
 randomizeInstructions :: [Instruction] -> Gen [Instruction]
 randomizeInstructions is0 = do

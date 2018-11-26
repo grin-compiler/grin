@@ -28,6 +28,7 @@ transformOpts =
   <|> flg SplitFetch "sf" "Split Fetch"
   <|> flg Vectorisation "v" "Vectorisation"
   <|> flg RegisterIntroduction "ri" "Register Introduction"
+  <|> flg ProducerNameIntroduction "pni" "Producer Name Introduction"
   <|> flg InlineEval "ie" "Inline Eval"
   <|> flg InlineApply "ia" "Inline Apply"
   <|> flg BindNormalisation "bn" "Bind Normalisation"
@@ -40,9 +41,14 @@ transformOpts =
   <|> flg UpdateElimination "ue" "Update Elimination"
   <|> flg CopyPropagation "cp" "Copy Propagation"
   <|> flg ConstantPropagation "cnp" "Constant Propagation"
-  <|> flg DeadProcedureElimination "dpe" "Dead Procedure Elimination"
-  <|> flg DeadParameterElimination "dae" "Dead Parameter Elimination"
+  <|> flg DeadCodeElimination "dce" "Dead Code Elimination"
+  <|> flg DeadDataElimination "dde" "Dead Data Elimination"
+  <|> flg DeadFunctionElimination "dfe" "Dead Function Elimination"
+  <|> flg DeadParameterElimination "dpe" "Dead Parameter Elimination"
   <|> flg DeadVariableElimination "dve" "Dead Variable Elimination"
+  <|> flg SimpleDeadFunctionElimination "sdfe" "Dead Procedure Elimination"
+  <|> flg SimpleDeadVariableElimination "sdve" "Simple Dead Variable Elimination"
+  <|> flg SimpleDeadParameterElimination "sdpe" "Simple Dead Parameter Elimination"
   <|> flg CommonSubExpressionElimination "cse" "Common Sub-Expression Elimination"
   <|> flg CaseCopyPropagation "ccp" "Case Copy Propagation"
   <|> flg GeneralizedUnboxing "gub" "GeneralizedUnboxing"
@@ -54,16 +60,43 @@ transformOpts =
 
 pipelineOpts :: Parser PipelineStep
 pipelineOpts =
-      flg (HPT CompileHPT) "compile-hpt" "Compiles heap-points-to analysis machine"
-  <|> flg (HPT PrintHPTCode) "print-hpt-code" "Prints the heap-points-to analysis machine"
-  <|> flg (HPT RunHPTPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
-  <|> flg (HPT PrintHPTResult) "print-hpt-result" "Prints the heap-points-to analysis result"
+      flg Optimize "optimize" "Iteratively performs optimizations on the GRIN code until it can no longer be optimized"
+  <|> flg (HPT CompileToAbstractProgram) "compile-hpt" "Compiles heap-points-to analysis machine"
+  <|> flg (HPT OptimiseAbstractProgram) "optimize-hpt" "Optimizes heap-points-to analysis abstract program"
+  <|> flg (HPT PrintAbstractProgram) "print-hpt-code" "Prints the heap-points-to analysis machine"
+  <|> flg (HPT RunAbstractProgramPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
+  <|> flg (HPT PrintAbstractResult) "print-hpt-result" "Prints the heap-points-to analysis result"
+  <|> flg (CBy CompileToAbstractProgram) "compile-cby" "Compiles created-by analysis machine"
+  <|> flg (CBy OptimiseAbstractProgram) "optimize-cby" "Optimizes created-by analyis abstract program"
+  <|> flg (CBy PrintAbstractProgram) "print-cby-code" "Prints the created-by analysis machine"
+  <|> flg (CBy RunAbstractProgramPure) "run-cby-pure" "Runs the created-by analysis machine via pure interpreter"
+  <|> flg (CBy PrintAbstractResult) "print-cby-result" "Prints the created-by analysis result"
+  <|> flg (LVA CompileToAbstractProgram) "compile-lva" "Compiles live variable analysis machine"
+  <|> flg (LVA OptimiseAbstractProgram) "optimize-lva" "Optimizes live variable analysis abstract program"
+  <|> flg (LVA PrintAbstractProgram) "print-lva-code" "Prints the live variable analysis machine"
+  <|> flg (LVA RunAbstractProgramPure) "run-lva-pure" "Runs the live variable analysis machine via pure interpreter"
+  <|> flg (LVA PrintAbstractResult) "print-lva-result" "Prints the live variable analysis result"
+  <|> flg (Sharing CompileToAbstractProgram) "compile-sharing" "Compiles sharing analysis machine"
+  <|> flg (Sharing OptimiseAbstractProgram) "optimize-sharing" "Optimizes sharing analyis abstract program"
+  <|> flg (Sharing PrintAbstractProgram) "print-sharing-code" "Prints the sharing analysis machine"
+  <|> flg (Sharing RunAbstractProgramPure) "run-sharing-pure" "Runs the sharing analysis machine via pure interpreter"
+  <|> flg (Sharing PrintAbstractResult) "print-sharing-result" "Prints the sharing analysis result"
   <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
   <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code"
+  <|> flg ParseTypeAnnots "parse-type-annots" "Parses the type annotations from the source"
+  <|> flg PrintTypeAnnots "print-type-annots" "Prints the type env calculated from the annotations in the source"
   <|> flg PrintTypeEnv "te" "Prints type env"
-  <|> flg' (Pass [HPT CompileHPT, HPT RunHPTPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
+  <|> flg' (Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
+  <|> flg' (Pass [CBy CompileToAbstractProgram, CBy RunAbstractProgramPure]) 'c' "cby" "Compiles and runs the created-by analysis"
+  <|> flg' (Pass [LVA CompileToAbstractProgram, LVA RunAbstractProgramPure]) 'l' "lva" "Compiles and runs the live variable analysis"
+  <|> flg' (Pass [Sharing CompileToAbstractProgram, Sharing RunAbstractProgramPure]) 's' "sharing" "Compiles and runs the sharing analysis"
+  <|> flg (Pass [HPT CompileToAbstractProgram, HPT OptimiseAbstractProgram, HPT RunAbstractProgramPure]) "hpt-opt" "Compiles, optimizes and runs the heap-points-to analysis"
+  <|> flg (Pass [CBy CompileToAbstractProgram, CBy OptimiseAbstractProgram, CBy RunAbstractProgramPure]) "cby-opt" "Compiles, optimizes and runs the created-by analysis"
+  <|> flg (Pass [LVA CompileToAbstractProgram, LVA OptimiseAbstractProgram, LVA RunAbstractProgramPure]) "lva-opt" "Compiles, optimizes and runs the live variable analysis"
+  <|> flg (Pass [Sharing CompileToAbstractProgram, Sharing OptimiseAbstractProgram, Sharing RunAbstractProgramPure]) "sharing-opt" "Compiles, optimizes and runs the sharing analysis"
+  <|> flg  (Pass [LVA CompileToAbstractProgram, CBy CompileToAbstractProgram, RunCByWithLVA]) "cby-with-lva" "Compiles the live variable and created-by analyses, then runs the created-by analysis using the LVA result"
   <|> flg PureEval "eval" "Evaluate the grin program (pure)"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
@@ -77,6 +110,7 @@ pipelineOpts =
         ])))
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
+  <|> flg PrintErrors "print-errors" "Prints the error log"
 
 options :: IO Options
 options = execParser $ info
@@ -106,19 +140,10 @@ main = do
         opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
     case steps of
       [] -> void $ optimize opts program prePipeline postPipeline
-      _  -> void $ pipeline opts program steps
+      _  -> void $ pipeline opts (Just content) program steps
 
 prePipeline :: [PipelineStep]
-prePipeline =
-  [ HPT CompileHPT
---  , HPT PrintHPTCode
---  , PrintGrin ondullblack
-  , HPT RunHPTPure
---  , HPT PrintHPTResult
-  , T UnitPropagation
---  , PrintGrin ondullblack
---  , SaveLLVM "high-level-code"
-  ]
+prePipeline = defaultOnChange
 
 postPipeline :: [PipelineStep]
 postPipeline =

@@ -15,30 +15,51 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
+  default-extensions:  OverloadedStrings
   exposed-modules:
     AbstractInterpretation.CodeGen
-    AbstractInterpretation.CodeGenMain
+    AbstractInterpretation.CByResult
+    AbstractInterpretation.CByResultTypes
+    AbstractInterpretation.CByUtil
+    AbstractInterpretation.CreatedBy
+    AbstractInterpretation.HeapPointsTo
     AbstractInterpretation.HPTResult
     AbstractInterpretation.IR
+    AbstractInterpretation.LiveVariable
+    AbstractInterpretation.LVAResult
+    AbstractInterpretation.LVAResultTypes
+    AbstractInterpretation.LVAUtil
+    AbstractInterpretation.Sharing
+    AbstractInterpretation.SharingResult
+    AbstractInterpretation.PrettyCBy
     AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
+    AbstractInterpretation.PrettyLVA
+    AbstractInterpretation.PrettySharing
     AbstractInterpretation.Reduce
-    AbstractInterpretation.Sharing
-    AbstractInterpretation.Model
-    AbstractInterpretation.OptimiseHPT
+    AbstractInterpretation.Util
+    AbstractInterpretation.OptimiseAbstractProgram
     Grin.Grin
     Grin.Syntax
+    Grin.SyntaxDefs
     Grin.TH
     Grin.Lint
     Grin.Parse
+    Grin.Parse.AST
+    Grin.Parse.Basic
+    Grin.Parse.TypeEnv
     Grin.Pretty
     Grin.PrettyLint
     Grin.Statistics
     Grin.TypeCheck
     Grin.TypeEnv
+    Grin.TypeEnvDefs
+    Grin.EffectMap
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
+    Pipeline.Definitions
+    Pipeline.Utils
     Reducer.Base
     Reducer.IO
     Reducer.LLVM.Base
@@ -52,8 +73,10 @@ library
     Test.Assertions
     Test.Check
     Test.Grammar
+    Test.IO
     Test.PrimOps
     Test.Test
+    Test.Util
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -71,17 +94,22 @@ library
     Transformations.Optimising.ConstantPropagation
     Transformations.Optimising.CopyPropagation
     Transformations.Optimising.CSE
+    Transformations.Optimising.DeadDataElimination
+    Transformations.Optimising.DeadFunctionElimination
     Transformations.Optimising.DeadParameterElimination
-    Transformations.Optimising.DeadProcedureElimination
     Transformations.Optimising.DeadVariableElimination
     Transformations.Optimising.EvaluatedCaseElimination
     Transformations.Optimising.GeneralizedUnboxing
     Transformations.Optimising.Inlining
+    Transformations.Optimising.SimpleDeadFunctionElimination
+    Transformations.Optimising.SimpleDeadVariableElimination
+    Transformations.Optimising.SimpleDeadParameterElimination
     Transformations.Optimising.SparseCaseOptimisation
     Transformations.Optimising.TrivialCaseElimination
     Transformations.Optimising.UpdateElimination
     Transformations.Optimising.NonSharedElimination
     Transformations.Simplifying.CaseSimplification
+    Transformations.Simplifying.ProducerNameIntroduction
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Simplifying.SplitFetch
@@ -122,13 +150,16 @@ library
     functor-infix,
     generic-random,
     hspec,
+    hspec-core,
     extra,
     logict,
     QuickCheck,
+    quickcheck-instances,
     neat-interpolation,
     template-haskell,
     Diff,
-    random
+    random,
+    set-extra
 
   default-language:    Haskell2010
 
@@ -160,8 +191,10 @@ test-suite grin-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  default-extensions:  OverloadedStrings
   build-depends:       base
                      , containers
+                     , filepath
                      , functor-infix
                      , grin
                      , hspec
@@ -171,11 +204,106 @@ test-suite grin-test
                      , vector
                      , text
                      , random
-  other-modules:       Transformations.Simplifying.RegisterIntroductionSpec
+                     , microlens
+
+  other-modules:     CreatedBy.CreatedBySpec
+
+                     , DeadCodeElimination.DeadCodeEliminationSpec
+
+                     , DeadCodeElimination.Tests.DeadData.ImpossibleAlt
+                     , DeadCodeElimination.Tests.DeadData.Length
+                     , DeadCodeElimination.Tests.DeadData.DeletableSingle
+                     , DeadCodeElimination.Tests.DeadData.DeletableMulti
+                     , DeadCodeElimination.Tests.DeadData.FNode
+                     , DeadCodeElimination.Tests.DeadData.MultipleFields
+                     , DeadCodeElimination.Tests.DeadData.OnlyDummify
+                     , DeadCodeElimination.Tests.DeadData.PNode
+                     , DeadCodeElimination.Tests.DeadData.PNodeOpt
+                     , DeadCodeElimination.Tests.DeadData.ProducerGrouping
+                     , DeadCodeElimination.Tests.DeadData.SeparateProds
+                     , DeadCodeElimination.Tests.DeadData.Spec
+                     , DeadCodeElimination.Tests.DeadData.Util
+
+                     , DeadCodeElimination.Tests.DeadFunction.AppSideEffect1
+                     , DeadCodeElimination.Tests.DeadFunction.MutuallyRecursive
+                     , DeadCodeElimination.Tests.DeadFunction.ReplaceNode
+                     , DeadCodeElimination.Tests.DeadFunction.ReplaceSimpleType
+                     , DeadCodeElimination.Tests.DeadFunction.Simple
+                     , DeadCodeElimination.Tests.DeadFunction.Spec
+                     , DeadCodeElimination.Tests.DeadFunction.Util
+
+                     , DeadCodeElimination.Tests.DeadParam.FNode
+                     , DeadCodeElimination.Tests.DeadParam.PNode
+                     , DeadCodeElimination.Tests.DeadParam.PNodeOpt
+                     , DeadCodeElimination.Tests.DeadParam.Simple
+                     , DeadCodeElimination.Tests.DeadParam.MutuallyRecursive
+                     , DeadCodeElimination.Tests.DeadParam.Spec
+                     , DeadCodeElimination.Tests.DeadParam.Util
+                     
+                     , DeadCodeElimination.Tests.DeadVariable.Simple
+                     , DeadCodeElimination.Tests.DeadVariable.Heap
+                     , DeadCodeElimination.Tests.DeadVariable.Update
+                     , DeadCodeElimination.Tests.DeadVariable.AppSimple
+                     , DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
+                     , DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
+                     , DeadCodeElimination.Tests.DeadVariable.PatternMatch
+                     , DeadCodeElimination.Tests.DeadVariable.ReplaceApp
+                     , DeadCodeElimination.Tests.DeadVariable.ReplaceCase
+                     , DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec
+                     , DeadCodeElimination.Tests.DeadVariable.ReplacePure
+                     , DeadCodeElimination.Tests.DeadVariable.ReplaceStore
+                     , DeadCodeElimination.Tests.DeadVariable.ReplaceUpdate
+                     , DeadCodeElimination.Tests.DeadVariable.ReplaceUnspecLoc
+                     , DeadCodeElimination.Tests.DeadVariable.Spec
+                     , DeadCodeElimination.Tests.DeadVariable.Util
+
+                     , DeadCodeElimination.Tests.Util
+
+                     , HeapPointsTo.HeapPointsToSpec
+                     , HeapPointsTo.Tests.Undefined
+                     , HeapPointsTo.Tests.UnspecLoc
+                     , HeapPointsTo.Tests.Util
+
+                     , LiveVariable.LiveVariableSpec
+                     , LiveVariable.Tests.CaseAnonymous
+                     , LiveVariable.Tests.CaseMinLit
+                     , LiveVariable.Tests.CaseMinNodes
+                     , LiveVariable.Tests.CaseNested
+                     , LiveVariable.Tests.CaseRestricted
+                     , LiveVariable.Tests.CaseRestrictedNodes
+                     , LiveVariable.Tests.DeadTags
+                     , LiveVariable.Tests.Fields
+                     , LiveVariable.Tests.FunctionCall1
+                     , LiveVariable.Tests.FunctionCall2
+                     , LiveVariable.Tests.HeapCaseMin
+                     , LiveVariable.Tests.HeapCase
+                     , LiveVariable.Tests.HeapIndirectSimple
+                     , LiveVariable.Tests.HeapSimple
+                     , LiveVariable.Tests.HeapUpdateComplex
+                     , LiveVariable.Tests.HeapUpdateFunCall
+                     , LiveVariable.Tests.HeapUpdateLocal
+                     , LiveVariable.Tests.LitPat
+                     , LiveVariable.Tests.MainNodeRet
+                     , LiveVariable.Tests.NodesSimple
+                     , LiveVariable.Tests.NodesTricky
+                     , LiveVariable.Tests.SumOpt
+                     , LiveVariable.Tests.Undefined
+                     , LiveVariable.Tests.UndefinedWithLocInfo
+                     , LiveVariable.Tests.Util
+
+                     , Parse.ParseSpec 
+                     , Parse.Tests.Interleaved
+                     , Parse.Tests.PureUndefined
+                     , Parse.Tests.StoreUndefined
+                     , Parse.Tests.UpdateUndefined
+                     , Parse.Tests.Util
+
+                     , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
                      , Transformations.Simplifying.RightHoistFetchSpec
                      , Transformations.Simplifying.VectorisationSpec
+                     , Transformations.Simplifying.ProducerNameIntroductionSpec
                      , Transformations.Optimising.CaseCopyPropagationSpec
                      , Transformations.Optimising.CopyPropagationSpec
                      , Transformations.Optimising.ConstantFoldingSpec
@@ -187,14 +315,16 @@ test-suite grin-test
                      , Transformations.Optimising.CSESpec
                      , Transformations.Optimising.GeneralizedUnboxingSpec
                      , Transformations.Optimising.ArityRaisingSpec
-                     , Transformations.Optimising.DeadProcedureEliminationSpec
-                     , Transformations.Optimising.DeadParameterEliminationSpec
-                     , Transformations.Optimising.DeadVariableEliminationSpec
+                     , Transformations.Optimising.ArityRaisingSimpleSpec
+                     , Transformations.Optimising.SimpleDeadFunctionEliminationSpec
+                     , Transformations.Optimising.SimpleDeadParameterEliminationSpec
+                     , Transformations.Optimising.SimpleDeadVariableEliminationSpec
                      , Transformations.Optimising.InliningSpec
                      , Transformations.Optimising.CaseHoistingSpec
                      , Transformations.StaticSingleAssignmentSpec
                      , Transformations.BindNormalisationSpec
                      , Transformations.ConfluenceSpec
+                     , Transformations.MangleNamesSpec
                      , Samples.SumListSpec
                      , Samples.ArityFullRemoveSpec
                      , HptSpec
@@ -203,7 +333,7 @@ test-suite grin-test
                      , PipelineSpec
                      , ParserSpec
                      , AbstractInterpretation.IRSpec
-                     , AbstractInterpretation.OptimiseHPTSpec
+                     , AbstractInterpretation.OptimiseAbstractProgramSpec
                      , AbstractInterpretation.SharingSpec
   default-language:    Haskell2010
 

@@ -1,5 +1,8 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
-module Grin.TypeEnv where
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
+module Grin.TypeEnv 
+  ( module Grin.TypeEnv 
+  , module Grin.TypeEnvDefs 
+  ) where
 
 import Text.Printf
 import Data.Int
@@ -13,31 +16,8 @@ import Data.Monoid
 import Lens.Micro.Platform
 
 import Grin.Grin
-
-type Loc = Int
-
-data SimpleType
-  = T_Int64
-  | T_Word64
-  | T_Float
-  | T_Bool
-  | T_Unit
-  | T_Location {_locations :: [Loc]}
-  | T_Dead
-  deriving (Eq, Ord, Show)
-
-type NodeSet = Map Tag (Vector SimpleType)
-
-data Type
-  = T_SimpleType  {_simpleType  :: SimpleType}
-  | T_NodeSet     {_nodeSet     :: NodeSet}
-
-  -- dependent type constructions to describe deconstructed nodes
-  | T_Tag         {_tagDomain   :: NodeSet}   -- tag with it's corresponding node set domain
-  | T_Item        {_tagVariable :: Name       -- tag variable name that holds the node tag on which the item type depends
-                  ,_itemIndex   :: Int        -- item index in the node
-                  }
-  deriving (Eq, Ord, Show)
+import Grin.Pretty
+import Grin.TypeEnvDefs
 
 dead_t :: Type
 dead_t = T_SimpleType T_Dead
@@ -89,20 +69,6 @@ _T_OnlyOneTag f nodeSet
   | (Map.size nodeSet == 1) = f nodeSet
   | otherwise = pure nodeSet
 
-
-data TypeEnv
-  = TypeEnv
-  { _location :: Vector NodeSet
-  , _variable :: Map Name Type
-  , _function :: Map Name (Type, Vector Type)
-  , _sharing  :: Set Loc
-  }
-  deriving (Eq, Show)
-
-concat <$> mapM makeLenses [''TypeEnv, ''Type, ''SimpleType]
-
-emptyTypeEnv :: TypeEnv
-emptyTypeEnv = TypeEnv mempty mempty mempty mempty
 
 newVar :: Name -> Type -> Endo TypeEnv
 newVar n t = Endo (variable %~ (Map.insert n t))
@@ -164,11 +130,7 @@ typeOfValTE typeEnv = \case
 
   bad -> error (show bad)
 
--- * Effects
-
-data Effect
-  = Effectful Name                      -- called effectful primop or function name
-  | Update { updateLocs :: [Int] }
-  deriving (Eq, Show, Ord)
-
-type EffectMap = Map Name (Set Effect)  -- key: function name, value: effectful calls or updates
+ptrLocations :: TypeEnv -> Name -> [Loc]
+ptrLocations te p = case variableType te p of 
+  T_SimpleType (T_Location locs) -> locs
+  ty -> error $ "Variable " ++ show (PP p) ++ " should be a pointer, but instead it has type: " ++ show (PP ty)

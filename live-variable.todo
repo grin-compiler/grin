@@ -1,0 +1,188 @@
+We need a more intelligent deadness analysis that can resolve dependencies between variables.
+
+The analysis should be run after sparse case eliminatio (so there will be no unreachable case alternatives).
+
+Still context insensitive
+
+x :-> y means: x is used if y is used
+x :~> y means: x is used if y is used, but x can not necessarily be eliminated because of some side effect
+x :-> {y,z} means: x is used if y and z are both used
+
+x ==> <action> means: if x is used, perform <action> (an IF block in terms of code generation)
+
+f[n]       means: the nth argumenth of f
+f[ret]     means: the return register of f is used
+loc p      means: the heap location pointed to by p
+res <e>    means: the result register of <e>
+R          means: scrutinized expression result register
+r{n}       means: nth (n > 0) field of the node in register "r"
+r{0}       means: the tag of node in register "r"
+sel' r t   means: selects tag "t" from register "r"
+seé  r t n means: (sel' r t){n}
+
+f is used <=> f[ret] is used
+
+
+
+
+Function definition:
+f a b = <body>
+f ==> analyze <body>
+Will only generate liveness info for f[i] if f[ret] is used somewhere.
+This means, if the functions return value is never used, then all of its parameters are dead as well.
+
+
+
+Bind:
+Tag a b <- <lhs>
+<rhs>
+analyze <rhs>
+analyze <lhs>
+sel Tag 0 (res <lhs>) is used
+sel Tag 1 (res <lhs>) :-> a
+sel Tag 2 (res <lhs>) :-> b
+
+t a b <- <lhs>
+<rhs>
+analyze <rhs>
+analyze <lhs>
+forall tag in t . sel tag 0 (res <lhs>) :-> sel tag 0 t
+forall tag in t . sel tag 1 (res <lhs>) :-> a
+forall tag in t . sel tag 2 (res <lhs>) :-> b
+
+
+
+Case:
+case x of
+  CNode0 a0 b0 -> <alt0>
+  CNode1 a1 b1 -> <alt1>
+(x :-> R) not needed since the information will be propagated anyway
+x{0} is used (for all tags)
+x hasTag CNode0 ==> (sel x CNode0 1 :-> a0)
+x hasTag CNode0 ==> (sel x CNode0 2 :-> b0)
+x hasTag CNode1 ==> (sel x CNode1 1 :-> b1)
+x hasTag CNode1 ==> (sel x CNode1 2 :-> b1)
+R ==> analyze <alt0>
+R ==> analyze <alt1>
+res <alt0> :-> R
+res <alt1> :-> R
+
+case t of
+  Tag -> <alt>
+sel t Tag 0 is used
+R ==> analyze <alt>
+res <alt> :-> R
+
+
+
+
+Application (context insensitive approach):
+f a b
+a :-> f[0]
+b :-> f[1]
+
+f (t a b) c
+
+
+Store:
+store x
+x :~> loc R
+
+
+
+Fetch:
+fetch p
+loc p :-> R
+
+
+
+Update:
+update p x
+x :~> loc p
+
+
+
+Pprimops:
+_prim_int_print x
+x is used
+
+primop a b
+a :-> R
+b :-> R
+We assume that primop[n] is always used for every n
+
+
+
+Values:
+(Tag)
+create R with: Tag DEAD
+
+t a b
+create R with: forall tag in t . tag DEAD DEAD DEAD
+forall tag in t . (t :-> sel R tag 0)
+forall tag in t . (a :-> sel R tag 1)
+forall tag in t . (b :-> sel R tag 2)
+
+Tag a b
+create R with: Tag DEAD DEAD DEAD
+a :-> sel R Tag 1
+b :-> sel R Tag 2
+
+
+We need a "constant" that creates a node with tags found in another register.
+
+VarTagNode t vals
+  r <- newReg
+  tagReg <- getReg t
+  emit Set {dstReg = r, constant = CVarNode tagReg (length vals)}
+
+
+We need a selector that selects the same field for all available tags.
+
+allFieldsAt n = NthFieldForAllTags n
+
+forall tag in t . (a :-> sel R tag 1)
+Project { srcSelector = allFieldsAt 1, srcReg = R, dstReg = a}
+
+
+t a b <- <lhs>
+R = res <lhs>
+forall tag in t . sel tag 1 (res <lhs>) :-> a
+Extend { srcReg = a, dstSelector = allFieldsAt 1, dstReg = R}
+
+
+Critique:
+CodeGen:
+  - are the new instrucions necessary?
+  - marking grinMain result reg LIVE, propagating info into bodyResultReg from funResultReg
+  - two-way information flow in case
+  - storing heap information AND liveness information for pointers
+  - Setting ConstTagNodes instead of just defining information flow
+LVAResult:
+  - DEAD heap locations represented as DEAD basic values
+
+
+TODO:
+  - NotEmpty -> Project: undefined
+             -> redefine with ranges
+  - AllFields: NEEDED
+  - RestrictedMove:
+
+run tests with GHCi
+
+
+Two new instructions:
+  RestictedUpdate, CopyStructure
+
+  - restricted Update
+  - structure initializing Move (using this, we can initialize heap location structure for Store by introducing a temporary register)
+  - use RestrictedMove to restrict Fetch by introducing a temporary register
+
+  reverse instruction generation for recently written code
+
+Dead field elimination:
+  - LVA is sufficient for replacing fields with dummies
+  - removing fields requires created-by analysis as well
+
+more tests: bind (possible pattern match failure) after case
+restrict case scrutinee in LVA codeGen

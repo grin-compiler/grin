@@ -1,0 +1,6 @@
+grinMain = 
+  n0 <- pure (CPair 5 (#undefined :: {}))
+  case n0 of 
+    (CPair c0 c1) ->
+      x0 <- fetch c1 
+      pure c0

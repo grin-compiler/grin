@@ -26,8 +26,10 @@ import qualified Data.Text.Short as TS
 import GHC.Generics
 import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
+import qualified Grin.TypeEnvDefs as Grin
 import qualified Test.PrimOps as PrimOps
 import Test.QuickCheck
+import Test.QuickCheck.Instances.Vector
 import Generic.Random
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -46,9 +48,12 @@ import Test.Hspec
 import Control.Monad
 import Data.List
 
-import Transformations.Optimising.DeadProcedureElimination
-import Transformations.Optimising.DeadParameterElimination
+import Transformations.Optimising.SimpleDeadFunctionElimination
+import Transformations.Optimising.SimpleDeadParameterElimination
 import Transformations.StaticSingleAssignment
+
+
+type SpecWithProg = Exp -> Spec
 
 type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
 
@@ -335,7 +340,8 @@ data Type
   deriving (Eq, Generic, Ord, Show)
 
 instance Arbitrary Type where arbitrary = genericArbitraryU
-
+instance Arbitrary Grin.SimpleType where arbitrary = genericArbitraryU
+instance Arbitrary Grin.Type where arbitrary = genericArbitraryU
 
 simpleType :: GoalM Type
 simpleType = melements
@@ -422,9 +428,10 @@ genProg = genProgWith mzero
 sampleProg :: IO ()
 sampleProg = sample $ fmap PP $ genProg
 
+-- TODO: add liveness info, or use simples DPE
 genProgWith :: GoalM G.Exp -> Gen Exp
 genProgWith gexp =
-  fmap (deadProcedureElimination . deadParameterElimination . singleStaticAssignment . head) $
+  fmap (simpleDeadFunctionElimination . simpleDeadParameterElimination . singleStaticAssignment . head) $
   G.asExp <$$>
   (runGoalM gexp $
     withADTs 10 $

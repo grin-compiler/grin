@@ -1,0 +1,23 @@
+grinMain =
+  n0 <- pure (CInt  0)
+  n1 <- pure (CBool 0)
+  n2 <- pure (CBool 0)
+  n3 <- pure (CBool 0)
+  s <- pure 5
+  n01 <- case s of
+    0 -> pure n0
+    1 -> pure n1
+  n12 <- case s of
+    0 -> pure n1
+    1 -> pure n2
+  n23 <- case s of
+    0 -> pure n2
+    1 -> pure n3
+  z0 <- case n01 of
+    (CInt  c0) -> pure 5
+    (CBool c1) -> pure 5
+  (CBool z1) <- case n12 of
+    (CInt  c2) -> pure 5
+    (CBool c3) -> pure 5
+  (CBool z2) <- pure n23
+  pure 5

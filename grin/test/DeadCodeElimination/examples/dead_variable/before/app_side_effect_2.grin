@@ -1,0 +1,11 @@
+grinMain =
+  x0 <- pure (CInt 0)
+  p0 <- store x0
+  y0 <- f x0 p0
+  y1 <- fetch p0
+  pure y1
+
+f x p = 
+  p' <- store x
+  x' <- fetch p
+  pure 0

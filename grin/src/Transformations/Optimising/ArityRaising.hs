@@ -112,7 +112,8 @@ arityRaising (te, exp0) = runVarM te (apoM builder ([], exp))
         Nothing -> pure $ SAppF name params
         Just parametersToChange -> do
           newParams0 <- forM ([1..] `zip` params) $ \case
-                (_, Lit l) -> pure ([Lit l], [])
+                (_, p@Lit{})       -> pure ([p], [])
+                (_, p@Undefined{}) -> pure ([p], [])
                 (i, Var v) -> case (List.find (\(_, i0, _) -> i == i0) parametersToChange) of
                   Nothing -> case List.lookup v substs0 of
                     Just (Right [name]) -> pure ([Var name], [])

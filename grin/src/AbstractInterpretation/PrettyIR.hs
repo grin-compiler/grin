@@ -65,6 +65,16 @@ instance Pretty Condition where
 instance Pretty Constant where
   pretty = prettyConstant Nothing
 
+instance Pretty Predicate where
+  pretty = flip (prettyPredicate Nothing) False
+
+instance Pretty Range where
+  pretty (Range from to) = lbracket
+                        <> text (show from)
+                        <> comma
+                       <+> text (show to)
+                        <> rparen
+
 prettyName :: Name -> Doc
 prettyName = red . text . unpackName
 
@@ -83,14 +93,15 @@ prettySelector :: Maybe IRMap -> Selector -> Doc
 prettySelector mirm = \case
   NodeItem tag idx          -> prettyTag mirm tag <> brackets (pretty idx)
   ConditionAsSelector cond  -> prettyCondition mirm cond
-  Locations                 -> text "Location"
-  NodeLocations             -> text "NodeLocation"
+  AllFields                 -> text "all fields"
 
 prettyCondition :: Maybe IRMap -> Condition -> Doc
 prettyCondition mirm = \case
-    NodeTypeExists tag  -> prettyTag mirm tag
-    SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty)
-    NotIn tags    -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
+    NodeTypeExists  tag -> prettyTag mirm tag <+> text "exists in"
+    SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty) <+> text "exists in"
+    NotIn          tags -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
+    All       predicate -> text "all" <+> prettyPredicate mirm predicate True
+    Any       predicate -> text "any" <+> prettyPredicate mirm predicate False
 
 prettyConstant :: Maybe IRMap -> Constant -> Doc
 prettyConstant mirm = \case
@@ -106,25 +117,36 @@ prettyConstant mirm = \case
     ppT = prettyTag mirm
     ppS a = prettySimpleType a <> text "#" <> (integer $ fromIntegral a)
 
+prettyPredicate :: Maybe IRMap -> Predicate -> Bool -> Doc
+prettyPredicate mirm predicate plural = case predicate of
+  TagIn     tags -> text ("tag" ++ s ++ " in") <+> list (map (prettyTag mirm) $ Set.toList tags)
+  TagNotIn  tags -> text ("tag" ++ s ++ " not in") <+> list (map (prettyTag mirm) $ Set.toList tags)
+  ValueIn    rng -> text ("value" ++ s ++ " in") <+> pretty rng
+  ValueNotIn rng -> text ("value" ++ s ++ " not in") <+> pretty rng
+  where s = if plural then "s" else ""
+
 prettyInstruction :: Maybe IRMap -> Instruction -> Doc
 prettyInstruction mirm = \case
-    If      {..} -> keyword "if" <+> prettyCondition mirm condition <+> keyword "in" <+> ppR srcReg <$$> indent 2 (vsep . map (prettyInstruction mirm) $ instructions)
+    If      {..} -> keyword "if" <+> prettyCondition mirm condition <+> ppR srcReg <$$> indent 2 (vsep . map (prettyInstruction mirm) $ instructions)
     Project {..} -> keyword "project" <+> ppS srcSelector <+> ppR srcReg <+> arr <+> ppR dstReg
     Extend  {..} -> keyword "extend" <+> ppR srcReg <+> ppS dstSelector <+> arr <+> ppR dstReg
     Move    {..} -> keyword "move" <+> ppR srcReg <+> arr <+> ppR dstReg
+    RestrictedMove {..} -> keyword "restricted move" <+> ppR srcReg <+> arr <+> ppR dstReg
+    ConditionalMove {..} -> keyword "conditional move" <+> parens (prettyPredicate mirm predicate False) <+> ppR srcReg <+> arr <+> ppR dstReg
     Fetch   {..} -> keyword "fetch" <+> ppR addressReg <+> arr <+> ppR dstReg
     Store   {..} -> keyword "store" <+> ppR srcReg <+> arr <+> pretty address
     Update  {..} -> keyword "update" <+> ppR srcReg <+> arr <+> ppR addressReg
+    RestrictedUpdate  {..} -> keyword "restricted update" <+> ppR srcReg <+> arr <+> ppR addressReg
     Set     {..} -> keyword "set" <+> prettyConstant mirm constant <+> arr <+> ppR dstReg
   where
     ppR = prettyReg mirm
     ppS = prettySelector mirm
     arr = text "-->"
 
-prettyInstructions :: Maybe HPTProgram -> [Instruction] -> Doc
-prettyInstructions mhpt = vsep . map (prettyInstruction mirm) where
-  mirm = fmap toIRMap mhpt
+prettyInstructions :: HasDataFlowInfo a => Maybe a -> [Instruction] -> Doc
+prettyInstructions mDfi = vsep . map (prettyInstruction mirm) where
+  mirm = fmap (toIRMap . getDataFlowInfo) mDfi
   toIRMap hpt = IRMap
-    { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ hptRegisterMap hpt]
-    , irmTagMap       = hptTagMap hpt
+    { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ _absRegisterMap hpt]
+    , irmTagMap       = _absTagMap hpt
     }
