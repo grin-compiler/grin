@@ -1,4 +1,4 @@
-grinMain = 
+grinMain =
   p0 <- store (#undefined :: {CInt[T_Int64]})
   p1 <- store (#undefined :: {CPair[T_Int64, T_Bool]})
   p2 <- store (#undefined :: {CPair[T_Int64, {0}]})

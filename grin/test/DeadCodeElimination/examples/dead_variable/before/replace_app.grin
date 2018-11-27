@@ -1,6 +1,5 @@
-grinMain = 
+grinMain =
   x0 <- pure 5
   f x0 5
 
 f x y = pure y
-  

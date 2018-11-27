@@ -1,4 +1,4 @@
-grinMain = 
+grinMain =
   x0 <- pure 0
   x1 <- pure (CInt 0)
   x2 <- pure x0

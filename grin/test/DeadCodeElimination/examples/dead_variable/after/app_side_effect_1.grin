@@ -4,6 +4,6 @@ grinMain =
   y1 <- fetch p0
   pure y1
 
-f p = 
+f p =
   update p (CInt 1)
   pure 0

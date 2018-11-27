@@ -17,7 +17,7 @@ extra-deps:
   - QuickCheck-GenT-0.2.0
   - megaparsec-6.5.0
   - neat-interpolation-0.3.2.2
-  - set-extra-1.4.1 
+  - set-extra-1.4.1
 
 flags:
   llvm-hs:

@@ -1,4 +1,4 @@
-grinMain = 
+grinMain =
   x0 <- pure (#undefined :: T_Int64)
   x1 <- pure (#undefined :: T_Word64)
   x4 <- pure (#undefined :: T_Float)

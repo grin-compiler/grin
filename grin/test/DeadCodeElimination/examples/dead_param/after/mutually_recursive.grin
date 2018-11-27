@@ -1,6 +1,6 @@
 grinMain = f
 
-f = 
+f =
   y <- pure (#undefined :: T_Int64)
   x <- pure (#undefined :: T_Int64)
   g

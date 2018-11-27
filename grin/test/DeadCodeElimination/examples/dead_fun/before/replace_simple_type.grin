@@ -1,4 +1,4 @@
-grinMain = 
+grinMain =
   y0 <- f 0
   pure 0
 

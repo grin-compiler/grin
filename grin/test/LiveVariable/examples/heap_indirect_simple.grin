@@ -1,12 +1,12 @@
 grinMain =
   a0 <- pure 5
   n0 <- pure (CNil)
-  p0 <- store n0 
+  p0 <- store n0
   n1 <- pure (CCons a0 p0)
-  r <- case n1 of 
-    (CNil) -> 
+  r <- case n1 of
+    (CNil) ->
       pure (CNil)
-    (CCons x xs) -> 
+    (CCons x xs) ->
       xs' <- fetch xs
-      pure xs' 
+      pure xs'
   pure r

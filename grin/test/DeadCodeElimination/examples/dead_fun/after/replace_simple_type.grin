@@ -1,3 +1,3 @@
-grinMain = 
+grinMain =
   y0 <- pure (#undefined :: T_Int64)
   pure 0

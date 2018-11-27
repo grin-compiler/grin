@@ -8,7 +8,7 @@ grinMain =
   case n1 of
     (CWordH c3) -> pure 5
     (CBoolH c4) -> pure c4
-    (CNopeH c5) -> pure c5 
+    (CNopeH c5) -> pure c5
 
 f x =
   case x of

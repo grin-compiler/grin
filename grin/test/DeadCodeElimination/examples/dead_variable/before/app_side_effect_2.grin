@@ -5,7 +5,7 @@ grinMain =
   y1 <- fetch p0
   pure y1
 
-f x p = 
+f x p =
   p' <- store x
   x' <- fetch p
   pure 0

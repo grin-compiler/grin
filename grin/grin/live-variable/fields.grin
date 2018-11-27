@@ -8,4 +8,4 @@ grinMain =
 
 f x =
   case x of
-    (CNode c2 c3) -> pure c3 
+    (CNode c2 c3) -> pure c3

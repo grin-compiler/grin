@@ -4,5 +4,5 @@ grinMain =
   y1 <- fetch p0
   pure y1
 
-f x p = 
+f x p =
   pure 0

@@ -1,7 +1,7 @@
-grinMain = 
+grinMain =
   p0 <- store (CInt 0)
   n0 <- fetch p0
   p1 <- store n0
   y0 <- pure (CPtr p1)
   update p1 y0
-  pure 0 
+  pure 0

@@ -239,7 +239,7 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadParam.MutuallyRecursive
                      , DeadCodeElimination.Tests.DeadParam.Spec
                      , DeadCodeElimination.Tests.DeadParam.Util
-                     
+
                      , DeadCodeElimination.Tests.DeadVariable.Simple
                      , DeadCodeElimination.Tests.DeadVariable.Heap
                      , DeadCodeElimination.Tests.DeadVariable.Update
@@ -291,7 +291,7 @@ test-suite grin-test
                      , LiveVariable.Tests.UndefinedWithLocInfo
                      , LiveVariable.Tests.Util
 
-                     , Parse.ParseSpec 
+                     , Parse.ParseSpec
                      , Parse.Tests.Interleaved
                      , Parse.Tests.PureUndefined
                      , Parse.Tests.StoreUndefined

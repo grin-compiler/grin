@@ -4,7 +4,7 @@ grinMain = n1 <- pure (CInt 1)
            t2 <- store n2
            n3 <- pure (Fupto t1 t2)
            t3 <- store n3
-           n4 <- pure (Flength t3)  
+           n4 <- pure (Flength t3)
            t4 <- store n4
            n5 <- eval t4
            (CInt r') <- pure n5
@@ -29,10 +29,10 @@ upto m n = n6 <- eval m
 
 length l = l2 <- eval l
            case l2 of
-             (CNil) -> 
+             (CNil) ->
               n12 <- pure (CInt 0)
               pure n12
-             (CCons.0 xs) -> 
+             (CCons.0 xs) ->
               x <- pure (#undefined :: #ptr)
               n13 <- length xs
               (CInt l') <- pure n13

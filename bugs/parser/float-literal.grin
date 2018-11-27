@@ -42,4 +42,3 @@ grinMain =
                 _prim_int_mul nasu kuri
       36560 -> pure kuri
   _prim_int_print meyu
- 

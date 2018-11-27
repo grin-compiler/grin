@@ -1,4 +1,4 @@
-grinMain = 
+grinMain =
   a0 <- pure (CInt 5)
   a1 <- pure (CInt 5)
   a2 <- pure (CInt 5)
@@ -16,7 +16,7 @@ grinMain =
 
   (P1foo v1 v2) <- pure foo1
   fooRet        <- foo v2
-  
+
   pure fooRet
 
 

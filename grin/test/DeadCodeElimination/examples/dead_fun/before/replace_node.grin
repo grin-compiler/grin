@@ -1,7 +1,7 @@
-grinMain = 
+grinMain =
   n0 <- f 0
   pure 0
 
-f x = 
+f x =
   p <- store (CInt 5)
   pure (CNode p)

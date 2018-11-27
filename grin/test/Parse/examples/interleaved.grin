@@ -1,5 +1,5 @@
 % grinMain :: T_Int64
-grinMain = 
+grinMain =
   % a -> T_Int64
   a <- pure 5
   % n -> {CInt[T_Int64]}

@@ -1,10 +1,10 @@
-grinMain = 
+grinMain =
   x0 <- pure (CInt 5)
   p0 <- store x0
   a0 <- pure (Ffoo.0 p0)
   p1 <- store a0
   a1 <- eval p1
-  pure a1 
+  pure a1
 
 foo x y z =
   y' <- eval y
@@ -12,12 +12,11 @@ foo x y z =
 
 eval p =
   v <- fetch p
-  case v of 
+  case v of
     (CInt n) -> pure v
-    (Ffoo.0 y1) -> 
+    (Ffoo.0 y1) ->
       z1 <- pure (#undefined :: #ptr)
       x1 <- pure (#undefined :: #ptr)
       w <- foo x1 y1 z1
-      update p w 
+      update p w
       pure w
-  

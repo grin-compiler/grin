@@ -11,7 +11,7 @@ grinMain =
   n5 <- pure (CThree.2 a1 a2)
   n6 <- pure (CThree.1 a0 a2)
   n7 <- pure (CThree.0)
-  
+
   (CThree b0 b1 b2) <- pure n0
 
   (CThree.6 c0) <- pure n1
@@ -34,7 +34,7 @@ grinMain =
 
   (CThree.1 h0 h2) <- pure n6
   h1 <- pure (#undefined :: T_Int64)
-  
+
   (CThree.0) <- pure n7
   i2 <- pure (#undefined :: T_Int64)
   i1 <- pure (#undefined :: T_Int64)

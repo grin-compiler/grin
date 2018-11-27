@@ -1,6 +1,6 @@
-grinMain = 
+grinMain =
   p0 <- store (CNil)
-  n0 <- pure (CCons (#undefined :: {0}) p0) 
+  n0 <- pure (CCons (#undefined :: {0}) p0)
   (CCons c0 c1) <- pure n0
   x0 <- fetch c0
   pure x0
