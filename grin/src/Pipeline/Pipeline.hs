@@ -374,7 +374,7 @@ transformationM DeadCodeElimination = do
   withEffMapTyEnvCByLVA $ \effMap typeEnv cbyResult lvaResult -> do
 
     e <- use psExp
-    case deadFunctionElimination lvaResult typeEnv e of
+    case deadFunctionElimination lvaResult effMap typeEnv e of
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
       Left  err -> psErrors %= (err:)
 
@@ -395,8 +395,8 @@ transformationM DeadCodeElimination = do
 
 transformationM DeadFunctionElimination = do
   e  <- use psExp
-  withTyEnvLVA $ \typeEnv lvaResult -> do
-    case deadFunctionElimination lvaResult typeEnv e of
+  withEffMapTyEnvLVA $ \effMap typeEnv lvaResult -> do
+    case deadFunctionElimination lvaResult effMap typeEnv e of
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
       Left  err -> psErrors %= (err:)
 

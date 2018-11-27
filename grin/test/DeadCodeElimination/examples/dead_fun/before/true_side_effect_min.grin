@@ -1,0 +1,6 @@
+grinMain =
+  result_main <- Main.main1 $
+  pure ()
+
+Main.main1 =
+  _prim_int_print $ 1
