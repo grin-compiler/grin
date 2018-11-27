@@ -254,6 +254,7 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceStore
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceUpdate
                      , DeadCodeElimination.Tests.DeadVariable.ReplaceUnspecLoc
+                     , DeadCodeElimination.Tests.DeadVariable.TrueSideEffectMin
                      , DeadCodeElimination.Tests.DeadVariable.Spec
                      , DeadCodeElimination.Tests.DeadVariable.Util
 

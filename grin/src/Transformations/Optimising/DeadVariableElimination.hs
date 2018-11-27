@@ -26,6 +26,7 @@ import Control.Monad.Trans.Except
 import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnv
+import Grin.EffectMap
 import Transformations.Util
 import AbstractInterpretation.LVAUtil as LVA
 
@@ -50,17 +51,17 @@ runTrf :: Trf a -> Either String a
 runTrf = flip evalState mempty . runExceptT
 
 -- P and F nodes are handled by Dead Data Elimination
-deadVariableElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
-deadVariableElimination lvaResult tyEnv
-  = runTrf . (deleteDeadBindings lvaResult tyEnv >=> replaceDeletedVars tyEnv)
+deadVariableElimination :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp
+deadVariableElimination lvaResult effMap tyEnv
+  = runTrf . (deleteDeadBindings lvaResult effMap tyEnv >=> replaceDeletedVars tyEnv)
 
 {- NOTE: Fetches do not have to be handled separately,
    since producer name introduction guarantees
    that all bindings with a fetch LHS will have a Var PAT
    (handled by the last case in alg).
 -}
-deleteDeadBindings :: LVAResult -> TypeEnv -> Exp -> Trf Exp
-deleteDeadBindings lvaResult tyEnv = cataM alg where
+deleteDeadBindings :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
+deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     e@(EBindF SStore{} (Var p) rhs)
@@ -70,8 +71,9 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
         rmWhen pointerDead e rhs (Set.singleton p) (Set.fromList locs)
     e@(EBindF (SApp f _) lpat rhs) -> do
       let names = foldNamesVal Set.singleton lpat
+          hasNoSideEffect = not $ hasTrueSideEffect f effMap 
       funDead <- isFunDeadM f
-      rmWhen funDead e rhs names mempty
+      rmWhen (funDead && hasNoSideEffect) e rhs names mempty
     e@(EBindF (SUpdate p v) Unit rhs) -> do
       varDead <- isVarDeadM p
       rmWhen varDead e rhs mempty mempty

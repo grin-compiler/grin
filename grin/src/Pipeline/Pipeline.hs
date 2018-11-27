@@ -371,7 +371,7 @@ transformationM NonSharedElimination = do
 
 
 transformationM DeadCodeElimination = do
-  withTyEnvCByLVA $ \typeEnv cbyResult lvaResult -> do
+  withEffMapTyEnvCByLVA $ \effMap typeEnv cbyResult lvaResult -> do
 
     e <- use psExp
     case deadFunctionElimination lvaResult typeEnv e of
@@ -384,7 +384,7 @@ transformationM DeadCodeElimination = do
       Left  err -> psErrors %= (err:)
 
     e <- use psExp
-    case deadVariableElimination lvaResult typeEnv e of
+    case deadVariableElimination lvaResult effMap typeEnv e of
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
       Left  err -> psErrors %= (err:)
 
@@ -402,8 +402,8 @@ transformationM DeadFunctionElimination = do
 
 transformationM DeadVariableElimination = do
   e  <- use psExp
-  withTyEnvLVA $ \typeEnv lvaResult -> do
-    case deadVariableElimination lvaResult typeEnv e of
+  withEffMapTyEnvLVA $ \effMap typeEnv lvaResult -> do
+    case deadVariableElimination lvaResult effMap typeEnv e of
       Right e'  -> psExp .= e' >> psTransStep %= (+1)
       Left  err -> psErrors %= (err:)
 
@@ -430,7 +430,7 @@ transformationM SparseCaseOptimisation = do
 
 transformationM t = do
   --preconditionCheck t
-  env0 <- fromMaybe (traceShow "emptyTypEnv is used" emptyTypeEnv) <$> use psTypeEnv
+  env0 <- fromMaybe (traceShow "emptyTypeEnv is used" emptyTypeEnv) <$> use psTypeEnv
   effs0 <- fromMaybe (traceShow "emptyEffectMap is used" mempty) <$> use psEffectMap
   n    <- use psTransStep
   exp0 <- use psExp

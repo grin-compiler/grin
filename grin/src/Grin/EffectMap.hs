@@ -25,7 +25,7 @@ data Effects
 
 instance Semigroup Effects where 
   (<>) (Effects primops1 updateLocs1 storeLocs1) (Effects primops2 updateLocs2 storeLocs2)
-    = Effects (primops1 <> primops1) (updateLocs1 <> updateLocs1) (storeLocs1 <> storeLocs1)
+    = Effects (primops1 <> primops2) (updateLocs1 <> updateLocs2) (storeLocs1 <> storeLocs2)
 
 instance Monoid Effects where 
   mempty = Effects mempty mempty mempty
