@@ -1,0 +1,11 @@
+{-
+RUN:
+  stack exec -- grin dce_minimal_bug.grin --bn --pni --cby --lva -p -e --pe --dce -p
+-}
+
+grinMain =
+  result_main <- Main.main1 $ -- BUG: DCE removes this line ; Main.main1 is effectful
+  _prim_int_print $ 0
+
+Main.main1 =
+  _prim_int_print $ 1
