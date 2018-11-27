@@ -90,7 +90,7 @@ pipelineOpts =
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
   <|> flg' (Pass [CBy CompileToAbstractProgram, CBy RunAbstractProgramPure]) 'c' "cby" "Compiles and runs the created-by analysis"
-  <|> flg' (Pass [LVA CompileToAbstractProgram, LVA RunAbstractProgramPure]) 'l' "lva" "Compiles and runs the live variable analysis"
+  <|> flg' (Pass [LVA CompileToAbstractProgram, LVA RunAbstractProgramPure]) 'v' "lva" "Compiles and runs the live variable analysis"
   <|> flg' (Pass [Sharing CompileToAbstractProgram, Sharing RunAbstractProgramPure]) 's' "sharing" "Compiles and runs the sharing analysis"
   <|> flg (Pass [HPT CompileToAbstractProgram, HPT OptimiseAbstractProgram, HPT RunAbstractProgramPure]) "hpt-opt" "Compiles, optimizes and runs the heap-points-to analysis"
   <|> flg (Pass [CBy CompileToAbstractProgram, CBy OptimiseAbstractProgram, CBy RunAbstractProgramPure]) "cby-opt" "Compiles, optimizes and runs the created-by analysis"
