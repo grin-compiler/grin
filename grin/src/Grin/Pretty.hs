@@ -158,10 +158,12 @@ instance Pretty TypeEnv where
     , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
     ]
 
-instance Pretty Effect where
-  pretty (Effectful fun) = pretty $ "effectful " <> fun
-  pretty (Update locs)   = text "updates " <+> list (map (cyan . int) locs)
-  pretty (Store locs)    = text "stores " <+> list (map (cyan . int) locs)
+instance Pretty Effects where
+  pretty (Effects priomps updateLocs storeLocs) = align . vsep $ 
+    [ green (text "effectful") <+> (semiBraces . map (red . pretty) . Set.toList $ priomps)
+    , green (text "updates")   <+> prettyLocSet updateLocs
+    , green (text "stores")    <+> prettyLocSet storeLocs
+    ] 
 
 instance Pretty EffectMap where
   pretty (EffectMap effects) = yellow (text "EffectMap") <$$>
@@ -175,3 +177,6 @@ prettySimplePair (x, y) = pretty x <> pretty y
 
 prettyFunction :: Pretty a => (Name, (a, Vector a)) -> Doc
 prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
+
+prettyLocSet :: Set Loc -> Doc 
+prettyLocSet = semiBraces . map (cyan . int) . Set.toList

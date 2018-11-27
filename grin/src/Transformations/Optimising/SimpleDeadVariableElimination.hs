@@ -17,7 +17,7 @@ import Transformations.Util
 
 -- TODO: Write for dead code elimination.
 simpleDeadVariableElimination :: (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
-simpleDeadVariableElimination (typeEnv, EffectMap effects, e) = (typeEnv, EffectMap effects, fst $ cata folder e) where
+simpleDeadVariableElimination (typeEnv, effMap, e) = (typeEnv, effMap, fst $ cata folder e) where
 
   folder :: ExpF (Exp, Set Name) -> (Exp, Set Name)
   folder = \case
@@ -28,7 +28,7 @@ simpleDeadVariableElimination (typeEnv, EffectMap effects, e) = (typeEnv, Effect
       , all ((/=) unit_t . variableType typeEnv) vars
       , all (flip Set.notMember rightRef) vars
       -> case left of
-          (SApp name _) | Just _ <- Map.lookup name effects -> embedExp exp
+          (SApp name _) | hasPossibleSideEffect name effMap -> embedExp exp
           SBlock{}  -> embedExp exp
           _         -> right
 

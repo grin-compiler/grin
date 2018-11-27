@@ -140,6 +140,7 @@ printingSteps =
   , Sharing PrintAbstractProgram
   , Sharing PrintAbstractResult
   , PrintTypeEnv
+  , Eff PrintEffectMap
   , PrintAST
   , PrintErrors
   , PrintTypeAnnots
