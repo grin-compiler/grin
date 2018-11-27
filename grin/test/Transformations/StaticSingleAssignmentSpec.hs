@@ -40,3 +40,22 @@ spec = do
           prim_int_add p3 4
       |]
     (staticSingleAssignment before) `sameAs` after
+
+  it "node" $ do
+    let before = [prog|
+        fun1 a =
+          (CInt i) <- pure a
+          pure i
+        fun2 a =
+          (CInt i) <- pure a
+          pure i
+      |]
+    let after = [prog|
+        fun1 a =
+          (CInt i) <- pure a
+          pure i
+        fun2 a_1 =
+          (CInt i_2) <- pure a_1
+          pure i_2
+      |]
+    (staticSingleAssignment before) `sameAs` after

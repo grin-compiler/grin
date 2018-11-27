@@ -38,9 +38,9 @@ staticSingleAssignment e = flip evalState (mempty, 1) $
         names
       pure $ DefF name names0 (subst0, body)
 
-    EBind lhs v@(Var nm) rhs -> do
-      (nm', subst') <- calcName (nm, subst)
-      pure $ EBindF (subst', lhs) (Var nm') (subst', rhs)
+    EBind lhs v rhs -> do
+      subst' <- foldM (\s n -> snd <$> calcName (n, s)) subst (foldNamesVal (:[]) v)
+      pure $ EBindF (subst', lhs) (mapNamesVal (substName' subst') v) (subst', rhs)
 
     Alt (NodePat tag names) body -> do
       (names0, subst0) <- first reverse <$> foldM
@@ -83,3 +83,4 @@ staticSingleAssignment e = flip evalState (mempty, 1) $
         rest    -> rest
 
       substName nm = maybe nm (newName nm) (Map.lookup nm subst)
+      substName' s nm = maybe nm (newName nm) (Map.lookup nm s)
