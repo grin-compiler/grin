@@ -1,0 +1,63 @@
+{-
+RUN:
+  stack exec -- grin dce_effect_bug01.grin --pni --cby --lva -p -e --pe --dce -p
+-}
+
+grinMain =
+  result_main <- Main.main1 $ -- BUG: DCE removes this line ; Main.main1 is effectful
+  _prim_int_print $ 0
+
+"_ghc__stg_foreign_call {PlaySafe CCallConv StaticTarget \"_prim_int_print\"}{(# State# RealWorld #)}" i =
+  _prim_int_print $ i
+  pure (#undefined :: {C"GHC.Prim.(##)"[]})
+
+"_ghc_+#{Int#}" a_3 b_4 =
+  _prim_int_add $ a_3 b_4
+
+_ghc_bool_to_int a_24 =
+  case a_24 of
+    #False ->
+      pure 0
+    #True ->
+      pure 1
+
+"Main.$wupto" ww.s15120.0 ww1.s15121.0 =
+  r_23.0 <- _prim_int_gt $ ww.s15120.0 ww1.s15121.0
+  lwild.s15122.1 <- _ghc_bool_to_int $ r_23.0
+  case lwild.s15122.1 of
+    #default ->
+      v.2 <- pure (F"Main.$wupto.closure.0" ww.s15120.0 ww1.s15121.0)
+      v.1 <- pure v.2
+      sat.s15125.0 <- store v.2
+      v.3 <- pure (C"GHC.Types.I#" ww.s15120.0)
+      v.4 <- pure v.3
+      sat.s15123.1 <- store v.3
+      pure (CMain.Cons sat.s15123.1 sat.s15125.0)
+    1 ->
+      pure (CMain.Nil)
+
+"Main.$wxsum" ww.s15112.0 w.s15113.0 =
+  v.8 <- fetch w.s15113.0
+  v.7 <- pure v.8
+  wild.s15114.0 <- case v.8 of
+    #default ->
+      pure v.8
+    (F"Main.$wupto.closure.0" a.2.0 a.3.0) ->
+      sat.s15124.0.0 <- "_ghc_+#{Int#}" $ a.2.0 1
+      "Main.$wupto" $ sat.s15124.0.0 a.3.0
+  case wild.s15114.0 of
+    (CMain.Nil) ->
+      pure (#undefined :: T_Dead)
+    (CMain.Cons x.s15115.0 xs.s15116.0) ->
+      v.10 <- fetch x.s15115.0
+      v.11 <- pure v.10
+      (C"GHC.Types.I#" y.s15118.0) <- pure v.10
+      sat.s15119.0 <- "_ghc_+#{Int#}" $ ww.s15112.0 y.s15118.0
+      "Main.$wxsum" $ sat.s15119.0 xs.s15116.0
+
+Main.main1 =
+  sat.s15127.1 <- "Main.$wupto" $ 1 10
+  ptr_sat.s15127.1.0 <- store sat.s15127.1
+  ww.s15128.0 <- "Main.$wxsum" $ 0 ptr_sat.s15127.1.0
+  wild.s15130.0 <- "_ghc__stg_foreign_call {PlaySafe CCallConv StaticTarget \"_prim_int_print\"}{(# State# RealWorld #)}" $ ww.s15128.0
+  pure (C"GHC.Prim.Unit#.0")
