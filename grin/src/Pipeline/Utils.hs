@@ -144,6 +144,7 @@ printingSteps =
   , PrintErrors
   , PrintTypeAnnots
   , DebugPipelineState
+  , PrintGrin id
   ]
 
 isPrintingStep :: PipelineStep -> Bool
