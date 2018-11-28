@@ -12,6 +12,7 @@ import Grin.TypeCheck
 
 import AbstractInterpretation.LVAResultTypes
 import Transformations.Optimising.DeadVariableElimination
+import Transformations.EffectMap
 
 import LiveVariable.LiveVariableSpec (calcLiveness)
 
@@ -29,6 +30,7 @@ import DeadCodeElimination.Tests.DeadVariable.ReplacePure
 import DeadCodeElimination.Tests.DeadVariable.ReplaceStore
 import DeadCodeElimination.Tests.DeadVariable.ReplaceUpdate
 import DeadCodeElimination.Tests.DeadVariable.ReplaceUnspecLoc
+import DeadCodeElimination.Tests.DeadVariable.TrueSideEffectMin
 
 
 spec :: Spec
@@ -61,6 +63,7 @@ runTestsFrom fromCurDir = do
       , replaceStoreBefore
       , replaceUpdateBefore
       , replaceUnspecLocBefore
+      , trueSideEffectMinBefore
       ]
       [ simpleAfter
       , heapAfter
@@ -76,6 +79,7 @@ runTestsFrom fromCurDir = do
       , replaceStoreAfter
       , replaceUpdateAfter
       , replaceUnspecLocAfter
+      , trueSideEffectMinAfter
       ]
       [ simpleSpec
       , heapSpec
@@ -91,16 +95,18 @@ runTestsFrom fromCurDir = do
       , replaceStoreSpec
       , replaceUpdateSpec
       , replaceUnspecLocSpec
+      , trueSideEffectMinSpec
       ]
 
 eliminateDeadVariables :: Exp -> Exp
 eliminateDeadVariables e =
   fromRight fail
-  . deadVariableElimination lvaResult tyEnv
+  . deadVariableElimination lvaResult effMap tyEnv
   $ e
   where
     fail = error "Dead variable elimination failed. See the error logs for more information"
     lvaResult = calcLiveness e
     tyEnv = inferTypeEnv e
+    effMap = effectMap (tyEnv, e)
 
 

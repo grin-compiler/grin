@@ -9,6 +9,7 @@ import Lens.Micro.Mtl
 import Pipeline.Definitions
 
 import Grin.Grin
+import Grin.EffectMap
 import Grin.TypeEnvDefs
 import AbstractInterpretation.CByResultTypes
 import AbstractInterpretation.LVAResultTypes
@@ -29,6 +30,7 @@ pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n
 
 
 -- TODO: Refactor these into some kind of Maybe monad
+-- TODO: This needs some serious refactoring ...
 
 withPState :: (PState -> Maybe a) -> String -> (a -> PipelineM ()) -> PipelineM ()
 withPState selector err action = do
@@ -50,6 +52,9 @@ withLVAResult = withPState _psLVAResult $ notAvailableMsg "Live variable analysi
 withSharing :: (SharingResult -> PipelineM ()) -> PipelineM ()
 withSharing = withPState _psSharingResult $ notAvailableMsg "Sharing analysis result"
 
+withEffectMap :: (EffectMap -> PipelineM ()) -> PipelineM ()
+withEffectMap = withPState _psEffectMap $ notAvailableMsg "Effect map"
+
 withTyEnvCByLVA ::
   (TypeEnv -> CByResult -> LVAResult -> PipelineM ()) ->
   PipelineM ()
@@ -59,6 +64,11 @@ withTyEnvCByLVA f =
       withLVAResult $ \lva ->
         f te cby lva
 
+withEffMapTyEnvCByLVA :: 
+  (EffectMap -> TypeEnv -> CByResult -> LVAResult -> PipelineM ()) ->
+  PipelineM ()
+withEffMapTyEnvCByLVA f = withEffectMap (withTyEnvCByLVA . f)
+
 withTyEnvLVA ::
   (TypeEnv -> LVAResult -> PipelineM ()) ->
   PipelineM ()
@@ -66,6 +76,11 @@ withTyEnvLVA f =
   withTypeEnv $ \te ->
     withLVAResult $ \lva ->
       f te lva
+
+withEffMapTyEnvLVA :: 
+  (EffectMap -> TypeEnv -> LVAResult -> PipelineM ()) ->
+  PipelineM ()
+withEffMapTyEnvLVA f = withEffectMap (withTyEnvLVA . f)
 
 withTyEnvSharing ::
   (TypeEnv -> SharingResult -> PipelineM ()) ->
@@ -140,6 +155,7 @@ printingSteps =
   , Sharing PrintAbstractProgram
   , Sharing PrintAbstractResult
   , PrintTypeEnv
+  , Eff PrintEffectMap
   , PrintAST
   , PrintErrors
   , PrintTypeAnnots
