@@ -17,6 +17,7 @@ sparseCaseOptimisation :: TypeEnv -> Exp -> Either String Exp
 sparseCaseOptimisation TypeEnv{..} = runExcept . anaM builder where
   builder :: Exp -> Except String (ExpF Exp)
   builder = \case
+    -- TODO: reduce noise and redundancy
     ECase scrut@(Var name) alts -> do
       scrutType <- lookupExcept (notInTyEnv scrut) name _variable
       let alts' = filterAlts scrutType alts
