@@ -64,7 +64,7 @@ withTyEnvCByLVA f =
       withLVAResult $ \lva ->
         f te cby lva
 
-withEffMapTyEnvCByLVA :: 
+withEffMapTyEnvCByLVA ::
   (EffectMap -> TypeEnv -> CByResult -> LVAResult -> PipelineM ()) ->
   PipelineM ()
 withEffMapTyEnvCByLVA f = withEffectMap (withTyEnvCByLVA . f)
@@ -77,7 +77,7 @@ withTyEnvLVA f =
     withLVAResult $ \lva ->
       f te lva
 
-withEffMapTyEnvLVA :: 
+withEffMapTyEnvLVA ::
   (EffectMap -> TypeEnv -> LVAResult -> PipelineM ()) ->
   PipelineM ()
 withEffMapTyEnvLVA f = withEffectMap (withTyEnvLVA . f)

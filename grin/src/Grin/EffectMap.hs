@@ -16,18 +16,18 @@ import Grin.Grin
 -- | Either the name of a function with return type of Unit,
 -- or a list of heap locations updated by the function.
 data Effects
-  = Effects 
-  { _effectfulPrimops :: Set Name  
-  , _updateLocs       :: Set Int   
-  , _storeLocs        :: Set Int   
+  = Effects
+  { _effectfulPrimops :: Set Name
+  , _updateLocs       :: Set Int
+  , _storeLocs        :: Set Int
   }
   deriving (Eq, Ord, Show)
 
-instance Semigroup Effects where 
+instance Semigroup Effects where
   (<>) (Effects primops1 updateLocs1 storeLocs1) (Effects primops2 updateLocs2 storeLocs2)
     = Effects (primops1 <> primops2) (updateLocs1 <> updateLocs2) (storeLocs1 <> storeLocs2)
 
-instance Monoid Effects where 
+instance Monoid Effects where
   mempty = Effects mempty mempty mempty
 
 
@@ -49,28 +49,28 @@ storesEff :: [Int] -> Effects
 storesEff locs = Effects mempty mempty (Set.fromList locs)
 
 
-hasSomeEffect :: (Effects -> Set a) -> Name -> EffectMap -> Bool 
-hasSomeEffect selectEff f (EffectMap effMap) 
-  | Just effects <- Map.lookup f effMap 
+hasSomeEffect :: (Effects -> Set a) -> Name -> EffectMap -> Bool
+hasSomeEffect selectEff f (EffectMap effMap)
+  | Just effects <- Map.lookup f effMap
   = not . null . selectEff $ effects
   | otherwise = False
 
-hasSideEffectingPrimop :: Name -> EffectMap -> Bool 
+hasSideEffectingPrimop :: Name -> EffectMap -> Bool
 hasSideEffectingPrimop = hasSomeEffect _effectfulPrimops
 
-hasUpdates :: Name -> EffectMap -> Bool 
+hasUpdates :: Name -> EffectMap -> Bool
 hasUpdates = hasSomeEffect _updateLocs
 
-hasStores :: Name -> EffectMap -> Bool 
+hasStores :: Name -> EffectMap -> Bool
 hasStores = hasSomeEffect _storeLocs
 
 -- | Checks whether a function has a true side effect
 -- , meaning it calls a side-effecting primop.
-hasTrueSideEffect :: Name -> EffectMap -> Bool 
+hasTrueSideEffect :: Name -> EffectMap -> Bool
 hasTrueSideEffect = hasSideEffectingPrimop
 
--- | Checks whether a function has a possible side effect 
+-- | Checks whether a function has a possible side effect
 -- , meaning it either has a true side effect
 -- , or it updates a location, which can cause a side effect.
-hasPossibleSideEffect :: Name -> EffectMap -> Bool 
+hasPossibleSideEffect :: Name -> EffectMap -> Bool
 hasPossibleSideEffect f effMap = hasTrueSideEffect f effMap || hasUpdates f effMap

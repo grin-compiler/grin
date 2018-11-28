@@ -68,10 +68,10 @@ replaceAppWithUndefined _ _ _ e = pure e
 
 
 isFunDeadM :: LVAResult -> EffectMap -> Name -> Trf Bool
-isFunDeadM LVAResult{..} effMap f = fmap andHasNoSideEffect 
-                                  . fmap isFunDead 
-                                  . lookupExcept (noLiveness f) f 
+isFunDeadM LVAResult{..} effMap f = fmap andHasNoSideEffect
+                                  . fmap isFunDead
+                                  . lookupExcept (noLiveness f) f
                                   $ _function
-  where andHasNoSideEffect = (&&) (not $ hasTrueSideEffect f effMap) 
+  where andHasNoSideEffect = (&&) (not $ hasTrueSideEffect f effMap)
 
 noLiveness f = "DFE: Function " ++ show (PP f) ++ " not found in liveness map"

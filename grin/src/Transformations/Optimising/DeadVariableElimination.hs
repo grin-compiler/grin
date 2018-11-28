@@ -71,7 +71,7 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
         rmWhen pointerDead e rhs (Set.singleton p) (Set.fromList locs)
     e@(EBindF (SApp f _) lpat rhs) -> do
       let names = foldNamesVal Set.singleton lpat
-          hasNoSideEffect = not $ hasTrueSideEffect f effMap 
+          hasNoSideEffect = not $ hasTrueSideEffect f effMap
       funDead <- isFunDeadM f
       rmWhen (funDead && hasNoSideEffect) e rhs names mempty
     e@(EBindF (SUpdate p v) Unit rhs) -> do
