@@ -224,6 +224,7 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadData.Spec
                      , DeadCodeElimination.Tests.DeadData.Util
 
+                     , DeadCodeElimination.Tests.DeadFunction.TrueSideEffectMin
                      , DeadCodeElimination.Tests.DeadFunction.AppSideEffect1
                      , DeadCodeElimination.Tests.DeadFunction.MutuallyRecursive
                      , DeadCodeElimination.Tests.DeadFunction.ReplaceNode
