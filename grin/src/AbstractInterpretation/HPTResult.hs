@@ -103,13 +103,6 @@ toSimpleType = \case
   -8 -> T_UnspecifiedLocation
   ty | ty < 0    -> Local $ toHPTLocal ty
      | otherwise -> T_Location $ fromIntegral ty
-{-
-type instance Index   (Vector a) = Int
-type instance IxValue (Vector a) = a
-
-instance At (Vector a) where
-  at k = lens (V.!? k) (\v -> maybe v (\a -> v V.// [(k, a)]))
--}
 
 _T_Location :: Traversal' SimpleType Int
 _T_Location f (T_Location l) = T_Location <$> f l

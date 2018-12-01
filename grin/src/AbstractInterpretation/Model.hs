@@ -36,7 +36,7 @@ TODO:
     [x] Collect non-linear variables
     [x] Add sharing heap
     [x] An abstract location is set to be shared
-        [x] Pointed by a non-linear variable: Mit jelent az, hogy pointed:
+        [x] Pointed by a non-linear variable:
         [x] From another shared location
     [x] In the abstract heap the return value part of the location is only unioned if the same abstract location becomes shared
 [x] Implement warnings
@@ -171,7 +171,7 @@ computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
               FetchName n -> HPT.register . at n . _Just
               FetchNode n _ _ -> HPT.register . at n . _Just
               FetchFunc n -> HPT.function . at n . _Just . _1
-            locations = Set.filter (match HPT._T_Location) ts1
+            locations = Set.filter (match _T_Location) ts1
             fetch r l = fromMaybe mempty $ r ^. HPT.memory . at l
             fetchTypeName r l = HPT.TypeSet mempty (fetch r l)
             fetchTypeNode tag i r l = (HPT.TypeSet (fromMaybe mempty $ Map.lookup tag (HPT._nodeTagMap (fetch r l)) >>= (V.!? (i - 1))) mempty)
@@ -189,7 +189,7 @@ computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
       Update n ns0 -> result
 {--
         let (HPT.TypeSet ts1 _) = calcTypeSet result (Ind (IN n))
-            locations = (Set.map (\(T_Location l) -> l) $ Set.filter (match HPT._T_Location) ts1) `Set.intersection` sharing
+            locations = (Set.map (\(T_Location l) -> l) $ Set.filter (match _T_Location) ts1) `Set.intersection` sharing
             (HPT.TypeSet _ ns1) = calcNodeSet result ns0
         in Set.foldl' (\r1 l -> r1 & HPT.memory . at l . _Just %~ mappend ns1) result locations
 --}
@@ -197,7 +197,7 @@ computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
     isFunction n (HPTResult _ _ fs _) = Map.member n fs
 
     locationsPrimitiveTypeSet :: Set.Set SimpleType -> Set.Set Loc
-    locationsPrimitiveTypeSet = Set.map (\(T_Location l) -> l) . Set.filter (match HPT._T_Location)
+    locationsPrimitiveTypeSet = Set.map (\(T_Location l) -> l) . Set.filter (match _T_Location)
 
     locationsNodeSet :: HPT.NodeSet -> Set.Set Loc
     locationsNodeSet (HPT.NodeSet ns) = Set.unions $ fmap locationsPrimitiveTypeSet $ concatMap V.toList $ Map.elems ns
@@ -634,6 +634,11 @@ instance Pretty Equation where
     Param param val -> mconcat [pretty param, text " := ", pretty val]
     Fun name  val -> mconcat [pretty name, text " := ", pretty val]
     Access name (ts,t,i) -> mconcat [pretty name, text " := ", pretty ts , text "|", pretty t, text "|", text $ show i]
+
+
+_T_Location :: Traversal' SimpleType Int
+_T_Location f (T_Location l) = T_Location <$> f l
+_T_Location _ rest           = pure rest
 
 -- * Test
 

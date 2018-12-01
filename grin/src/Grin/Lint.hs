@@ -214,9 +214,11 @@ unionType (T_NodeSet ns1) (T_NodeSet ns2) =
   $ Map.unionWith (zipWith (join <$$> liftA2 unionSType)) (Map.map (map Just . Vector.toList) ns1) (Map.map (map Just . Vector.toList) ns2)
 unionType _ _ = Nothing
 
-annotate :: TypeEnv -> Exp -> Cofree ExpF (Maybe Type)
+type TypedExp = Cofree ExpF (Maybe Type)
+
+annotate :: TypeEnv -> Exp -> TypedExp
 annotate te = cata builder where
-  builder :: ExpF (Cofree ExpF (Maybe Type)) -> Cofree ExpF (Maybe Type)
+  builder :: ExpF TypedExp -> TypedExp
   builder = \case
     ProgramF defs -> Nothing :< ProgramF defs
     DefF n ps body -> (te ^? function . at n . _Just . _1) :< DefF n ps body
@@ -238,6 +240,16 @@ annotate te = cata builder where
     EBindF lhs pat rhs -> extract rhs :< EBindF lhs pat rhs
     SBlockF body -> extract body :< SBlockF body
 
+check2 :: ExpF (ExpCtx, TypedExp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, TypedExp))
+check2 exp nodeCheckM = do
+  idx <- expId
+  errors <- execWriterT (nodeCheckM >> checkVarScopeM exp)
+  unless (null errors) $ do
+    modify' $ \env@Env{..} -> env {envErrors = Map.insert idx errors envErrors}
+  nextId
+  pure (idx CCTC.:< exp )
+
+
 lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
 lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
   cata functionNames exp
@@ -254,6 +266,14 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       forM_ args $ \p -> modify' $ \env@Env{..} -> env { envDefinedNames = Map.insert p FunParam envDefinedNames }
       body
     rest -> pure ()
+
+{-
+  builder2 :: (ExpCtx, TypedExp) -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, TypedExp))
+  builder2 (ctx, t :< e) = case e of
+    ProgramF{} -> undefined
+    where
+      checkWithChild childCtx m = check ((childCtx,) <$> project e) m
+-}
 
   builder :: (ExpCtx, Exp) -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, Exp))
   builder (ctx, e) = case e of

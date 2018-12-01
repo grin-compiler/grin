@@ -98,6 +98,7 @@ noTypeEnv f (t, e) = (t, f e)
 noEffectMap :: ((TypeEnv, Exp) -> (TypeEnv, Exp)) -> (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
 noEffectMap f (te0, em0, e0) = let (te1, e1) = f (te0, e0) in (te1, em0, e1)
 
+
 transformation :: Int -> Transformation -> (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
 transformation n = \case
   Vectorisation                   -> noEffectMap Vectorisation2.vectorisation
@@ -465,11 +466,14 @@ printAST = do
   e <- use psExp
   pPrint e
 
-saveGrin :: FilePath -> PipelineM ()
-saveGrin fn = do
+saveGrin :: Path -> PipelineM ()
+saveGrin path = do
   psSaveIdx %= succ
   e <- use psExp
-  saveTransformationInfo fn e
+  case path of
+    Rel fn -> saveTransformationInfo fn e
+    Abs fn -> liftIO $ do
+      writeFile fn $ show $ plain $ pretty e
 
 saveLLVM :: Bool -> FilePath -> PipelineM ()
 saveLLVM relPath fname' = do
@@ -677,6 +681,7 @@ pipeline o s e ps = do
 -- it lints the resulting code, and performs a given sequence of
 -- pipeline steps on it. Finally, it performs a cleanup sequence
 -- after each step.
+-- TODO: Remove options parameter as it should be read from the PipelineM
 optimizeWithPM :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()
 optimizeWithPM o e ps onChange cleanUp = loop e where
   loop :: Exp -> PipelineM ()
@@ -685,7 +690,7 @@ optimizeWithPM o e ps onChange cleanUp = loop e where
     effs <- forM ps $ \p -> do
       eff <- pipelineStep p
       when (eff == ExpChanged) $ void $ do
-        pipelineStep $ SaveGrin (fmap (\case ' ' -> '-' ; c -> c) $ show p)
+        pipelineStep $ SaveGrin $ Rel $ fmap (\case ' ' -> '-' ; c -> c) $ show p
         lintGrin . Just $ show p
         mapM_ pipelineStep cleanUp
         mapM_ pipelineStep onChange
@@ -702,7 +707,15 @@ optimizeWithPM o e ps onChange cleanUp = loop e where
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
 optimize o e pre post = optimizeWith o e pre defaultOptimizations defaultOnChange defaultCleanUp post where
 
-optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> IO Exp
+optimizeWith
+  :: PipelineOpts
+  -> Exp
+  -> [PipelineStep]   -- ^ Pre optimisation steps
+  -> [Transformation] -- ^ Selected transformations for the optimisation
+  -> [PipelineStep]   -- ^ Steps to run when transformation changed the program
+  -> [PipelineStep]   -- ^ Steps to run on clean-up after a change. -- TODO: Why this necessary? Transformations should be well-contained
+  -> [PipelineStep]   -- ^ Steps to run after a reached fixpoint
+  -> IO Exp
 optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipeline o Nothing e $ do
   lintGrin $ Just "init"
   mapM_ pipelineStep pre

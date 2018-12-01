@@ -104,7 +104,7 @@ pipelineOpts =
         [ long "save-llvm"
         , help "Save the generated llvm"
         ])))
-  <|> (SaveGrin <$> (strOption (mconcat
+  <|> (SaveGrin . Abs <$> (strOption (mconcat
         [ long "save-grin"
         , help "Save the generated grin"
         ])))

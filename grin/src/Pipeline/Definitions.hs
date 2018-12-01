@@ -102,7 +102,7 @@ data PipelineStep
   | JITLLVM
   | PrintAST
   | SaveLLVM Bool FilePath
-  | SaveGrin FilePath
+  | SaveGrin Path
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
   | ParseTypeAnnots
@@ -113,6 +113,11 @@ data PipelineStep
   | ConfluenceTest
   | PrintErrors
   | DebugPipelineState
+  deriving (Eq, Show)
+
+data Path
+  = Abs FilePath
+  | Rel FilePath
   deriving (Eq, Show)
 
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
