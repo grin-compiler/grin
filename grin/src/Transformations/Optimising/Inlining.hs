@@ -106,11 +106,11 @@ lateInlining (typeEnv, prog) = cleanup nameSet $ inlining nameSet (typeEnv, prog
 
 inlineEval :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 inlineEval = cleanup nameSet . inlining nameSet where
-  nameSet = Set.singleton "eval"
+  nameSet = Set.fromList ["eval", "idr_{EVAL_0}"]
 
 inlineApply :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 inlineApply = cleanup nameSet . inlining nameSet where
-  nameSet = Set.singleton "apply"
+  nameSet = Set.fromList ["apply", "idr_{APPLY_0}"]
 
 inlineBuiltins :: (TypeEnv, Exp) -> (TypeEnv, Exp)
 inlineBuiltins = cleanup nameSet . inlining nameSet where

@@ -12,6 +12,7 @@ import qualified Data.Bimap as Bimap
 
 import Lens.Micro.Platform
 import Lens.Micro.Internal
+import Lens.Micro.Extra
 
 import Grin.Grin (Name, Tag)
 import AbstractInterpretation.HeapPointsTo (HPTProgram(..))
@@ -30,6 +31,8 @@ data SimpleType
   | T_Bool
   | T_Unit
   | T_Location Loc
+  | T_String
+  | T_Char
   | T_UnspecifiedLocation
   {- NOTE: The local value can be used for any analysis-specific computation,
            but cannot be propagated to the type checking phase.
@@ -87,23 +90,26 @@ data HPTResult
 
 concat <$> mapM makeLenses [''NodeSet, ''TypeSet, ''HPTResult]
 
--- Negative integers less than (-6) can represent any analysis-specific value.
+-- Negative integers less than (-8) can represent any analysis-specific value.
 toSimpleType :: IR.SimpleType -> SimpleType
-toSimpleType (-1) = T_Unit
-toSimpleType (-2) = T_Int64
-toSimpleType (-3) = T_Word64
-toSimpleType (-4) = T_Float
-toSimpleType (-5) = T_Bool
-toSimpleType (-6) = T_UnspecifiedLocation
-toSimpleType ty
-  | ty < 0    = Local $ toHPTLocal ty
-  | otherwise = T_Location $ fromIntegral ty
-
+toSimpleType = \case
+  -1 -> T_Unit
+  -2 -> T_Int64
+  -3 -> T_Word64
+  -4 -> T_Float
+  -5 -> T_Bool
+  -6 -> T_String
+  -7 -> T_Char
+  -8 -> T_UnspecifiedLocation
+  ty | ty < 0    -> Local $ toHPTLocal ty
+     | otherwise -> T_Location $ fromIntegral ty
+{-
 type instance Index   (Vector a) = Int
 type instance IxValue (Vector a) = a
 
 instance At (Vector a) where
   at k = lens (V.!? k) (\v -> maybe v (\a -> v V.// [(k, a)]))
+-}
 
 _T_Location :: Traversal' SimpleType Int
 _T_Location f (T_Location l) = T_Location <$> f l

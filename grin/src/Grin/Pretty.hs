@@ -44,7 +44,8 @@ newtype PP a = PP a deriving Eq
 instance Pretty a => Show (PP a ) where
   show (PP a) = show . plain . pretty $ a
 
--- Wide pretty printing, usefil for reparsing pretty-printed ASTs
+-- Wide pretty printing, useful for reparsing pretty-printed ASTs
+-- TODO: Move this under test related codes.
 newtype WPP a = WPP a deriving Eq
 instance Pretty a => Show (WPP a ) where
   show (WPP a) = flip displayS "" . renderPretty 0.4 200 . plain . pretty $ a
@@ -110,6 +111,8 @@ instance Pretty Lit where
     LWord64 a  -> integer (fromIntegral a) <> text "u"
     LFloat a   -> float a
     LBool a    -> text "#" <> text (show a)
+    LString a  -> text (show a)
+    LChar a    -> text (show a)
 
 instance Pretty CPat where
   pretty = \case

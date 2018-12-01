@@ -25,6 +25,8 @@ data SimpleType
   | T_Location {_locations :: [Loc]}
   | T_UnspecifiedLocation
   | T_Dead
+  | T_String
+  | T_Char
   deriving (Generic, NFData, Eq, Ord, Show)
 
 type NodeSet = Map Tag (Vector SimpleType)

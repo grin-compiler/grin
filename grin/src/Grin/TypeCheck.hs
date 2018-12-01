@@ -49,6 +49,8 @@ typeEnvFromHPTResult hptResult = typeEnv where
     T_Unit                -> pure TypeEnv.T_Unit
     T_UnspecifiedLocation -> pure TypeEnv.T_UnspecifiedLocation
     T_Location l          -> pure $ TypeEnv.T_Location [l]
+    T_String              -> pure TypeEnv.T_String
+    T_Char                -> pure TypeEnv.T_Char
     l@Local{} -> throwError $ "Encountered analysis specific local value during type checking: " ++ show l
 
   isLocation :: SimpleType -> Bool
@@ -57,6 +59,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
     T_UnspecifiedLocation -> True
     _ -> False
 
+-- <<<<<<< HEAD
   convertSimpleTypeSet :: Name -> NodeSet -> [SimpleType] -> Either String TypeEnv.SimpleType
   convertSimpleTypeSet _ _ [] = pure TypeEnv.T_Dead
   convertSimpleTypeSet _ _ [sTy] = convertSimpleType sTy
@@ -67,20 +70,40 @@ typeEnvFromHPTResult hptResult = typeEnv where
     = if null locs then pure $ TypeEnv.T_UnspecifiedLocation
                    else pure $ TypeEnv.T_Location locs
     | otherwise = throwError $ printf "%s has illegal node item type %s in %s" n (show . pretty $ Set.fromList tys) (show $ pretty ns)
+{- =======
+  convertNodeItem :: Name -> [SimpleType] -> Either String TypeEnv.SimpleType
+  convertNodeItem _ [sTy] = pure $ convertSimpleType sTy
+  convertNodeItem _ tys
+    | all isLocation tys
+    = pure $ TypeEnv.T_Location [l | T_Location l <- tys]
+  convertNodeItem n tys = throwError $ printf "%s illegal node item type %s" n (show . pretty $ Set.fromList tys)
+>>>>>>> andorp/idris -}
 
   convertNodeSet :: Name -> NodeSet -> Either String (Map Tag (Vector TypeEnv.SimpleType))
   convertNodeSet n a@(NodeSet ns) = mapM (mapM (convertSimpleTypeSet n a . Set.toList)) ns
 
+-- <<<<<<< HEAD
   convertLocation :: Int -> NodeSet -> Either String (Map Tag (Vector TypeEnv.SimpleType))
   convertLocation loc = convertNodeSet $ "Loc " <> (packName . show $ loc)
+{-
+=======
+  convertNodeSet :: (Name, NodeSet) -> Either String (Map Tag (Vector TypeEnv.SimpleType))
+  convertNodeSet (n, a@(NodeSet ns)) = mapM (checkNode n a <=< mapM (convertNodeItem n . Set.toList)) ns
+>>>>>>> andorp/idris
+-}
 
   convertTypeSet :: Name -> TypeSet -> Either String TypeEnv.Type
   convertTypeSet n ts = do
     let ns = ts^.nodeSet
         st = ts^.simpleType
     case (Set.size st, Map.size $ ns^.nodeTagMap) of
+-- <<<<<<< HEAD
       (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet <$> convertNodeSet n ns
       (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType <$> convertSimpleTypeSet n ns (Set.toList st)
+{- =======
+      (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet <$> convertNodeSet (name, ns)
+      (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType <$> convertNodeItem name (Set.toList st)
+>>>>>>> andorp/idris -}
       (0,0)                                           -> pure TypeEnv.dead_t
       _ -> throwError $ printf "%s has illegal type of %s" n (show . pretty $ ts)
 
@@ -93,8 +116,6 @@ typeEnvFromHPTResult hptResult = typeEnv where
     (Map.traverseWithKey convertTypeSet $ (_register hptResult)) <*>
     (Map.traverseWithKey convertFunction $ (_function hptResult))
 
-
--- TODO: Add mode as a parameter?
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where
   hptProgram = HPT.codeGen exp

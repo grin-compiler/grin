@@ -115,6 +115,7 @@ library
     Transformations.Simplifying.SplitFetch
     Transformations.Simplifying.Vectorisation
     Transformations.Simplifying.Vectorisation2
+    Lens.Micro.Extra
 
   build-depends:
     base,

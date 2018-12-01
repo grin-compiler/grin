@@ -43,7 +43,7 @@ multiProdSimpleAllExpected = mkGraph
   ]
 
 multiProdSimpleAllSpec :: ProducerGraph -> Spec
-multiProdSimpleAllSpec found = it "multi_prod_simple_all" $ found `sameAs` multiProdSimpleAllExpected
+multiProdSimpleAllSpec found = it "multi_prod_simple_all" $ found `shouldBe` multiProdSimpleAllExpected
 
 
 multiProdSimpleActiveExpected :: ProducerGraph
@@ -63,4 +63,4 @@ multiProdSimpleActiveExpected = mkGraph
   ]
 
 multiProdSimpleActiveSpec :: ProducerGraph -> Spec
-multiProdSimpleActiveSpec found = it "multi_prod_simple_active" $ found `sameAs` multiProdSimpleActiveExpected
+multiProdSimpleActiveSpec found = it "multi_prod_simple_active" $ found `shouldBe` multiProdSimpleActiveExpected

@@ -19,6 +19,7 @@ newtype ProducerMap = ProducerMap { _producerMap :: Map Name ProducerSet }
 newtype ProducerSet = ProducerSet { _producerSet :: Map Tag (Set Name)   }
   deriving (Eq, Show)
 
+-- TODO: NewtypeDeriving or DerivingVia
 instance Monoid ProducerSet where
   mempty = ProducerSet M.empty
 instance Semigroup ProducerSet where

@@ -1,4 +1,4 @@
-module CreatedBy.CreatedBySpec where
+module CreatedBy.CreatedBySpec (spec, calcCByResult) where
 
 import Data.Monoid ((<>))
 import qualified Data.Map as M
@@ -116,7 +116,7 @@ puresExpected = ProducerMap $
   where producerA = mkProducerSet [(Tag C "Int", ["a"])]
 
 puresSpec :: ProducerMap -> Spec
-puresSpec found = it "pures" $ found `sameAs` puresExpected
+puresSpec found = it "pures" $ found `shouldBe` puresExpected
 
 
 
@@ -138,7 +138,7 @@ funCallExpected = ProducerMap $
         producerX1 = mkProducerSet [(Tag C "Int", ["x1"])]
 
 funCallSpec :: ProducerMap -> Spec
-funCallSpec found = it "function_call" $ found `sameAs` funCallExpected
+funCallSpec found = it "function_call" $ found `shouldBe` funCallExpected
 
 
 
@@ -159,7 +159,7 @@ caseSimpleExpected = ProducerMap $
         producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
 
 caseSimpleSpec :: ProducerMap -> Spec
-caseSimpleSpec found = it "case_simple" $ found `sameAs` caseSimpleExpected
+caseSimpleSpec found = it "case_simple" $ found `shouldBe` caseSimpleExpected
 
 
 
@@ -183,7 +183,7 @@ heapExpected = ProducerMap $
         producerY1 = producerX1 <> producerX2
 
 heapSpec :: ProducerMap -> Spec
-heapSpec found = it "heap" $ found `sameAs` heapExpected
+heapSpec found = it "heap" $ found `shouldBe` heapExpected
 
 
 
@@ -212,7 +212,7 @@ caseRestricted1Expected = ProducerMap $
         producerR0 = producerB0 <> producerB1
 
 caseRestricted1Spec :: ProducerMap -> Spec
-caseRestricted1Spec found = it "case_restricted_1" $ found `sameAs` caseRestricted1Expected
+caseRestricted1Spec found = it "case_restricted_1" $ found `shouldBe` caseRestricted1Expected
 
 
 
@@ -241,7 +241,7 @@ caseRestricted2Expected = ProducerMap $
         producerR0 = producerB0 <> producerB1
 
 caseRestricted2Spec :: ProducerMap -> Spec
-caseRestricted2Spec found = it "case_restricted_2" $ found `sameAs` caseRestricted2Expected
+caseRestricted2Spec found = it "case_restricted_2" $ found `shouldBe` caseRestricted2Expected
 
 
 
@@ -283,7 +283,7 @@ caseRestricted3Expected = ProducerMap $
         producerR0 = producerB0 <> producerB1
 
 caseRestricted3Spec :: ProducerMap -> Spec
-caseRestricted3Spec found = it "case_restricted_3" $ found `sameAs` caseRestricted3Expected
+caseRestricted3Spec found = it "case_restricted_3" $ found `shouldBe` caseRestricted3Expected
 
 
 
@@ -304,7 +304,7 @@ pointerInNodeExpected = ProducerMap $
         producerXS = producerN0
 
 pointerInNodeSpec :: ProducerMap -> Spec
-pointerInNodeSpec found = it "pointer_in_node" $ found `sameAs` pointerInNodeExpected
+pointerInNodeSpec found = it "pointer_in_node" $ found `shouldBe` pointerInNodeExpected
 
 
 
@@ -326,7 +326,7 @@ undefinedExpected = ProducerMap $
         producerN2 = mkProducerSet [(Tag C "Cons", ["n2"])]
 
 undefinedSpec :: ProducerMap -> Spec
-undefinedSpec found = it "undefined" $ found `sameAs` undefinedExpected
+undefinedSpec found = it "undefined" $ found `shouldBe` undefinedExpected
 
 
 
@@ -342,4 +342,4 @@ unspecLocExpected = ProducerMap $
   where producerN0 = mkProducerSet [(cNil, ["n0"])]
 
 unspecLocSpec :: ProducerMap -> Spec
-unspecLocSpec found = it "unspec_loc" $ found `sameAs` unspecLocExpected
+unspecLocSpec found = it "unspec_loc" $ found `shouldBe` unspecLocExpected

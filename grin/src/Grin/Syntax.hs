@@ -37,6 +37,8 @@ data Lit
   | LWord64 Word64
   | LFloat  Float
   | LBool   Bool
+  | LString String
+  | LChar   Char
   deriving (Generic, NFData, Eq, Ord, Show)
 
 -- * GRIN Value
