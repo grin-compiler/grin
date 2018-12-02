@@ -12,7 +12,7 @@ import AbstractInterpretation.CByUtil
 import AbstractInterpretation.CreatedBy
 import Transformations.Optimising.DeadDataElimination
 
-import CreatedBy.CreatedBySpec (calcCByResult)
+import AbstractInterpretation.CreatedBySpec (calcCByResult)
 import DeadCodeElimination.Tests.DeadData.Util
 
 

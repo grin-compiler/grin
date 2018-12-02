@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
-module CreatedBy.CreatedBySpec (spec, calcCByResult) where
+module AbstractInterpretation.CreatedBySpec (spec, calcCByResult) where
 
 import Data.Monoid ((<>))
 import qualified Data.Map as M
@@ -38,7 +38,7 @@ spec = do
   let mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
   let emptyProducerSet = mkProducerSet []
 
-  describe "Created-By producers" $ do
+  describe "Created-By producers are calculated correctly for" $ do
     it "pures" $ do
       let exp = [prog|
               grinMain =

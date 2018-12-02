@@ -14,7 +14,7 @@ import AbstractInterpretation.LVAResult (LVAResult)
 
 import Transformations.Optimising.DeadDataElimination
 
-import CreatedBy.CreatedBySpec (calcCByResult)
+import AbstractInterpretation.CreatedBySpec (calcCByResult)
 import LiveVariable.LiveVariableSpec (calcLiveness)
 
 import DeadCodeElimination.Tests.DeadData.ImpossibleAlt

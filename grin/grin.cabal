@@ -207,9 +207,8 @@ test-suite grin-test
                      , random
                      , microlens
 
-  other-modules:     CreatedBy.CreatedBySpec
-
-                     , DeadCodeElimination.DeadCodeEliminationSpec
+  other-modules:
+                       DeadCodeElimination.DeadCodeEliminationSpec
 
                      , DeadCodeElimination.Tests.DeadData.ImpossibleAlt
                      , DeadCodeElimination.Tests.DeadData.Length
@@ -338,6 +337,7 @@ test-suite grin-test
                      , AbstractInterpretation.IRSpec
                      , AbstractInterpretation.OptimiseAbstractProgramSpec
                      , AbstractInterpretation.SharingSpec
+                     , AbstractInterpretation.CreatedBySpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
