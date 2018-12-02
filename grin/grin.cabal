@@ -210,17 +210,7 @@ test-suite grin-test
   other-modules:
                        DeadCodeElimination.DeadCodeEliminationSpec
 
-                     , DeadCodeElimination.Tests.DeadData.ImpossibleAlt
-                     , DeadCodeElimination.Tests.DeadData.Length
-                     , DeadCodeElimination.Tests.DeadData.DeletableSingle
-                     , DeadCodeElimination.Tests.DeadData.DeletableMulti
-                     , DeadCodeElimination.Tests.DeadData.FNode
-                     , DeadCodeElimination.Tests.DeadData.MultipleFields
-                     , DeadCodeElimination.Tests.DeadData.OnlyDummify
-                     , DeadCodeElimination.Tests.DeadData.PNode
-                     , DeadCodeElimination.Tests.DeadData.PNodeOpt
                      , DeadCodeElimination.Tests.DeadData.ProducerGrouping
-                     , DeadCodeElimination.Tests.DeadData.SeparateProds
                      , DeadCodeElimination.Tests.DeadData.Spec
                      , DeadCodeElimination.Tests.DeadData.Util
 

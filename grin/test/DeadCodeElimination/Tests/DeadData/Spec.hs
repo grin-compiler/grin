@@ -17,18 +17,8 @@ import Transformations.Optimising.DeadDataElimination
 import AbstractInterpretation.CreatedBySpec (calcCByResult)
 import LiveVariable.LiveVariableSpec (calcLiveness)
 
-import DeadCodeElimination.Tests.DeadData.ImpossibleAlt
-import DeadCodeElimination.Tests.DeadData.Length
-import DeadCodeElimination.Tests.DeadData.MultipleFields
-import DeadCodeElimination.Tests.DeadData.OnlyDummify
-import DeadCodeElimination.Tests.DeadData.DeletableSingle
-import DeadCodeElimination.Tests.DeadData.DeletableMulti
-import DeadCodeElimination.Tests.DeadData.SeparateProds
-import DeadCodeElimination.Tests.DeadData.FNode
-import DeadCodeElimination.Tests.DeadData.PNode
-import DeadCodeElimination.Tests.DeadData.PNodeOpt
-
 import DeadCodeElimination.Tests.DeadData.ProducerGrouping
+import DeadCodeElimination.Tests.DeadData.Util
 
 
 spec :: Spec
@@ -45,6 +35,19 @@ producerGroupingTestName = "Producer Grouping"
 
 ddeTestName :: String
 ddeTestName = "Dead Data Elimination"
+
+
+(deletableMultiBefore, deletableMultiAfter, deletableMultiSpec) = mkDDETestCase "deletable_multi"
+(deletableSingleBefore, deletableSingleAfter, deletableSingleSpec) = mkDDETestCase "deletable_single"
+(fNodeBefore, fNodeAfter, fNodeSpec) = mkDDETestCase "fnode"
+(impossibleAltBefore, impossibleAltAfter, impossibleAltSpec) = mkDDETestCase "impossible_alt"
+(lengthBefore, lengthAfter, lengthSpec) = mkDDETestCase "length"
+(multipleFieldsBefore, multipleFieldsAfter, multipleFieldsSpec) = mkDDETestCase "multiple_fields"
+(onlyDummifyBefore, onlyDummifyAfter, onlyDummifySpec) = mkDDETestCase "only_dummify"
+(pNodeBefore, pNodeAfter, pNodeSpec) = mkDDETestCase "pnode"
+(pNodeOptBefore, pNodeOptAfter, pNodeOptSpec) = mkDDETestCase "pnode_opt"
+(separateProdsBefore, separateProdsAfter, separateProdsSpec) = mkDDETestCase "separate_prods"
+
 
 runTestsFrom :: FilePath -> IO ()
 runTestsFrom fromCurDir = do
