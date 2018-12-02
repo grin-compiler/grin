@@ -1,0 +1,12 @@
+the data flow machine is same as the meta-variable solver in a type checker
+
+idea for more efficient data-flow execution:
+  - keep internal structure of unifications
+    if everything is propagated as a value then it's a sharing loss
+
+data-flow program should be a normal program
+
+the input program AST structure definies the meta-variable dependencies,
+that means the AST is the dependency tree that re-triggers computations
+
+

@@ -1,0 +1,21 @@
+The whole program AST could contain few million nodes. i.e. lambdacube-quake3 has ~1.1M nodes
+
+This poses serious challenges for performace requirements.
+
+Q:
+- how far can we get with the current system design? (CPU, ShortText names, pointer tree)
+  problems:
+    - memory footprint
+    - traversal speed
+    - data-flow analysis speed
+  possible improvements:
+    - multithreading
+    - int names + symbol table
+    - c interpreter for data-flow machine
+    - llvm jit for data-flow machine
+
+Possible system designs:
+  - data-flow analysis on GPU
+  - packed AST representation
+  - optimization passes on CPU with SPMD
+  - optimization passes on GPU
