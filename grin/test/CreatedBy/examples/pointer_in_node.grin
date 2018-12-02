@@ -1,7 +1,0 @@
-grinMain =
-  n0 <- pure (CNil)
-  p0 <- store n0
-  n1 <- pure (CCons 5 p0)
-  case n1 of
-    (CCons x pxs) -> xs <- fetch pxs
-                     pure 5

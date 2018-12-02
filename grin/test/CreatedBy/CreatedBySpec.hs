@@ -1,82 +1,439 @@
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module CreatedBy.CreatedBySpec (spec, calcCByResult) where
 
 import Data.Monoid ((<>))
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.Vector as V
 
 import System.FilePath
 
 import Grin.Grin
+import Grin.TH
 
 import Test.IO
 import Test.Test
 import Test.Util
 import Test.Hspec
 import Test.Assertions
+import HeapPointsTo.Tests.Util
 
 import AbstractInterpretation.IR hiding (Tag)
 import AbstractInterpretation.Reduce
 import AbstractInterpretation.CreatedBy
 import AbstractInterpretation.CByResult
-import AbstractInterpretation.HPTResult
+import AbstractInterpretation.HPTResult as HPT
 
 import qualified HeapPointsTo.Tests.Undefined as HPT
 import qualified HeapPointsTo.Tests.UnspecLoc as HPT
 
 
-spec :: Spec
-spec = runIO runTests
-
 runTests :: IO ()
-runTests = runTestsFrom stackRoot
+runTests = hspec spec
 
-runTestsGHCi :: IO ()
-runTestsGHCi = runTestsFrom stackTest
+spec :: Spec
+spec = do
+  let calcProducers = _producers . calcCByResult
+  let calcHPTResultWithCBy = _hptResult . calcCByResult
+  let mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
+  let emptyProducerSet = mkProducerSet []
 
-cbyProdTestName :: String
-cbyProdTestName = "Created-By producers"
+  describe "Created-By producers" $ do
+    it "pures" $ do
+      let exp = [prog|
+              grinMain =
+                a <- pure (CInt 5)
+                b <- pure a
+                c <- pure b
+                pure c
+            |]
+      let producerA = mkProducerSet [(Tag C "Int", ["a"])]
+      let puresExpected = ProducerMap $
+            M.fromList
+              [ ("a", producerA)
+              , ("b", producerA)
+              , ("c", producerA)
+              ]
+      (calcProducers exp) `shouldBe` puresExpected
 
-cbyTypeTestName :: String
-cbyTypeTestName = "Created-By type info"
+    it "function_call" $ do
+      let exp = [prog|
+              grinMain =
+                a <- pure (CInt 5)
+                b <- pure a
+                c <- f 5
+                d <- g 5
+                pure 5
 
-runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = do
-  testGroup cbyProdTestName $
-    mkSpecFromWith fromCurDir calcProducers
-      [ puresSrc
-      , funCallSrc
-      , caseSimpleSrc
-      , heapSrc
-      , pointerInNodeSrc
-      , caseRestricted1Src
-      , caseRestricted2Src
-      , caseRestricted3Src
-      , undefinedSrc
-      , unspecLocSrc
-      ]
-      [ puresSpec
-      , funCallSpec
-      , caseSimpleSpec
-      , heapSpec
-      , pointerInNodeSpec
-      , caseRestricted1Spec
-      , caseRestricted2Spec
-      , caseRestricted3Spec
-      , undefinedSpec
-      , unspecLocSpec
-      ]
+              f x =
+                x1 <- pure (CInt 5)
+                pure x1
 
-  testGroup cbyTypeTestName $
-    mkSpecFromWith fromCurDir calcHPTResultWithCBy
-      [ HPT.undefinedSrc
-      , HPT.unspecLocSrc
-      ]
-      [ HPT.undefinedSpec
-      , HPT.unspecLocSpec
-      ]
+              g y =
+                y1 <- f y
+                pure y1
+            |]
+      let producerA  = mkProducerSet [(Tag C "Int", ["a"])]
+          producerX1 = mkProducerSet [(Tag C "Int", ["x1"])]
+          expected = ProducerMap $
+            M.fromList [ ("a",  producerA)
+                       , ("b",  producerA)
+                       , ("c",  producerX1)
+                       , ("d",  producerX1)
+                       , ("x",  emptyProducerSet)
+                       , ("x1", producerX1)
+                       , ("y",  emptyProducerSet)
+                       , ("y1", producerX1)
+                       ]
+      (calcProducers exp) `shouldBe` expected
 
-cbyExamples :: FilePath
-cbyExamples = "CreatedBy" </> "examples"
+    it "case_simple" $ do
+      let exp = [prog|
+            grinMain =
+              a <- f 0
+              pure a
+
+            f x =
+             case x of
+              0 -> x0 <- pure (CInt 5)
+                   pure x0
+              1 -> x1 <- pure (CBool 0)
+                   pure x1
+           |]
+      let expected = ProducerMap $
+            M.fromList [ ("a",  producerA)
+                       , ("x",  emptyProducerSet)
+                       , ("x0", producerX0)
+                       , ("x1", producerX1)
+                       ]
+          producerA  = mkProducerSet [ (Tag C "Int",  ["x0"])
+                                     , (Tag C "Bool", ["x1"])
+                                     ]
+          producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
+          producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
+      (calcProducers exp) `shouldBe` expected
+
+    it "heap" $ do
+      let exp = [prog|
+            grinMain =
+              x0 <- pure (CInt 5)
+              x1 <- pure (CBool 0)
+              x2 <- pure (CBool 1)
+              p0 <- store x0
+              p1 <- store x1
+              update p0 x2
+              update p1 x2
+              y0 <- fetch p0
+              y1 <- fetch p1
+              pure 5
+          |]
+      let expected = ProducerMap $
+            M.fromList [ ("x0", producerX0)
+                       , ("x1", producerX1)
+                       , ("x2", producerX2)
+                       , ("p0", emptyProducerSet)
+                       , ("p1", emptyProducerSet)
+                       , ("y0", producerY0)
+                       , ("y1", producerY1)
+                       ]
+          producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
+          producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
+          producerX2 = mkProducerSet [(Tag C "Bool", ["x2"])]
+          producerY0 = producerX0 <> producerX2
+          producerY1 = producerX1 <> producerX2
+      (calcProducers exp) `shouldBe` expected
+
+    it "pointer_in_node" $ do
+      let exp = [prog|
+            grinMain =
+              n0 <- pure (CNil)
+              p0 <- store n0
+              n1 <- pure (CCons 5 p0)
+              case n1 of
+                (CCons x pxs) -> xs <- fetch pxs
+                                 pure 5
+          |]
+      let expected = ProducerMap $
+            M.fromList [ ("n0",  producerN0)
+                       , ("p0",  emptyProducerSet)
+                       , ("n1",  producerN1)
+                       , ("x",   emptyProducerSet)
+                       , ("pxs", emptyProducerSet)
+                       , ("xs",  producerXS)
+                       ]
+          producerN0 = mkProducerSet [(Tag C "Nil",  ["n0"])]
+          producerN1 = mkProducerSet [(Tag C "Cons", ["n1"])]
+          producerXS = producerN0
+      (calcProducers exp)` shouldBe` expected
+
+    it "case_restricted_1" $ do
+      let exp = [prog|
+            grinMain =
+              a0 <- f 0
+              r0 <- case a0 of
+                (CInt c0)  -> b0 <- pure (CInt 5)
+                              pure b0
+                (CBool c1) -> b1 <- pure (CBool 0)
+                              pure b1
+                (CNope c2) -> b2 <- pure (CNope 1)
+                              pure b2
+              pure r0
+
+
+            f x =
+             case x of
+              0 -> x0 <- pure (CInt 5)
+                   pure x0
+              1 -> x1 <- pure (CBool 0)
+                   pure x1
+          |]
+      let expected = ProducerMap $
+            M.fromList [ ("a0", producerA0)
+                       , ("r0", producerR0)
+                       , ("b0", producerB0)
+                       , ("b1", producerB1)
+                       , ("b2", emptyProducerSet)
+                       , ("c0", emptyProducerSet)
+                       , ("c1", emptyProducerSet)
+                       , ("c2", emptyProducerSet)
+                       , ("x",  emptyProducerSet)
+                       , ("x0", producerX0)
+                       , ("x1", producerX1)
+                       ]
+          producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
+          producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
+          producerA0 = producerX0 <> producerX1
+          producerB0 = mkProducerSet [(Tag C "Int",  ["b0"])]
+          producerB1 = mkProducerSet [(Tag C "Bool", ["b1"])]
+          producerR0 = producerB0 <> producerB1
+      (calcProducers exp) `shouldBe` expected
+
+    it "case_restricted_2" $ do
+      let exp = [prog|
+            grinMain =
+              a0 <- f 0
+              r0 <- case a0 of
+                (CInt c0)  -> b0 <- f 0
+                              pure b0
+                (CBool c1) -> b1 <- pure (CBool 0)
+                              pure b1
+                (CNope c2) -> b2 <- pure (CNope 1)
+                              pure b2
+              pure r0
+
+            f x =
+             case x of
+              0 -> x0 <- pure (CInt 5)
+                   pure x0
+              1 -> x1 <- pure (CBool 0)
+                   pure x1
+          |]
+      let expected = ProducerMap $
+            M.fromList [ ("a0", producerA0)
+                       , ("r0", producerR0)
+                       , ("b0", producerB0)
+                       , ("b1", producerB1)
+                       , ("b2", emptyProducerSet)
+                       , ("c0", emptyProducerSet)
+                       , ("c1", emptyProducerSet)
+                       , ("c2", emptyProducerSet)
+                       , ("x",  emptyProducerSet)
+                       , ("x0", producerX0)
+                       , ("x1", producerX1)
+                       ]
+          producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
+          producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
+          producerA0 = producerX0 <> producerX1
+          producerB0 = producerX0 <> producerX1
+          producerB1 = mkProducerSet [(Tag C "Bool", ["b1"])]
+          producerR0 = producerB0 <> producerB1
+      (calcProducers exp) `shouldBe` expected
+
+    it "case_restricted_3" $ do
+      let exp = [prog|
+            grinMain =
+              a0 <- f 1
+              a1 <- pure (CWord 3)
+              r0 <- case a0 of
+                (CInt c0)  -> b0 <- g a0
+                              pure b0
+                (CBool c1) -> b1 <- g a1
+                              pure b1
+                (CNope c2) -> b2 <- pure (CNope 1)
+                              pure b2
+              pure r0
+
+            f x =
+             case x of
+              0 -> x0 <- pure (CInt 5)
+                   pure x0
+              1 -> x1 <- pure (CBool 0)
+                   pure x1
+
+            g y =
+             case y of
+              (CInt n)  -> y0 <- pure (CInt 5)
+                           pure y0
+              (CBool b) -> y1 <- pure (CBool 0)
+                           pure y1
+              (CWord w) -> y2 <- pure (CWord 3)
+                           pure y2
+          |]
+      let restrictedBy (ProducerSet ps) tag = ProducerSet $ M.filterWithKey (\k _ -> k == tag) ps
+      let expected = ProducerMap $
+            M.fromList [ ("a0", producerA0)
+                       , ("a1", producerA1)
+                       , ("r0", producerR0)
+                       , ("b0", producerB0)
+                       , ("b1", producerB1)
+                       , ("b2", emptyProducerSet)
+                       , ("c0", emptyProducerSet)
+                       , ("c1", emptyProducerSet)
+                       , ("c2", emptyProducerSet)
+                       , ("x",  emptyProducerSet)
+                       , ("x0", producerX0)
+                       , ("x1", producerX1)
+                       , ("y",  producerY)
+                       , ("y0", producerY0)
+                       , ("y1", emptyProducerSet) -- because the control never reaches it
+                       , ("y2", producerY2)
+                       , ("n",  emptyProducerSet)
+                       , ("b",  emptyProducerSet)
+                       , ("w",  emptyProducerSet)
+                       ]
+          producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
+          producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
+          producerA0 = producerX0 <> producerX1
+          producerA1 = mkProducerSet [(Tag C "Word", ["a1"])]
+          producerY  = producerA0 `restrictedBy` (Tag C "Int") <> producerA1
+          producerY0 = mkProducerSet [(Tag C "Int",  ["y0"])]
+          producerY1 = mkProducerSet [(Tag C "Bool", ["y1"])]
+          producerY2 = mkProducerSet [(Tag C "Word", ["y2"])]
+          producerB0 = producerY0 <> producerY2 -- because the analysis is not context sensitive
+          producerB1 = producerY0 <> producerY2 -- because the analysis is not context sensitive
+          producerR0 = producerB0 <> producerB1
+      (calcProducers exp) `shouldBe` expected
+
+    it "undefined" $ do
+      let exp = [prog|
+            grinMain =
+              p0 <- store (CNil)
+              p1 <- store (CCons 0 p0)
+              x0 <- pure (#undefined :: T_Int64)
+              n0 <- pure (#undefined :: {CCons[T_Int64,{0,1}]})
+              p2 <- store n0
+              n1 <- pure (#undefined :: {CNil[],CCons[T_Int64,{2}]})
+              n2 <- pure (CCons (#undefined :: T_Int64) p0)
+              pure 5
+          |]
+      let expected =ProducerMap $
+            M.fromList [ ("n0",  producerN0)
+                       , ("n1",  producerN1)
+                       , ("n2",  producerN2)
+                       , ("p0",  emptyProducerSet)
+                       , ("p1",  emptyProducerSet)
+                       , ("p2",  emptyProducerSet)
+                       , ("x0",  emptyProducerSet)
+                       ]
+          producerN0 = mkProducerSet [(Tag C "Cons", [undefinedProducerName])]
+          producerN1 = mkProducerSet [(Tag C "Cons", [undefinedProducerName]), (Tag C "Nil", [undefinedProducerName])]
+          producerN2 = mkProducerSet [(Tag C "Cons", ["n2"])]
+      (calcProducers exp) `shouldBe` expected
+
+    it "unspec_loc" $ do
+      let exp = [prog|
+              grinMain =
+                n0 <- pure (CNil)
+                p0 <- case 0 of
+                  0 -> store n0
+                  1 -> pure (#undefined :: #ptr)
+                n1 <- fetch p0
+                pure 0
+            |]
+      let expected = ProducerMap $
+            M.fromList [ ("n0",  producerN0)
+                       , ("n1",  producerN0)
+                       , ("p0",  emptyProducerSet)
+                       ]
+          producerN0 = mkProducerSet [(cNil, ["n0"])]
+      (calcProducers exp) `shouldBe` expected
+
+  describe "Created-By type info" $ do
+
+    it "undefined" $ do
+      let exp = [prog|
+            grinMain =
+              p0 <- store (CNil)
+              p1 <- store (CCons 0 p0)
+              x0 <- pure (#undefined :: T_Int64)
+              n0 <- pure (#undefined :: {CCons[T_Int64,{0,1}]})
+              p2 <- store n0
+              n1 <- pure (#undefined :: {CNil[],CCons[T_Int64,{2}]})
+              n2 <- pure (CCons (#undefined :: T_Int64) p0)
+              pure 5
+          |]
+      let expected = HPTResult
+            { HPT._memory   = undefinedExpectedHeap
+            , HPT._register = undefinedExpectedRegisters
+            , HPT._function = undefinedExpectedFunctions
+            }
+          undefinedExpectedRegisters = M.fromList
+            [ ("p0", loc 0)
+            , ("p1", loc 1)
+            , ("p2", loc 2)
+            , ("x0", tySetFromTypes [T_Int64])
+            , ("n0", tySetFromNodeSet nodeSetN0)
+            , ("n1", typeN1)
+            , ("n2", typeN2)
+            ]
+            where typeN1 = mkTySet [ (cCons, [[T_Int64], [locT 2]])
+                                   , (cNil, [])
+                                   ]
+                  typeN2 = mkTySet [ (cCons, [[T_Int64], [locTP0]])
+                                   ]
+          undefinedExpectedFunctions = M.singleton "grinMain" (mkSimpleMain T_Int64)
+          undefinedExpectedHeap = V.fromList
+            [ mkNodeSet [(cNil, [])]
+            , mkNodeSet [(cCons, [[T_Int64], [locTP0]])]
+            , nodeSetN0
+            ]
+
+
+          nodeSetN0 = mkNodeSet [(cCons, [[T_Int64], [locT 0, locT 1]])]
+          locTP0 = locT 0
+      (calcHPTResultWithCBy exp) `shouldBe` expected
+
+    it "unspec_loc" $ do
+      let exp = [prog|
+              grinMain =
+                p0 <- case 0 of
+                  0 -> store (CInt 5)
+                  1 -> pure (#undefined :: #ptr)
+                n0 <- fetch p0
+                n1 <- pure (#undefined :: {CNode[#ptr]})
+                (CNode p1) <- pure n1
+                x0 <- fetch p1
+                update p0 x0
+            |]
+      let expected = HPTResult
+            { HPT._memory   = unspecLocExpectedHeap
+            , HPT._register = unspecLocExpectedRegisters
+            , HPT._function = unspecLocExpectedFunctions
+            }
+
+          nodeSetN0, nodeSetN1 :: HPT.NodeSet
+          nodeSetN0 = mkNodeSet [(cInt,  [[T_Int64]])]
+          nodeSetN1 = mkNodeSet [(cNode, [[unspecLocT]])]
+          unspecLocExpectedHeap = V.fromList [ nodeSetN0 ]
+          unspecLocExpectedRegisters = M.fromList
+            [ ("p0", tySetFromTypes [locT 0, unspecLocT])
+            , ("p1", unspecLoc)
+            , ("n0", tySetFromNodeSet nodeSetN0)
+            , ("n1", tySetFromNodeSet nodeSetN1)
+            , ("x0", tySetFromTypes [])
+            ]
+          unspecLocExpectedFunctions = M.singleton "grinMain" (mkSimpleMain T_Unit)
+      (calcHPTResultWithCBy exp) `shouldBe` expected
 
 calcCByResult :: Exp -> CByResult
 calcCByResult prog
@@ -84,262 +441,3 @@ calcCByResult prog
   , computer <- _airComp . evalDataFlowInfo $ cbyProgram
   , cbyResult <- toCByResult cbyProgram computer
   = cbyResult
-
-calcProducers :: Exp -> ProducerMap
-calcProducers = _producers . calcCByResult
-
-calcHPTResultWithCBy :: Exp -> HPTResult
-calcHPTResultWithCBy = _hptResult . calcCByResult
-
-mkProducerSet :: [(Tag, [Name])] -> ProducerSet
-mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
-
-emptyProducerSet :: ProducerSet
-emptyProducerSet = mkProducerSet []
-
-restrictedBy :: ProducerSet -> Tag -> ProducerSet
-restrictedBy (ProducerSet ps) tag = ProducerSet $ M.filterWithKey (\k _ -> k == tag) ps
-
-udProd :: Name
-udProd = undefinedProducerName
-
-
-puresSrc :: FilePath
-puresSrc = cbyExamples </> "pures.grin"
-
-puresExpected :: ProducerMap
-puresExpected = ProducerMap $
-  M.fromList [ ("a", producerA)
-             , ("b", producerA)
-             , ("c", producerA)
-             ]
-  where producerA = mkProducerSet [(Tag C "Int", ["a"])]
-
-puresSpec :: ProducerMap -> Spec
-puresSpec found = it "pures" $ found `shouldBe` puresExpected
-
-
-
-funCallSrc :: FilePath
-funCallSrc = cbyExamples </> "function_call.grin"
-
-funCallExpected :: ProducerMap
-funCallExpected = ProducerMap $
-  M.fromList [ ("a",  producerA)
-             , ("b",  producerA)
-             , ("c",  producerX1)
-             , ("d",  producerX1)
-             , ("x",  emptyProducerSet)
-             , ("x1", producerX1)
-             , ("y",  emptyProducerSet)
-             , ("y1", producerX1)
-             ]
-  where producerA  = mkProducerSet [(Tag C "Int", ["a"])]
-        producerX1 = mkProducerSet [(Tag C "Int", ["x1"])]
-
-funCallSpec :: ProducerMap -> Spec
-funCallSpec found = it "function_call" $ found `shouldBe` funCallExpected
-
-
-
-caseSimpleSrc :: FilePath
-caseSimpleSrc = cbyExamples </> "case_simple.grin"
-
-caseSimpleExpected :: ProducerMap
-caseSimpleExpected = ProducerMap $
-  M.fromList [ ("a",  producerA)
-             , ("x",  emptyProducerSet)
-             , ("x0", producerX0)
-             , ("x1", producerX1)
-             ]
-  where producerA  = mkProducerSet [ (Tag C "Int",  ["x0"])
-                                   , (Tag C "Bool", ["x1"])
-                                   ]
-        producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
-        producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
-
-caseSimpleSpec :: ProducerMap -> Spec
-caseSimpleSpec found = it "case_simple" $ found `shouldBe` caseSimpleExpected
-
-
-
-heapSrc :: FilePath
-heapSrc = cbyExamples </> "heap.grin"
-
-heapExpected :: ProducerMap
-heapExpected = ProducerMap $
-  M.fromList [ ("x0", producerX0)
-             , ("x1", producerX1)
-             , ("x2", producerX2)
-             , ("p0", emptyProducerSet)
-             , ("p1", emptyProducerSet)
-             , ("y0", producerY0)
-             , ("y1", producerY1)
-             ]
-  where producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
-        producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
-        producerX2 = mkProducerSet [(Tag C "Bool", ["x2"])]
-        producerY0 = producerX0 <> producerX2
-        producerY1 = producerX1 <> producerX2
-
-heapSpec :: ProducerMap -> Spec
-heapSpec found = it "heap" $ found `shouldBe` heapExpected
-
-
-
-caseRestricted1Src :: FilePath
-caseRestricted1Src = cbyExamples </> "case_restricted_1.grin"
-
-caseRestricted1Expected :: ProducerMap
-caseRestricted1Expected = ProducerMap $
-  M.fromList [ ("a0", producerA0)
-             , ("r0", producerR0)
-             , ("b0", producerB0)
-             , ("b1", producerB1)
-             , ("b2", emptyProducerSet)
-             , ("c0", emptyProducerSet)
-             , ("c1", emptyProducerSet)
-             , ("c2", emptyProducerSet)
-             , ("x",  emptyProducerSet)
-             , ("x0", producerX0)
-             , ("x1", producerX1)
-             ]
-  where producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
-        producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
-        producerA0 = producerX0 <> producerX1
-        producerB0 = mkProducerSet [(Tag C "Int",  ["b0"])]
-        producerB1 = mkProducerSet [(Tag C "Bool", ["b1"])]
-        producerR0 = producerB0 <> producerB1
-
-caseRestricted1Spec :: ProducerMap -> Spec
-caseRestricted1Spec found = it "case_restricted_1" $ found `shouldBe` caseRestricted1Expected
-
-
-
-caseRestricted2Src :: FilePath
-caseRestricted2Src = cbyExamples </> "case_restricted_2.grin"
-
-caseRestricted2Expected :: ProducerMap
-caseRestricted2Expected = ProducerMap $
-  M.fromList [ ("a0", producerA0)
-             , ("r0", producerR0)
-             , ("b0", producerB0)
-             , ("b1", producerB1)
-             , ("b2", emptyProducerSet)
-             , ("c0", emptyProducerSet)
-             , ("c1", emptyProducerSet)
-             , ("c2", emptyProducerSet)
-             , ("x",  emptyProducerSet)
-             , ("x0", producerX0)
-             , ("x1", producerX1)
-             ]
-  where producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
-        producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
-        producerA0 = producerX0 <> producerX1
-        producerB0 = producerX0 <> producerX1
-        producerB1 = mkProducerSet [(Tag C "Bool", ["b1"])]
-        producerR0 = producerB0 <> producerB1
-
-caseRestricted2Spec :: ProducerMap -> Spec
-caseRestricted2Spec found = it "case_restricted_2" $ found `shouldBe` caseRestricted2Expected
-
-
-
-caseRestricted3Src :: FilePath
-caseRestricted3Src = cbyExamples </> "case_restricted_3.grin"
-
-caseRestricted3Expected :: ProducerMap
-caseRestricted3Expected = ProducerMap $
-  M.fromList [ ("a0", producerA0)
-             , ("a1", producerA1)
-             , ("r0", producerR0)
-             , ("b0", producerB0)
-             , ("b1", producerB1)
-             , ("b2", emptyProducerSet)
-             , ("c0", emptyProducerSet)
-             , ("c1", emptyProducerSet)
-             , ("c2", emptyProducerSet)
-             , ("x",  emptyProducerSet)
-             , ("x0", producerX0)
-             , ("x1", producerX1)
-             , ("y",  producerY)
-             , ("y0", producerY0)
-             , ("y1", emptyProducerSet) -- because the control never reaches it
-             , ("y2", producerY2)
-             , ("n",  emptyProducerSet)
-             , ("b",  emptyProducerSet)
-             , ("w",  emptyProducerSet)
-             ]
-  where producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
-        producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
-        producerA0 = producerX0 <> producerX1
-        producerA1 = mkProducerSet [(Tag C "Word", ["a1"])]
-        producerY  = producerA0 `restrictedBy` (Tag C "Int") <> producerA1
-        producerY0 = mkProducerSet [(Tag C "Int",  ["y0"])]
-        producerY1 = mkProducerSet [(Tag C "Bool", ["y1"])]
-        producerY2 = mkProducerSet [(Tag C "Word", ["y2"])]
-        producerB0 = producerY0 <> producerY2 -- because the analysis is not context sensitive
-        producerB1 = producerY0 <> producerY2 -- because the analysis is not context sensitive
-        producerR0 = producerB0 <> producerB1
-
-caseRestricted3Spec :: ProducerMap -> Spec
-caseRestricted3Spec found = it "case_restricted_3" $ found `shouldBe` caseRestricted3Expected
-
-
-
-pointerInNodeSrc :: FilePath
-pointerInNodeSrc = cbyExamples </> "pointer_in_node.grin"
-
-pointerInNodeExpected :: ProducerMap
-pointerInNodeExpected = ProducerMap $
-  M.fromList [ ("n0",  producerN0)
-             , ("p0",  emptyProducerSet)
-             , ("n1",  producerN1)
-             , ("x",   emptyProducerSet)
-             , ("pxs", emptyProducerSet)
-             , ("xs",  producerXS)
-             ]
-  where producerN0 = mkProducerSet [(Tag C "Nil",  ["n0"])]
-        producerN1 = mkProducerSet [(Tag C "Cons", ["n1"])]
-        producerXS = producerN0
-
-pointerInNodeSpec :: ProducerMap -> Spec
-pointerInNodeSpec found = it "pointer_in_node" $ found `shouldBe` pointerInNodeExpected
-
-
-
-undefinedSrc :: FilePath
-undefinedSrc = cbyExamples </> "undefined.grin"
-
-undefinedExpected :: ProducerMap
-undefinedExpected = ProducerMap $
-  M.fromList [ ("n0",  producerN0)
-             , ("n1",  producerN1)
-             , ("n2",  producerN2)
-             , ("p0",  emptyProducerSet)
-             , ("p1",  emptyProducerSet)
-             , ("p2",  emptyProducerSet)
-             , ("x0",  emptyProducerSet)
-             ]
-  where producerN0 = mkProducerSet [(Tag C "Cons", [udProd])]
-        producerN1 = mkProducerSet [(Tag C "Cons", [udProd]), (Tag C "Nil", [udProd])]
-        producerN2 = mkProducerSet [(Tag C "Cons", ["n2"])]
-
-undefinedSpec :: ProducerMap -> Spec
-undefinedSpec found = it "undefined" $ found `shouldBe` undefinedExpected
-
-
-
-unspecLocSrc :: FilePath
-unspecLocSrc = cbyExamples </> "unspec_loc.grin"
-
-unspecLocExpected :: ProducerMap
-unspecLocExpected = ProducerMap $
-  M.fromList [ ("n0",  producerN0)
-             , ("n1",  producerN0)
-             , ("p0",  emptyProducerSet)
-             ]
-  where producerN0 = mkProducerSet [(cNil, ["n0"])]
-
-unspecLocSpec :: ProducerMap -> Spec
-unspecLocSpec found = it "unspec_loc" $ found `shouldBe` unspecLocExpected

@@ -1,7 +1,0 @@
-grinMain =
-  n0 <- pure (CNil)
-  p0 <- case 0 of
-    0 -> store n0
-    1 -> pure (#undefined :: #ptr)
-  n1 <- fetch p0
-  pure 0
