@@ -14,12 +14,24 @@ import AbstractInterpretation.LVAResultTypes
 import Transformations.Optimising.DeadParameterElimination
 
 import LiveVariable.LiveVariableSpec (calcLiveness)
+import DeadCodeElimination.Tests.Util
 
-import DeadCodeElimination.Tests.DeadParam.FNode
-import DeadCodeElimination.Tests.DeadParam.PNode
-import DeadCodeElimination.Tests.DeadParam.PNodeOpt
-import DeadCodeElimination.Tests.DeadParam.Simple
-import DeadCodeElimination.Tests.DeadParam.MutuallyRecursive
+
+dpeBefore :: FilePath
+dpeBefore = dceExamples </> "dead_param" </> "before"
+
+dpeAfter :: FilePath
+dpeAfter = dceExamples </> "dead_param" </> "after"
+
+-- name ~ name of the test case, and also the grin source file
+mkDPETestCase :: String -> (FilePath, FilePath, FilePath -> Exp -> Spec)
+mkDPETestCase name = mkBeforeAfterTestCase name dpeBefore dpeAfter
+
+(fNodeBefore, fNodeAfter, fNodeSpec) = mkDPETestCase "fnode"
+(mutuallyRecursiveBefore, mutuallyRecursiveAfter, mutuallyRecursiveSpec) = mkDPETestCase "mutually_recursive"
+(pNodeBefore, pNodeAfter, pNodeSpec) = mkDPETestCase "pnode"
+(pNodeOptBefore, pNodeOptAfter, pNodeOptSpec) = mkDPETestCase "pnode_opt"
+(simpleBefore, simpleAfter, simpleSpec) = mkDPETestCase "simple"
 
 
 spec :: Spec
@@ -66,5 +78,3 @@ eliminateDeadParams e =
     fail = error "Dead parameter elimination failed. See the error logs for more information"
     lvaResult = calcLiveness e
     tyEnv = inferTypeEnv e
-
-
