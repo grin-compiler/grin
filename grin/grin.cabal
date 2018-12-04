@@ -251,8 +251,6 @@ test-suite grin-test
                      , LiveVariable.Tests.UndefinedWithLocInfo
                      , LiveVariable.Tests.Util
 
-                     , Parse.ParseSpec
-
                      , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
