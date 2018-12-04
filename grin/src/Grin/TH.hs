@@ -1,5 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Grin.TH where
+module Grin.TH
+  ( text
+  , prog
+  , def
+  , expr
+  ) where
 
 import NeatInterpolation
 import qualified Grin.Parse as P

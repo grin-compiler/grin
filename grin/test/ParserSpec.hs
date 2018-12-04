@@ -167,3 +167,4 @@ spec = do
       forAll (PP <$> genProg) $ \p ->
         let p' = parseGrin "" (Text.pack $ show p)
         in (fmap PP p') `shouldBe` (Right p)
+
