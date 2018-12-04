@@ -15,22 +15,35 @@ import Transformations.Optimising.DeadVariableElimination
 import Transformations.EffectMap
 
 import LiveVariable.LiveVariableSpec (calcLiveness)
+import DeadCodeElimination.Tests.Util
 
-import DeadCodeElimination.Tests.DeadVariable.Simple
-import DeadCodeElimination.Tests.DeadVariable.Heap
-import DeadCodeElimination.Tests.DeadVariable.Update
-import DeadCodeElimination.Tests.DeadVariable.AppSimple
-import DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
-import DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
-import DeadCodeElimination.Tests.DeadVariable.PatternMatch
-import DeadCodeElimination.Tests.DeadVariable.ReplaceApp
-import DeadCodeElimination.Tests.DeadVariable.ReplaceCase
-import DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec
-import DeadCodeElimination.Tests.DeadVariable.ReplacePure
-import DeadCodeElimination.Tests.DeadVariable.ReplaceStore
-import DeadCodeElimination.Tests.DeadVariable.ReplaceUpdate
-import DeadCodeElimination.Tests.DeadVariable.ReplaceUnspecLoc
-import DeadCodeElimination.Tests.DeadVariable.TrueSideEffectMin
+
+dveBefore :: FilePath
+dveBefore = dceExamples </> "dead_variable" </> "before"
+
+dveAfter :: FilePath
+dveAfter = dceExamples </> "dead_variable" </> "after"
+
+
+-- name ~ name of the test case, and also the grin source file
+mkDVETestCase :: String -> (FilePath, FilePath, FilePath -> Exp -> Spec)
+mkDVETestCase name = mkBeforeAfterTestCase name dveBefore dveAfter
+
+(appSideEffect1Before, appSideEffect1After, appSideEffect1Spec) = mkDVETestCase "app_side_effect_1"
+(appSideEffect2Before, appSideEffect2After, appSideEffect2Spec) = mkDVETestCase "app_side_effect_2"
+(appSimpleBefore, appSimpleAfter, appSimpleSpec) = mkDVETestCase "app_simple"
+(heapBefore, heapAfter, heapSpec) = mkDVETestCase "heap"
+(patternMatchBefore, patternMatchAfter, patternMatchSpec) = mkDVETestCase "pattern_match"
+(replaceAppBefore, replaceAppAfter, replaceAppSpec) = mkDVETestCase "replace_app"
+(replaceCaseBefore, replaceCaseAfter, replaceCaseSpec) = mkDVETestCase "replace_case"
+(replaceCaseRecBefore, replaceCaseRecAfter, replaceCaseRecSpec) = mkDVETestCase "replace_case_rec"
+(replacePureBefore, replacePureAfter, replacePureSpec) = mkDVETestCase "replace_pure"
+(replaceStoreBefore, replaceStoreAfter, replaceStoreSpec) = mkDVETestCase "replace_store"
+(replaceUnspecLocBefore, replaceUnspecLocAfter, replaceUnspecLocSpec) = mkDVETestCase "replace_unspec_loc"
+(replaceUpdateBefore, replaceUpdateAfter, replaceUpdateSpec) = mkDVETestCase "replace_update"
+(simpleBefore, simpleAfter, simpleSpec) = mkDVETestCase "simple"
+(trueSideEffectMinBefore, trueSideEffectMinAfter, trueSideEffectMinSpec) = mkDVETestCase "true_side_effect_min"
+(updateBefore, updateAfter, updateSpec) = mkDVETestCase "update"
 
 
 spec :: Spec
@@ -108,5 +121,3 @@ eliminateDeadVariables e =
     lvaResult = calcLiveness e
     tyEnv = inferTypeEnv e
     effMap = effectMap (tyEnv, e)
-
-

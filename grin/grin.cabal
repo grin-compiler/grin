@@ -215,24 +215,7 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.DeadData.Util
                      , DeadCodeElimination.Tests.DeadFunction.Spec
                      , DeadCodeElimination.Tests.DeadParam.Spec
-
-                     , DeadCodeElimination.Tests.DeadVariable.Simple
-                     , DeadCodeElimination.Tests.DeadVariable.Heap
-                     , DeadCodeElimination.Tests.DeadVariable.Update
-                     , DeadCodeElimination.Tests.DeadVariable.AppSimple
-                     , DeadCodeElimination.Tests.DeadVariable.AppSideEffect1
-                     , DeadCodeElimination.Tests.DeadVariable.AppSideEffect2
-                     , DeadCodeElimination.Tests.DeadVariable.PatternMatch
-                     , DeadCodeElimination.Tests.DeadVariable.ReplaceApp
-                     , DeadCodeElimination.Tests.DeadVariable.ReplaceCase
-                     , DeadCodeElimination.Tests.DeadVariable.ReplaceCaseRec
-                     , DeadCodeElimination.Tests.DeadVariable.ReplacePure
-                     , DeadCodeElimination.Tests.DeadVariable.ReplaceStore
-                     , DeadCodeElimination.Tests.DeadVariable.ReplaceUpdate
-                     , DeadCodeElimination.Tests.DeadVariable.ReplaceUnspecLoc
-                     , DeadCodeElimination.Tests.DeadVariable.TrueSideEffectMin
                      , DeadCodeElimination.Tests.DeadVariable.Spec
-                     , DeadCodeElimination.Tests.DeadVariable.Util
 
                      , DeadCodeElimination.Tests.Util
 
