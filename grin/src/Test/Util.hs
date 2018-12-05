@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test.Util where
 
+-- TODO: Remove this module
+
 import System.FilePath
 
 import Data.Text (Text)
