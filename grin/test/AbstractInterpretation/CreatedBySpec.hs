@@ -16,7 +16,6 @@ import Test.Test
 import Test.Util
 import Test.Hspec
 import Test.Assertions
-import HeapPointsTo.Tests.Util
 
 import AbstractInterpretation.IR hiding (Tag)
 import AbstractInterpretation.Reduce
@@ -24,8 +23,6 @@ import AbstractInterpretation.CreatedBy
 import AbstractInterpretation.CByResult
 import AbstractInterpretation.HPTResult as HPT
 
-import qualified HeapPointsTo.Tests.Undefined as HPT
-import qualified HeapPointsTo.Tests.UnspecLoc as HPT
 
 
 runTests :: IO ()
@@ -34,9 +31,17 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   let calcProducers = _producers . calcCByResult
-  let calcHPTResultWithCBy = _hptResult . calcCByResult
-  let mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
-  let emptyProducerSet = mkProducerSet []
+      calcHPTResultWithCBy = _hptResult . calcCByResult
+      mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
+      emptyProducerSet = mkProducerSet []
+      unspecLoc = tySetFromTypes [T_UnspecifiedLocation]
+      loc = tySetFromTypes . pure . T_Location
+      mkNode = V.fromList . map S.fromList
+      mkNodeSet = HPT.NodeSet . M.fromList . map (\(t,v) -> (t,mkNode v))
+      mkTySet = tySetFromNodeSet . mkNodeSet
+      tySetFromNodeSet = TypeSet mempty
+      tySetFromTypes = flip TypeSet mempty . S.fromList
+      mkSimpleMain t = (tySetFromTypes [t], mempty)
 
   describe "Created-By producers are calculated correctly for" $ do
     it "pures" $ do
@@ -386,21 +391,20 @@ spec = do
             , ("n1", typeN1)
             , ("n2", typeN2)
             ]
-            where typeN1 = mkTySet [ (cCons, [[T_Int64], [locT 2]])
+            where typeN1 = mkTySet [ (cCons, [[T_Int64], [T_Location 2]])
                                    , (cNil, [])
                                    ]
-                  typeN2 = mkTySet [ (cCons, [[T_Int64], [locTP0]])
+                  typeN2 = mkTySet [ (cCons, [[T_Int64], [T_Location 0]])
                                    ]
           undefinedExpectedFunctions = M.singleton "grinMain" (mkSimpleMain T_Int64)
           undefinedExpectedHeap = V.fromList
             [ mkNodeSet [(cNil, [])]
-            , mkNodeSet [(cCons, [[T_Int64], [locTP0]])]
+            , mkNodeSet [(cCons, [[T_Int64], [T_Location 0]])]
             , nodeSetN0
             ]
 
 
-          nodeSetN0 = mkNodeSet [(cCons, [[T_Int64], [locT 0, locT 1]])]
-          locTP0 = locT 0
+          nodeSetN0 = mkNodeSet [(cCons, [[T_Int64], [T_Location 0, T_Location 1]])]
       (calcHPTResultWithCBy exp) `shouldBe` expected
 
     it "unspec_loc" $ do
@@ -423,10 +427,10 @@ spec = do
 
           nodeSetN0, nodeSetN1 :: HPT.NodeSet
           nodeSetN0 = mkNodeSet [(cInt,  [[T_Int64]])]
-          nodeSetN1 = mkNodeSet [(cNode, [[unspecLocT]])]
+          nodeSetN1 = mkNodeSet [(cNode, [[T_UnspecifiedLocation]])]
           unspecLocExpectedHeap = V.fromList [ nodeSetN0 ]
           unspecLocExpectedRegisters = M.fromList
-            [ ("p0", tySetFromTypes [locT 0, unspecLocT])
+            [ ("p0", tySetFromTypes [T_Location 0, T_UnspecifiedLocation])
             , ("p1", unspecLoc)
             , ("n0", tySetFromNodeSet nodeSetN0)
             , ("n1", tySetFromNodeSet nodeSetN1)

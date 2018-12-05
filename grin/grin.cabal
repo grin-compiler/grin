@@ -220,9 +220,6 @@ test-suite grin-test
                      , DeadCodeElimination.Tests.Util
 
                      , HeapPointsTo.HeapPointsToSpec
-                     , HeapPointsTo.Tests.Undefined
-                     , HeapPointsTo.Tests.UnspecLoc
-                     , HeapPointsTo.Tests.Util
 
                      , LiveVariable.LiveVariableSpec
                      , LiveVariable.Tests.CaseAnonymous
