@@ -117,12 +117,12 @@ defaultOnChange :: [PipelineStep]
 defaultOnChange =
   [ T ProducerNameIntroduction
   , T BindNormalisation
-  , CBy CompileToAbstractProgram
-  , CBy RunAbstractProgramPure
-  , LVA CompileToAbstractProgram
-  , LVA RunAbstractProgramPure
-  , Sharing CompileToAbstractProgram
-  , Sharing RunAbstractProgramPure
+  , CBy Compile
+  , CBy RunPure
+  , LVA Compile
+  , LVA RunPure
+  , Sharing Compile
+  , Sharing RunPure
   , T UnitPropagation
   , Eff CalcEffectMap
   ]
@@ -146,14 +146,14 @@ debugPipelineState = do
 
 printingSteps :: [PipelineStep]
 printingSteps =
-  [ HPT PrintAbstractProgram
-  , HPT PrintAbstractResult
-  , CBy PrintAbstractProgram
-  , CBy PrintAbstractResult
-  , LVA PrintAbstractProgram
-  , LVA PrintAbstractResult
-  , Sharing PrintAbstractProgram
-  , Sharing PrintAbstractResult
+  [ HPT PrintProgram
+  , HPT PrintResult
+  , CBy PrintProgram
+  , CBy PrintResult
+  , LVA PrintProgram
+  , LVA PrintResult
+  , Sharing PrintProgram
+  , Sharing PrintResult
   , PrintTypeEnv
   , Eff PrintEffectMap
   , PrintAST

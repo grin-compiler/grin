@@ -148,30 +148,30 @@ pipelineStep p = do
       mapM_ pipelineStep prePipeline
       optimizeWithPM opts grin (fmap T defaultOptimizations) defaultOnChange defaultCleanUp
     HPT step -> case step of
-      CompileToAbstractProgram -> compileAbstractProgram HPT.codeGen psHPTProgram
-      OptimiseAbstractProgram  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
-      PrintAbstractProgram     -> printAbstractProgram psHPTProgram
-      RunAbstractProgramPure   -> runHPTPure
-      PrintAbstractResult      -> printAnalysisResult psHPTResult
+      Compile -> compileAbstractProgram HPT.codeGen psHPTProgram
+      Optimise  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
+      PrintProgram     -> printAbstractProgram psHPTProgram
+      RunPure   -> runHPTPure
+      PrintResult      -> printAnalysisResult psHPTResult
     CBy step -> case step of
-      CompileToAbstractProgram -> compileAbstractProgram CBy.codeGen psCByProgram
-      OptimiseAbstractProgram  -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
-      PrintAbstractProgram     -> printAbstractProgram psCByProgram
-      RunAbstractProgramPure   -> runCByPure
-      PrintAbstractResult      -> printAnalysisResult psCByResult
+      Compile -> compileAbstractProgram CBy.codeGen psCByProgram
+      Optimise  -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
+      PrintProgram     -> printAbstractProgram psCByProgram
+      RunPure   -> runCByPure
+      PrintResult      -> printAnalysisResult psCByResult
     LVA step -> case step of
-      CompileToAbstractProgram -> compileAbstractProgram LVA.codeGen psLVAProgram
-      OptimiseAbstractProgram  -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
-      PrintAbstractProgram     -> printAbstractProgram psLVAProgram
-      RunAbstractProgramPure   -> runLVAPure
-      PrintAbstractResult      -> printAnalysisResult psLVAResult
+      Compile -> compileAbstractProgram LVA.codeGen psLVAProgram
+      Optimise  -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
+      PrintProgram     -> printAbstractProgram psLVAProgram
+      RunPure   -> runLVAPure
+      PrintResult      -> printAnalysisResult psLVAResult
     RunCByWithLVA -> runCByWithLVAPure
     Sharing step -> case step of
-      CompileToAbstractProgram -> compileAbstractProgram Sharing.codeGen psSharingProgram
-      OptimiseAbstractProgram  -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
-      PrintAbstractProgram     -> printAbstractProgram psSharingProgram
-      RunAbstractProgramPure   -> runSharingPure
-      PrintAbstractResult      -> printAnalysisResult psSharingResult
+      Compile -> compileAbstractProgram Sharing.codeGen psSharingProgram
+      Optimise  -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
+      PrintProgram     -> printAbstractProgram psSharingProgram
+      RunPure   -> runSharingPure
+      PrintResult      -> printAnalysisResult psSharingResult
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -501,8 +501,8 @@ debugTransformation t = do
 
 lintGrin :: Maybe String -> PipelineM ()
 lintGrin mPhaseName = do
-  pipelineStep $ HPT CompileToAbstractProgram
-  pipelineStep $ HPT RunAbstractProgramPure
+  pipelineStep $ HPT Compile
+  pipelineStep $ HPT RunPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
@@ -514,7 +514,7 @@ lintGrin mPhaseName = do
     failOnLintError <- view poFailOnLint
     when failOnLintError $ void $ do
       pipelineLog $ show $ prettyLintExp lintExp
-      pipelineStep $ HPT PrintAbstractResult
+      pipelineStep $ HPT PrintResult
     case mPhaseName of
       Just phaseName  -> pipelineLog $ printf "error after %s:\n%s" phaseName (unlines errors)
       Nothing         -> pipelineLog $ printf "error:\n%s" (unlines errors)
@@ -587,17 +587,17 @@ randomPipeline seed = do
 
     runBasicAnalyses :: PipelineM ()
     runBasicAnalyses = mapM_ pipelineStep
-      [ Sharing CompileToAbstractProgram
-      , Sharing RunAbstractProgramPure
+      [ Sharing Compile
+      , Sharing RunPure
       , Eff CalcEffectMap
       ]
 
     runCByLVA :: PipelineM ()
     runCByLVA = mapM_ pipelineStep
-      [ CBy CompileToAbstractProgram
-      , CBy RunAbstractProgramPure
-      , LVA CompileToAbstractProgram
-      , LVA RunAbstractProgramPure
+      [ CBy Compile
+      , CBy RunPure
+      , LVA Compile
+      , LVA RunPure
       , Eff CalcEffectMap
       ]
 

@@ -21,17 +21,16 @@ import AbstractInterpretation.CreatedBy as CreatedBy (codeGen)
 import AbstractInterpretation.CByResult (toCByResult)
 
 
-
 runTests :: IO ()
 runTests = hspec spec
 
 spec :: Spec
 spec = do
   let deadDataEliminationPipeline =
-        [ CBy CompileToAbstractProgram
-        , CBy RunAbstractProgramPure
-        , LVA CompileToAbstractProgram
-        , LVA RunAbstractProgramPure
+        [ CBy Compile
+        , CBy RunPure
+        , LVA Compile
+        , LVA RunPure
         , T DeadDataElimination
         ]
 

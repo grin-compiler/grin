@@ -55,22 +55,28 @@ spec = do
       |]
     let ppln =
           [ T InlineEval
-          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , HPT Compile
+          , HPT RunPure
           , T ArityRaising
           , T BindNormalisation
-          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , HPT Compile
+          , HPT RunPure
           , T CommonSubExpressionElimination
           , T CopyPropagation
-          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , HPT Compile
+          , HPT RunPure
           , T SimpleDeadVariableElimination
-          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , HPT Compile
+          , HPT RunPure
           , T ArityRaising
           , T BindNormalisation
-          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , HPT Compile
+          , HPT RunPure
           , T CommonSubExpressionElimination
           , T CopyPropagation
           , T ConstantFolding
-          , Pass [HPT CompileToAbstractProgram, HPT RunAbstractProgramPure]
+          , HPT Compile
+          , HPT RunPure
           , T SimpleDeadVariableElimination
           ]
     (pipelineInfo, transformed) <- pipeline defaultOpts Nothing before ppln
