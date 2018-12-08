@@ -210,6 +210,7 @@ test-suite grin-test
                      , transformers
                      , mtl
                      , ansi-wl-pprint
+                     , directory
 
   other-modules:
                        DeadCodeElimination.DeadCodeEliminationSpec

@@ -37,53 +37,53 @@ spec = do
 
   describe "Dead Data Elimination" $ do
     it "Impossible alternative" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/impossible_alt.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/impossible_alt.grin"
+      "dead_data/before/impossible_alt.grin"
+      "dead_data/after/impossible_alt.grin"
       deadDataEliminationPipeline
 
     it "Length" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/length.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/length.grin"
+      "dead_data/before/length.grin"
+      "dead_data/after/length.grin"
       deadDataEliminationPipeline
 
     it "Multiple fields" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/multiple_fields.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/multiple_fields.grin"
+      "dead_data/before/multiple_fields.grin"
+      "dead_data/after/multiple_fields.grin"
       deadDataEliminationPipeline
 
     it "Only dummify" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/only_dummify.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/only_dummify.grin"
+      "dead_data/before/only_dummify.grin"
+      "dead_data/after/only_dummify.grin"
       deadDataEliminationPipeline
 
     it "Deletable Single" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/deletable_single.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/deletable_single.grin"
+      "dead_data/before/deletable_single.grin"
+      "dead_data/after/deletable_single.grin"
       deadDataEliminationPipeline
 
     it "Deletable Multi" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/deletable_multi.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/deletable_multi.grin"
+      "dead_data/before/deletable_multi.grin"
+      "dead_data/after/deletable_multi.grin"
       deadDataEliminationPipeline
 
     it "Separate Prods" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/separate_prods.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/separate_prods.grin"
+      "dead_data/before/separate_prods.grin"
+      "dead_data/after/separate_prods.grin"
       deadDataEliminationPipeline
 
     it "FNode Before" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/fnode.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/fnode.grin"
+      "dead_code/fnode.grin"
+      "dead_data/after/fnode.grin"
       deadDataEliminationPipeline
 
     it "PNode Before" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/pnode.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/pnode.grin"
+      "dead_code/pnode.grin"
+      "dead_data/after/pnode.grin"
       deadDataEliminationPipeline
 
     it "PNode Opt Before" $ pipeline
-      "grin/test/DeadCodeElimination/examples/dead_data/before/pnode_opt.grin"
-      "grin/test/DeadCodeElimination/examples/dead_data/after/pnode_opt.grin"
+      "dead_code/pnode_opt.grin"
+      "dead_data/after/pnode_opt.grin"
       deadDataEliminationPipeline
 
   describe "Producer Grouping" $ do
