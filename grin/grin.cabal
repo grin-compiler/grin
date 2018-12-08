@@ -215,7 +215,6 @@ test-suite grin-test
   other-modules:
                        DeadCodeElimination.DeadCodeEliminationSpec
 
-                     , DeadCodeElimination.Tests.DeadFunction.Spec
                      , DeadCodeElimination.Tests.DeadParam.Spec
                      , DeadCodeElimination.Tests.DeadVariable.Spec
 
@@ -272,6 +271,7 @@ test-suite grin-test
                      , Transformations.Optimising.InliningSpec
                      , Transformations.Optimising.CaseHoistingSpec
                      , Transformations.Optimising.DeadDataEliminationSpec
+                     , Transformations.Optimising.DeadFunctionEliminationSpec
                      , Transformations.StaticSingleAssignmentSpec
                      , Transformations.BindNormalisationSpec
                      , Transformations.ConfluenceSpec
