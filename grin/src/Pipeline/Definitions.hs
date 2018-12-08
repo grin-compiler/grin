@@ -74,6 +74,7 @@ instance Show (Hidden a) where
 instance Eq (Hidden a) where
   _ == _ = True
 
+-- TODO: Rename
 data AbstractComputationStep
   = CompileToAbstractProgram
   | OptimiseAbstractProgram

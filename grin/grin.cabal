@@ -199,6 +199,7 @@ test-suite grin-test
                      , functor-infix
                      , grin
                      , hspec
+                     , hspec-core
                      , hspec-discover
                      , QuickCheck
                      , deepseq
@@ -206,13 +207,13 @@ test-suite grin-test
                      , text
                      , random
                      , microlens
+                     , transformers
+                     , mtl
+                     , ansi-wl-pprint
 
   other-modules:
                        DeadCodeElimination.DeadCodeEliminationSpec
 
-                     , DeadCodeElimination.Tests.DeadData.ProducerGrouping
-                     , DeadCodeElimination.Tests.DeadData.Spec
-                     , DeadCodeElimination.Tests.DeadData.Util
                      , DeadCodeElimination.Tests.DeadFunction.Spec
                      , DeadCodeElimination.Tests.DeadParam.Spec
                      , DeadCodeElimination.Tests.DeadVariable.Spec
@@ -269,6 +270,7 @@ test-suite grin-test
                      , Transformations.Optimising.SimpleDeadVariableEliminationSpec
                      , Transformations.Optimising.InliningSpec
                      , Transformations.Optimising.CaseHoistingSpec
+                     , Transformations.Optimising.DeadDataEliminationSpec
                      , Transformations.StaticSingleAssignmentSpec
                      , Transformations.BindNormalisationSpec
                      , Transformations.ConfluenceSpec
@@ -284,6 +286,7 @@ test-suite grin-test
                      , AbstractInterpretation.OptimiseAbstractProgramSpec
                      , AbstractInterpretation.SharingSpec
                      , AbstractInterpretation.CreatedBySpec
+                     , Test.Hspec.PipelineExample
   default-language:    Haskell2010
 
 benchmark grin-benchmark

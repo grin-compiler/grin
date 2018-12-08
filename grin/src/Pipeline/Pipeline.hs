@@ -647,25 +647,27 @@ confluenceTest = do
   pipelineLog $ show pipeline2
 
 runPipeline :: PipelineOpts -> Maybe Text -> Exp -> PipelineM a -> IO (a, Exp)
-runPipeline o s e m = fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
-  start = PState
-    { _psSrc            = s
-    , _psExp            = e
-    , _psTransStep      = 0
-    , _psSaveIdx        = 0
-    , _psHPTProgram     = Nothing
-    , _psHPTResult      = Nothing
-    , _psCByProgram     = Nothing
-    , _psCByResult      = Nothing
-    , _psLVAProgram     = Nothing
-    , _psLVAResult      = Nothing
-    , _psSharingResult  = Nothing
-    , _psSharingProgram = Nothing
-    , _psTypeEnv        = Nothing
-    , _psTypeAnnots     = Nothing
-    , _psEffectMap      = Nothing
-    , _psErrors         = []
-    }
+runPipeline o s e m = do
+  createDirectoryIfMissing True $ _poOutputDir o
+  fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
+    start = PState
+      { _psSrc            = s
+      , _psExp            = e
+      , _psTransStep      = 0
+      , _psSaveIdx        = 0
+      , _psHPTProgram     = Nothing
+      , _psHPTResult      = Nothing
+      , _psCByProgram     = Nothing
+      , _psCByResult      = Nothing
+      , _psLVAProgram     = Nothing
+      , _psLVAResult      = Nothing
+      , _psSharingResult  = Nothing
+      , _psSharingProgram = Nothing
+      , _psTypeEnv        = Nothing
+      , _psTypeAnnots     = Nothing
+      , _psEffectMap      = Nothing
+      , _psErrors         = []
+      }
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
