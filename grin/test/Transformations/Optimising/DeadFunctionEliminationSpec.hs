@@ -1,28 +1,7 @@
 module Transformations.Optimising.DeadFunctionEliminationSpec where
 
-import System.FilePath
-
-import Data.Either (fromRight)
-
-import Test.IO
 import Test.Hspec
-import Test.Util
 import Test.Hspec.PipelineExample
-
-import Grin.Grin
-import Grin.TypeCheck
-
-import AbstractInterpretation.LVAResultTypes
-import Transformations.Optimising.DeadFunctionElimination
-import Transformations.EffectMap
-
-import DeadCodeElimination.Tests.Util
-
-import AbstractInterpretation.LiveVariable as LiveVariable (codeGen)
-import AbstractInterpretation.LVAResult (LVAResult(..), toLVAResult)
-import AbstractInterpretation.Reduce (evalDataFlowInfo, _airComp)
-import AbstractInterpretation.CreatedBy as CreatedBy (codeGen)
-import AbstractInterpretation.CByResult (toCByResult)
 import Pipeline.Definitions
 
 

@@ -213,11 +213,7 @@ test-suite grin-test
                      , directory
 
   other-modules:
-                       DeadCodeElimination.DeadCodeEliminationSpec
-
-                     , DeadCodeElimination.Tests.Util
-
-                     , LiveVariable.LiveVariableSpec
+                       LiveVariable.LiveVariableSpec
                      , LiveVariable.Tests.CaseAnonymous
                      , LiveVariable.Tests.CaseMinLit
                      , LiveVariable.Tests.CaseMinNodes
