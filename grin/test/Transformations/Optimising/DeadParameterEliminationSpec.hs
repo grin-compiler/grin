@@ -1,4 +1,4 @@
-module DeadCodeElimination.Tests.DeadParam.Spec where
+module Transformations.Optimising.DeadParameterEliminationSpec where
 
 import Test.Hspec
 import Test.Hspec.PipelineExample
