@@ -1,123 +1,97 @@
 module DeadCodeElimination.Tests.DeadVariable.Spec where
 
-import System.FilePath
-
-import Data.Either (fromRight)
-
-import Test.IO
 import Test.Hspec
+import Test.Hspec.PipelineExample
+import Pipeline.Definitions
 
-import Grin.Grin
-import Grin.TypeCheck
-
-import AbstractInterpretation.LVAResultTypes
-import Transformations.Optimising.DeadVariableElimination
-import Transformations.EffectMap
-
-import LiveVariable.LiveVariableSpec (calcLiveness)
-import DeadCodeElimination.Tests.Util
-
-
-dveBefore :: FilePath
-dveBefore = dceExamples </> "dead_variable" </> "before"
-
-dveAfter :: FilePath
-dveAfter = dceExamples </> "dead_variable" </> "after"
-
-
--- name ~ name of the test case, and also the grin source file
-mkDVETestCase :: String -> (FilePath, FilePath, FilePath -> Exp -> Spec)
-mkDVETestCase name = mkBeforeAfterTestCase name dveBefore dveAfter
-
-(appSideEffect1Before, appSideEffect1After, appSideEffect1Spec) = mkDVETestCase "app_side_effect_1"
-(appSideEffect2Before, appSideEffect2After, appSideEffect2Spec) = mkDVETestCase "app_side_effect_2"
-(appSimpleBefore, appSimpleAfter, appSimpleSpec) = mkDVETestCase "app_simple"
-(heapBefore, heapAfter, heapSpec) = mkDVETestCase "heap"
-(patternMatchBefore, patternMatchAfter, patternMatchSpec) = mkDVETestCase "pattern_match"
-(replaceAppBefore, replaceAppAfter, replaceAppSpec) = mkDVETestCase "replace_app"
-(replaceCaseBefore, replaceCaseAfter, replaceCaseSpec) = mkDVETestCase "replace_case"
-(replaceCaseRecBefore, replaceCaseRecAfter, replaceCaseRecSpec) = mkDVETestCase "replace_case_rec"
-(replacePureBefore, replacePureAfter, replacePureSpec) = mkDVETestCase "replace_pure"
-(replaceStoreBefore, replaceStoreAfter, replaceStoreSpec) = mkDVETestCase "replace_store"
-(replaceUnspecLocBefore, replaceUnspecLocAfter, replaceUnspecLocSpec) = mkDVETestCase "replace_unspec_loc"
-(replaceUpdateBefore, replaceUpdateAfter, replaceUpdateSpec) = mkDVETestCase "replace_update"
-(simpleBefore, simpleAfter, simpleSpec) = mkDVETestCase "simple"
-(trueSideEffectMinBefore, trueSideEffectMinAfter, trueSideEffectMinSpec) = mkDVETestCase "true_side_effect_min"
-(updateBefore, updateAfter, updateSpec) = mkDVETestCase "update"
-
-
-spec :: Spec
-spec = runIO runTests
 
 runTests :: IO ()
-runTests = runTestsFrom stackRoot
+runTests = hspec spec
 
-runTestsGHCi :: IO ()
-runTestsGHCi = runTestsFrom stackTest
+spec :: Spec
+spec = do
+  describe "Dead Variable Elimination" $ do
 
-dveTestName :: String
-dveTestName = "Dead Variable Elimination"
+    let deadVariableEliminationPipeline =
+          [ HPT Compile
+          , HPT RunPure
+          , LVA Compile
+          , LVA RunPure
+          , Eff CalcEffectMap
+          , T DeadVariableElimination
+          ]
 
-runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = do
-  testGroup dveTestName $
-    mkBeforeAfterSpecFrom fromCurDir eliminateDeadVariables
-      [ simpleBefore
-      , heapBefore
-      , updateBefore
-      , appSimpleBefore
-      , appSideEffect1Before
-      , appSideEffect2Before
-      , patternMatchBefore
-      , replaceAppBefore
-      , replaceCaseBefore
-      , replaceCaseRecBefore
-      , replacePureBefore
-      , replaceStoreBefore
-      , replaceUpdateBefore
-      , replaceUnspecLocBefore
-      , trueSideEffectMinBefore
-      ]
-      [ simpleAfter
-      , heapAfter
-      , updateAfter
-      , appSimpleAfter
-      , appSideEffect1After
-      , appSideEffect2After
-      , patternMatchAfter
-      , replaceAppAfter
-      , replaceCaseAfter
-      , replaceCaseRecAfter
-      , replacePureAfter
-      , replaceStoreAfter
-      , replaceUpdateAfter
-      , replaceUnspecLocAfter
-      , trueSideEffectMinAfter
-      ]
-      [ simpleSpec
-      , heapSpec
-      , updateSpec
-      , appSimpleSpec
-      , appSideEffect1Spec
-      , appSideEffect2Spec
-      , patternMatchSpec
-      , replaceAppSpec
-      , replaceCaseSpec
-      , replaceCaseRecSpec
-      , replacePureSpec
-      , replaceStoreSpec
-      , replaceUpdateSpec
-      , replaceUnspecLocSpec
-      , trueSideEffectMinSpec
-      ]
+    it "simple" $ pipeline
+      "dead_variable/before/simple.grin"
+      "dead_variable/after/simple.grin"
+      deadVariableEliminationPipeline
 
-eliminateDeadVariables :: Exp -> Exp
-eliminateDeadVariables e =
-  fromRight fail
-  . deadVariableElimination lvaResult effMap tyEnv
-  $ e
-  where
-    fail = error "Dead variable elimination failed. See the error logs for more information"
-    lvaResult = calcLiveness e
-    tyEnv = inferTypeEnv e
-    effMap = effectMap (tyEnv, e)
+    it "heap" $ pipeline
+      "dead_variable/before/heap.grin"
+      "dead_variable/after/heap.grin"
+      deadVariableEliminationPipeline
+
+    it "update" $ pipeline
+      "dead_variable/before/update.grin"
+      "dead_variable/after/update.grin"
+      deadVariableEliminationPipeline
+
+    it "app_simple" $ pipeline
+      "dead_variable/before/app_simple.grin"
+      "dead_variable/after/app_simple.grin"
+      deadVariableEliminationPipeline
+
+    it "app_side_effect_1" $ pipeline
+      "dead_code/app_side_effect_1.grin"
+      "dead_variable/after/app_side_effect_1.grin"
+      deadVariableEliminationPipeline
+
+    it "app_side_effect_2" $ pipeline
+      "dead_variable/before/app_side_effect_2.grin"
+      "dead_variable/after/app_side_effect_2.grin"
+      deadVariableEliminationPipeline
+
+    it "pattern_match" $ pipeline
+      "dead_variable/before/pattern_match.grin"
+      "dead_variable/after/pattern_match.grin"
+      deadVariableEliminationPipeline
+
+    it "replace_app" $ pipeline
+      "dead_variable/before/replace_app.grin"
+      "dead_variable/after/replace_app.grin"
+      deadVariableEliminationPipeline
+
+    it "replace_case" $ pipeline
+      "dead_variable/before/replace_case.grin"
+      "dead_variable/after/replace_case.grin"
+      deadVariableEliminationPipeline
+
+    it "replace_case_rec" $ pipeline
+      "dead_variable/before/replace_case_rec.grin"
+      "dead_variable/after/replace_case_rec.grin"
+      deadVariableEliminationPipeline
+
+    it "replace_pure" $ pipeline
+      "dead_variable/before/replace_pure.grin"
+      "dead_variable/after/replace_pure.grin"
+      deadVariableEliminationPipeline
+
+    it "replace_store" $ pipeline
+      "dead_variable/before/replace_store.grin"
+      "dead_variable/after/replace_store.grin"
+      deadVariableEliminationPipeline
+
+    it "replace_update" $ pipeline
+      "dead_variable/before/replace_update.grin"
+      "dead_variable/after/replace_update.grin"
+      deadVariableEliminationPipeline
+
+    it "replace_unspec_loc" $ pipeline
+      "dead_variable/before/replace_unspec_loc.grin"
+      "dead_variable/after/replace_unspec_loc.grin"
+      deadVariableEliminationPipeline
+
+    it "true_side_effect_min" $ pipeline
+      "dead_variable/before/true_side_effect_min.grin"
+      "dead_variable/after/true_side_effect_min.grin"
+      deadVariableEliminationPipeline
