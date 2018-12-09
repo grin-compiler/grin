@@ -1,80 +1,46 @@
 module DeadCodeElimination.Tests.DeadParam.Spec where
 
-import System.FilePath
-
-import Data.Either (fromRight)
-
-import Test.IO
 import Test.Hspec
+import Test.Hspec.PipelineExample
+import Pipeline.Definitions
 
-import Grin.Grin
-import Grin.TypeCheck
-
-import AbstractInterpretation.LVAResultTypes
-import Transformations.Optimising.DeadParameterElimination
-
-import LiveVariable.LiveVariableSpec (calcLiveness)
-import DeadCodeElimination.Tests.Util
-
-
-dpeBefore :: FilePath
-dpeBefore = dceExamples </> "dead_param" </> "before"
-
-dpeAfter :: FilePath
-dpeAfter = dceExamples </> "dead_param" </> "after"
-
--- name ~ name of the test case, and also the grin source file
-mkDPETestCase :: String -> (FilePath, FilePath, FilePath -> Exp -> Spec)
-mkDPETestCase name = mkBeforeAfterTestCase name dpeBefore dpeAfter
-
-(fNodeBefore, fNodeAfter, fNodeSpec) = mkDPETestCase "fnode"
-(mutuallyRecursiveBefore, mutuallyRecursiveAfter, mutuallyRecursiveSpec) = mkDPETestCase "mutually_recursive"
-(pNodeBefore, pNodeAfter, pNodeSpec) = mkDPETestCase "pnode"
-(pNodeOptBefore, pNodeOptAfter, pNodeOptSpec) = mkDPETestCase "pnode_opt"
-(simpleBefore, simpleAfter, simpleSpec) = mkDPETestCase "simple"
-
-
-spec :: Spec
-spec = runIO runTests
 
 runTests :: IO ()
-runTests = runTestsFrom stackRoot
+runTests = hspec spec
 
-runTestsGHCi :: IO ()
-runTestsGHCi = runTestsFrom stackTest
+spec :: Spec
+spec = do
+  describe "Dead Parameter Elimination" $ do
 
-dpeTestName :: String
-dpeTestName = "Dead Parameter Elimination"
+    let deadParameterEliminationPipeline =
+          [ HPT Compile
+          , HPT RunPure
+          , LVA Compile
+          , LVA RunPure
+          , T DeadParameterElimination
+          ]
 
-runTestsFrom :: FilePath -> IO ()
-runTestsFrom fromCurDir = do
-  testGroup dpeTestName $
-    mkBeforeAfterSpecFrom fromCurDir eliminateDeadParams
-      [ fNodeBefore
-      , pNodeBefore
-      , pNodeOptBefore
-      , simpleBefore
-      , mutuallyRecursiveBefore
-      ]
-      [ fNodeAfter
-      , pNodeAfter
-      , pNodeOptAfter
-      , simpleAfter
-      , mutuallyRecursiveAfter
-      ]
-      [ fNodeSpec
-      , pNodeSpec
-      , pNodeOptSpec
-      , simpleSpec
-      , mutuallyRecursiveSpec
-      ]
+    it "Fnode" $ pipeline
+      "dead_code/fnode.grin"
+      "dead_param/after/fnode.grin"
+      deadParameterEliminationPipeline
 
-eliminateDeadParams :: Exp -> Exp
-eliminateDeadParams e =
-  fromRight fail
-  . deadParameterElimination lvaResult tyEnv
-  $ e
-  where
-    fail = error "Dead parameter elimination failed. See the error logs for more information"
-    lvaResult = calcLiveness e
-    tyEnv = inferTypeEnv e
+    it "Pnode" $ pipeline
+      "dead_code/pnode.grin"
+      "dead_param/after/pnode.grin"
+      deadParameterEliminationPipeline
+
+    it "Pnode opt" $ pipeline
+      "dead_code/pnode_opt.grin"
+      "dead_param/after/pnode_opt.grin"
+      deadParameterEliminationPipeline
+
+    it "Simple" $ pipeline
+      "dead_param/before/simple.grin"
+      "dead_param/after/simple.grin"
+      deadParameterEliminationPipeline
+
+    it "Mutually recursive" $ pipeline
+      "dead_param/before/mutually_recursive.grin"
+      "dead_param/after/mutually_recursive.grin"
+      deadParameterEliminationPipeline
