@@ -214,31 +214,6 @@ test-suite grin-test
 
   other-modules:
                        LiveVariable.LiveVariableSpec
-                     , LiveVariable.Tests.CaseAnonymous
-                     , LiveVariable.Tests.CaseMinLit
-                     , LiveVariable.Tests.CaseMinNodes
-                     , LiveVariable.Tests.CaseNested
-                     , LiveVariable.Tests.CaseRestricted
-                     , LiveVariable.Tests.CaseRestrictedNodes
-                     , LiveVariable.Tests.DeadTags
-                     , LiveVariable.Tests.Fields
-                     , LiveVariable.Tests.FunctionCall1
-                     , LiveVariable.Tests.FunctionCall2
-                     , LiveVariable.Tests.HeapCaseMin
-                     , LiveVariable.Tests.HeapCase
-                     , LiveVariable.Tests.HeapIndirectSimple
-                     , LiveVariable.Tests.HeapSimple
-                     , LiveVariable.Tests.HeapUpdateComplex
-                     , LiveVariable.Tests.HeapUpdateFunCall
-                     , LiveVariable.Tests.HeapUpdateLocal
-                     , LiveVariable.Tests.LitPat
-                     , LiveVariable.Tests.MainNodeRet
-                     , LiveVariable.Tests.NodesSimple
-                     , LiveVariable.Tests.NodesTricky
-                     , LiveVariable.Tests.SumOpt
-                     , LiveVariable.Tests.Undefined
-                     , LiveVariable.Tests.UndefinedWithLocInfo
-                     , LiveVariable.Tests.Util
 
                      , Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec

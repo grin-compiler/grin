@@ -1,8 +1,0 @@
-grinMain =
-  n0 <- pure (CBool 0)
-  n1 <- case n0 of
-    (CBool c0) -> pure (CNode c0)
-    (CWord c1) -> pure (CWord c1)
-    #default   -> pure (CNope 5)
-  (CNode b0) <- pure n1
-  pure b0
