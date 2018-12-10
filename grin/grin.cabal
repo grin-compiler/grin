@@ -213,9 +213,7 @@ test-suite grin-test
                      , directory
 
   other-modules:
-                       LiveVariable.LiveVariableSpec
-
-                     , Transformations.Simplifying.RegisterIntroductionSpec
+                       Transformations.Simplifying.RegisterIntroductionSpec
                      , Transformations.Simplifying.CaseSimplificationSpec
                      , Transformations.Simplifying.SplitFetchSpec
                      , Transformations.Simplifying.RightHoistFetchSpec
@@ -253,6 +251,7 @@ test-suite grin-test
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec
+                     , LiveVariableSpec
                      , AbstractInterpretation.IRSpec
                      , AbstractInterpretation.OptimiseAbstractProgramSpec
                      , AbstractInterpretation.SharingSpec

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedLists, OverloadedStrings, QuasiQuotes #-}
-module LiveVariable.LiveVariableSpec where
+module LiveVariableSpec where
 
 import Data.Map    (Map)
 import Data.Vector (Vector)
