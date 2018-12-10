@@ -6,3 +6,6 @@ question:
   is there a case when can call by need (with sharing analysis) would block further optimisations that was possible with call by name?
 
 
+- new transformation / grin language modification
+  for better accuracy each case alternative should introduce a new binder for the narrowed scrutinee,
+  substitute the scritinee variable with the alternative's narrowed scrutinee version
