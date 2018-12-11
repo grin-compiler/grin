@@ -22,9 +22,9 @@ import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnv
 
-import AbstractInterpretation.CByUtil
-import AbstractInterpretation.CByResult
-import AbstractInterpretation.LVAResult
+import AbstractInterpretation.CreatedBy.Util
+import AbstractInterpretation.CreatedBy.Result
+import AbstractInterpretation.LiveVariable.Result
 
 import Transformations.Util
 import Transformations.Names

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, TemplateHaskell, OverloadedStrings #-}
-module AbstractInterpretation.HeapPointsTo where
+module AbstractInterpretation.HeapPointsTo.CodeGen where
 
 import Control.Monad.Trans.Except
 import Control.Monad.State

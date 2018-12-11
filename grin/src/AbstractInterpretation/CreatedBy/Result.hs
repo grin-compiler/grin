@@ -1,17 +1,16 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving #-}
 
-module AbstractInterpretation.CByResultTypes where
+module AbstractInterpretation.CreatedBy.Result where
 
 import Data.Set    (Set)
 import Data.Map    (Map)
-import qualified Data.Set as S
-import qualified Data.Map as M
+import qualified Data.Map as Map
 
 import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
-import AbstractInterpretation.HPTResult
+import AbstractInterpretation.HeapPointsTo.Result
 
 -- possible producers grouped by tags
 newtype ProducerMap = ProducerMap { _producerMap :: Map Name ProducerSet }
@@ -21,14 +20,14 @@ newtype ProducerSet = ProducerSet { _producerSet :: Map Tag (Set Name)   }
 
 -- TODO: NewtypeDeriving or DerivingVia
 instance Monoid ProducerSet where
-  mempty = ProducerSet M.empty
+  mempty = ProducerSet Map.empty
 instance Semigroup ProducerSet where
-  (<>) (ProducerSet x) (ProducerSet y) = ProducerSet $ M.unionWith mappend x y
+  (<>) (ProducerSet x) (ProducerSet y) = ProducerSet $ Map.unionWith mappend x y
 
 instance Monoid ProducerMap where
-  mempty = ProducerMap M.empty
+  mempty = ProducerMap Map.empty
 instance Semigroup ProducerMap where
-  (<>) (ProducerMap x) (ProducerMap y) = ProducerMap $ M.unionWith mappend x y
+  (<>) (ProducerMap x) (ProducerMap y) = ProducerMap $ Map.unionWith mappend x y
 
 -- A graph representing the connections between producers.
 -- p1 <-t-> p2 means: producers p1 and p2 share a consumer for tag t

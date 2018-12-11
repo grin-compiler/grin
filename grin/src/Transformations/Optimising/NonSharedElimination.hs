@@ -12,7 +12,7 @@ import qualified Data.Set as Set
 
 import Grin.Grin
 import Grin.TypeEnv
-import AbstractInterpretation.SharingResult
+import AbstractInterpretation.Sharing.Result
 
 
 

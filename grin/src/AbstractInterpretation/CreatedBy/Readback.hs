@@ -1,9 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module AbstractInterpretation.CByResult
-  ( module AbstractInterpretation.CByResult
-  , module AbstractInterpretation.CByResultTypes
-  ) where
+module AbstractInterpretation.CreatedBy.Readback where
 
 import Data.Set    (Set)
 import Data.Map    (Map)
@@ -17,13 +14,13 @@ import Data.Maybe
 import Lens.Micro.Platform
 
 import Grin.Grin (Name, Tag)
-import AbstractInterpretation.HPTResult
 import AbstractInterpretation.IR (Reg(..))
 import AbstractInterpretation.Reduce (Computer)
-import AbstractInterpretation.CreatedBy as CBy
-import AbstractInterpretation.CByResultTypes
-import AbstractInterpretation.CByUtil
-import AbstractInterpretation.LVAResult (LVAResult)
+import AbstractInterpretation.CreatedBy.CodeGen as CBy hiding (Producer)
+import AbstractInterpretation.CreatedBy.Util
+import AbstractInterpretation.CreatedBy.Result
+import AbstractInterpretation.HeapPointsTo.Result
+import AbstractInterpretation.LiveVariable.Result (LVAResult)
 
 
 -- HPTResult with producer info

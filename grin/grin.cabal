@@ -17,25 +17,23 @@ library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
   exposed-modules:
-    AbstractInterpretation.CodeGen
-    AbstractInterpretation.CByResult
-    AbstractInterpretation.CByResultTypes
-    AbstractInterpretation.CByUtil
-    AbstractInterpretation.CreatedBy
-    AbstractInterpretation.HeapPointsTo
-    AbstractInterpretation.HPTResult
+    AbstractInterpretation.CreatedBy.Result
+    AbstractInterpretation.CreatedBy.Readback
+    AbstractInterpretation.CreatedBy.Util
+    AbstractInterpretation.CreatedBy.CodeGen
+    AbstractInterpretation.CreatedBy.Pretty
+    AbstractInterpretation.HeapPointsTo.CodeGen
+    AbstractInterpretation.HeapPointsTo.Pretty
+    AbstractInterpretation.HeapPointsTo.Result
+    AbstractInterpretation.Sharing.CodeGen
+    AbstractInterpretation.Sharing.Result
+    AbstractInterpretation.Sharing.Pretty
+    AbstractInterpretation.LiveVariable.CodeGen
+    AbstractInterpretation.LiveVariable.Result
+    AbstractInterpretation.LiveVariable.Pretty
     AbstractInterpretation.IR
-    AbstractInterpretation.LiveVariable
-    AbstractInterpretation.LVAResult
-    AbstractInterpretation.LVAResultTypes
-    AbstractInterpretation.LVAUtil
-    AbstractInterpretation.Sharing
-    AbstractInterpretation.SharingResult
-    AbstractInterpretation.PrettyCBy
-    AbstractInterpretation.PrettyHPT
     AbstractInterpretation.PrettyIR
-    AbstractInterpretation.PrettyLVA
-    AbstractInterpretation.PrettySharing
+    AbstractInterpretation.CodeGen
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util
     AbstractInterpretation.OptimiseAbstractProgram

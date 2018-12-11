@@ -6,12 +6,11 @@ import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnv
 
-import AbstractInterpretation.PrettyCBy
-import AbstractInterpretation.CByUtil   (ProducerGraph(..))
-import AbstractInterpretation.CByResult (ProducerMap)
-import AbstractInterpretation.PrettyLVA
-import AbstractInterpretation.LVAResult (LVAResult)
-import AbstractInterpretation.HPTResult (HPTResult)
+import AbstractInterpretation.CreatedBy.Pretty
+import AbstractInterpretation.CreatedBy.Result (ProducerMap,ProducerGraph(..))
+import AbstractInterpretation.LiveVariable.Pretty
+import AbstractInterpretation.LiveVariable.Result (LVAResult)
+import AbstractInterpretation.HeapPointsTo.Result (HPTResult)
 
 
 class SameAs a where

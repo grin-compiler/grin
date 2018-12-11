@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, RecordWildCards #-}
 
-module AbstractInterpretation.SharingResult where
+module AbstractInterpretation.Sharing.Result where
 
 import Data.Set    (Set)
 import Data.Map    (Map)
@@ -11,8 +11,8 @@ import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
-import AbstractInterpretation.Sharing
-import AbstractInterpretation.HPTResult
+import AbstractInterpretation.Sharing.CodeGen
+import AbstractInterpretation.HeapPointsTo.Result
 import qualified AbstractInterpretation.Reduce as R
 
 

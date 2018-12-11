@@ -41,23 +41,24 @@ import Transformations.EffectMap
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Simplifying.ProducerNameIntroduction
-import qualified AbstractInterpretation.HPTResult as HPT
-import qualified AbstractInterpretation.CByResult as CBy
-import qualified AbstractInterpretation.LVAResult as LVA
-import qualified AbstractInterpretation.SharingResult as Sharing
+import qualified AbstractInterpretation.HeapPointsTo.Result as HPT
+import qualified AbstractInterpretation.CreatedBy.Readback as CBy
+import qualified AbstractInterpretation.CreatedBy.Result as CBy
+import qualified AbstractInterpretation.LiveVariable.Result as LVA
+import qualified AbstractInterpretation.Sharing.Result as Sharing
 import AbstractInterpretation.OptimiseAbstractProgram
-import AbstractInterpretation.PrettyCBy
-import AbstractInterpretation.PrettyHPT
-import AbstractInterpretation.PrettyLVA
-import AbstractInterpretation.PrettySharing
-import AbstractInterpretation.Sharing
+import AbstractInterpretation.CreatedBy.Pretty
+import AbstractInterpretation.HeapPointsTo.Pretty
+import AbstractInterpretation.LiveVariable.Pretty
+import AbstractInterpretation.Sharing.Pretty
+import AbstractInterpretation.Sharing.CodeGen
 import AbstractInterpretation.Reduce (Computer, AbstractInterpretationResult(..), evalDataFlowInfo)
 import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
-import qualified AbstractInterpretation.HeapPointsTo as HPT
-import qualified AbstractInterpretation.CreatedBy    as CBy
-import qualified AbstractInterpretation.LiveVariable as LVA
-import qualified AbstractInterpretation.Sharing      as Sharing
+import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
+import qualified AbstractInterpretation.CreatedBy.CodeGen    as CBy
+import qualified AbstractInterpretation.LiveVariable.CodeGen as LVA
+import qualified AbstractInterpretation.Sharing.CodeGen      as Sharing
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory

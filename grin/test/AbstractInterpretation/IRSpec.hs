@@ -14,7 +14,7 @@ import Grin.Grin
 import Grin.TH
 import AbstractInterpretation.IR
 import AbstractInterpretation.Reduce
-import AbstractInterpretation.HeapPointsTo
+import AbstractInterpretation.HeapPointsTo.CodeGen
 
 
 runTests :: IO ()

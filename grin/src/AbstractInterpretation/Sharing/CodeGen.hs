@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, OverloadedStrings #-}
-module AbstractInterpretation.Sharing where
+module AbstractInterpretation.Sharing.CodeGen where
 
 import Control.Monad.State
 import Control.Monad.Trans.Except
@@ -24,8 +24,8 @@ import Grin.Syntax
 import Grin.TypeEnvDefs
 import AbstractInterpretation.Util (converge)
 import AbstractInterpretation.CodeGen
-import AbstractInterpretation.HeapPointsTo (HPTProgram(..), emptyHPTProgram)
-import qualified AbstractInterpretation.HeapPointsTo as HPT
+import AbstractInterpretation.HeapPointsTo.CodeGen (HPTProgram(..), emptyHPTProgram)
+import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
 import qualified AbstractInterpretation.IR as IR
 

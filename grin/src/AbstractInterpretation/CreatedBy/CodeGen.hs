@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings #-}
-module AbstractInterpretation.CreatedBy where
+module AbstractInterpretation.CreatedBy.CodeGen where
 
 import Control.Monad.Trans.Except
 import Control.Monad.State
@@ -21,7 +21,7 @@ import Grin.TypeEnvDefs
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataFlowInfo(..))
-import AbstractInterpretation.HeapPointsTo hiding (codeGenVal, codeGen)
+import AbstractInterpretation.HeapPointsTo.CodeGen (HPTProgram, emptyHPTProgram, litToSimpleType, unitType, codeGenPrimOp) -- FIXME: why? remove, refactor
 
 
 -- HPT program with producer information about nodes
@@ -42,6 +42,7 @@ emptyCByProgram :: CByProgram
 emptyCByProgram = CByProgram Map.empty (HPTProducerInfo emptyHPTProgram)
 
 type ResultCBy = Result CByProgram
+type Producer = IR.Int32
 
 throwCBy :: (Monad m) => String -> ExceptT String m a
 throwCBy s = throwE $ "CBy: " ++ s
@@ -49,10 +50,10 @@ throwCBy s = throwE $ "CBy: " ++ s
 addProducer :: IR.Reg -> Name -> CG CByProgram ()
 addProducer r v = producerMap %= Map.insert r v
 
-registerToProducer :: IR.Reg -> IR.Producer
+registerToProducer :: IR.Reg -> Producer
 registerToProducer (IR.Reg r) = fromIntegral r
 
-undefinedProducer :: IR.Producer
+undefinedProducer :: Producer
 undefinedProducer = -1723
 
 undefinedProducerName :: Name

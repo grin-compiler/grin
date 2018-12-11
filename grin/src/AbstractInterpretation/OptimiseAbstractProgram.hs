@@ -96,4 +96,3 @@ absSortedNodes AbstractProgram{..}
       $ Map.unionsWith (++)
       $ map (\(f,t) -> Map.singleton f [t])
       $ nodeList
-

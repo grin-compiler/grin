@@ -1,8 +1,7 @@
-{-# LANGUAGE RecordWildCards, ViewPatterns #-}
-module AbstractInterpretation.LVAResult
-( module AbstractInterpretation.LVAResult
-, module AbstractInterpretation.LVAResultTypes
-) where
+{-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, ViewPatterns, RecordWildCards #-}
+module AbstractInterpretation.LiveVariable.Result where
+
+import Lens.Micro.Platform
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -12,11 +11,54 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 
-import AbstractInterpretation.LiveVariable (LVAProgram(..))
-import AbstractInterpretation.LVAResultTypes
-import AbstractInterpretation.IR as IR hiding (Liveness)
-import qualified AbstractInterpretation.IR as IR (Liveness)
+import Grin.Grin (Name, Tag)
+import AbstractInterpretation.LiveVariable.CodeGen (LVAProgram(..))
+import AbstractInterpretation.IR hiding (Tag)
 import qualified AbstractInterpretation.Reduce as R
+
+type LivenessId = Int32
+
+data Node = Node
+  { _tag    :: Bool
+  , _fields :: Vector Bool
+  }
+  deriving (Eq, Ord, Show)
+
+data Liveness
+  = BasicVal Bool
+  | NodeSet (Map Tag Node)
+  deriving (Eq, Ord, Show)
+
+data LVAResult
+  = LVAResult
+  { _memory   :: Vector Liveness
+  , _register :: Map Name Liveness
+  , _function :: Map Name (Liveness, Vector Liveness)
+  }
+  deriving (Eq, Show)
+
+concat <$> mapM makeLenses [''Node, ''Liveness, ''LVAResult]
+
+isNodeLive :: Node -> Bool
+isNodeLive = (||) <$> hasLiveTag <*> hasLiveField
+
+hasLiveTag :: Node -> Bool
+hasLiveTag (Node tagLv fieldsLv) = tagLv
+
+hasLiveField :: Node -> Bool
+hasLiveField (Node tagLv fieldsLv) = or fieldsLv
+
+isLive :: Liveness -> Bool
+isLive (BasicVal b) = b
+isLive (NodeSet  m) = any isNodeLive m
+
+-- | A function is only dead if its return value is dead
+-- , and all of its parameters are dead as well. The case
+-- when the return value is dead, but there is a live parameter
+-- means that the function has some kind of side effect.
+isFunDead :: (Liveness, Vector Liveness) -> Bool
+isFunDead (retLv, argsLv) = not (isLive retLv || any isLive argsLv)
+
 
 toLVAResult :: LVAProgram -> R.Computer -> LVAResult
 toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult
@@ -25,7 +67,7 @@ toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult
   , _function = Map.map convertFunctionRegs _absFunctionArgMap
   }
   where
-    isLive :: Set IR.Liveness -> Bool
+    isLive :: Set LivenessId -> Bool
     isLive = Set.member (-1)
 
     convertReg :: Reg -> Liveness
@@ -37,7 +79,7 @@ toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult
       | Map.null ns = BasicVal False
       | otherwise   = convertNodeSet rns
 
-    convertFields :: V.Vector (Set IR.Liveness) -> Node
+    convertFields :: V.Vector (Set LivenessId) -> Node
     convertFields vec = Node (isLive tagLv) (V.map isLive fieldsLv)
       where (tagLv, fieldsLv) = (,) <$> V.head <*> V.tail $ vec
 

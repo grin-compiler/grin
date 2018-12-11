@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module AbstractInterpretation.PrettyCBy where
+module AbstractInterpretation.CreatedBy.Pretty where
 
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
@@ -10,8 +10,8 @@ import qualified Data.Map as Map
 import Grin.Pretty
 import Grin.Grin (Tag, Name)
 
-import AbstractInterpretation.CByResult
-import AbstractInterpretation.PrettyHPT
+import AbstractInterpretation.CreatedBy.Result
+import AbstractInterpretation.HeapPointsTo.Pretty
 
 instance Pretty ProducerSet where
   pretty (ProducerSet ps) = prettyBracedList

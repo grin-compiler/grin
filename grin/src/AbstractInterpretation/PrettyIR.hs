@@ -12,8 +12,8 @@ import Grin.Pretty ()
 import Grin.Grin (Name, unpackName)
 import qualified Grin.Grin as Grin
 import AbstractInterpretation.IR
-import AbstractInterpretation.HPTResult (toSimpleType)
-import AbstractInterpretation.PrettyHPT ()
+import AbstractInterpretation.HeapPointsTo.Result (toSimpleType)
+import AbstractInterpretation.HeapPointsTo.Pretty ()
 
 data IRMap
   = IRMap

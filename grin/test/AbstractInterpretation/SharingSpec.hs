@@ -13,8 +13,8 @@ import Grin.Pretty
 import Grin.TypeEnvDefs (Loc)
 
 import AbstractInterpretation.Reduce
-import AbstractInterpretation.Sharing
-import AbstractInterpretation.SharingResult
+import AbstractInterpretation.Sharing.CodeGen
+import AbstractInterpretation.Sharing.Result
 
 
 

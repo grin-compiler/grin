@@ -11,9 +11,9 @@ import Pipeline.Definitions
 import Grin.Grin
 import Grin.EffectMap
 import Grin.TypeEnvDefs
-import AbstractInterpretation.CByResultTypes
-import AbstractInterpretation.LVAResultTypes
-import AbstractInterpretation.SharingResult
+import AbstractInterpretation.CreatedBy.Result
+import AbstractInterpretation.LiveVariable.Result
+import AbstractInterpretation.Sharing.Result
 
 pipelineLog :: String -> PipelineM ()
 pipelineLog str = do

@@ -28,7 +28,7 @@ import Grin.Pretty
 import Grin.TypeEnv
 import Grin.EffectMap
 import Transformations.Util
-import AbstractInterpretation.LVAUtil as LVA
+import AbstractInterpretation.LiveVariable.Result as LVA
 
 
 data DeletedEntities = DeletedEntities

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractInterpretation.PrettyHPT where
+module AbstractInterpretation.HeapPointsTo.Pretty where
 
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
@@ -18,7 +18,7 @@ import qualified Data.Vector as V
 
 import Grin.Grin (Tag, Name)
 import Grin.Pretty
-import qualified AbstractInterpretation.HPTResult as R
+import qualified AbstractInterpretation.HeapPointsTo.Result as R
 
 -- HPT Result NEW
 

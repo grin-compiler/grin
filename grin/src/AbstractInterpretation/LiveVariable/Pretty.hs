@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module AbstractInterpretation.PrettyLVA where
+module AbstractInterpretation.LiveVariable.Pretty where
 
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
@@ -13,8 +13,8 @@ import qualified Data.Vector as V
 import Grin.Pretty
 import Grin.Grin (Tag, Name)
 
-import AbstractInterpretation.LVAResult
-import AbstractInterpretation.PrettyHPT
+import AbstractInterpretation.LiveVariable.Result
+import AbstractInterpretation.HeapPointsTo.Pretty
 
 prettyLiveness :: Bool -> Doc
 prettyLiveness True  = green (text "LIVE")

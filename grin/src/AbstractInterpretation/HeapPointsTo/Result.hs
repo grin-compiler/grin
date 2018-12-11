@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, GeneralizedNewtypeDeriving, TypeFamilies, DeriveFunctor, ViewPatterns #-}
-module AbstractInterpretation.HPTResult where
+module AbstractInterpretation.HeapPointsTo.Result where
 
 import Data.Int
 import Data.Set (Set)
@@ -15,11 +15,11 @@ import Lens.Micro.Internal
 import Lens.Micro.Extra
 
 import Grin.Grin (Name, Tag)
-import AbstractInterpretation.HeapPointsTo (HPTProgram(..))
-import AbstractInterpretation.CreatedBy (undefinedProducer)
-import AbstractInterpretation.IR as IR hiding (Tag, SimpleType)
+import AbstractInterpretation.HeapPointsTo.CodeGen (HPTProgram(..))
+import AbstractInterpretation.CreatedBy.CodeGen (undefinedProducer)
+import AbstractInterpretation.IR hiding (Tag, SimpleType)
 import qualified Grin.TypeEnv as TypeEnv
-import qualified AbstractInterpretation.IR as IR (SimpleType)
+import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.Reduce as R
 
 type Loc = Int
@@ -44,11 +44,11 @@ data HPTLocal = UndefinedProducer
   deriving (Eq, Ord, Show)
 
 fromHPTLocal :: HPTLocal -> IR.SimpleType
-fromHPTLocal UndefinedProducer   = undefinedProducer
+fromHPTLocal UndefinedProducer = undefinedProducer
 
 toHPTLocal :: IR.SimpleType -> HPTLocal
 toHPTLocal t
-  | t == undefinedProducer   = UndefinedProducer
+  | t == undefinedProducer = UndefinedProducer
 toHPTLocal t = error $ "IR simple type " ++ show t ++ " cannot be convert to HPTLocal"
 
 type    Node    = Vector (Set SimpleType)

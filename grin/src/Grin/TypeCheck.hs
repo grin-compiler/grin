@@ -16,15 +16,14 @@ import Lens.Micro.Platform
 
 import Grin.Grin (Tag, Exp, Name, packName)
 import Grin.Pretty
-import AbstractInterpretation.PrettyHPT
+import AbstractInterpretation.HeapPointsTo.Pretty
+import AbstractInterpretation.HeapPointsTo.Result as HPT
+import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
 
-import AbstractInterpretation.HPTResult
 import qualified Grin.TypeEnv as TypeEnv
 
 import AbstractInterpretation.IR (HasDataFlowInfo(..))
 import AbstractInterpretation.Reduce (AbstractInterpretationResult(..))
-import qualified AbstractInterpretation.HeapPointsTo as HPT
-import qualified AbstractInterpretation.HPTResult as HPT
 import qualified AbstractInterpretation.Reduce as R
 
 import Data.Bifunctor

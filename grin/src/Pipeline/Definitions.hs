@@ -16,14 +16,15 @@ import Text.PrettyPrint.ANSI.Leijen (Doc)
 import Grin.Grin
 import Grin.EffectMap
 import Grin.TypeEnvDefs
-import AbstractInterpretation.HeapPointsTo
-import AbstractInterpretation.CreatedBy
-import AbstractInterpretation.LiveVariable
-import AbstractInterpretation.Sharing
-import AbstractInterpretation.HPTResult
-import AbstractInterpretation.CByResultTypes
-import AbstractInterpretation.LVAResultTypes
-import AbstractInterpretation.SharingResult
+
+import AbstractInterpretation.HeapPointsTo.CodeGen
+import AbstractInterpretation.CreatedBy.CodeGen
+import AbstractInterpretation.LiveVariable.CodeGen
+import AbstractInterpretation.Sharing.CodeGen
+import AbstractInterpretation.HeapPointsTo.Result
+import AbstractInterpretation.CreatedBy.Result
+import AbstractInterpretation.LiveVariable.Result
+import AbstractInterpretation.Sharing.Result
 
 data Transformation
   -- Simplifying

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings #-}
-module AbstractInterpretation.LiveVariable where
+module AbstractInterpretation.LiveVariable.CodeGen where
 
 import Control.Monad.Trans.Except
 import Control.Monad.State
@@ -18,7 +18,6 @@ import Grin.TypeEnvDefs
 import Transformations.Util
 import AbstractInterpretation.Util
 import AbstractInterpretation.CodeGen
-import AbstractInterpretation.HeapPointsTo (codeGenNodeTypeHPT)
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataFlowInfo(..))
 
@@ -40,6 +39,7 @@ emptyLVAProgram :: LVAProgram
 emptyLVAProgram = LVAProgram IR.emptyAbstractProgram
 
 type ResultLVA = Result LVAProgram
+type LivenessId = Int32
 
 throwLVA :: (Monad m) => String -> ExceptT String m a
 throwLVA s = throwE $ "LVA: " ++ s
@@ -54,7 +54,7 @@ emptyReg = newReg
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
 isLiveThen r i = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = i }
 
-live :: IR.Liveness
+live :: LivenessId
 live = -1
 
 setBasicValLiveInst :: IR.Reg -> IR.Instruction

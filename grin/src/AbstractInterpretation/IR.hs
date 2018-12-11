@@ -2,7 +2,12 @@
 {-# LANGUAGE DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
-module AbstractInterpretation.IR where
+module AbstractInterpretation.IR
+ ( module AbstractInterpretation.IR
+ , Int32
+ , Word32
+ , Name
+ ) where
 
 import Data.Int
 import Data.Word
@@ -30,9 +35,7 @@ data Selector
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
 
-type SimpleType = Int32
-type Producer   = Int32
-type Liveness   = Int32
+type SimpleType = Int32 -- TODO: rename to a generic name; should not be related to a specific domain
 
 data Condition
   = NodeTypeExists    Tag

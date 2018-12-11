@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module AbstractInterpretation.PrettySharing where
+module AbstractInterpretation.Sharing.Pretty where
 
 import Text.PrettyPrint.ANSI.Leijen
 
@@ -12,9 +12,9 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 
 import Grin.Pretty
-import AbstractInterpretation.PrettyHPT
-import AbstractInterpretation.HPTResult
-import AbstractInterpretation.SharingResult
+import AbstractInterpretation.HeapPointsTo.Pretty
+import AbstractInterpretation.HeapPointsTo.Result
+import AbstractInterpretation.Sharing.Result
 
 
 instance Pretty SharingResult where
@@ -31,4 +31,3 @@ prettySharingResult shResult = vsep
   annotateSharedLoc loc ty
     | Set.member loc shLocs = (pretty loc <> text "*", ty)
     | otherwise             = (pretty loc, ty)
-

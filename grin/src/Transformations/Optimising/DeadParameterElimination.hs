@@ -19,7 +19,7 @@ import Control.Monad.Trans.Except
 import Grin.Grin
 import Grin.TypeEnvDefs
 import Transformations.Util
-import AbstractInterpretation.LVAUtil
+import AbstractInterpretation.LiveVariable.Result as LVA
 
 type Trf = Except String
 

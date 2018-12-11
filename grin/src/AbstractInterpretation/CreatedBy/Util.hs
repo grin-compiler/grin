@@ -1,7 +1,4 @@
-module AbstractInterpretation.CByUtil
-  ( module AbstractInterpretation.CByUtil
-  , module AbstractInterpretation.CByResultTypes
-  ) where
+module AbstractInterpretation.CreatedBy.Util where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -17,10 +14,9 @@ import Control.Monad.State
 
 import Grin.Grin
 
-import AbstractInterpretation.LVAUtil
-import AbstractInterpretation.LVAResult
-import AbstractInterpretation.CreatedBy (undefinedProducerName)
-import AbstractInterpretation.CByResultTypes
+import AbstractInterpretation.LiveVariable.Result
+import AbstractInterpretation.CreatedBy.CodeGen (undefinedProducerName)
+import AbstractInterpretation.CreatedBy.Result
 
 import Transformations.Util
 
