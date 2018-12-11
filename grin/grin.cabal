@@ -244,12 +244,12 @@ test-suite grin-test
                      , Transformations.MangleNamesSpec
                      , Samples.SumListSpec
                      , Samples.ArityFullRemoveSpec
-                     , HptSpec
                      , LintSpec
                      , TestSpec
                      , PipelineSpec
                      , ParserSpec
-                     , LiveVariableSpec
+                     , AbstractInterpretation.HptSpec
+                     , AbstractInterpretation.LiveVariableSpec
                      , AbstractInterpretation.IRSpec
                      , AbstractInterpretation.OptimiseAbstractProgramSpec
                      , AbstractInterpretation.SharingSpec

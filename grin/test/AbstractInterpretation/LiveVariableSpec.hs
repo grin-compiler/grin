@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedLists, OverloadedStrings, QuasiQuotes #-}
-module LiveVariableSpec where
+module AbstractInterpretation.LiveVariableSpec where
 
 import Data.Map    (Map)
 import Data.Vector (Vector)
@@ -14,8 +14,8 @@ import Test.Assertions
 import Test.Util
 
 import AbstractInterpretation.Reduce (AbstractInterpretationResult(..),evalDataFlowInfo)
-import AbstractInterpretation.LiveVariable hiding (live)
-import AbstractInterpretation.LVAResult
+import AbstractInterpretation.LiveVariable.CodeGen hiding (live)
+import AbstractInterpretation.LiveVariable.Result
 
 
 runTests :: IO ()

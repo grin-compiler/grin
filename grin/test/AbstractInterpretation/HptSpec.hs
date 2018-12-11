@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, QuasiQuotes, OverloadedStrings #-}
-module HptSpec where
+module AbstractInterpretation.HptSpec where
 
 import Test.Hspec
 import Test.Util
@@ -10,9 +10,9 @@ import Grin.TypeEnv as TypeEnv
 import Grin.TypeCheck
 import qualified Data.Map as Map
 
-import AbstractInterpretation.HPTResult as HPT
+import AbstractInterpretation.HeapPointsTo.Result as HPT
 import AbstractInterpretation.Reduce (evalDataFlowInfo, _airComp)
-import AbstractInterpretation.HeapPointsTo (codeGen)
+import AbstractInterpretation.HeapPointsTo.CodeGen (codeGen)
 
 
 import qualified Data.Map as M

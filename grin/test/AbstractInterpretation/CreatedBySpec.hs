@@ -19,9 +19,10 @@ import Test.Assertions
 
 import AbstractInterpretation.IR hiding (Tag)
 import AbstractInterpretation.Reduce
-import AbstractInterpretation.CreatedBy
-import AbstractInterpretation.CByResult
-import AbstractInterpretation.HPTResult as HPT
+import AbstractInterpretation.CreatedBy.CodeGen
+import AbstractInterpretation.CreatedBy.Result
+import AbstractInterpretation.CreatedBy.Readback
+import AbstractInterpretation.HeapPointsTo.Result as HPT
 
 
 

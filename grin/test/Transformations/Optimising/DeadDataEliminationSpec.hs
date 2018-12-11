@@ -6,7 +6,6 @@ import Test.Hspec
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import AbstractInterpretation.CByUtil
 import Grin.Grin
 import Grin.TH
 import Grin.TypeCheck (typeEnvFromHPTResult)
@@ -14,11 +13,13 @@ import Test.Hspec.PipelineExample
 import Pipeline.Definitions
 import Transformations.Optimising.DeadDataElimination
 import Test.Util
-import AbstractInterpretation.LiveVariable as LiveVariable (codeGen)
-import AbstractInterpretation.LVAResult (LVAResult(..), toLVAResult)
+import AbstractInterpretation.LiveVariable.CodeGen as LiveVariable (codeGen)
+import AbstractInterpretation.LiveVariable.Result (LVAResult(..), toLVAResult)
 import AbstractInterpretation.Reduce (evalDataFlowInfo, _airComp)
-import AbstractInterpretation.CreatedBy as CreatedBy (codeGen)
-import AbstractInterpretation.CByResult (toCByResult)
+import AbstractInterpretation.CreatedBy.CodeGen as CreatedBy (codeGen)
+import AbstractInterpretation.CreatedBy.Result
+import AbstractInterpretation.CreatedBy.Readback (toCByResult)
+import AbstractInterpretation.CreatedBy.Util
 
 
 runTests :: IO ()
