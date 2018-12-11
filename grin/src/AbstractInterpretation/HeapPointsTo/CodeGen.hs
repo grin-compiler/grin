@@ -70,11 +70,19 @@ codeGenVal = \case
     forM_ (zip [0..] vals) $ \(idx, val) -> case val of
       Var name -> do
         valReg <- getReg name
-        emitExtendNodeItem valReg irTag idx r
+        emit IR.Extend
+          { srcReg      = valReg
+          , dstSelector = IR.NodeItem irTag idx
+          , dstReg      = r
+          }
       Lit lit -> emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
       Undefined (T_SimpleType t) -> do
         tmp <- codeGenSimpleType t
-        emitExtendNodeItem tmp irTag idx r
+        emit IR.Extend
+          { srcReg      = tmp
+          , dstSelector = IR.NodeItem irTag idx
+          , dstReg      = r
+          }
       _ -> throwHPT $ "illegal node item value " ++ show val
     pure r
   Unit -> do

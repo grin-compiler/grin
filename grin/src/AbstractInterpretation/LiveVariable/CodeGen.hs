@@ -144,7 +144,11 @@ codeGenVal = \case
         ptrInfo <- newReg
         tmp     <- codeGenSimpleType t
         emit $ copyStructureWithPtrInfo tmp ptrInfo
-        emitExtendNodeItem ptrInfo irTag idx r
+        emit IR.Extend
+          { srcReg      = ptrInfo
+          , dstSelector = IR.NodeItem irTag idx
+          , dstReg      = r
+          }
       _ -> throwLVA $ "illegal node item value " ++ show val
     pure r
   Unit  -> emptyReg
@@ -412,3 +416,19 @@ codeGenPrimOp name funResultReg funArgRegs
   | otherwise = do
     allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive funArgRegs
     emit $ funResultReg `isLiveThen` allArgsLive
+
+codeGenAlt :: HasDataFlowInfo s =>
+              (Maybe Name, IR.Reg) ->
+              (IR.Reg -> Name -> CG s IR.Reg) ->
+              (IR.Reg -> CG s ()) ->
+              CG s (Result s) ->
+              (Result s -> CG s ()) ->
+              (IR.Reg -> Name -> CG s ()) ->
+              CG s [IR.Instruction]
+codeGenAlt (mName, reg) restrict before altM after restore =
+  codeGenBlock_ $ do
+    altReg <- maybe (pure reg) (restrict reg) mName
+    before altReg
+    altResult <- altM
+    after altResult
+    mapM_ (restore reg) mName

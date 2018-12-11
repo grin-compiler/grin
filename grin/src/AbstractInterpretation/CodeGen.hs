@@ -89,47 +89,6 @@ codeGenBlock genM = do
 codeGenBlock_ :: HasDataFlowInfo s => CG s a -> CG s [IR.Instruction]
 codeGenBlock_ = fmap snd . codeGenBlock
 
-codeGenAlt :: HasDataFlowInfo s =>
-              (Maybe Name, IR.Reg) ->
-              (IR.Reg -> Name -> CG s IR.Reg) ->
-              (IR.Reg -> CG s ()) ->
-              CG s (Result s) ->
-              (Result s -> CG s ()) ->
-              (IR.Reg -> Name -> CG s ()) ->
-              CG s [IR.Instruction]
-codeGenAlt (mName, reg) restrict before altM after restore =
-  codeGenBlock_ $ do
-    altReg <- maybe (pure reg) (restrict reg) mName
-    before altReg
-    altResult <- altM
-    after altResult
-    mapM_ (restore reg) mName
-
-emitMove :: HasDataFlowInfo s => IR.Reg -> IR.Reg -> CG s ()
-emitMove src dst = emit IR.Move { srcReg = src, dstReg = dst }
-
-emitExtendNodeItem :: HasDataFlowInfo s =>
-                      IR.Reg -> IR.Tag -> Int -> IR.Reg -> CG s ()
-emitExtendNodeItem src irTag idx dst =
-  emit IR.Extend { srcReg = src
-                 , dstSelector = IR.NodeItem irTag idx
-                 , dstReg = dst
-                 }
-
--- TODO: rename simple type to something more generic,
-newRegWithSimpleType :: HasDataFlowInfo s => IR.SimpleType -> CG s IR.Reg
-newRegWithSimpleType irTy = newReg >>= extendSimpleType irTy
-
--- TODO: rename simple type to something more generic,
-extendSimpleType :: HasDataFlowInfo s =>
-                    IR.SimpleType -> IR.Reg -> CG s IR.Reg
-extendSimpleType irTy r = do
-  emit IR.Set
-    { dstReg    = r
-    , constant  = IR.CSimpleType irTy
-    }
-  pure r
-
 codeGenSimpleType :: HasDataFlowInfo s => SimpleType -> CG s IR.Reg
 codeGenSimpleType = \case
   T_Unit                -> newRegWithSimpleType (-1)
@@ -146,17 +105,29 @@ codeGenSimpleType = \case
     mapM_ (`extendSimpleType` r) locs'
     pure r
   t -> newReg
+  where
+  -- TODO: rename simple type to something more generic,
+  newRegWithSimpleType :: HasDataFlowInfo s => IR.SimpleType -> CG s IR.Reg
+  newRegWithSimpleType irTy = newReg >>= extendSimpleType irTy
 
+  -- TODO: rename simple type to something more generic,
+  extendSimpleType :: HasDataFlowInfo s => IR.SimpleType -> IR.Reg -> CG s IR.Reg
+  extendSimpleType irTy r = do
+    emit IR.Set
+      { dstReg    = r
+      , constant  = IR.CSimpleType irTy
+      }
+    pure r
 
 codeGenNodeSetWith :: HasDataFlowInfo s =>
                       (Tag -> Vector SimpleType -> CG s IR.Reg) ->
                       NodeSet -> CG s IR.Reg
 codeGenNodeSetWith cgNodeTy ns = do
   let (tags, argss) = unzip . Map.toList $ ns
-  r <- newReg
+  dst <- newReg
   nodeRegs <- zipWithM cgNodeTy tags argss
-  forM_ nodeRegs (`emitMove` r)
-  pure r
+  forM_ nodeRegs $ \src -> emit IR.Move { srcReg = src, dstReg = dst }
+  pure dst
 
 -- Generate a node type from type information,
 -- but preserve the first field for tag information.
@@ -172,6 +143,7 @@ codeGenTaggedNodeType tag ts = do
     emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
   pure r
 
+-- FIXME: the following type signature is a bad oman ; it's not intuitive ; no-go ; refactor!
 codeGenType :: HasDataFlowInfo s =>
                (SimpleType -> CG s IR.Reg) ->
                (NodeSet -> CG s IR.Reg) ->
