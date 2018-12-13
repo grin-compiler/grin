@@ -1,7 +1,7 @@
 { mkDerivation, ansi-wl-pprint, base, bimap, bytestring, comonad
 , containers, criterion, deepseq, directory, extra, filepath, free
 , functor-infix, generic-random, ghc, ghc-paths, haskeline, hspec
-, hspec-discover, idris, llvm-hs, llvm-hs-pretty, llvm-hs-pure
+, hspec-discover, llvm-hs, llvm-hs-pretty, llvm-hs-pure
 , logict, megaparsec, microlens, microlens-mtl, microlens-platform
 , microlens-th, monad-gen, mtl, neat-interpolation
 , optparse-applicative, pretty-show, pretty-simple, process
@@ -17,7 +17,7 @@ mkDerivation {
   libraryHaskellDepends = [
     ansi-wl-pprint base bimap bytestring comonad containers deepseq
     directory extra filepath free functor-infix generic-random ghc
-    hspec idris llvm-hs llvm-hs-pretty llvm-hs-pure logict megaparsec
+    hspec llvm-hs llvm-hs-pretty llvm-hs-pure logict megaparsec
     microlens microlens-mtl microlens-platform microlens-th monad-gen
     mtl neat-interpolation optparse-applicative pretty-show
     pretty-simple process QuickCheck recursion-schemes template-haskell
@@ -25,7 +25,7 @@ mkDerivation {
   ];
   executableHaskellDepends = [
     ansi-wl-pprint base containers directory filepath ghc ghc-paths
-    haskeline idris llvm-hs-pretty megaparsec microlens microlens-mtl
+    haskeline llvm-hs-pretty megaparsec microlens microlens-mtl
     microlens-platform microlens-th mtl optparse-applicative
     pretty-show pretty-simple process recursion-schemes text
     transformers unix
