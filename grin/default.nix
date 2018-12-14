@@ -1,11 +1,12 @@
-{ mkDerivation, ansi-wl-pprint, base, bimap, bytestring, comonad
+{ Diff, mkDerivation, ansi-wl-pprint, base, bimap, bytestring, comonad
 , containers, criterion, deepseq, directory, extra, filepath, free
 , functor-infix, generic-random, ghc, ghc-paths, haskeline, hspec
 , hspec-discover, llvm-hs, llvm-hs-pretty, llvm-hs-pure
 , logict, megaparsec, microlens, microlens-mtl, microlens-platform
 , microlens-th, monad-gen, mtl, neat-interpolation
 , optparse-applicative, pretty-show, pretty-simple, process
-, QuickCheck, recursion-schemes, stdenv, template-haskell, text
+, QuickCheck, quickcheck-instances, recursion-schemes, set-extra
+, stdenv, template-haskell, text, text-short
 , transformers, unix, vector
 }:
 mkDerivation {
@@ -15,13 +16,13 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    ansi-wl-pprint base bimap bytestring comonad containers deepseq
+    Diff ansi-wl-pprint base bimap bytestring comonad containers deepseq
     directory extra filepath free functor-infix generic-random ghc
     hspec llvm-hs llvm-hs-pretty llvm-hs-pure logict megaparsec
     microlens microlens-mtl microlens-platform microlens-th monad-gen
     mtl neat-interpolation optparse-applicative pretty-show
-    pretty-simple process QuickCheck recursion-schemes template-haskell
-    text transformers vector
+    pretty-simple process QuickCheck quickcheck-instances recursion-schemes
+    set-extra template-haskell text text-short transformers vector
   ];
   executableHaskellDepends = [
     ansi-wl-pprint base containers directory filepath ghc ghc-paths
