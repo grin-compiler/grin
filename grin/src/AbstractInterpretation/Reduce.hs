@@ -11,7 +11,6 @@ import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 import qualified Data.Foldable
 import Data.Function (on)
-import Data.Semigroup (Semigroup(..))
 
 import Control.Monad.State.Strict
 import Lens.Micro.Platform
