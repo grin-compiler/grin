@@ -2,9 +2,9 @@
 {-# LANGUAGE RecordWildCards #-}
 module Grin.Statistics where
 
-import Data.Semigroup (Semigroup(..))
+import Data.Monoid
 import Data.Functor.Foldable
-import Text.PrettyPrint.ANSI.Leijen hiding ((<>))
+import Text.PrettyPrint.ANSI.Leijen
 import Grin.Grin
 
 
@@ -24,7 +24,6 @@ data Statistics = Statistics
   } deriving (Show)
 
 instance Monoid Statistics where
-  mappend = (<>)
   mempty = Statistics 0 0 0 0 0 0 0 0 0 0
 
 instance Semigroup Statistics where
