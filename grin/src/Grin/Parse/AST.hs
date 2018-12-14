@@ -4,7 +4,6 @@ module Grin.Parse.AST (parseGrin, parseProg, parseDef, parseExpr) where
 
 import Data.Char
 import Data.Void
-import Data.Semigroup ((<>))
 import Data.Text (Text)
 import qualified Data.Text as T
 
