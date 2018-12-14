@@ -2,8 +2,8 @@
 module Grin.EffectMap where
 
 import Data.Map (Map)
-import Data.Semigroup (Semigroup(..))
 import Data.Set (Set)
+import Data.Monoid
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
