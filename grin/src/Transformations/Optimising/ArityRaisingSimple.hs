@@ -83,9 +83,9 @@ phase1 te = pdArityData . cata collect where
     EBindF lhs _ rhs -> lhs <> rhs
 
     -- Keep the parameters that are locations and points to a single node with at least one parameters
-    -- * that are not appear in others
-    -- * that are not appear in other function calls
-    -- * that are fetched at least once
+    -- - that are not appear in others
+    -- - that are not appear in other function calls
+    -- - that are fetched at least once
     DefF fn ps body ->
       FunData $ Map.singleton fn $
         [ (p,i,(fromJust mtag))
