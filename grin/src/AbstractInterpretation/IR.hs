@@ -69,12 +69,14 @@ data Instruction
     , srcReg        :: Reg
     , instructions  :: [Instruction]
     }
-  | Project -- ^ projects from the tag specific SRC's node part to DST reg simple type and location set
+  -- | projects from the tag specific SRC's node part to DST reg simple type and location set
+  | Project
     { srcSelector   :: Selector -- ^ the selected tag must exist
     , srcReg        :: Reg
     , dstReg        :: Reg
     }
-  | Extend -- ^ extends DST's node part for a tag by SRC reg simple type and location set
+  -- | extends DST's node part for a tag by SRC reg simple type and location set
+  | Extend
     { srcReg      :: Reg
     , dstSelector :: Selector -- ^ the seleced tag must exist
     , dstReg      :: Reg
@@ -96,15 +98,18 @@ data Instruction
     , predicate   :: Predicate
     , dstReg      :: Reg
     }
-  | Fetch -- ^ copy mem (node) content addressed by SRC reg location part to DST register node part
+  -- | copy mem (node) content addressed by SRC reg location part to DST register node part
+  | Fetch
     { addressReg  :: Reg
     , dstReg      :: Reg
     }
-  | Store -- ^ copy the node part of the SRC reg to mem
+  -- | copy the node part of the SRC reg to mem
+  | Store
     { srcReg      :: Reg
     , address     :: Mem
     }
-  | Update -- ^ copy the node part of the SRC reg to mem addressed by DST reg location part
+  -- | copy the node part of the SRC reg to mem addressed by DST reg location part
+  | Update 
     { srcReg      :: Reg
     , addressReg  :: Reg
     }
@@ -119,7 +124,8 @@ data Instruction
     , predicate   :: Predicate
     , addressReg  :: Reg
     }
-  | Set -- ^ copy compile time constant to DST register (one time setup)
+  -- | copy compile time constant to DST register (one time setup)
+  | Set 
     { dstReg      :: Reg
     , constant    :: Constant
     }

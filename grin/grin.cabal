@@ -116,7 +116,7 @@ library
     Lens.Micro.Extra
 
   build-depends:
-    base,
+    base >=4.11,
     containers,
     bimap,
     mtl,
@@ -130,8 +130,9 @@ library
     monad-gen,
     free,
     bytestring,
-    llvm-hs,
-    llvm-hs-pure,
+    llvm-hs ==7.*,
+    llvm-hs-pure ==7.*,
+    llvm-hs-pretty >=0.6.1,
     filepath,
     transformers,
     microlens,
@@ -142,7 +143,6 @@ library
     text,
     text-short,
     time,
-    llvm-hs-pretty,
     optparse-applicative,
     directory,
     pretty-simple,
@@ -166,7 +166,7 @@ executable grin
   hs-source-dirs:      app
   main-is:             GrinCLI.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
+  build-depends:       base >=4.11
                      , grin
                      , recursion-schemes
                      , ansi-wl-pprint
@@ -191,7 +191,7 @@ test-suite grin-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   default-extensions:  OverloadedStrings
-  build-depends:       base
+  build-depends:       base >=4.11
                      , containers
                      , filepath
                      , functor-infix
@@ -261,7 +261,7 @@ benchmark grin-benchmark
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Benchmark.hs
-  build-depends:       base
+  build-depends:       base >=4.11
                      , grin
                      , criterion
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
