@@ -224,8 +224,9 @@ annotate te = cata builder where
     SAppF name params -> (te ^? function . at name . _Just . _1) :< SAppF name params
     AltF cpat body -> extract body :< AltF cpat body
     ECaseF var alts ->
-      (do let (t:ts) = catMaybes $ map extract alts
-          foldM unionType t ts)
+      (do case catMaybes $ map extract alts of
+            [] -> Nothing
+            (t:ts) -> foldM unionType t ts)
       :< ECaseF var alts
     EBindF lhs pat rhs -> extract rhs :< EBindF lhs pat rhs
     SBlockF body -> extract body :< SBlockF body
