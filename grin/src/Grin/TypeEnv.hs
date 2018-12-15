@@ -74,7 +74,6 @@ _T_OnlyOneTag f nodeSet
   | (Map.size nodeSet == 1) = f nodeSet
   | otherwise = pure nodeSet
 
-
 newVar :: Name -> Type -> Endo TypeEnv
 newVar n t = Endo (variable %~ (Map.insert n t))
 

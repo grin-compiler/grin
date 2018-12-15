@@ -179,3 +179,14 @@ spec = do
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["update has given a primitive value: v :: T_Int64"]
+
+  describe "Bind lint" $ do
+    it "find ill-matching patterns" $ do
+      let program = [prog|
+          main =
+            (CInt x) <- pure (CFloat 2.0)
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Invalid pattern match. Pattern {CInt[T_Dead]} vs LHS {CFloat[T_Float]}"]

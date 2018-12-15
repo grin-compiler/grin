@@ -116,6 +116,7 @@ emptyEnv = Env
 
 type Lint   = State Env
 type Check  = WriterT [Error] Lint
+type TypedExp = Cofree ExpF (Maybe Type)
 
 expId :: Lint Int
 expId = gets envNextId
@@ -163,15 +164,6 @@ syntaxExp ctx expCtx
   | expCtx == SimpleExpCtx && ctx == ExpCtx = pure () -- simple exp is also an exp
   | otherwise = tell [msg $ "Syntax error - expected " ++ showExpCtx ctx]
 
-check :: ExpF (ExpCtx, Exp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, Exp))
-check exp nodeCheckM = do
-  idx <- expId
-  errors <- execWriterT (nodeCheckM >> checkVarScopeM exp)
-  unless (null errors) $ do
-    modify' $ \env@Env{..} -> env {envErrors = Map.insert idx errors envErrors}
-  nextId
-  pure (idx CCTC.:< exp )
-
 checkNameDef :: DefRole -> Name -> Check ()
 checkNameDef role name = do
   defined <- state $ \env@Env{..} ->
@@ -214,8 +206,6 @@ unionType (T_NodeSet ns1) (T_NodeSet ns2) =
   $ Map.unionWith (zipWith (join <$$> liftA2 unionSType)) (Map.map (map Just . Vector.toList) ns1) (Map.map (map Just . Vector.toList) ns2)
 unionType _ _ = Nothing
 
-type TypedExp = Cofree ExpF (Maybe Type)
-
 annotate :: TypeEnv -> Exp -> TypedExp
 annotate te = cata builder where
   builder :: ExpF TypedExp -> TypedExp
@@ -240,8 +230,11 @@ annotate te = cata builder where
     EBindF lhs pat rhs -> extract rhs :< EBindF lhs pat rhs
     SBlockF body -> extract body :< SBlockF body
 
-check2 :: ExpF (ExpCtx, TypedExp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, TypedExp))
-check2 exp nodeCheckM = do
+noAnnotation :: Exp -> TypedExp
+noAnnotation = cata (Nothing :<)
+
+check :: ExpF (ExpCtx, TypedExp) -> Check () -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, TypedExp))
+check exp nodeCheckM = do
   idx <- expId
   errors <- execWriterT (nodeCheckM >> checkVarScopeM exp)
   unless (null errors) $ do
@@ -249,11 +242,10 @@ check2 exp nodeCheckM = do
   nextId
   pure (idx CCTC.:< exp )
 
-
 lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
 lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
   cata functionNames exp
-  anaM builder (ProgramCtx, exp)
+  anaM builder (ProgramCtx, maybe noAnnotation annotate mTypeEnv exp)
   where
   functionNames :: ExpF (Lint ()) -> Lint ()
   functionNames = \case
@@ -267,47 +259,47 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       body
     rest -> pure ()
 
-{-
-  builder2 :: (ExpCtx, TypedExp) -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, TypedExp))
-  builder2 (ctx, t :< e) = case e of
-    ProgramF{} -> undefined
-    where
-      checkWithChild childCtx m = check ((childCtx,) <$> project e) m
--}
-
-  builder :: (ExpCtx, Exp) -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, Exp))
+  builder :: (ExpCtx, TypedExp) -> Lint (CCTC.CofreeF ExpF Int (ExpCtx, TypedExp))
   builder (ctx, e) = case e of
 
-    Program{} -> checkWithChild DefCtx $ do
+    (_ :< ProgramF{}) -> checkWithChild DefCtx $ do
       syntaxE ProgramCtx
 
-    Def name args _ -> checkWithChild ExpCtx $ do
+    (_ :< DefF name args _) -> checkWithChild ExpCtx $ do
       syntaxE DefCtx
 
     -- Exp
-    EBind leftExp lpat rightExp -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
+    (_ :< EBindF leftExp lpat rightExp) -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
       syntaxE ExpCtx
 
-    ECase val alts -> checkWithChild AltCtx $ do
-      syntaxE SimpleExpCtx
+      forM_ mTypeEnv $ \typeEnv -> do
+        fromMaybe (pure ()) $ do -- Maybe
+          expectedPatType <- mTypeOfValTE typeEnv lpat
+          lhsType <- extract leftExp
+          pure $ do -- Lint
+            when (expectedPatType /= lhsType) $ do
+              tell $ [beforeMsg $ unwords
+                ["Invalid pattern match. Pattern", plainShow expectedPatType, "vs LHS", plainShow lhsType]]
 
+    (_ :< ECaseF val alts0) -> checkWithChild AltCtx $ do
+      syntaxE SimpleExpCtx
+      let alts = getF <$> alts0
       -- Overlapping node alternatives
       let tagOccurences =
             Map.unionsWith (+) $
             map (`Map.singleton` 1) $
-            concatMap (^.. _AltCPat . _CPatNodeTag) alts
+            concatMap (^.. _AltFCPat . _CPatNodeTag) alts
       forM_ (Map.keys $ Map.filter (>1) tagOccurences) $ \(tag :: Tag) ->
         tell [beforeMsg $ printf "case has overlapping node alternatives %s" (plainShow tag)]
-
       -- Overlapping literal alternatives
       let literalOccurences =
             Map.unionsWith (+) $
             map (`Map.singleton` 1) $
-            concatMap (^.. _AltCPat . _CPatLit) alts
+            concatMap (^.. _AltFCPat . _CPatLit) alts
       forM_ (Map.keys $ Map.filter (>1) literalOccurences) $ \(lit :: Lit) ->
         tell [beforeMsg $ printf "case has overlapping literal alternatives %s" (plainShow lit)]
 
-      let noOfDefaults = length $ findIndices (has (_AltCPat . _CPatDefault)) alts
+      let noOfDefaults = length $ findIndices (has (_AltFCPat . _CPatDefault)) alts
       -- More than one default
       when (noOfDefaults > 1) $ do
         tell [beforeMsg $ "case has more than one default alternatives"]
@@ -328,7 +320,9 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
             _ -> pure () -- TODO
 
     -- Simple Exp
-    SApp name args -> checkWithChild ctx $ do
+    (_ :< SAppF name args) -> checkWithChild ctx $ do
+      syntaxE SimpleExpCtx
+
       syntaxE SimpleExpCtx
       -- Test existence of the function.
       Env{..} <- get
@@ -342,11 +336,11 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
         tell [msg $ printf "non-saturated function call: %s" name]
       mapM_ (syntaxV SimpleValCtx) args
 
-    SReturn val -> checkWithChild ctx $ do
+    (_ :< SReturnF val) -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       syntaxV ValCtx val
 
-    SStore val -> checkWithChild ctx $ do
+    (_ :< SStoreF val) -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       syntaxV ValCtx val
       forM_ mTypeEnv $ \typeEnv -> do
@@ -359,7 +353,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
                         when (st /= T_Dead) $ tell [msg $ printf "store has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
           _ -> pure ()
 
-    SFetchI name _ -> checkWithChild ctx $ do
+    (_ :< SFetchIF name _) -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       -- Non location parameter for fetch
       forM_ mTypeEnv $ \typeEnv -> if
@@ -371,7 +365,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
           -> tell [msg $ printf "the parameter of fetch is a node type: %s" (plainShow name)]
         | otherwise -> pure ()
 
-    SUpdate name val -> checkWithChild ctx $ do
+    (_ :< SUpdateF name val) -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
       syntaxV ValCtx val
 
@@ -395,33 +389,15 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
                         when (st /= T_Dead) $ tell [msg $ printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
           _ -> pure ()
 
-      --typeN LocationType name
-      --isNodePtr name val
-
-    SBlock{} -> checkWithChild ExpCtx $ do
+    (_ :< SBlockF{}) -> checkWithChild ExpCtx $ do
       syntaxE SimpleExpCtx
 
     -- Alt
-    Alt cpat _ -> checkWithChild ExpCtx $ do
+    (_ :< AltF cpat _) -> checkWithChild ExpCtx $ do
       syntaxE AltCtx
 
     where
       syntaxE = syntaxExp ctx
       syntaxV = syntaxVal
-      checkWithChild childCtx m = check ((childCtx,) <$> project e) m
-{-
-  = Program     [Def]
-  | Def         Name [Name] Exp
-  -- Exp
-  | EBind       SimpleExp LPat Exp
-  | ECase       Val [Alt]
-  -- Simple Exp
-  | SApp        Name [SimpleVal]
-  | SReturn     Val
-  | SStore      Val
-  | SFetchI     Name (Maybe Int) -- fetch a full node or a single node item in low level GRIN
-  | SUpdate     Name Val
-  | SBlock      Exp
-  -- Alt
-  | Alt CPat Exp
--}
+      checkWithChild childCtx m = check ((childCtx,) <$> (getF e)) m
+      getF (_ :< f) = f
