@@ -5,6 +5,12 @@ allow-newer: true
 
 packages:
   - 'grin'
+  - location:
+      git: https://github.com/csabahruska/llvm-hs.git
+      commit: 37aaa694d2f7907634f7af602d9aae125101db8d
+    subdirs:
+      - llvm-hs
+    extra-dep: true
 
 extra-deps:
   - monad-gen-0.3.0.1
