@@ -92,23 +92,23 @@ withTyEnvSharing f =
 
 defaultOptimizations :: [Transformation]
 defaultOptimizations =
-  [ EvaluatedCaseElimination
-  , TrivialCaseElimination
+  [ InlineEval
   , SparseCaseOptimisation
-  , UpdateElimination
-  , NonSharedElimination
-  , CopyPropagation
-  , ConstantPropagation
   , SimpleDeadFunctionElimination
   , SimpleDeadParameterElimination
   , SimpleDeadVariableElimination
   , DeadCodeElimination
+  , EvaluatedCaseElimination
+  , TrivialCaseElimination
+  , UpdateElimination
+  , NonSharedElimination
+  , CopyPropagation
+  , ConstantPropagation
   , CommonSubExpressionElimination
   , CaseCopyPropagation
   , CaseHoisting
   , GeneralizedUnboxing
   , ArityRaising
-  , InlineEval
   , InlineApply
   , LateInlining
   ]
