@@ -38,6 +38,7 @@ import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuilt
 import Transformations.UnitPropagation
 import Transformations.MangleNames
 import Transformations.EffectMap
+import Transformations.StaticSingleAssignment
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Simplifying.ProducerNameIntroduction
@@ -111,6 +112,7 @@ transformation n = \case
   RightHoistFetch                 -> noEffectMap $ noTypeEnv RHF.rightHoistFetch
   -- misc
   MangleNames                     -> noEffectMap $ noTypeEnv mangleNames
+  StaticSingleAssignment          -> noEffectMap $ noTypeEnv staticSingleAssignment
   -- optimising
   BindNormalisation               -> noEffectMap $ noTypeEnv bindNormalisation
   ConstantFolding                 -> noEffectMap $ noTypeEnv constantFolding

@@ -43,6 +43,7 @@ data Transformation
   | ConstantFolding
   | UnitPropagation
   | MangleNames
+  | StaticSingleAssignment
   -- Optimizations
   | EvaluatedCaseElimination
   | TrivialCaseElimination

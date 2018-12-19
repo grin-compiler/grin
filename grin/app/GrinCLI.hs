@@ -56,6 +56,7 @@ transformOpts =
   <|> flg CaseHoisting "ch" "Case Hoisting"
   <|> flg LateInlining "li" "Late Inlining"
   <|> flg MangleNames "mn" "Mangle Names"
+  <|> flg StaticSingleAssignment "ssa" "Fix up Static Single Assignment property"
   <|> flg NonSharedElimination "nse" "Non Shared Elimination"
 
 pipelineOpts :: Parser PipelineStep
