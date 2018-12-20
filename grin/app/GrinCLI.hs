@@ -86,7 +86,6 @@ pipelineOpts =
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
   <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code"
-  <|> flg ParseTypeAnnots "parse-type-annots" "Parses the type annotations from the source"
   <|> flg PrintTypeAnnots "print-type-annots" "Prints the type env calculated from the annotations in the source"
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT Compile, HPT RunPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
@@ -137,11 +136,11 @@ main = do
   Options files steps outputDir <- options
   forM_ files $ \fname -> do
     content <- Text.readFile fname
-    let program = either (error . M.parseErrorPretty' content) id $ parseGrin fname content
-        opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
+    let (typeEnv, program)  = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
+        opts                = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
     case steps of
       [] -> void $ optimize opts program prePipeline postPipeline
-      _  -> void $ pipeline opts (Just content) program steps
+      _  -> void $ pipeline opts typeEnv program steps
 
 prePipeline :: [PipelineStep]
 prePipeline = defaultOnChange

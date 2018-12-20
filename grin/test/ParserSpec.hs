@@ -175,7 +175,7 @@ spec = do
               p <- store n
               pure 5
         |]
-    let env = parseMarkedTypeEnv exp
+    let env = parseMarkedTypeEnv' exp
     env `sameAs` (parseTypeEnv . Text.pack . show . WPP $ env)
 
   it "pure undefined ast" $ do

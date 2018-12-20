@@ -1,6 +1,11 @@
 {-# LANGUAGE TupleSections, LambdaCase, OverloadedStrings #-}
 
-module Grin.Parse.AST (parseGrin, parseProg, parseDef, parseExpr) where
+module Grin.Parse.AST
+  ( parseGrin
+  , parseProg
+  , parseDef
+  , parseExpr
+  ) where
 
 import Data.Char
 import Data.Void

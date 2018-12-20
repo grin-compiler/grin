@@ -56,7 +56,7 @@ instance Example Pipeline where
             , _poSaveTypeEnv = False
             , _poStatistics = False
             }
-      ((), resultExp) <- lift $ Grin.runPipeline opts Nothing beforeExp $ sequence_ $ map Grin.pipelineStep steps
+      ((), resultExp) <- lift $ Grin.runPipeline opts Grin.emptyTypeEnv beforeExp $ sequence_ $ map Grin.pipelineStep steps
       when (afterExp /= resultExp) $ do
         throwE $ Failure Nothing $ ExpectedButGot Nothing
           (show $ plain $ pretty afterExp)

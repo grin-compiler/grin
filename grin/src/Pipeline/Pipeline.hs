@@ -3,6 +3,7 @@ module Pipeline.Pipeline
  ( module Pipeline.Pipeline
  , module Pipeline.Definitions
  , module Pipeline.Utils
+ , emptyTypeEnv
  ) where
 
 import Prelude
@@ -186,7 +187,6 @@ pipelineStep p = do
     SaveLLVM relPath path -> saveLLVM relPath path
     SaveGrin path   -> saveGrin path
     PrintAST        -> printAST
-    ParseTypeAnnots -> parseTypeAnnots
     PrintTypeAnnots -> printTypeAnnots
     PrintTypeEnv    -> printTypeEnv
     SaveTypeEnv     -> saveTypeEnv
@@ -330,14 +330,9 @@ runSharingPure :: PipelineM ()
 runSharingPure = runSharingPureWith Sharing.toSharingResult
 
 
-parseTypeAnnots :: PipelineM ()
-parseTypeAnnots = do
-  Just src <- use psSrc
-  psTypeAnnots .= Just (parseMarkedTypeEnv src)
-
 printTypeAnnots :: PipelineM ()
 printTypeAnnots = do
-  Just typeEnv <- use psTypeAnnots
+  typeEnv <- use psTypeAnnots
   pipelineLog . show . pretty $ typeEnv
 
 printTypeEnv :: PipelineM ()
@@ -649,13 +644,12 @@ confluenceTest = do
   pipelineLog "\nSecond transformation permutation:"
   pipelineLog $ show pipeline2
 
-runPipeline :: PipelineOpts -> Maybe Text -> Exp -> PipelineM a -> IO (a, Exp)
-runPipeline o s e m = do
+runPipeline :: PipelineOpts -> TypeEnv -> Exp -> PipelineM a -> IO (a, Exp)
+runPipeline o ta e m = do
   createDirectoryIfMissing True $ _poOutputDir o
   fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
     start = PState
-      { _psSrc            = s
-      , _psExp            = e
+      { _psExp            = e
       , _psTransStep      = 0
       , _psSaveIdx        = 0
       , _psHPTProgram     = Nothing
@@ -667,17 +661,17 @@ runPipeline o s e m = do
       , _psSharingResult  = Nothing
       , _psSharingProgram = Nothing
       , _psTypeEnv        = Nothing
-      , _psTypeAnnots     = Nothing
+      , _psTypeAnnots     = ta
       , _psEffectMap      = Nothing
       , _psErrors         = []
       }
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
-pipeline :: PipelineOpts -> Maybe Text -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
-pipeline o s e ps = do
+pipeline :: PipelineOpts -> TypeEnv -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
+pipeline o ta e ps = do
   print ps
-  runPipeline o s e $ mapM (\p -> (,) p <$> pipelineStep p) ps
+  runPipeline o ta e $ mapM (\p -> (,) p <$> pipelineStep p) ps
 
 -- | Run the pipeline with the given set of transformations, till
 -- it reaches a fixpoint where none of the pipeline transformations
@@ -721,7 +715,7 @@ optimizeWith
   -> [PipelineStep]   -- ^ Steps to run on clean-up after a change. -- TODO: Why this necessary? Transformations should be well-contained
   -> [PipelineStep]   -- ^ Steps to run after a reached fixpoint
   -> IO Exp
-optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipeline o Nothing e $ do
+optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipeline o emptyTypeEnv e $ do
   lintGrin $ Just "init"
   mapM_ pipelineStep pre
   mapM_ pipelineStep onChange

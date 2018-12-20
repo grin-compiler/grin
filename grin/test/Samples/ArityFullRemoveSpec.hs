@@ -79,5 +79,5 @@ spec = do
           , HPT RunPure
           , T SimpleDeadVariableElimination
           ]
-    (pipelineInfo, transformed) <- pipeline defaultOpts Nothing before ppln
+    (pipelineInfo, transformed) <- pipeline defaultOpts emptyTypeEnv before ppln
     transformed `sameAs` after

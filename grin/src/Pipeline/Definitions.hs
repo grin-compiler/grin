@@ -107,7 +107,6 @@ data PipelineStep
   | SaveGrin Path
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
-  | ParseTypeAnnots
   | PrintTypeAnnots
   | PrintTypeEnv
   | SaveTypeEnv
@@ -149,8 +148,7 @@ defaultOpts = PipelineOpts
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
-    { _psSrc            :: Maybe Text
-    , _psExp            :: Exp
+    { _psExp            :: Exp
     , _psTransStep      :: Int
     , _psSaveIdx        :: Int
     , _psHPTProgram     :: Maybe HPTProgram
@@ -164,7 +162,7 @@ data PState = PState
     -- the type environment calculated by HPT
     , _psTypeEnv        :: Maybe TypeEnv
     -- the type environment parsed from the source code
-    , _psTypeAnnots     :: Maybe TypeEnv
+    , _psTypeAnnots     :: TypeEnv
     , _psEffectMap      :: Maybe EffectMap
     , _psErrors         :: [String]
     } deriving (Show)

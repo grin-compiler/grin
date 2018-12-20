@@ -1,5 +1,10 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
-module Grin.Parse.TypeEnv (typeAnnot, parseTypeEnv, parseMarkedTypeEnv) where
+module Grin.Parse.TypeEnv
+  ( typeAnnot
+  , parseTypeEnv
+  , parseMarkedTypeEnv
+  , parseMarkedTypeEnv'
+  ) where
 
 import Data.Map (Map)
 import Data.Set (Set)
@@ -123,11 +128,11 @@ parseTypeEnv src = either (error . parseErrorPretty' src) id
                  $ src
 
 -- parses type marked type annotations (even interleaved with code)
-parseMarkedTypeEnv :: Text -> TypeEnv
-parseMarkedTypeEnv src = either (error . parseErrorPretty' src) id
-                       . runParser markedTypeEnv ""
-                       . withoutCodeLines
-                       $ src
+parseMarkedTypeEnv' :: Text -> TypeEnv
+parseMarkedTypeEnv' src = either (error . parseErrorPretty' src) id $ parseMarkedTypeEnv "" src
+
+parseMarkedTypeEnv :: String -> Text -> Either (ParseError Char Void) TypeEnv
+parseMarkedTypeEnv filename src = runParser markedTypeEnv filename (withoutCodeLines src)
 
 withoutCodeLines :: Text -> Text
 withoutCodeLines = T.unlines
