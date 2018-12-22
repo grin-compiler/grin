@@ -146,11 +146,8 @@ pipelineStep p = do
   start <- liftIO getCurrentTime
   case p of
     Optimize -> do
-      let opts = defaultOpts { _poFailOnLint = True }
-          prePipeline = defaultOnChange
-      grin <- use psExp
-      mapM_ pipelineStep prePipeline
-      optimizeWithPM opts grin (fmap T defaultOptimizations) defaultOnChange defaultCleanUp
+      mapM_ pipelineStep defaultOnChange
+      optimizeWithPM (T <$> defaultOptimizations) defaultOnChange defaultCleanUp
     HPT step -> case step of
       Compile -> compileAbstractProgram HPT.codeGen psHPTProgram
       Optimise  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
@@ -680,11 +677,12 @@ pipeline o ta e ps = do
 -- pipeline steps on it. Finally, it performs a cleanup sequence
 -- after each step.
 -- TODO: Remove options parameter as it should be read from the PipelineM
-optimizeWithPM :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()
-optimizeWithPM o e ps onChange cleanUp = loop e where
-  loop :: Exp -> PipelineM ()
-  loop e = do
+optimizeWithPM :: [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()
+optimizeWithPM ps onChange cleanUp = loop where
+  loop :: PipelineM ()
+  loop = do
     -- Run every step and on changes run `onChange`
+    e <- use psExp
     effs <- forM ps $ \p -> do
       eff <- pipelineStep p
       when (eff == ExpChanged) $ void $ do
@@ -694,12 +692,13 @@ optimizeWithPM o e ps onChange cleanUp = loop e where
         mapM_ pipelineStep onChange
       pure eff
     -- Run loop again on change
+    o <- ask
     when (o ^. poStatistics)  $ void $ pipelineStep Statistics
     when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
     e' <- use psExp
-    if mangleNames e == mangleNames e'
-      then mapM_ pipelineStep cleanUp
-      else loop e'
+    if (any (==ExpChanged) effs)
+      then loop
+      else mapM_ pipelineStep cleanUp
 
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
 optimize o e pre post = optimizeWith o e pre defaultOptimizations defaultOnChange defaultCleanUp post where
@@ -717,5 +716,5 @@ optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipelin
   lintGrin $ Just "init"
   mapM_ pipelineStep pre
   mapM_ pipelineStep onChange
-  optimizeWithPM o e (fmap T optimizations) onChange cleanUp
+  optimizeWithPM (T <$> optimizations) onChange cleanUp
   mapM_ pipelineStep post
