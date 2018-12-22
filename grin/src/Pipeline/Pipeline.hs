@@ -147,7 +147,7 @@ pipelineStep p = do
   case p of
     Optimize -> do
       mapM_ pipelineStep defaultOnChange
-      optimizeWithPM (T <$> defaultOptimizations) defaultOnChange defaultCleanUp
+      optimizeWithCleanUp defaultOptimizations defaultOnChange defaultCleanUp
     HPT step -> case step of
       Compile -> compileAbstractProgram HPT.codeGen psHPTProgram
       Optimise  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
@@ -677,17 +677,17 @@ pipeline o ta e ps = do
 -- pipeline steps on it. Finally, it performs a cleanup sequence
 -- after each step.
 -- TODO: Remove options parameter as it should be read from the PipelineM
-optimizeWithPM :: [PipelineStep] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()
-optimizeWithPM ps onChange cleanUp = loop where
+optimizeWithCleanUp :: [Transformation] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()
+optimizeWithCleanUp ts onChange cleanUp = loop where
   loop :: PipelineM ()
   loop = do
     -- Run every step and on changes run `onChange`
     e <- use psExp
-    effs <- forM ps $ \p -> do
-      eff <- pipelineStep p
+    effs <- forM ts $ \t -> do
+      eff <- pipelineStep (T t)
       when (eff == ExpChanged) $ void $ do
-        pipelineStep $ SaveGrin $ Rel $ fmap (\case ' ' -> '-' ; c -> c) $ show p
-        lintGrin . Just $ show p
+        pipelineStep $ SaveGrin $ Rel $ fmap (\case ' ' -> '-' ; c -> c) $ show t
+        lintGrin . Just $ show t
         mapM_ pipelineStep cleanUp
         mapM_ pipelineStep onChange
       pure eff
@@ -716,5 +716,5 @@ optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipelin
   lintGrin $ Just "init"
   mapM_ pipelineStep pre
   mapM_ pipelineStep onChange
-  optimizeWithPM (T <$> optimizations) onChange cleanUp
+  optimizeWithCleanUp optimizations onChange cleanUp
   mapM_ pipelineStep post
