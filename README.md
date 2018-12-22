@@ -86,7 +86,7 @@ Also check the corresponding [source code](https://github.com/grin-tech/ghc-grin
 
 i.e.
 - [Lambda/Syntax.hs](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda/Syntax.hs) - front-end language defintion
-- [Lambda/CodeGen.hs](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda/CodeGen.hs) - code generator from front-end language to grin
+- [Lambda/GrinCodeGenBoxed.hs](https://github.com/grin-tech/ghc-grin/tree/master/lambda-grin/src/Lambda/GrinCodeGenBoxed.hs) - code generator from front-end language to grin
 
 
 ## Simplifying Transformations
@@ -130,9 +130,9 @@ Transformation | Schema
 [whnf update elimination][149]            <br><br> _source code:_ <br> __TODO__                      <br><br> _test:_ <br> __TODO__                           | [<img src="images/whnf-update-elimination.png"    width="500">][149]
 [common sub-expression elimination][164]  <br><br> _source code:_ <br> [CSE.hs]                      <br><br> _test:_ <br> [CSESpec.hs]                       | [<img src="images/common-sub-expression-elimination-1.png" width="500"><img src="images/common-sub-expression-elimination-2.png" width="500">][164]
 [constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]      <br><br> _test:_ <br> [ConstantPropagationSpec.hs]       | 
-[dead procedure elimination][169]         <br><br> _source code:_ <br> [DeadProcedureElimination.hs] <br><br> _test:_ <br> [DeadProcedureEliminationSpec.hs]  | 
-[dead variable elimination][170]          <br><br> _source code:_ <br> [DeadVariableElimination.hs]  <br><br> _test:_ <br> [DeadVariableEliminationSpec.hs]   | 
-[dead parameter elimination][171]         <br><br> _source code:_ <br> [DeadParameterElimination.hs] <br><br> _test:_ <br> [DeadParameterEliminationSpec.hs]  | 
+[dead function elimination][169]          <br><br> _source code:_ <br> [SimpleDeadFunctionElimination.hs]  <br><br> _test:_ <br> [SimpleDeadFunctionEliminationSpec.hs]   | 
+[dead variable elimination][170]          <br><br> _source code:_ <br> [SimpleDeadVariableElimination.hs]  <br><br> _test:_ <br> [SimpleDeadVariableEliminationSpec.hs]   | 
+[dead parameter elimination][171]         <br><br> _source code:_ <br> [SimpleDeadParameterElimination.hs] <br><br> _test:_ <br> [SimpleDeadParameterEliminationSpec.hs]  | 
 
 [129]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=129
 [134]: http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=134
@@ -157,15 +157,15 @@ Transformation | Schema
 [CaseCopyPropagation.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CaseCopyPropagation.hs
 [CaseHoisting.hs]:              https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CaseHoisting.hs
 [CSE.hs]:                       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/CSE.hs
-[DeadProcedureElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadProcedureElimination.hs
-[DeadVariableElimination.hs]:   https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadVariableElimination.hs
-[DeadParameterElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/DeadParameterElimination.hs
 [EvaluatedCaseElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/EvaluatedCaseElimination.hs
 [Inlining.hs]:                  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/Inlining.hs
 [SparseCaseOptimisation.hs]:    https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/SparseCaseOptimisation.hs
 [TrivialCaseElimination.hs]:    https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/TrivialCaseElimination.hs
 [UpdateElimination.hs]:         https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/UpdateElimination.hs
 [GeneralizedUnboxing.hs]:       https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/GeneralizedUnboxing.hs
+[SimpleDeadFunctionElimination.hs]:   https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/SimpleDeadFunctionElimination.hs
+[SimpleDeadVariableElimination.hs]:   https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/SimpleDeadVariableElimination.hs
+[SimpleDeadParameterElimination.hs]:  https://github.com/grin-tech/grin/blob/master/grin/src/Transformations/Optimising/SimpleDeadParameterElimination.hs
 
 [ArityRaisingSpec.hs]:              https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/ArityRaisingSpec.hs
 [ConstantPropagationSpec.hs]:       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/ConstantPropagationSpec.hs
@@ -173,12 +173,12 @@ Transformation | Schema
 [CaseCopyPropagationSpec.hs]:       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/CaseCopyPropagationSpec.hs
 [CaseHoistingSpec.hs]:              https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/CaseHoistingSpec.hs
 [CSESpec.hs]:                       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/CSESpec.hs
-[DeadProcedureEliminationSpec.hs]:  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/DeadProcedureEliminationSpec.hs
-[DeadVariableEliminationSpec.hs]:   https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/DeadVariableEliminationSpec.hs
-[DeadParameterEliminationSpec.hs]:  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/DeadParameterEliminationSpec.hs
 [EvaluatedCaseEliminationSpec.hs]:  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/EvaluatedCaseEliminationSpec.hs
 [InliningSpec.hs]:                  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/InliningSpec.hs
 [SparseCaseOptimisationSpec.hs]:    https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/SparseCaseOptimisationSpec.hs
 [TrivialCaseEliminationSpec.hs]:    https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/TrivialCaseEliminationSpec.hs
 [UpdateEliminationSpec.hs]:         https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/UpdateEliminationSpec.hs
 [GeneralizedUnboxingSpec.hs]:       https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/GeneralizedUnboxingSpec.hs
+[SimpleDeadFunctionEliminationSpec.hs]:   https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/SimpleDeadFunctionEliminationSpec.hs
+[SimpleDeadVariableEliminationSpec.hs]:   https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/SimpleDeadVariableEliminationSpec.hs
+[SimpleDeadParameterEliminationSpec.hs]:  https://github.com/grin-tech/grin/blob/master/grin/test/Transformations/Optimising/SimpleDeadParameterEliminationSpec.hs
