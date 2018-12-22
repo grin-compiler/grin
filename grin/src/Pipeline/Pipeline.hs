@@ -670,7 +670,6 @@ runPipeline o ta e m = do
 -- expression.
 pipeline :: PipelineOpts -> TypeEnv -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
 pipeline o ta e ps = do
-  print ps
   runPipeline o ta e $ mapM (\p -> (,) p <$> pipelineStep p) ps
 
 -- | Run the pipeline with the given set of transformations, till
@@ -695,7 +694,6 @@ optimizeWithPM o e ps onChange cleanUp = loop e where
         mapM_ pipelineStep onChange
       pure eff
     -- Run loop again on change
-    pipelineStep $ PrintGrin id
     when (o ^. poStatistics)  $ void $ pipelineStep Statistics
     when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
     e' <- use psExp
