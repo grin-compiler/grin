@@ -275,8 +275,8 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
 
       forM_ mTypeEnv $ \typeEnv -> do
         fromMaybe (pure ()) $ do -- Maybe
-          expectedPatType <- mTypeOfValTE typeEnv lpat
-          lhsType <- extract leftExp
+          expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
+          lhsType <- normalizeType <$> extract leftExp
           pure $ do -- Lint
             when (expectedPatType /= lhsType) $ do
               tell $ [beforeMsg $ unwords

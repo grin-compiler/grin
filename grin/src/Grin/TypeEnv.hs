@@ -10,7 +10,9 @@ import Data.Map (Map)
 import Data.Set (Set)
 import Data.Vector (Vector)
 import qualified Data.Map as Map
-import qualified Data.Vector as Vector (fromList, toList)
+import qualified Data.Set as Set (fromList, toList)
+import qualified Data.Vector as Vector (fromList, toList, map)
+import Data.Bifunctor (bimap)
 import Data.Monoid
 import Data.Maybe (fromMaybe)
 import Data.Functor.Infix ((<$$>))
@@ -136,6 +138,28 @@ mTypeOfValTE typeEnv = \case
   Var name  -> typeEnv ^. variable . at name
 
   bad -> Nothing
+
+-- | Sort locations, remove duplication from set like things.
+normalizeTypeEnv :: TypeEnv -> TypeEnv
+normalizeTypeEnv (TypeEnv locations variables functions) =
+  TypeEnv
+    (Vector.map normalizeNodeSet locations)
+    (Map.map normalizeType variables)
+    (Map.map (bimap normalizeType (Vector.map normalizeType)) functions)
+
+normalizeSimpleType :: SimpleType -> SimpleType
+normalizeSimpleType = \case
+  T_Location ls -> T_Location $ Set.toList $ Set.fromList ls
+  rest          -> rest
+
+normalizeNodeSet :: NodeSet -> NodeSet
+normalizeNodeSet = Map.map (Vector.map normalizeSimpleType)
+
+normalizeType :: Type -> Type
+normalizeType = \case
+  T_SimpleType st -> T_SimpleType $ normalizeSimpleType st
+  T_NodeSet    ns -> T_NodeSet $ normalizeNodeSet ns
+  rest            -> rest
 
 ptrLocations :: TypeEnv -> Name -> [Loc]
 ptrLocations te p = case variableType te p of
