@@ -54,14 +54,7 @@ defaultOnChange :: [PipelineStep]
 defaultOnChange =
   [ T ProducerNameIntroduction
   , T BindNormalisation
-  , CBy Compile
-  , CBy RunPure
-  , LVA Compile
-  , LVA RunPure
-  , Sharing Compile
-  , Sharing RunPure
   , T UnitPropagation
-  , Eff CalcEffectMap
   ]
 
 -- Copy propagation, SDVE and bind normalisitaion

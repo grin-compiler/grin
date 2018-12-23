@@ -96,7 +96,7 @@ data PipelineStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
   | Sharing AbstractComputationStep
-  | RunCByWithLVA
+  | RunCByWithLVA -- TODO: Remove
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]

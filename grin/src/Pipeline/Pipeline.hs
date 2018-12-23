@@ -95,6 +95,7 @@ import System.Random
 import Data.Time.Clock
 import Data.Fixed
 import Data.Functor.Infix ((<$$>))
+import Data.Maybe (isNothing)
 
 
 
@@ -107,6 +108,7 @@ data TransformationFunc
   | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String Exp)
   | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> Exp)
 
+-- TODO: Add n paramter for the transformations that use NameM
 transformationFunc :: Int -> Transformation -> TransformationFunc
 transformationFunc n = \case
   Vectorisation                   -> WithTypeEnv (Right <$$> Vectorisation2.vectorisation)
@@ -149,6 +151,7 @@ transformationFunc n = \case
 
 transformationM :: Transformation -> PipelineM ()
 transformationM t = do
+  runAnalysisFor t
   n <- use psTransStep
   e <- use psExp
   te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
@@ -338,7 +341,6 @@ runLVAPure = use psLVAProgram >>= \case
         result = LVA.toLVAResult lvaProgram _airComp
     pipelineLogIterations _airIter
     psLVAResult .= Just result
-
 
 runSharingPureWith :: (Sharing.SharingProgram -> Computer -> Sharing.SharingResult) -> PipelineM ()
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
@@ -646,9 +648,10 @@ optimizeWithCleanUp ts onChange cleanUp = loop where
       eff <- pipelineStep (T t)
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin $ Rel $ fmap (\case ' ' -> '-' ; c -> c) $ show t
-        lintGrin . Just $ show t
+        lintGrin . Just $ show t -- TODO: Make this as optional...
         mapM_ pipelineStep cleanUp
         mapM_ pipelineStep onChange
+        invalidateAnalysisResults
       pure eff
     -- Run loop again on change
     o <- ask
@@ -658,6 +661,49 @@ optimizeWithCleanUp ts onChange cleanUp = loop where
     if (any (==ExpChanged) effs)
       then loop
       else mapM_ pipelineStep cleanUp
+
+invalidateAnalysisResults :: PipelineM ()
+invalidateAnalysisResults = do
+  psHPTProgram     .= Nothing
+  psHPTResult      .= Nothing
+  psCByProgram     .= Nothing
+  psCByResult      .= Nothing
+  psLVAProgram     .= Nothing
+  psLVAResult      .= Nothing
+  psSharingProgram .= Nothing
+  psSharingResult  .= Nothing
+  psTypeEnv        .= Nothing
+  psEffectMap      .= Nothing
+
+runAnalysisFor :: Transformation -> PipelineM ()
+runAnalysisFor t = do
+  n <- use psTransStep
+  sequence_ $ case transformationFunc n t of
+    Plain          _ -> []
+    WithTypeEnv    _ -> [hpt]
+    WithTypeEnvEff _ -> [hpt, eff]
+    WithLVA        _ -> [hpt, lva]
+    WithEffLVA     _ -> [hpt, lva, eff]
+    WithLVACBy     _ -> [hpt, lva, cby]
+    WithTypeEnvShr _ -> [hpt, sharing]
+  where
+    analisys getter ann = do
+      r <- use getter
+      when (isNothing r) $ do
+        pipelineLog $ "Analisys"
+        mapM_ pipelineStep $ (ann <$> [Compile, RunPure])
+
+    hpt = analisys psHPTResult HPT
+    lva = analisys psLVAResult LVA
+    cby = analisys psCByResult CBy
+    sharing = analisys psSharingResult Sharing
+
+    eff :: PipelineM ()
+    eff = do
+      r <- use psEffectMap
+      when (isNothing r) $ do
+        pipelineLog $ "Analisys"
+        void $ pipelineStep $ Eff CalcEffectMap
 
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
 optimize o e pre post = optimizeWith o e pre defaultOptimizations defaultOnChange defaultCleanUp post where
