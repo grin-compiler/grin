@@ -26,7 +26,7 @@ pipelineLogNoLn str = do
   when shouldLog $ liftIO $ putStr str
 
 pipelineLogIterations :: Int -> PipelineM ()
-pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n
+pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n ++ " "
 
 defaultOptimizations :: [Transformation]
 defaultOptimizations =
