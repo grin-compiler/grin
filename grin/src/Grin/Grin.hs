@@ -122,7 +122,7 @@ showTS = packName . show
 
 -- indetifier rules for parser and pretty printer
 allowedSpecial :: String
-allowedSpecial = "._':!{}@-"
+allowedSpecial = "._':!@-"
 
-allowedIntial :: String
-allowedIntial = "._" ++ ['a'..'z'] ++ ['A'..'Z']
+allowedInitial :: String
+allowedInitial = "._" ++ ['a'..'z'] ++ ['A'..'Z']

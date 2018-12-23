@@ -110,7 +110,7 @@ quotedVar :: Parser ShortText
 quotedVar = packName <$ char '"' <*> someTill (escaped <|> anyChar) (char '"')
 
 simpleVar :: Parser ShortText
-simpleVar = (\c s -> packName $ c : s) <$> oneOf allowedIntial <*> many (alphaNumChar <|> oneOf allowedSpecial)
+simpleVar = (\c s -> packName $ c : s) <$> oneOf allowedInitial <*> many (alphaNumChar <|> oneOf allowedSpecial)
 
 -- TODO: allow keywords in quotes
 var :: Parser ShortText

@@ -60,7 +60,7 @@ showName :: Name -> String
 showName n = case unpackName n of
   []    -> ""
   str@(c:s)
-    | c `elem` allowedIntial && all (\a -> isAlphaNum a || elem a allowedSpecial) s -> str
+    | c `elem` allowedInitial && all (\a -> isAlphaNum a || elem a allowedSpecial) s -> str
     | otherwise -> '"' : go str
     where
       go [] = ['"']
