@@ -144,15 +144,17 @@ data PipelineOpts = PipelineOpts
   , _poLogging     :: Bool
   , _poSaveTypeEnv :: Bool
   , _poStatistics  :: Bool
+  , _poLintOnChange :: Bool
   }
 
 defaultOpts :: PipelineOpts
 defaultOpts = PipelineOpts
-  { _poOutputDir   = ".grin-output"
-  , _poFailOnLint  = True
-  , _poLogging     = True
-  , _poSaveTypeEnv = False
-  , _poStatistics  = False
+  { _poOutputDir    = ".grin-output"
+  , _poFailOnLint   = True
+  , _poLogging      = True
+  , _poSaveTypeEnv  = False
+  , _poStatistics   = False
+  , _poLintOnChange = True
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a

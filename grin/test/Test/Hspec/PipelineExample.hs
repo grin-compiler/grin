@@ -55,6 +55,7 @@ instance Example Pipeline where
             , _poLogging = False
             , _poSaveTypeEnv = False
             , _poStatistics = False
+            , _poLintOnChange = False
             }
       ((), resultExp) <- lift $ Grin.runPipeline opts Grin.emptyTypeEnv beforeExp $ sequence_ $ map Grin.pipelineStep steps
       when (afterExp /= resultExp) $ do

@@ -644,20 +644,19 @@ optimizeWithCleanUp ts onChange cleanUp = loop where
   loop = do
     -- Run every step and on changes run `onChange`
     e <- use psExp
+    o <- ask
     effs <- forM ts $ \t -> do
       eff <- pipelineStep (T t)
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin $ Rel $ fmap (\case ' ' -> '-' ; c -> c) $ show t
-        lintGrin . Just $ show t -- TODO: Make this as optional...
+        when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
         mapM_ pipelineStep cleanUp
         mapM_ pipelineStep onChange
         invalidateAnalysisResults
       pure eff
     -- Run loop again on change
-    o <- ask
     when (o ^. poStatistics)  $ void $ pipelineStep Statistics
     when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
-    e' <- use psExp
     if (any (==ExpChanged) effs)
       then loop
       else mapM_ pipelineStep cleanUp
