@@ -153,7 +153,7 @@ examineTheParameters (te, e) = Map.filter (not . null) $ Map.map candidate funs
     combine (_tr, pt) params = params `zip` (Vector.toList pt)
 
     funParamNames = flip cata e $ \case
-      ProgramF defs      -> mconcat defs
+      ProgramF exts defs -> mconcat defs
       DefF name params _ -> Map.singleton name params
       _                  -> mempty
 
@@ -195,7 +195,7 @@ examineCallers te candidates e =
     -- Name of parameters not bound to a store
     collect :: ExpF (Exp, (MMap Name [(Name, Int)], Set Name, Set Name, Set Name)) -> (MMap Name [(Name, Int)], Set Name, Set Name, Set Name)
     collect = \case
-      ProgramF defs -> mconcat $ map snd defs
+      ProgramF exts defs -> mconcat $ map snd defs
 
       DefF name params (_, (MMap calls, callsParam, _, nonStored)) ->
         let recFunParams = fromMaybe [] (view _1 <$$> Map.lookup name candidates)
@@ -238,7 +238,7 @@ examineCallees funParams (te, exp) =
 
     collect :: ExpF (Set Name, [(Name, Name)]) -> (Set Name, [(Name, Name)])
     collect = \case
-      ProgramF  defs             -> mconcat defs
+      ProgramF exts defs -> mconcat defs
 
       DefF name params body@(others, funCalls)
         | Map.member name funParams ->

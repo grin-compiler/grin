@@ -25,13 +25,16 @@ import Grin.Parse.TypeEnv
 
 -- grin syntax
 
+def :: Parser Def
 def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (L.indentGuard sc GT pos1 >>= expr)
 
+expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
   try ((\pat e b -> EBind e pat b) <$> (try (value <* op "<-") <|> pure Unit) <*> simpleExp i <*> expr i ) <|>
   ifThenElse i <|>
   simpleExp i
 
+ifThenElse :: Pos -> Parser Exp
 ifThenElse i = do
   kw "if"
   v <- value
@@ -44,6 +47,7 @@ ifThenElse i = do
                    , Alt (LitPat (LBool False)) e
                    ]
 
+simpleExp :: Pos -> Parser SimpleExp
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
               ECase <$ kw "case" <*> value <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
               SStore <$ kw "store" <*> satisfyM nodeOrVar value <|>
@@ -55,26 +59,31 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
               SApp <$> primNameOrDefName <* (optional $ op "$") <*> many simpleValue
   where
     nodeOrVar = \case
-      ConstTagNode _ _ -> True
-      VarTagNode _ _   -> True
-      Undefined _      -> True
-      Var _            -> True
-      _                -> False
+      ConstTagNode{}  -> True
+      VarTagNode{}    -> True
+      Undefined{}     -> True
+      Var{}           -> True
+      _               -> False
 
+primNameOrDefName :: Parser Name
 primNameOrDefName = ("_"<>) <$ char '_' <*> var <|> var
 
+alternative :: Pos -> Parser Alt
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 
+altPat :: Parser CPat
 altPat = parens (NodePat <$> tag <*> many var) <|>
          DefaultPat <$ kw "#default" <|>
          TagPat <$> tag <|>
          LitPat <$> literal
 
+simpleValue :: Parser SimpleVal
 simpleValue = Lit <$> literal <|>
               Var <$> var <|>
               Undefined <$> parens (kw "#undefined" *> op "::" *> typeAnnot)
 
 -- #undefined can hold simple types as well as node types
+value :: Parser Val
 value = Unit <$ op "()" <|>
         try (parens (ConstTagNode <$> tag <*> many simpleValue <|> VarTagNode <$> var <*> many simpleValue)) <|>
         ValTag <$> tag <|>
@@ -93,9 +102,39 @@ satisfyM pred parser = do
     then pure x
     else mzero
 
+-- externals
+
+externalBlock = do
+  L.indentGuard sc EQ pos1
+  kw "primop"
+  eff <- const False <$> kw "pure" <|> const True <$> kw "effectful"
+  i <- L.indentGuard sc GT pos1
+  some $ external eff i
+
+external :: Bool -> Pos -> Parser External
+external eff i = do
+  L.indentGuard sc EQ i
+  name <- var
+  op "::"
+  ty <- reverse <$> sepBy1 tyP (op "->")
+  let (retTy:argTyRev) = ty
+  pure External
+    { eName       = name
+    , eRetType    = retTy
+    , eArgsType   = reverse argTyRev
+    , eEffectful  = eff
+    }
+
+tyP :: Parser Ty
+tyP =
+  TyVar <$ C.char '%' <*> var <|>
+  braces (TyCon <$> var <*> many tyP) <|>
+  TySimple <$> try simpleType
+
+-- top-level API
 
 grinModule :: Parser Exp
-grinModule = Program <$> many def <* sc <* eof
+grinModule = Program <$> (concat <$> many externalBlock) <*> many def <* sc <* eof
 
 parseGrin :: String -> Text -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename (withoutTypeAnnots content)

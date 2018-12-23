@@ -41,8 +41,8 @@ deadFunctionElimination lvaResult effMap tyEnv = runTrf .
   (deleteDeadFunctions lvaResult effMap >=> replaceDeadFunApps lvaResult effMap tyEnv)
 
 deleteDeadFunctions :: LVAResult -> EffectMap -> Exp -> Trf Exp
-deleteDeadFunctions lvaResult effMap (Program defs) =
-  fmap Program $ filterM isFunDefLiveM defs where
+deleteDeadFunctions lvaResult effMap (Program exts defs) =
+  fmap (Program exts) $ filterM isFunDefLiveM defs where
 
     isFunDefLiveM :: Exp -> Trf Bool
     isFunDefLiveM (Def f _ _) = fmap not $ isFunDeadM lvaResult effMap f

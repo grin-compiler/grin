@@ -33,7 +33,7 @@ prettyLintExp (exp, errorMap) = cata folder exp where
       (Map.lookup expId errorMap)
 
   prettyExpAlgebra = \case
-      ProgramF defs       -> vcat (map pretty defs)
+      ProgramF exts defs  -> vcat (map pretty defs)
       DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
       -- Exp
       EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp

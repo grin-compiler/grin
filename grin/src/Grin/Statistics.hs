@@ -4,6 +4,7 @@ module Grin.Statistics where
 
 import Data.Monoid
 import Data.Functor.Foldable
+import qualified Data.Foldable
 import Text.PrettyPrint.ANSI.Leijen
 import Grin.Grin
 
@@ -44,7 +45,6 @@ instance Semigroup Statistics where
 
 statistics :: Exp -> Statistics
 statistics = cata $ \case
-  ProgramF  xs -> mconcat xs
   DefF _ _   s -> s <> mempty { def = 1 }
   -- Exp
   EBindF l _ r -> l <> r     <> mempty { eBind = 1 }
@@ -58,6 +58,8 @@ statistics = cata $ \case
   SBlockF  s   -> s <> mempty { sBlock  = 1 }
   -- Alt
   AltF _ s     -> s <> mempty { alt = 1 }
+  -- general case
+  e -> Data.Foldable.fold e
 
 instance Pretty Statistics where
   pretty (Statistics{..}) = vsep

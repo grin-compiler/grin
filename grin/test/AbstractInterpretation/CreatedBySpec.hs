@@ -8,7 +8,7 @@ import qualified Data.Vector as V
 
 import System.FilePath
 
-import Grin.Grin
+import Grin.Grin hiding (SimpleType(..))
 import Grin.TH
 
 import Test.IO

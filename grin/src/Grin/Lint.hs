@@ -210,7 +210,7 @@ annotate :: TypeEnv -> Exp -> TypedExp
 annotate te = cata builder where
   builder :: ExpF TypedExp -> TypedExp
   builder = \case
-    ProgramF defs -> Nothing :< ProgramF defs
+    ProgramF exts defs -> Nothing :< ProgramF exts defs
     DefF n ps body -> (te ^? function . at n . _Just . _1) :< DefF n ps body
     SReturnF val -> mTypeOfValTE te val :< SReturnF val
     SStoreF val -> Nothing :< SStoreF val -- Store returns a location type that is associated in its binded variable
@@ -250,7 +250,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
   where
   functionNames :: ExpF (Lint ()) -> Lint ()
   functionNames = \case
-    ProgramF defs -> sequence_ defs
+    ProgramF exts defs -> sequence_ defs
     DefF name args body -> do
       modify' $ \env@Env{..} -> env
         { envDefinedNames = Map.insert name FunName envDefinedNames

@@ -182,7 +182,7 @@ codeGenM :: Exp -> CG HPTProgram ResultHPT
 codeGenM = cata folder where
   folder :: ExpF (CG HPTProgram ResultHPT) -> CG HPTProgram ResultHPT
   folder = \case
-    ProgramF defs -> sequence_ defs >> pure Z
+    ProgramF exts defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
       instructions <- stateDfi $ \s@AbstractProgram{..} -> (_absInstructions, s {_absInstructions = []})

@@ -118,7 +118,7 @@ evalSimpleExp env = \case
   x -> error $ "evalSimpleExp: " ++ show x
 
 reduceFun :: Program -> Name -> IO RTVal
-reduceFun (Program l) n = do
+reduceFun (Program exts l) n = do
   store <- emptyStore1
   (val, _, _) <- runRWST (evalExp mempty e) m store
   pure val

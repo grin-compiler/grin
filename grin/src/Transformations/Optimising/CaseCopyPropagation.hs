@@ -27,7 +27,7 @@ data NewExp = NE
 
 folder :: ExpF (Exp, NewExp) -> NameM NewExp
 folder = \case
-  ProgramF ds                           -> pure $ NE Final (Program $ map (neExp . snd) ds)
+  ProgramF exts ds                      -> pure $ NE Final (Program exts $ map (neExp . snd) ds)
   DefF n ps body@(b, NE (InChange _) _) -> pure $ NE Final (Def n ps b)
   DefF n ps body@(_, NE c e)            -> pure $ NE c (Def n ps e)
 

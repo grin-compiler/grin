@@ -43,8 +43,9 @@ registerIntroductionI _ e = apo builder ([1..], e) where
       SUpdate uname (Lit lit)               -> literal      (SUpdate uname) lit
       SApp name vals                        -> appExp (if any isLit vals then SBlock else id) name vals
 
-      Program defs -> let n = length defs
-                      in ProgramF $ zipWith (\i d -> Right (nth i n path', d)) [1..] defs
+      Program exts defs ->
+        let n = length defs
+        in ProgramF exts $ zipWith (\i d -> Right (nth i n path', d)) [1..] defs
       EBind sexp lpat exp                   -> EBindF (Right (nth 0 2 path', sexp)) lpat (Right (nth 1 2 path', exp))
       ECase val alts                        -> let n = length alts
                                                in ECaseF val $ zipWith (\i a -> Right (nth i n path', a)) [0..] alts

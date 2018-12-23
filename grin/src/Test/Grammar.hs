@@ -89,7 +89,7 @@ class AsExp t where
 
 instance AsExp Prog where
   asExp = \case
-    Prog defs -> Grin.Program (asExp <$> getNonEmpty defs)
+    Prog defs -> Grin.Program [] (asExp <$> getNonEmpty defs)
 
 instance AsExp Def where
   asExp = \case

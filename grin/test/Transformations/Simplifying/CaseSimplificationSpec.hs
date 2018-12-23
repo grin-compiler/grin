@@ -92,7 +92,7 @@ checkVarTagCases :: Exp -> Property
 checkVarTagCases = \case
   ECase       val alts | isVarTagNode val -> mconcat (checkAlt <$> alts)
 
-  Program     defs -> mconcat (checkVarTagCases <$> defs)
+  Program _   defs -> mconcat (checkVarTagCases <$> defs)
   Def         name params body -> checkVarTagCases body
 
   EBind       se lpat exp -> checkVarTagCases se <> checkVarTagCases exp

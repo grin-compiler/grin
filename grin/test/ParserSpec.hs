@@ -22,7 +22,7 @@ spec = do
       let before = [prog|
         "GHC.Tuple.()" = pure (C"GHC.Tuple.()")
         |]
-      let after = Program
+      let after = Program []
             [ Def "GHC.Tuple.()" [] $ SReturn $ ConstTagNode (Tag C "GHC.Tuple.()") []
             ]
       before `sameAs` after
@@ -31,13 +31,13 @@ spec = do
       let before = [prog|
         "extreme name with \" and ~ ! @ # $ % ^ & * ( ) | : > < > ? , . / " = pure ()
         |]
-      let after = Program
+      let after = Program []
             [ Def "extreme name with \" and ~ ! @ # $ % ^ & * ( ) | : > < > ? , . / " [] $ SReturn Unit
             ]
       before `sameAs` after
 
     it "parse . pretty == id" $ do
-      let exp = Program
+      let exp = Program []
             [ Def "extreme name with \" and ~ ! @ # $ % ^ & * ( ) | : > < > ? , . / " [] $ SReturn Unit
             ]
       let Right parsedExp = parseGrin "" (Text.pack $ show $ PP exp)
@@ -54,7 +54,7 @@ spec = do
             #default ->
               pure p
         |]
-      let after = Program
+      let after = Program []
             [ Def "test"[ "p" ]
               ( EBind ( ECase ( Var "p" ) [ Alt DefaultPat ( SReturn Unit ) ] ) Unit
                 ( ECase ( Var "p" ) [ Alt DefaultPat ( SReturn ( Var "p" ) ) ] )
@@ -69,7 +69,7 @@ spec = do
           nodeLit1 <- pure (CNode 13.1415 +13.1415 -13.1415 42 +42 -42 64u #True #False floatLit1)
           pure ()
         |]
-      let after = Program
+      let after = Program []
             [ Def "grinMain"[]
                 ( EBind ( SReturn ( Lit ( LFloat 13.1415 ) ) ) ( Var "floatLit1" )
                     ( EBind
@@ -114,7 +114,7 @@ spec = do
             #True     -> pure ()
             #False    -> pure ()
         |]
-      let after = Program
+      let after = Program []
             [ Def "grinMain"[]
                 ( ECase ( Lit ( LFloat ( -12.12 ) ) )
                     [ Alt ( LitPat ( LFloat 13.1415 ) ) ( SReturn Unit )
@@ -230,4 +230,3 @@ spec = do
       forAll (PP <$> genProg) $ \p ->
         let p' = parseGrin "" (Text.pack $ show p)
         in (fmap PP p') `shouldBe` (Right p)
-

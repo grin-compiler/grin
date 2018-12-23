@@ -11,7 +11,7 @@ import qualified Data.Foldable
 import Grin.Grin
 
 simpleDeadFunctionElimination :: Program -> Program
-simpleDeadFunctionElimination (Program defs) = Program [def | def@(Def name _ _) <- defs, Set.member name liveDefs] where
+simpleDeadFunctionElimination (Program exts defs) = Program exts [def | def@(Def name _ _) <- defs, Set.member name liveDefs] where
   defMap :: Map Name Def
   defMap = Map.fromList [(name, def) | def@(Def name _ _) <- defs]
 

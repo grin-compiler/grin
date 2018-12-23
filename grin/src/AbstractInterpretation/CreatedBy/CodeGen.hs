@@ -112,7 +112,7 @@ codeGen :: Exp -> Either String CByProgram
 codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para folder where
   folder :: ExpF (Exp, CG CByProgram ResultCBy) -> CG CByProgram ResultCBy
   folder = \case
-    ProgramF defs -> (sequence_ . fmap snd $ defs) >> pure Z
+    ProgramF exts defs -> (sequence_ . fmap snd $ defs) >> pure Z
 
     DefF name args (_,body) -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args

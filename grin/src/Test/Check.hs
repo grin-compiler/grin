@@ -153,7 +153,7 @@ patsInAlts f = cata $ \case
 
 programSize :: Exp -> Int
 programSize = cata $ \case
-  ProgramF  ds      -> sum ds
+  ProgramF  _ ds    -> sum ds
   DefF      _ _ !a  -> 1 + a
   EBindF    !a _ !b -> sum [1,a,b]
   ECaseF    _ !as   -> sum (1:as)
@@ -167,7 +167,7 @@ programSize = cata $ \case
 
 simpleExpOnLHS :: Exp -> Bool
 simpleExpOnLHS = para $ \case
-  ProgramF  ds      -> and $ fmap snd ds
+  ProgramF  _ ds    -> and $ fmap snd ds
   DefF      _ _ a   -> snd a
   EBindF    (s, a) _ b -> and [isSimpleExp s, a, snd b]
   ECaseF    _ as    -> and $ fmap snd as

@@ -28,6 +28,23 @@ data Name2
 isPrimName :: Name -> Bool
 isPrimName = isPrefixOf "_prim_"
 
+-- * GRIN Externals, i.e. primops and foreign functions
+
+data Ty
+  = TyCon     Name [Ty]
+  | TyVar     Name
+  | TySimple  SimpleType
+  deriving (Generic, NFData, Eq, Ord, Show)
+
+data External
+  = External
+  { eName       :: Name
+  , eRetType    :: Ty
+  , eArgsType   :: [Ty]
+  , eEffectful  :: Bool
+  }
+  deriving (Generic, NFData, Eq, Ord, Show)
+
 -- * GRIN Literal
 
 -- QUESTION: Now #undefined can be pattern matched on.
@@ -77,7 +94,7 @@ type Def = Exp
 type Program = Exp
 
 data Exp
-  = Program     [Def]
+  = Program     [External] [Def]
   | Def         Name [Name] Exp
   -- Exp
   | EBind       SimpleExp LPat Exp

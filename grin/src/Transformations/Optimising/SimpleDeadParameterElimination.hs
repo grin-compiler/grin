@@ -17,7 +17,7 @@ collectUsedNames = cata folder where
   folder exp = foldNameUseExpF Set.singleton exp `mappend` Data.Foldable.fold exp
 
 simpleDeadParameterElimination :: Program -> Program
-simpleDeadParameterElimination prog@(Program defs) = ana builder prog where
+simpleDeadParameterElimination prog@(Program exts defs) = ana builder prog where
   deadArgMap :: Map Name (Set Int)
   deadArgMap = mconcat $ mapMaybe deadArgsInDef defs
 

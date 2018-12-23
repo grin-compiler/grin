@@ -280,7 +280,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       modify' (\env@Env{..} -> env {_envDefinitions = def : _envDefinitions})
       pure $ O unitCGType unit
 
-    ProgramF defs -> do
+    ProgramF exts defs -> do
       -- register prim fun lib
       registerPrimFunLib
       sequence_ (map snd defs) >> pure (O unitCGType unit)

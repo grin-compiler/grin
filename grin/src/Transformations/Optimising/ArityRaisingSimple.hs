@@ -97,7 +97,7 @@ phase1 te = pdArityData . cata collect where
         , p `notElem` (snd <$> (filter ((/=fn) . fst) (bdFunCall body)))
         ]
 
-    ProgramF defs -> ProgramData $ Map.unionsWith mappend (fdArityData <$> defs)
+    ProgramF exts defs -> ProgramData $ Map.unionsWith mappend (fdArityData <$> defs)
 
 pointsToOneNode :: TypeEnv -> Name -> Maybe (Tag, Int)
 pointsToOneNode te var = case Map.lookup var (_variable te) of

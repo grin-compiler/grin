@@ -176,7 +176,7 @@ codeGen = fmap reverseProgram
   where
   folder :: ExpF (CG LVAProgram ResultLVA) -> CG LVAProgram ResultLVA
   folder = \case
-    ProgramF defs -> sequence_ defs >> pure Z
+    ProgramF exts defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args

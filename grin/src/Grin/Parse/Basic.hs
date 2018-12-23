@@ -27,12 +27,13 @@ keywords = Set.fromList
   , "do", "pure"
   , "#True", "#False"
   , "#undefined"
+  , "primop", "effectful"
   ] `Set.union` simpleTypes
 
-simpleTypes = Set.fromList . map pack $
-  [ show T_Int64, show T_Word64, show T_Float
-  , show T_Bool,  show T_Unit
-  , "T_Location", show T_Dead
+simpleTypes = Set.fromList
+  [ "T_Int64", "T_Word64", "T_Float"
+  , "T_Bool",  "T_Unit"
+  , "T_Location", "T_Dead"
   ]
 
 lineComment :: Parser ()
@@ -120,3 +121,16 @@ tag :: Parser Tag
 tag = Tag C <$ char 'C' <*> var <|>
       Tag F <$ char 'F' <*> var <|>
       Tag <$> (P <$ char 'P' <*> L.decimal) <*> var
+
+-- type syntax
+
+simpleType :: Parser SimpleType
+simpleType =
+  T_Int64 <$ kw "T_Int64" <|>
+  T_Word64 <$ kw "T_Word64" <|>
+  T_Float <$ kw "T_Float" <|>
+  T_Bool <$ kw "T_Bool" <|>
+  T_Unit <$ kw "T_Unit" <|>
+  T_UnspecifiedLocation <$ kw "#ptr" <|>
+  T_Location <$> bracedList int <|>
+  T_Dead <$ kw "T_Dead"

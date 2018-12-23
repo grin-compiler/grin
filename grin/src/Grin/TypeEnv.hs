@@ -2,6 +2,7 @@
 module Grin.TypeEnv
   ( module Grin.TypeEnv
   , module Grin.TypeEnvDefs
+  , module Grin.SyntaxDefs
   ) where
 
 import Text.Printf
@@ -24,6 +25,7 @@ import Lens.Micro.Platform
 import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnvDefs
+import Grin.SyntaxDefs
 
 
 dead_t :: Type

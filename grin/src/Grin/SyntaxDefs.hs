@@ -17,3 +17,20 @@ data Tag = Tag
   , tagName :: Name
   }
   deriving (Generic, NFData, Eq, Ord, Show)
+
+-- * GRIN Type System
+
+type Loc = Int
+
+data SimpleType
+  = T_Int64
+  | T_Word64
+  | T_Float
+  | T_Bool
+  | T_Unit
+  | T_Location {_locations :: [Loc]}
+  | T_UnspecifiedLocation
+  | T_Dead
+  | T_String
+  | T_Char
+  deriving (Generic, NFData, Eq, Ord, Show)

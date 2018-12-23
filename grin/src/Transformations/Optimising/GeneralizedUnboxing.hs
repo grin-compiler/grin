@@ -75,7 +75,7 @@ transitive f res0 =
 -- TODO: Remove the fix combinator, explore the function
 -- dependency graph and rewrite disqualify steps based on that.
 functionsToUnbox :: TypeEnv -> Exp -> Set Name
-functionsToUnbox te (Program defs) = result where
+functionsToUnbox te (Program exts defs) = result where
   funName (Def n _ _) = n
 
   tailCallsMap :: Map Name [Name]

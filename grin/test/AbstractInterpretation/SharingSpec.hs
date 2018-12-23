@@ -10,7 +10,6 @@ import Test.Hspec
 import Grin.Grin
 import Grin.TH
 import Grin.Pretty
-import Grin.TypeEnvDefs (Loc)
 
 import AbstractInterpretation.Reduce
 import AbstractInterpretation.Sharing.CodeGen

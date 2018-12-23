@@ -125,4 +125,4 @@ allowedSpecial :: String
 allowedSpecial = "._':!{}@-"
 
 allowedIntial :: String
-allowedIntial = "._" ++['a'..'z'] ++ ['A'..'Z']
+allowedIntial = "._" ++ ['a'..'z'] ++ ['A'..'Z']

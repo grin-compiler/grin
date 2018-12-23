@@ -106,7 +106,7 @@ evalExp env = \case
   exp -> evalSimpleExp env exp
 
 reduceFun :: Program -> Name -> IO RTVal
-reduceFun (Program l) n = evalStateT (runReaderT (evalExp mempty e) m) emptyStore where
+reduceFun (Program exts l) n = evalStateT (runReaderT (evalExp mempty e) m) emptyStore where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
   e = case Map.lookup n m of
         Nothing -> error $ printf "missing function: %s" n

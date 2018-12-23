@@ -27,7 +27,7 @@ instance Semigroup  Stat where (Stat i1 m1) <> (Stat i2 m2) = Stat (i1 + i2) (Ma
 instance Monoid     Stat where mempty = Stat 0 mempty
 
 selectInlineSet :: Program -> Set Name
-selectInlineSet prog@(Program defs) = inlineSet where
+selectInlineSet prog@(Program exts defs) = inlineSet where
 
   (bindList, callTrees) = unzip
     [ (Map.singleton name bindCount, (name, functionCallCount))
@@ -68,7 +68,7 @@ selectInlineSet prog@(Program defs) = inlineSet where
 -- TODO: add the cloned variables to the type env
 -- QUESTION: apo OR ana ???
 inlining :: Set Name -> TypeEnv -> Program -> Program
-inlining functionsToInline typeEnv prog@(Program defs) = evalNameM prog $ apoM builder prog where
+inlining functionsToInline typeEnv prog@(Program exts defs) = evalNameM prog $ apoM builder prog where
 
   defMap :: Map Name Def
   defMap = Map.fromList [(name, def) | def@(Def name _ _) <- defs]
@@ -117,4 +117,4 @@ inlineBuiltins te = cleanup nameSet te . inlining nameSet te where
   nameSet = Set.fromList ["_rts_int_gt", "_rts_int_add", "_rts_int_print"] -- TODO: use proper selection
 
 cleanup :: Set Name -> TypeEnv -> Program -> Program
-cleanup nameSet typeEnv (Program defs) = Program [def | def@(Def name _ _) <- defs, Set.notMember name nameSet]
+cleanup nameSet typeEnv (Program exts defs) = Program exts [def | def@(Def name _ _) <- defs, Set.notMember name nameSet]

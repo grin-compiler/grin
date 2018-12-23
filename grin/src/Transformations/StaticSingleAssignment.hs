@@ -22,7 +22,7 @@ staticSingleAssignment e = flip evalState (mempty, 1) $
   where
   functionNames :: ExpF (VarM ()) -> VarM ()
   functionNames = \case
-    ProgramF defs -> sequence_ defs
+    ProgramF exts defs -> sequence_ defs
     DefF name ps body -> do
       _1 %= Set.insert name
       body
