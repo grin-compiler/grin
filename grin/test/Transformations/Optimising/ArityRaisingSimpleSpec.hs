@@ -23,7 +23,7 @@ spec :: Spec
 spec = do
   it "split_undefined" $ do
     let tyEnv = inferTypeEnv testProgBefore
-    snd (arityRaising 0 (tyEnv,testProgBefore)) `sameAs` testProgAfter
+    arityRaising 0 tyEnv testProgBefore `sameAs` testProgAfter
 
 testProgBefore :: Exp
 testProgBefore = [prog|

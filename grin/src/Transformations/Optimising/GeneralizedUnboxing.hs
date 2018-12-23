@@ -27,12 +27,11 @@ import Grin.TypeEnv
 import Grin.Pretty
 
 
-generalizedUnboxing :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-generalizedUnboxing te =
-    (first (updateTypeEnv funs)) $
-    evalNameM (snd te) (transformCalls funs =<< transformReturns funs te)
+generalizedUnboxing :: TypeEnv -> Exp -> Exp
+generalizedUnboxing te exp =
+  evalNameM exp (transformCalls funs te =<< transformReturns funs te exp)
   where
-    funs = functionsToUnbox te
+    funs = functionsToUnbox te exp
 
 -- TODO: Support tagless nodes.
 
@@ -75,8 +74,8 @@ transitive f res0 =
 
 -- TODO: Remove the fix combinator, explore the function
 -- dependency graph and rewrite disqualify steps based on that.
-functionsToUnbox :: (TypeEnv, Exp) -> Set Name
-functionsToUnbox (te, Program defs) = result where
+functionsToUnbox :: TypeEnv -> Exp -> Set Name
+functionsToUnbox te (Program defs) = result where
   funName (Def n _ _) = n
 
   tailCallsMap :: Map Name [Name]
@@ -122,16 +121,9 @@ updateTypeEnv funs te = te & function %~ unboxFun
                   . _Just
         else (n, ts)
 
-type VarM = WriterT [(Name, Type)] NameM
-
-runVarM :: TypeEnv -> VarM a -> NameM (TypeEnv, a)
-runVarM te m = (\(result, newVars) -> (newTe newVars, result)) <$> runWriterT m
-  where
-    newTe vs = te & variable %~ (Map.union (Map.fromList vs))
-
-transformReturns :: Set Name -> (TypeEnv, Exp) -> NameM (TypeEnv, Exp)
-transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) where
-  builder :: (Maybe (Tag, Type), Exp) -> VarM (ExpF (Either Exp (Maybe (Tag, Type), Exp)))
+transformReturns :: Set Name -> TypeEnv -> Exp -> NameM Exp
+transformReturns toUnbox te exp = apoM builder (Nothing, exp) where
+  builder :: (Maybe (Tag, Type), Exp) -> NameM (ExpF (Either Exp (Maybe (Tag, Type), Exp)))
   builder (mTagType, exp0) = case exp0 of
     Def name params body
       | Set.member name toUnbox -> pure $ DefF name params (Right (returnsAUniqueTag te name, body))
@@ -150,8 +142,7 @@ transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) wh
       | canUnbox simpleExp
       , Just (tag, typ) <- mTagType
       -> do
-        freshName <- lift . deriveNewName $ "unboxed." <> (showTS $ PP tag)
-        tell [(freshName, typ)]
+        freshName <- deriveNewName $ "unboxed." <> (showTS $ PP tag)
         pure . SBlockF . Left $ EBind simpleExp (ConstTagNode tag [Var freshName]) (SReturn $ Var freshName)
 
     rest -> pure (Right . (,) mTagType <$> project rest)
@@ -164,9 +155,9 @@ transformReturns toUnbox (te, exp) = runVarM te $ apoM builder (Nothing, exp) wh
     SFetchI{} -> True
     _         -> False
 
-transformCalls :: Set Name -> (TypeEnv, Exp) -> NameM (TypeEnv, Exp)
-transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM (True, Nothing, exp) where
-  builderM :: (Bool, Maybe Name, Exp) -> VarM (ExpF (Bool, Maybe Name, Exp))
+transformCalls :: Set Name -> TypeEnv -> Exp -> NameM Exp
+transformCalls toUnbox typeEnv exp = anaM builderM (True, Nothing, exp) where
+  builderM :: (Bool, Maybe Name, Exp) -> NameM (ExpF (Bool, Maybe Name, Exp))
 
   builderM (isRightExp, mDefName, e) = case e of
 
@@ -188,8 +179,7 @@ transformCalls toUnbox (typeEnv, exp) = runVarM typeEnv $ anaM builderM (True, N
 
           -- from outside to candidate
           else do
-            freshName <- lift . deriveNewName $ "unboxed." <> (showTS $ PP tag)
-            tell [(freshName, fstType)]
+            freshName <- deriveNewName $ "unboxed." <> (showTS $ PP tag)
             pure . SBlockF . (isRightExp, mDefName,) $
               EBind (SApp unboxedName params) (Var freshName) (SReturn $ ConstTagNode tag [Var freshName])
 

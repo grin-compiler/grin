@@ -88,6 +88,9 @@ data HPTResult
   }
   deriving (Eq, Show)
 
+emptyHPTResult :: HPTResult
+emptyHPTResult = HPTResult mempty mempty mempty
+
 concat <$> mapM makeLenses [''NodeSet, ''TypeSet, ''HPTResult]
 
 -- Negative integers less than (-8) can represent any analysis-specific value.

@@ -179,7 +179,7 @@ spec = do
             pure (CInt unboxed.CInt.5)
           test y'
       |]
-    generalizedUnboxing (teBefore, before) `sameAs` (teAfter, after)
+    generalizedUnboxing teBefore before `sameAs` after
 
   it "Return values are in cases" $ do
     let teBefore = emptyTypeEnv
@@ -234,7 +234,7 @@ spec = do
             #True ->
               pure 1
       |]
-    generalizedUnboxing (teBefore, before) `sameAs` (teAfter, after)
+    generalizedUnboxing teBefore before `sameAs` after
 
   it "Step 1 for Figure 4.21" $ do
     let teBefore = emptyTypeEnv
@@ -261,7 +261,7 @@ spec = do
           (CInt y') <- foo a1 a2 a3
           test y'
       |]
-    functionsToUnbox (teBefore, before) `shouldBe` (Set.fromList ["foo"])
+    functionsToUnbox teBefore before `shouldBe` (Set.fromList ["foo"])
 
   it "Tail calls and general unboxing" $ do
     let teBefore = emptyTypeEnv
@@ -318,7 +318,7 @@ spec = do
           x <- pure (CNat y)
           pure x
       |]
-    functionsToUnbox (teBefore, before) `shouldBe` mempty
+    functionsToUnbox teBefore before `shouldBe` mempty
 
   it "Tail call function 1" $ do
     let fun = [def|

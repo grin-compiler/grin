@@ -39,8 +39,8 @@ Parameters:
  - Its value points to a location, which location has only one Node with at least one parameter
 -}
 
-arityRaising :: Int -> (TypeEnv,Exp) -> (TypeEnv,Exp)
-arityRaising n (te,exp) = (te, if Map.null arityData then exp else phase2 n arityData exp)
+arityRaising :: Int -> TypeEnv -> Exp -> Exp
+arityRaising n te exp = if Map.null arityData then exp else phase2 n arityData exp
   where
     arityData = phase1 te exp
 

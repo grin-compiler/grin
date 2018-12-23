@@ -47,7 +47,7 @@ spec = do
           (CInt b') <- pure (r' z')
           fun 3 4
         |]
-      commonSubExpressionElimination (ctx (teBefore, before)) `sameAs` (ctx (teBefore, after))
+      uncurry commonSubExpressionElimination (ctx (teBefore, before)) `sameAs` (snd $ ctx (teBefore, after))
 
     let te = emptyTypeEnv
     it "store - fetch" $ do
@@ -61,7 +61,7 @@ spec = do
           (CInt a1) <- pure (CInt 0)
           pure ()
         |]
-      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "store - fetch - update" $ do
       let before = [expr|
@@ -90,7 +90,7 @@ spec = do
           update p1 (CInt 1)
           pure (CInt 1)
         |]
-      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "store - update" $ do
       let before = [expr|
@@ -108,7 +108,7 @@ spec = do
           p2 <- store v1
           pure ()
         |]
-      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     let te = emptyTypeEnv
     it "fetch - update" $ do
@@ -121,7 +121,7 @@ spec = do
           v <- fetch p
           pure 1
         |]
-      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "constant" $ do
       let before = [expr|
@@ -148,7 +148,7 @@ spec = do
           (CInt i7) <- pure (CInt i6)
           pure v2
         |]
-      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "application" $ do
       let te = create $ mconcat
@@ -174,7 +174,7 @@ spec = do
           v4 <- _prim_int_add v2 v3
           pure v4
         |]
-      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+      (uncurry commonSubExpressionElimination (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
 
     it "case alternative tracking" $ do
       let before = [expr|
@@ -201,7 +201,7 @@ spec = do
               n4 <- pure n1
               pure n4
         |]
-      commonSubExpressionElimination (ctx (te, before)) `sameAs` (ctx (te, after))
+      (uncurry commonSubExpressionElimination (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
 
   it "no copy propagation of def arguments" $ do
     let before = [prog|
@@ -218,4 +218,4 @@ spec = do
             d <- pure c
             pure d
       |]
-    snd (commonSubExpressionElimination (inferTypeEnv before, before)) `sameAs` after
+    commonSubExpressionElimination (inferTypeEnv before) before `sameAs` after

@@ -11,8 +11,8 @@ import Grin.Grin
 import Grin.TypeEnv
 
 
-unitPropagation :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-unitPropagation (typeEnv@TypeEnv{..}, e) = (typeEnv, ana builder e) where
+unitPropagation :: TypeEnv -> Exp -> Exp
+unitPropagation TypeEnv{..} e = ana builder e where
 
   unitEnv :: Map Val Val
   unitEnv = Map.mapKeysMonotonic Var . flip Map.mapMaybe _variable $

@@ -38,7 +38,7 @@ spec = do
         funA i = pure i
       |]
     let inlineSet = Set.fromList ["funA"]
-    snd (inlining inlineSet (inferTypeEnv before, before)) `sameAs` after
+    inlining inlineSet (inferTypeEnv before) before `sameAs` after
 
   it "no-inline grinMain" $ do
     let before = [prog|
@@ -51,4 +51,4 @@ spec = do
           x <- pure 22
           pure x
       |]
-    snd (lateInlining (inferTypeEnv before, before)) `sameAs` after
+    lateInlining (inferTypeEnv before) before `sameAs` after

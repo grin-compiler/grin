@@ -37,6 +37,9 @@ data LVAResult
   }
   deriving (Eq, Show)
 
+emptyLVAResult :: LVAResult
+emptyLVAResult = LVAResult mempty mempty mempty
+
 concat <$> mapM makeLenses [''Node, ''Liveness, ''LVAResult]
 
 isNodeLive :: Node -> Bool

@@ -34,7 +34,7 @@ instance Semigroup ProducerMap where
 -- In a ProducerMap, we map variables to producers,
 -- in a ProducerGraph we map producers to other producers.
 newtype ProducerGraph = ProducerGraph { _producerGraph :: ProducerMap }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Semigroup, Monoid)
 
 data GroupedProducers
   = All ProducerGraph     -- All producers are grouped
@@ -47,5 +47,8 @@ data CByResult
   , _producers        :: ProducerMap
   , _groupedProducers :: GroupedProducers
   } deriving (Show)
+
+emptyCByResult :: CByResult
+emptyCByResult = CByResult emptyHPTResult mempty (All mempty)
 
 concat <$> mapM makeLenses [''ProducerMap, ''ProducerSet, ''CByResult, ''ProducerGraph]

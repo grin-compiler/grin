@@ -46,8 +46,8 @@ getReturnTagSet typeEnv = cata folder where
     _ -> Nothing
 
 
-caseHoisting :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-caseHoisting (typeEnv, exp) = (typeEnv, fst . evalNameM exp $ histoM folder exp) where
+caseHoisting :: TypeEnv -> Exp -> Exp
+caseHoisting typeEnv exp = fst $ evalNameM exp $ histoM folder exp where
 
   folder :: ExpF (Cofree ExpF (Exp, Set Name)) -> NameM (Exp, Set Name)
   folder exp = case exp of

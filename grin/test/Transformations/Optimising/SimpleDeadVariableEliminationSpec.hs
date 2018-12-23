@@ -48,7 +48,7 @@ spec = do
         |]
       let tyEnv   = inferTypeEnv before
           effMap  = effectMap (tyEnv, before)
-          (_, _, dveExp)  = simpleDeadVariableElimination (tyEnv, effMap, before)
+          dveExp  = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
   {-

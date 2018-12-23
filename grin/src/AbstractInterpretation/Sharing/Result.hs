@@ -22,6 +22,9 @@ data SharingResult
   , _sharedLocs :: Set Loc
   } deriving (Show)
 
+emptySharingResult :: SharingResult
+emptySharingResult = SharingResult emptyHPTResult mempty
+
 concat <$> mapM makeLenses [''SharingResult]
 
 toSharingResult :: SharingProgram -> R.Computer -> SharingResult

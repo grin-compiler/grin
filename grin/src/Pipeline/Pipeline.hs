@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Data.Maybe (maybe, fromJust, fromMaybe)
 import Text.Printf
 import Text.Pretty.Simple (pPrint)
-import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>))
+import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>), (<$$>))
 import qualified Text.Show.Pretty as PP
 
 import Pipeline.Eval
@@ -94,47 +94,78 @@ import Control.Monad.Extra
 import System.Random
 import Data.Time.Clock
 import Data.Fixed
-
-noTypeEnv :: (Exp -> Exp) -> (TypeEnv, Exp) -> (TypeEnv, Exp)
-noTypeEnv f (t, e) = (t, f e)
-
-noEffectMap :: ((TypeEnv, Exp) -> (TypeEnv, Exp)) -> (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
-noEffectMap f (te0, em0, e0) = let (te1, e1) = f (te0, e0) in (te1, em0, e1)
+import Data.Functor.Infix ((<$$>))
 
 
-transformation :: Int -> Transformation -> (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
-transformation n = \case
-  Vectorisation                   -> noEffectMap Vectorisation2.vectorisation
-  GenerateEval                    -> noEffectMap $ noTypeEnv generateEval
-  CaseSimplification              -> noEffectMap $ noTypeEnv caseSimplification
-  SplitFetch                      -> noEffectMap $ noTypeEnv splitFetch
-  RegisterIntroduction            -> noEffectMap $ noTypeEnv $ registerIntroductionI n
-  ProducerNameIntroduction        -> noEffectMap $ noTypeEnv producerNameIntroduction
-  RightHoistFetch                 -> noEffectMap $ noTypeEnv RHF.rightHoistFetch
+
+data TransformationFunc
+  = Plain          (Exp -> Exp)
+  | WithTypeEnv    (TypeEnv -> Exp -> Either String Exp)
+  | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> Exp)
+  | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String Exp)
+  | WithEffLVA     (LVA.LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp)
+  | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String Exp)
+  | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> Exp)
+
+transformationFunc :: Int -> Transformation -> TransformationFunc
+transformationFunc n = \case
+  Vectorisation                   -> WithTypeEnv (Right <$$> Vectorisation2.vectorisation)
+  GenerateEval                    -> Plain generateEval
+  CaseSimplification              -> Plain caseSimplification
+  SplitFetch                      -> Plain splitFetch
+  RegisterIntroduction            -> Plain $ registerIntroductionI n
+  ProducerNameIntroduction        -> Plain producerNameIntroduction
+  RightHoistFetch                 -> Plain RHF.rightHoistFetch
   -- misc
-  MangleNames                     -> noEffectMap $ noTypeEnv mangleNames
-  StaticSingleAssignment          -> noEffectMap $ noTypeEnv staticSingleAssignment
+  MangleNames                     -> Plain mangleNames
+  StaticSingleAssignment          -> Plain staticSingleAssignment
+  BindNormalisation               -> Plain bindNormalisation
+  ConstantFolding                 -> Plain constantFolding
   -- optimising
-  BindNormalisation               -> noEffectMap $ noTypeEnv bindNormalisation
-  ConstantFolding                 -> noEffectMap $ noTypeEnv constantFolding
-  EvaluatedCaseElimination        -> noEffectMap $ noTypeEnv evaluatedCaseElimination
-  TrivialCaseElimination          -> noEffectMap $ noTypeEnv trivialCaseElimination
-  UpdateElimination               -> noEffectMap $ noTypeEnv updateElimination
-  CopyPropagation                 -> noEffectMap $ noTypeEnv copyPropagation
-  ConstantPropagation             -> noEffectMap $ noTypeEnv constantPropagation
-  SimpleDeadFunctionElimination   -> noEffectMap $ noTypeEnv simpleDeadFunctionElimination
-  SimpleDeadParameterElimination  -> noEffectMap $ noTypeEnv simpleDeadParameterElimination
-  InlineEval                      -> noEffectMap inlineEval
-  InlineApply                     -> noEffectMap inlineApply
-  InlineBuiltins                  -> noEffectMap inlineBuiltins
-  SimpleDeadVariableElimination   -> simpleDeadVariableElimination
-  CommonSubExpressionElimination  -> noEffectMap commonSubExpressionElimination
-  CaseCopyPropagation             -> noEffectMap $ noTypeEnv caseCopyPropagation
-  CaseHoisting                    -> noEffectMap caseHoisting
-  GeneralizedUnboxing             -> noEffectMap generalizedUnboxing
-  ArityRaising                    -> noEffectMap (arityRaising n)
-  LateInlining                    -> noEffectMap lateInlining
-  UnitPropagation                 -> noEffectMap unitPropagation
+  EvaluatedCaseElimination        -> Plain evaluatedCaseElimination
+  TrivialCaseElimination          -> Plain trivialCaseElimination
+  UpdateElimination               -> Plain updateElimination
+  CopyPropagation                 -> Plain copyPropagation
+  ConstantPropagation             -> Plain constantPropagation
+  SimpleDeadFunctionElimination   -> Plain simpleDeadFunctionElimination
+  SimpleDeadParameterElimination  -> Plain simpleDeadParameterElimination
+  SimpleDeadVariableElimination   -> WithTypeEnvEff simpleDeadVariableElimination
+  InlineEval                      -> WithTypeEnv (Right <$$> inlineEval)
+  InlineApply                     -> WithTypeEnv (Right <$$> inlineApply)
+  InlineBuiltins                  -> WithTypeEnv (Right <$$> inlineBuiltins)
+  CommonSubExpressionElimination  -> WithTypeEnv (Right <$$> commonSubExpressionElimination)
+  CaseCopyPropagation             -> Plain caseCopyPropagation
+  CaseHoisting                    -> WithTypeEnv (Right <$$> caseHoisting)
+  GeneralizedUnboxing             -> WithTypeEnv (Right <$$> generalizedUnboxing)
+  ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
+  LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
+  UnitPropagation                 -> WithTypeEnv (Right <$$> unitPropagation)
+  NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
+  DeadFunctionElimination         -> WithEffLVA deadFunctionElimination
+  DeadVariableElimination         -> WithEffLVA deadVariableElimination
+  DeadParameterElimination        -> WithLVA deadParameterElimination
+  DeadDataElimination             -> WithLVACBy deadDataElimination
+  SparseCaseOptimisation          -> WithTypeEnv sparseCaseOptimisation
+
+transformationM :: Transformation -> PipelineM ()
+transformationM t = do
+  n <- use psTransStep
+  e <- use psExp
+  te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
+  em <- fromMaybe (traceShow "empty effect map is used" mempty) <$> use psEffectMap
+  cby <- fromMaybe (traceShow "empty created by result is used" CBy.emptyCByResult) <$> use psCByResult
+  lva <- fromMaybe (traceShow "empty live variable result is used" LVA.emptyLVAResult) <$> use psLVAResult
+  shr <- fromMaybe (traceShow "empty sharing result is used" Sharing.emptySharingResult) <$> use psSharingResult
+  either (\err -> psErrors %= (err:)) (psExp .=) $
+    case transformationFunc n t of
+      Plain          f -> Right $ f e
+      WithTypeEnv    f -> f te e
+      WithTypeEnvEff f -> Right $ f te em e
+      WithLVA        f -> f lva te e
+      WithEffLVA     f -> f lva em te e
+      WithLVACBy     f -> f lva cby te e
+      WithTypeEnvShr f -> Right $ f shr te e
+  psTransStep %= (+1)
 
 pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
@@ -359,85 +390,6 @@ statistics = do
   exp <- use psExp
   saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
-transformationM :: Transformation -> PipelineM ()
-transformationM NonSharedElimination = do
-  e <- use psExp
-  withTyEnvSharing $ \tyEnv shRes -> do
-    let e' = nonSharedElimination shRes tyEnv e
-    psExp .= e'
-    psTransStep %= (+1)
-
-
-transformationM DeadCodeElimination = do
-  withEffMapTyEnvCByLVA $ \effMap typeEnv cbyResult lvaResult -> do
-
-    e <- use psExp
-    case deadFunctionElimination lvaResult effMap typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-    e  <- use psExp
-    case deadDataElimination lvaResult cbyResult typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-    e <- use psExp
-    case deadVariableElimination lvaResult effMap typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-    e <- use psExp
-    case deadParameterElimination lvaResult typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-transformationM DeadFunctionElimination = do
-  e  <- use psExp
-  withEffMapTyEnvLVA $ \effMap typeEnv lvaResult -> do
-    case deadFunctionElimination lvaResult effMap typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-transformationM DeadVariableElimination = do
-  e  <- use psExp
-  withEffMapTyEnvLVA $ \effMap typeEnv lvaResult -> do
-    case deadVariableElimination lvaResult effMap typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-transformationM DeadParameterElimination = do
-  e  <- use psExp
-  withTyEnvLVA $ \typeEnv lvaResult -> do
-    case deadParameterElimination lvaResult typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-transformationM DeadDataElimination = do
-  e  <- use psExp
-  withTyEnvCByLVA $ \typeEnv cbyResult lvaResult -> do
-    case deadDataElimination lvaResult cbyResult typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-transformationM SparseCaseOptimisation = do
-  e  <- use psExp
-  withTypeEnv $ \typeEnv ->
-    case sparseCaseOptimisation typeEnv e of
-      Right e'  -> psExp .= e' >> psTransStep %= (+1)
-      Left  err -> psErrors %= (err:)
-
-transformationM t = do
-  --preconditionCheck t
-  env0 <- fromMaybe (traceShow "emptyTypeEnv is used" emptyTypeEnv) <$> use psTypeEnv
-  effs0 <- fromMaybe (traceShow "emptyEffectMap is used" mempty) <$> use psEffectMap
-  n    <- use psTransStep
-  exp0 <- use psExp
-  let (env1, effs1, exp1) = transformation n t (env0, effs0, exp0)
-  psTypeEnv .= Just env1
-  psExp     .= exp1
-  psTransStep %= (+1)
-  --postconditionCheck t
-
 pureEval :: PipelineM ()
 pureEval = do
   e <- use psExp
@@ -571,7 +523,10 @@ randomPipeline seed = do
         , SimpleDeadFunctionElimination
         , SimpleDeadParameterElimination
         , SimpleDeadVariableElimination
-        , DeadCodeElimination
+        , DeadFunctionElimination
+        , DeadDataElimination
+        , DeadVariableElimination
+        , DeadParameterElimination
         , CommonSubExpressionElimination
         , CaseCopyPropagation
         , CaseHoisting
@@ -610,8 +565,12 @@ randomPipeline seed = do
       ]
 
     needsCByLVA :: Transformation -> Bool
-    needsCByLVA DeadCodeElimination = True
-    needsCByLVA _ = False
+    needsCByLVA = \case
+      DeadFunctionElimination -> True
+      DeadDataElimination -> True
+      DeadVariableElimination -> True
+      DeadParameterElimination -> True
+      _ -> False
 
     needsCleanup :: Transformation -> Bool
     needsCleanup = needsCByLVA

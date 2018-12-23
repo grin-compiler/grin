@@ -52,7 +52,6 @@ data Transformation
   | NonSharedElimination
   | CopyPropagation
   | ConstantPropagation
-  | DeadCodeElimination
   | DeadDataElimination
   | DeadFunctionElimination
   | DeadParameterElimination
@@ -115,6 +114,14 @@ data PipelineStep
   | PrintErrors
   | DebugPipelineState
   deriving (Eq, Show)
+
+pattern DeadCodeElimination :: PipelineStep
+pattern DeadCodeElimination = Pass
+  [ T DeadFunctionElimination
+  , T DeadDataElimination
+  , T DeadVariableElimination
+  , T DeadParameterElimination
+  ]
 
 data Path
   = Abs FilePath

@@ -16,8 +16,8 @@ import Grin.EffectMap
 import Transformations.Util
 
 -- TODO: Write for dead code elimination.
-simpleDeadVariableElimination :: (TypeEnv, EffectMap, Exp) -> (TypeEnv, EffectMap, Exp)
-simpleDeadVariableElimination (typeEnv, effMap, e) = (typeEnv, effMap, fst $ cata folder e) where
+simpleDeadVariableElimination :: TypeEnv -> EffectMap -> Exp -> Exp
+simpleDeadVariableElimination typeEnv effMap e = fst $ cata folder e where
 
   folder :: ExpF (Exp, Set Name) -> (Exp, Set Name)
   folder = \case

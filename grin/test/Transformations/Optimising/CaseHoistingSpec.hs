@@ -41,7 +41,7 @@ spec = do
                 (CCons a2.0 b2.0) <- pure u.1
                 pure 2
       |]
-    snd (caseHoisting (inferTypeEnv before, before)) `sameAs` after
+    caseHoisting (inferTypeEnv before) before `sameAs` after
 
   it "middle case" $ do
     let before = [prog|
@@ -71,7 +71,7 @@ spec = do
                 pure 2
             pure r
       |]
-    snd (caseHoisting (inferTypeEnv before, before)) `sameAs` after
+    caseHoisting (inferTypeEnv before) before `sameAs` after
 
   it "default pattern" $ do
     let before = [prog|
@@ -100,7 +100,7 @@ spec = do
                 pure 2
             pure r
       |]
-    snd (caseHoisting (inferTypeEnv before, before)) `sameAs` after
+    caseHoisting (inferTypeEnv before) before `sameAs` after
 
   it "case chain + no code duplication" $ do
     let before = [prog|
@@ -137,7 +137,7 @@ spec = do
                                 pure r
             pure q
       |]
-    snd (caseHoisting (inferTypeEnv before, before)) `sameAs` after
+    caseHoisting (inferTypeEnv before) before `sameAs` after
 
   it "default chain" $ do
     let before = [prog|
@@ -167,7 +167,7 @@ spec = do
                 pure r.0
             pure q
       |]
-    snd (caseHoisting (inferTypeEnv before, before)) `sameAs` after
+    caseHoisting (inferTypeEnv before) before `sameAs` after
 
   it "ignore non linear variable" $ do
     let before = [prog|
@@ -190,4 +190,4 @@ spec = do
             x <- pure u
             pure r
       |]
-    snd (caseHoisting (inferTypeEnv before, before)) `sameAs` after
+    caseHoisting (inferTypeEnv before) before `sameAs` after

@@ -15,8 +15,8 @@ type Env = (Map SimpleExp SimpleExp)
 
 -- TODO: track if function parameters with location type can be updated in the called function to improve CSE
 
-commonSubExpressionElimination :: (TypeEnv, Exp) -> (TypeEnv, Exp)
-commonSubExpressionElimination (typeEnv, e) = (typeEnv, hylo skipUnit builder (mempty, e)) where
+commonSubExpressionElimination :: TypeEnv -> Exp -> Exp
+commonSubExpressionElimination typeEnv e = hylo skipUnit builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, subst env -> exp) = case exp of
