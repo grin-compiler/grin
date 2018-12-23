@@ -230,3 +230,54 @@ spec = do
       forAll (PP <$> genProg) $ \p ->
         let p' = parseGrin "" (Text.pack $ show p)
         in (fmap PP p') `shouldBe` (Right p)
+
+  describe "external defintions" $ do
+    it "primop" $ do
+      let before = [prog|
+        primop effectful
+          _prim_string_print  :: T_String -> T_Unit
+          _prim_read_string   :: T_String
+
+          "newArrayArray#" :: {"Int#"} -> {"State#" %s} -> {"GHC.Prim.Unit#" {"MutableArrayArray#" %s}}
+
+        primop pure
+          _prim_string_concat   :: T_String -> T_String -> T_String
+
+        grinMain = pure ()
+        |]
+      let after = Program
+
+            [ External
+                { eName = "_prim_string_print"
+                , eRetType = TySimple T_Unit
+                , eArgsType = [ TySimple T_String ]
+                , eEffectful = True
+                }
+            , External
+                { eName = "_prim_read_string"
+                , eRetType = TySimple T_String
+                , eArgsType = []
+                , eEffectful = True
+                }
+            , External
+                { eName = "newArrayArray#"
+                , eRetType = TyCon "GHC.Prim.Unit#"
+                    [ TyCon "MutableArrayArray#" [ TyVar "s" ] ]
+                , eArgsType =
+                    [ TyCon "Int#" []
+                    , TyCon "State#" [ TyVar "s" ]
+                    ]
+                , eEffectful = True
+                }
+            , External
+                { eName = "_prim_string_concat"
+                , eRetType = TySimple T_String
+                , eArgsType =
+                    [ TySimple T_String
+                    , TySimple T_String
+                    ]
+                , eEffectful = False
+                }
+            ]
+            [ Def "grinMain" [] ( SReturn Unit ) ]
+      before `sameAs` after
