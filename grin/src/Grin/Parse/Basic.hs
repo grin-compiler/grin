@@ -34,6 +34,7 @@ simpleTypes = Set.fromList
   [ "T_Int64", "T_Word64", "T_Float"
   , "T_Bool",  "T_Unit"
   , "T_Location", "T_Dead"
+  , "T_String", "T_Char"
   ]
 
 lineComment :: Parser ()
@@ -133,4 +134,6 @@ simpleType =
   T_Unit <$ kw "T_Unit" <|>
   T_UnspecifiedLocation <$ kw "#ptr" <|>
   T_Location <$> bracedList int <|>
+  T_String <$ kw "T_String" <|>
+  T_Char <$ kw "T_Char" <|>
   T_Dead <$ kw "T_Dead"

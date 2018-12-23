@@ -109,7 +109,7 @@ externalBlock = do
   kw "primop"
   eff <- const False <$> kw "pure" <|> const True <$> kw "effectful"
   i <- L.indentGuard sc GT pos1
-  some $ external eff i
+  some $ try (external eff i)
 
 external :: Bool -> Pos -> Parser External
 external eff i = do
@@ -134,7 +134,7 @@ tyP =
 -- top-level API
 
 grinModule :: Parser Exp
-grinModule = Program <$> (concat <$> many externalBlock) <*> many def <* sc <* eof
+grinModule = Program <$> (concat <$> many (try externalBlock)) <*> many def <* sc <* eof
 
 parseGrin :: String -> Text -> Either (ParseError Char Void) Exp
 parseGrin filename content = runParser grinModule filename (withoutTypeAnnots content)
