@@ -242,6 +242,7 @@ spec = do
 
         primop pure
           _prim_string_concat   :: T_String -> T_String -> T_String
+          newArrayArray :: {Int} -> {State %s} -> {GHC.Prim.Unit {MutableArrayArray %s}}
 
         grinMain = pure ()
         |]
@@ -275,6 +276,16 @@ spec = do
                 , eArgsType =
                     [ TySimple T_String
                     , TySimple T_String
+                    ]
+                , eEffectful = False
+                }
+            , External
+                { eName = "newArrayArray"
+                , eRetType = TyCon "GHC.Prim.Unit"
+                    [ TyCon "MutableArrayArray" [ TyVar "s" ] ]
+                , eArgsType =
+                    [ TyCon "Int" []
+                    , TyCon "State" [ TyVar "s" ]
                     ]
                 , eEffectful = False
                 }
