@@ -26,6 +26,7 @@ evalPrimOp name params args = case name of
   "_prim_read_string"  -> primReadString
   -- Conversion
   "_prim_int_str"      -> int_str
+  "_prim_str_int"      -> str_int
   "_prim_int_float"    -> int_float
   "_prim_float_string" -> float_str
   "_prim_char_int"     -> char_int
@@ -116,6 +117,10 @@ evalPrimOp name params args = case name of
 
   int_str = case args of
     [RT_Lit (LInt64 a)] -> string $ show a
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  str_int = case args of
+    [RT_Lit (LString a)] -> int $ read a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_float = case args of

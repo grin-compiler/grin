@@ -131,6 +131,7 @@ codeGenPrimOp name funResultReg funArgRegs = do
 
     -- Conversion
     "_prim_int_str"      -> op [int] string
+    "_prim_str_int"      -> op [string] int
     "_prim_int_float"    -> op [int] float
     "_prim_float_string" -> op [float] string
     "_prim_char_int"     -> op [char] int

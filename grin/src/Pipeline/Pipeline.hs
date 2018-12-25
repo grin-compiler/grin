@@ -648,7 +648,7 @@ optimizeWithCleanUp ts onChange cleanUp = loop where
     effs <- forM ts $ \t -> do
       eff <- pipelineStep (T t)
       when (eff == ExpChanged) $ void $ do
-        pipelineStep $ SaveGrin $ Rel $ fmap (\case ' ' -> '-' ; c -> c) $ show t
+        pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show t) <.> "grin"
         when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
         mapM_ pipelineStep cleanUp
         mapM_ pipelineStep onChange

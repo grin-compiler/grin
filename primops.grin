@@ -18,6 +18,7 @@ primop pure
 
   -- Conversion
   _prim_int_str      :: T_Int64 -> T_String
+  _prim_str_int      :: T_String -> T_Int64
   _prim_int_float    :: T_Int64 -> T_Float
   _prim_float_string :: T_Float -> T_String
   _prim_char_int     :: T_Char  -> T_Int64
