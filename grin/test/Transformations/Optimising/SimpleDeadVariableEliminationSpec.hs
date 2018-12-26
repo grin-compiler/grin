@@ -51,124 +51,186 @@ spec = do
           dveExp  = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
-  {-
-  it "simple" $ do
-    let before = [expr|
-        i1 <- pure 1
-        n1 <- pure (CNode i1)
-        p1 <- store n1
-        p2 <- store (CNode p1)
-        pure 0
-      |]
-    let after = [expr|
-        pure 0
-      |]
-    simpleDeadVariableElimination before `sameAs` after
+    it "do not remove effectful case" $ do
+      let before = [prog|
+          sideeff s1 =
+            s2 <- _prim_int_add s1 1
+            _prim_int_print s2
 
-  it "pure case" $ do
-    let before = [expr|
-        i1 <- pure 1
-        n1 <- pure (CNode i1)
-        p1 <- store n1
-        p2 <- store (CNode p1)
-        _prim_int_print i1
-        i2 <- case n1 of
-          1         -> pure 2
-          2         -> pure 3
-          #default  -> pure 4
-        pure 0
-      |]
-    let after = [expr|
-        i1 <- pure 1
-        _prim_int_print i1
-        pure 0
-      |]
-    simpleDeadVariableElimination before `sameAs` after
-
-  it "effectful case" $ do
-    let before = [expr|
-        i1 <- pure 1
-        n1 <- pure (CNode i1)
-        p1 <- store n1
-        p2 <- store (CNode p1)
-        _prim_int_print i1
-        case n1 of
-          1         -> pure ()
-          2         -> _prim_int_print 3
-          #default  -> pure ()
-        pure 0
-      |]
-    let after = [expr|
-        i1 <- pure 1
-        n1 <- pure (CNode i1)
-        _prim_int_print i1
-        case n1 of
-          1         -> pure ()
-          2         -> _prim_int_print 3
-          #default  -> pure ()
-        pure 0
-      |]
-    simpleDeadVariableElimination before `sameAs` after
-
-  it "nested effectful case" $ do
-    let before = [expr|
-        i1 <- pure 1
-        n1 <- pure (CNode i1)
-        p1 <- store n1
-        n2 <- pure (CNode p1)
-        p2 <- store n2
-        _prim_int_print i1
-        case n1 of
-          1 ->
-            i2 <- case n2 of
-              0         -> pure 1
-              #default  -> pure 2
+          grinMain =
+            y <- pure (CInt 0)
+            x <- case y of
+              (CInt x1) -> sideeff x1
+                           pure 1 -- pure (CInt 1)
+              (CFloat y1) -> y2 <- _prim_int_add 1 2
+                             pure 2 -- pure (CInt y2)
             pure ()
-          2 -> _prim_int_print 3
-          #default -> pure ()
-        pure 0
-      |]
-    let after = [expr|
-        i1 <- pure 1
-        n1 <- pure (CNode i1)
-        _prim_int_print i1
-        case n1 of
-          1         -> pure ()
-          2         -> _prim_int_print 3
-          #default  -> pure ()
-        pure 0
-      |]
-    simpleDeadVariableElimination before `sameAs` after
+        |]
+      let after = [prog|
+          sideeff s1 =
+            s2 <- _prim_int_add s1 1
+            _prim_int_print s2
 
-  it "node pattern" $ do
-    let before = [expr|
-        i1 <- pure 1
-        (CNode i2) <- pure (CNode i1)
-        (CNode i3) <- pure (CNode i1)
-        n1 <- pure (CNode i2)
-        (CNode i4) <- pure n1
-        pure i1
-      |]
-    let after = [expr|
-        i1 <- pure 1
-        pure i1
-      |]
-    simpleDeadVariableElimination before `sameAs` after
+          grinMain =
+            y <- pure (CInt 0)
+            x <- case y of
+              (CInt x1) -> sideeff x1
+                           pure 1
+              (CFloat y1) -> pure 2
+            pure ()
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
 
-  it "pattern match" $ do
-    let before = [expr|
-        (CNode i3) <- pure n1
-        (CNil) <- pure (CNil)
-        (CNil) <- pure (CUnit)
-        n2 <- pure (CNode i3)
-        (CNode i4) <- pure (CNode i3)
-        (CNode i5) <- pure n2
-        (CBox i6) <- pure n2
-        pure 0
-      |]
-    let after = [expr|
-        pure 0
-      |]
-    simpleDeadVariableElimination before `sameAs` after
--}
+  describe "Simple dead variable elimination works for" $ do
+    it "simple" $ do
+      let before = [prog|
+          grinMain =
+            i1 <- pure 1
+            n1 <- pure (CNode i1)
+            p1 <- store n1
+            p2 <- store (CNode p1)
+            pure 0
+        |]
+      let after = [prog|
+          grinMain =
+            pure 0
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
 
+    it "pure case" $ do
+      let before = [prog|
+          grinMain =
+            i1 <- pure 1
+            n1 <- pure (CNode i1)
+            p1 <- store n1
+            p2 <- store (CNode p1)
+            _prim_int_print i1
+            i2 <- case n1 of
+              1         -> pure 2
+              2         -> pure 3
+              #default  -> pure 4
+            pure 0
+        |]
+      let after = [prog|
+          grinMain =
+            i1 <- pure 1
+            _prim_int_print i1
+            pure 0
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
+
+    it "effectful case" $ do
+      let before = [prog|
+          grinMain =
+            i1 <- pure 1
+            n1 <- pure (CNode i1)
+            p1 <- store n1
+            p2 <- store (CNode p1)
+            _prim_int_print i1
+            case n1 of
+              1         -> pure ()
+              2         -> _prim_int_print 3
+              #default  -> pure ()
+            pure 0
+        |]
+      let after = [prog|
+          grinMain =
+            i1 <- pure 1
+            n1 <- pure (CNode i1)
+            _prim_int_print i1
+            case n1 of
+              1         -> pure ()
+              2         -> _prim_int_print 3
+              #default  -> pure ()
+            pure 0
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
+
+    it "nested effectful case" $ do
+      let before = [prog|
+          grinMain =
+            i1 <- pure 1
+            n1 <- pure (CNode i1)
+            p1 <- store n1
+            n2 <- pure (CNode p1)
+            p2 <- store n2
+            _prim_int_print i1
+            case n1 of
+              1 ->
+                i2 <- case n2 of
+                  0         -> pure 1
+                  #default  -> pure 2
+                pure ()
+              2 -> _prim_int_print 3
+              #default -> pure ()
+            pure 0
+        |]
+      let after = [prog|
+          grinMain =
+            i1 <- pure 1
+            n1 <- pure (CNode i1)
+            _prim_int_print i1
+            case n1 of
+              1         -> pure ()
+              2         -> _prim_int_print 3
+              #default  -> pure ()
+            pure 0
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
+
+    it "node pattern" $ do
+      let before = [prog|
+          grinMain =
+            i1 <- pure 1
+            (CNode i2) <- pure (CNode i1)
+            (CNode i3) <- pure (CNode i1)
+            n1 <- pure (CNode i2)
+            (CNode i4) <- pure n1
+            pure i1
+        |]
+      let after = [prog|
+          grinMain =
+            i1 <- pure 1
+            pure i1
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
+
+    it "pattern match" $ do
+      let before = [prog|
+          grinMain =
+            n1 <- pure (CNode 0)
+            (CNode i3) <- pure n1
+            (CNil) <- pure (CNil)
+            (CUnit) <- pure (CUnit)
+            n2 <- pure (CNode i3)
+            (CNode i4) <- pure (CNode i3)
+            (CNode i5) <- pure n2
+            (CNode i6) <- pure n2
+            pure 0
+        |]
+      let after = [prog|
+          grinMain =
+            pure 0
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
