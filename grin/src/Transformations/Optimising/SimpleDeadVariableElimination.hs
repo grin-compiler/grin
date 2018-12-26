@@ -14,25 +14,32 @@ import Grin.Grin
 import Grin.TypeEnv
 import Grin.EffectMap
 import Transformations.Util
+import Lens.Micro.Platform
 
 -- TODO: Write for dead code elimination.
 simpleDeadVariableElimination :: TypeEnv -> EffectMap -> Exp -> Exp
-simpleDeadVariableElimination typeEnv effMap e = fst $ cata folder e where
+simpleDeadVariableElimination typeEnv effMap e = cata folder e ^. _1 where
 
-  folder :: ExpF (Exp, Set Name) -> (Exp, Set Name)
+  folder :: ExpF (Exp, Set Name, Bool) -> (Exp, Set Name, Bool)
   folder = \case
 
-    exp@(EBindF (left, _) lpat right@(_, rightRef))
+    exp@(EBindF (left, _, True) lpat right) -> embedExp exp
+    exp@(EBindF (left, _, _) lpat right@(_, rightRef, _))
       | lpat /= Unit
-      , vars <- foldNamesVal Set.singleton lpat
-      , all ((/=) unit_t . variableType typeEnv) vars
-      , all (flip Set.notMember rightRef) vars
+      , vars <- foldNamesVal Set.singleton lpat       -- if all the variables
+      , all ((/=) unit_t . variableType typeEnv) vars -- which does not hol unit
+      , all (flip Set.notMember rightRef) vars        -- and are not referred
       -> case left of
-          (SApp name _) | hasPossibleSideEffect name effMap -> embedExp exp
           SBlock{}  -> embedExp exp
           _         -> right
 
+    exp@(SAppF name _) -> embedExp exp & _3 .~ hasPossibleSideEffect name effMap
+
     exp -> embedExp exp
     where
-      embedExp :: ExpF (Exp, Set Name) -> (Exp, Set Name)
-      embedExp exp0 = (embed $ fmap fst exp0, foldNameUseExpF Set.singleton exp0 `mappend` Data.Foldable.fold (fmap snd exp0))
+      embedExp :: ExpF (Exp, Set Name, Bool) -> (Exp, Set Name, Bool)
+      embedExp exp0 =
+        ( embed (view _1 <$> exp0)
+        , foldNameUseExpF Set.singleton exp0 `mappend` Data.Foldable.fold (view _2 <$> exp0)
+        , getAny $ Data.Foldable.fold (view (_3 . to Any) <$> exp0)
+        )
