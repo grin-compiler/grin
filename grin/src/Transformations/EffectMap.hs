@@ -32,6 +32,7 @@ effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ para buildEf
     -- FIXME: handle effectful primops properly
     SAppF "_prim_int_print" _  -> (Set.singleton (EffectW $ primopEff "_prim_int_print"), mempty)
     SAppF "_prim_string_print" _  -> (Set.singleton (EffectW $ primopEff "_prim_string_print"), mempty)
+    SAppF "_prim_usleep" _ -> (Set.singleton (EffectW $ primopEff "_prim_usleep"), mempty)
     SAppF    name _ -> (Set.singleton (CallsW name), mempty)
     SUpdateF name _
       | Just locs <- te ^? variable . at name . _Just . _T_SimpleType . _T_Location

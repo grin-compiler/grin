@@ -9,6 +9,7 @@ import Grin.Grin
 import Data.Map.Strict as Map
 import Control.Monad.IO.Class
 
+import Control.Concurrent (threadDelay)
 import System.IO (hIsEOF, stdin)
 import System.IO.Unsafe
 
@@ -24,6 +25,7 @@ evalPrimOp name params args = case name of
   "_prim_int_print"    -> primLiteralPrint "int"    params args
   "_prim_string_print" -> primLiteralPrint "string" params args
   "_prim_read_string"  -> primReadString
+  "_prim_usleep"       -> primUSleep
   -- Conversion
   "_prim_int_str"      -> int_str
   "_prim_str_int"      -> str_int
@@ -141,4 +143,8 @@ evalPrimOp name params args = case name of
 
   primReadString = case args of
     [] -> liftIO getLine >>= string
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  primUSleep = case args of
+    [RT_Lit (LInt64 us)] -> liftIO $ threadDelay (fromIntegral us) >> pure RT_Unit
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name

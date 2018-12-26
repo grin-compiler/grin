@@ -119,6 +119,7 @@ codeGenPrimOp name funResultReg funArgRegs = do
     "_prim_int_print" -> op [int] unit
     "_prim_string_print" -> op [string] unit
     "_prim_read_string" -> op [] string
+    "_prim_usleep" -> op [int] unit
 
     -- String
     "_prim_string_concat"  -> op [string, string] string
