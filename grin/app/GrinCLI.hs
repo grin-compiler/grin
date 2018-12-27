@@ -10,6 +10,7 @@ import qualified Text.Megaparsec as M
 import Options.Applicative
 
 import Grin.Grin
+import Grin.PrimOpsPrelude
 import Grin.Parse hiding (value)
 import Pipeline.Pipeline
 
@@ -17,6 +18,7 @@ data Options = Options
   { optFiles     :: [FilePath]
   , optTrans     :: [PipelineStep]
   , optOutputDir :: FilePath
+  , optNoPrelude :: Bool
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -130,14 +132,19 @@ options = execParser $ info
             , help "Output directory for generated files"
             , value "./.output"
             ])
+      <*> switch (mconcat
+            [ long "no-prelude"
+            , help "Exclude predefined GRIN primops"
+            ])
 
 main :: IO ()
 main = do
-  Options files steps outputDir <- options
+  Options files steps outputDir noPrelude <- options
   forM_ files $ \fname -> do
     content <- Text.readFile fname
-    let (typeEnv, program)  = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
+    let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
         opts                = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
+        program             = if noPrelude then program' else concatPrograms [primPrelude, program']
     case steps of
       [] -> void $ optimize opts program prePipeline postPipeline
       _  -> void $ pipeline opts typeEnv program steps

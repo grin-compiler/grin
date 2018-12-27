@@ -53,6 +53,7 @@ library
     Grin.TypeEnv
     Grin.TypeEnvDefs
     Grin.EffectMap
+    Grin.PrimOpsPrelude
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline

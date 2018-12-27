@@ -120,6 +120,10 @@ packName = TS.pack
 showTS :: Show a => a -> Name
 showTS = packName . show
 
+concatPrograms :: [Program] -> Program
+concatPrograms prgs = Program (concat exts) (concat defs) where
+  (exts, defs) = unzip [(e, d) | Program e d <- prgs]
+
 -- indetifier rules for parser and pretty printer
 allowedSpecial :: String
 allowedSpecial = "._':!@-"
