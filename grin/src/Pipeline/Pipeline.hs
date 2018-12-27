@@ -25,7 +25,7 @@ import Grin.EffectMap
 import Pipeline.Optimizations
 import qualified Grin.Statistics as Statistics
 import Grin.Parse
-import Grin.Pretty()
+import Grin.Pretty(showWide)
 import Transformations.CountVariableUse
 import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
@@ -378,7 +378,7 @@ saveTransformationInfo name content = do
   let fname = printf "%03d.%s" n name
   liftIO $ do
     createDirectoryIfMissing True outputDir
-    writeFile (outputDir </> fname) $ show $ plain $ pretty content
+    writeFile (outputDir </> fname) $ showWide $ plain $ pretty content
 
 saveTypeEnv :: PipelineM ()
 saveTypeEnv = do
@@ -401,7 +401,7 @@ pureEval = do
 printGrinM :: (Doc -> Doc) -> PipelineM ()
 printGrinM color = do
   e <- use psExp
-  pipelineLog $ show $ color $ pretty e
+  pipelineLog $ showWide $ color $ pretty e
 
 jitLLVM :: PipelineM ()
 jitLLVM = do
