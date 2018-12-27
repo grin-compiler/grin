@@ -17,7 +17,7 @@ import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin
-import Grin.TypeEnvDefs
+import Grin.TypeEnv
 import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
@@ -31,26 +31,32 @@ instance HasDataFlowInfo HPTProgram where
 emptyHPTProgram :: HPTProgram
 emptyHPTProgram = HPTProgram emptyAbstractProgram
 
+codeGen :: Program -> Either String HPTProgram
+codeGen prg@(Program exts defs) = (\(a,s) -> s <$ a) . flip runState emptyHPTProgram . runExceptT . codeGenM $ prg
+codeGen _ = Left "Program expected"
+
 type ResultHPT = Result HPTProgram
 
 throwHPT :: (Monad m) => String -> ExceptT String m a
 throwHPT s = throwE $ "HPT: " ++ s
 
 unitType :: IR.SimpleType
-unitType = -1
+unitType = codegenSimpleType T_Unit
+
+codegenSimpleType :: SimpleType -> IR.SimpleType
+codegenSimpleType = \case
+  T_Unit    -> -1
+  T_Int64   -> -2
+  T_Word64  -> -3
+  T_Float   -> -4
+  T_Bool    -> -5
+  T_String  -> -6
+  T_Char    -> -7
 
 litToSimpleType :: Lit -> IR.SimpleType
-litToSimpleType = \case
-  LInt64  {}  -> -2
-  LWord64 {}  -> -3
-  LFloat  {}  -> -4
-  LBool   {}  -> -5
-  LString {}  -> -6
-  LChar   {}  -> -7
+litToSimpleType = codegenSimpleType . typeOfLitST
 
-
-codeGenNodeTypeHPT :: HasDataFlowInfo s =>
-                      Tag -> Vector SimpleType -> CG s IR.Reg
+codeGenNodeTypeHPT :: HasDataFlowInfo s => Tag -> Vector SimpleType -> CG s IR.Reg
 codeGenNodeTypeHPT tag ts = do
   let ts' = Vec.toList ts
   r <- newReg
@@ -176,9 +182,6 @@ codeGenPrimOp name funResultReg funArgRegs = do
     "_prim_ffi_file_eof" -> op [int] int
     missing           -> error $ show missing
 
-
-codeGen :: Exp -> Either String HPTProgram
-codeGen = (\(a,s) -> s<$a) . flip runState emptyHPTProgram . runExceptT . codeGenM
 
 codeGenM :: Exp -> CG HPTProgram ResultHPT
 codeGenM = cata folder where
