@@ -10,10 +10,13 @@ module Grin.Pretty
   , prettyFunction
   , Pretty
   , showName
+  , showWidth
+  , showWide
   ) where
 
 import Data.Char
 import Data.Set (Set)
+import Data.List (groupBy)
 import qualified Data.Set as Set
 
 import Data.Map (Map)
@@ -36,19 +39,26 @@ import Grin.EffectMap
 
 import Grin.Parse
 
+showWidth :: Int -> Doc -> String
+showWidth w x = displayS (renderPretty 0.4 w x) ""
+
+showWide :: Doc -> String
+showWide = showWidth 156
+
 printGrin :: Exp -> IO ()
-printGrin = putDoc . pretty
+printGrin = putStrLn . showWide . pretty
+
+-- plain wrappers ; remove colors
 
 -- Pretty Show instance wrapper ; i.e. useful for hspec tests
 newtype PP a = PP a deriving Eq
 instance Pretty a => Show (PP a ) where
-  show (PP a) = show . plain . pretty $ a
+  show (PP a) = showWide . plain . pretty $ a
 
 -- Wide pretty printing, useful for reparsing pretty-printed ASTs
--- TODO: Move this under test related codes.
 newtype WPP a = WPP a deriving Eq
 instance Pretty a => Show (WPP a ) where
-  show (WPP a) = flip displayS "" . renderPretty 0.4 200 . plain . pretty $ a
+  show (WPP a) = showWide . plain . pretty $ a
 
 
 keyword :: String -> Doc
@@ -77,7 +87,7 @@ instance Pretty ShortText where
 instance Pretty Exp where
   pretty = cata folder where
     folder = \case
-      ProgramF exts defs  -> vcat (map pretty defs)
+      ProgramF exts defs  -> vcat (prettyExternals exts : map pretty defs)
       DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
       -- Exp
       EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
@@ -171,6 +181,18 @@ instance Pretty Effects where
 instance Pretty EffectMap where
   pretty (EffectMap effects) = yellow (text "EffectMap") <$$>
     indent 4 (prettyKeyValue $ Map.toList effects)
+
+prettyExternals :: [External] -> Doc
+prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b) exts) where
+  prettyExtGroup [] = mempty
+  prettyExtGroup l@(a : _) = text "primop" <+> (if eEffectful a then text "effectful" else text "pure") <$$> indent 2
+    (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l] <> line)
+
+instance Pretty Ty where
+  pretty = \case
+    TyCon name tys      -> braces . hsep $ pretty name : map pretty tys
+    TyVar name          -> pretty name
+    TySimple simpleType -> pretty simpleType
 
 prettyBracedList :: [Doc] -> Doc
 prettyBracedList = encloseSep lbrace rbrace comma
