@@ -169,7 +169,7 @@ codeGenVal = \case
 
 codeGen :: Exp -> Either String LVAProgram
 codeGen = fmap reverseProgram
-        . (\(a,s) -> s<$a)
+        . (\(a,s) -> s <$ a)
         . flip runState emptyLVAProgram
         . runExceptT
         . (cata folder >=> const setMainLive)

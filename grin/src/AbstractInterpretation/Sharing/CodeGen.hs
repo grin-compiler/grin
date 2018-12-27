@@ -144,4 +144,4 @@ codeGenM e = do
   sharingCodeGen e
 
 codeGen :: Exp -> Either String SharingProgram
-codeGen = (\(a,s) -> s<$a) . flip runState emptySharingProgram . runExceptT . codeGenM
+codeGen = (\(a,s) -> s <$ a) . flip runState emptySharingProgram . runExceptT . codeGenM

@@ -109,7 +109,7 @@ codeGenVal = \case
   val -> throwCBy $ "unsupported value " ++ show val
 
 codeGen :: Exp -> Either String CByProgram
-codeGen = (\(a,s) -> s<$a) . flip runState emptyCByProgram . runExceptT . para folder where
+codeGen = (\(a,s) -> s <$ a) . flip runState emptyCByProgram . runExceptT . para folder where
   folder :: ExpF (Exp, CG CByProgram ResultCBy) -> CG CByProgram ResultCBy
   folder = \case
     ProgramF exts defs -> (sequence_ . fmap snd $ defs) >> pure Z

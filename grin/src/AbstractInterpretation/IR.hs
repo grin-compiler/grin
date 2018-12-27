@@ -109,7 +109,7 @@ data Instruction
     , address     :: Mem
     }
   -- | copy the node part of the SRC reg to mem addressed by DST reg location part
-  | Update 
+  | Update
     { srcReg      :: Reg
     , addressReg  :: Reg
     }
@@ -125,7 +125,7 @@ data Instruction
     , addressReg  :: Reg
     }
   -- | copy compile time constant to DST register (one time setup)
-  | Set 
+  | Set
     { dstReg      :: Reg
     , constant    :: Constant
     }
