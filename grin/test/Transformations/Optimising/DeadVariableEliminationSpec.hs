@@ -18,7 +18,7 @@ spec = do
           , LVA Compile
           , LVA RunPure
           , Eff CalcEffectMap
-          , T DeadVariableElimination
+          , T DoNotRunAnalysis DeadVariableElimination
           ]
 
     it "simple" $ pipeline

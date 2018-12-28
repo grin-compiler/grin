@@ -78,21 +78,19 @@ spec = do
               n7'_2 <- _prim_int_add p10 p111
               sum n7'_2 n4' p112
       |]
-    let ppln =
-          [ HPT Compile
-          , HPT RunPure
-          , T BindNormalisation
-          , T ConstantPropagation
-          , T BindNormalisation
-          , T CommonSubExpressionElimination
-          , T CopyPropagation
-          , T SimpleDeadVariableElimination
-          , T ArityRaising
-          , T CopyPropagation
-          , T SimpleDeadVariableElimination
-          , T ArityRaising
-          , T CopyPropagation
-          , T SimpleDeadVariableElimination
+    let ppln = map (T RunAnalysis)
+          [ BindNormalisation
+          , ConstantPropagation
+          , BindNormalisation
+          , CommonSubExpressionElimination
+          , CopyPropagation
+          , SimpleDeadVariableElimination
+          , ArityRaising
+          , CopyPropagation
+          , SimpleDeadVariableElimination
+          , ArityRaising
+          , CopyPropagation
+          , SimpleDeadVariableElimination
           ]
 
     (pipelineInfo, transformed) <- pipeline defaultOpts emptyTypeEnv before ppln

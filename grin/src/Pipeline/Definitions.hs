@@ -98,7 +98,7 @@ data PipelineStep
   | Sharing AbstractComputationStep
   | RunCByWithLVA -- TODO: Remove
   | Eff EffectStep
-  | T Transformation
+  | T RunAnalysis Transformation
   | Pass [PipelineStep]
   | PrintGrinH (Hidden (Doc -> Doc))
   | PureEval
@@ -117,12 +117,16 @@ data PipelineStep
   | DebugPipelineState
   deriving (Eq, Show)
 
+type RunAnalysis         = Bool
+pattern RunAnalysis      = True
+pattern DoNotRunAnalysis = False
+
 pattern DeadCodeElimination :: PipelineStep
 pattern DeadCodeElimination = Pass
-  [ T DeadFunctionElimination
-  , T DeadDataElimination
-  , T DeadVariableElimination
-  , T DeadParameterElimination
+  [ T RunAnalysis DeadFunctionElimination
+  , T RunAnalysis DeadDataElimination
+  , T RunAnalysis DeadVariableElimination
+  , T RunAnalysis DeadParameterElimination
   ]
 
 data Path

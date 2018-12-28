@@ -17,7 +17,7 @@ spec = do
           , HPT RunPure
           , LVA Compile
           , LVA RunPure
-          , T DeadParameterElimination
+          , T DoNotRunAnalysis DeadParameterElimination
           ]
 
     it "Fnode" $ pipeline

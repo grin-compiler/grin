@@ -32,7 +32,7 @@ spec = do
         , CBy RunPure
         , LVA Compile
         , LVA RunPure
-        , T DeadDataElimination
+        , T DoNotRunAnalysis DeadDataElimination
         ]
 
   describe "Dead Data Elimination" $ do

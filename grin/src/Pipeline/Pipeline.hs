@@ -149,9 +149,9 @@ transformationFunc n = \case
   DeadDataElimination             -> WithLVACBy deadDataElimination
   SparseCaseOptimisation          -> WithTypeEnv sparseCaseOptimisation
 
-transformationM :: Transformation -> PipelineM ()
-transformationM t = do
-  runAnalysisFor t
+transformation :: RunAnalysis -> Transformation -> PipelineM ()
+transformation runAnalysis t = do
+  when runAnalysis $ runAnalysisFor t
   n <- use psTransStep
   e <- use psExp
   te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
@@ -179,9 +179,7 @@ pipelineStep p = do
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
-    Optimize -> do
-      mapM_ pipelineStep defaultOnChange
-      optimizeWithCleanUp defaultOptimizations defaultOnChange defaultCleanUp
+    Optimize -> optimizeWith [] defaultOptimizations []
     HPT step -> case step of
       Compile -> compileAbstractProgram HPT.codeGen psHPTProgram
       Optimise  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
@@ -210,7 +208,7 @@ pipelineStep p = do
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
-    T t             -> transformationM t
+    T r t             -> transformation r t
     Pass pass       -> mapM_ pipelineStep pass
     PrintGrin d     -> printGrinM d
     PureEval        -> pureEval
@@ -489,7 +487,7 @@ randomPipeline seed = do
     go [] result = do
       -- The final result must be normalised as, non-normalised and normalised
       -- grin program is semantically the same.
-      pipelineStep $ T BindNormalisation
+      pipelineStep $ T RunAnalysis BindNormalisation
       pure $ reverse result
     go available res = do
       exp <- use psExp
@@ -498,11 +496,11 @@ randomPipeline seed = do
         then do
           runNameIntro
           runCByLVA
-          pipelineStep (T t)
+          pipelineStep (T RunAnalysis t)
           runCleanup
           exp' <- use psExp
           pure $ if exp == exp' then None else ExpChanged
-        else pipelineStep (T t)
+        else pipelineStep (T RunAnalysis t)
       case eff of
         None -> go (available Data.List.\\ [t]) res
         ExpChanged -> do
@@ -555,15 +553,15 @@ randomPipeline seed = do
 
     runNameIntro :: PipelineM ()
     runNameIntro = void . pipelineStep $ Pass
-      [ T ProducerNameIntroduction
-      , T BindNormalisation
+      [ T RunAnalysis ProducerNameIntroduction
+      , T RunAnalysis BindNormalisation
       ]
 
     -- cleanup after producer name intro
     runCleanup :: PipelineM ()
     runCleanup = void . pipelineStep $ Pass
-      [ T CopyPropagation
-      , T SimpleDeadVariableElimination
+      [ T RunAnalysis CopyPropagation
+      , T RunAnalysis SimpleDeadVariableElimination
       ]
 
     needsCByLVA :: Transformation -> Bool
@@ -630,36 +628,79 @@ pipeline :: PipelineOpts -> TypeEnv -> Exp -> [PipelineStep] -> IO ([(PipelineSt
 pipeline o ta e ps = do
   runPipeline o ta e $ mapM (\p -> (,) p <$> pipelineStep p) ps
 
+optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
+optimize o e pre post =
+  fmap snd $ runPipeline o emptyTypeEnv e $ optimizeWith pre defaultOptimizations post
+
 -- | Run the pipeline with the given set of transformations, till
 -- it reaches a fixpoint where none of the pipeline transformations
 -- change the expression itself, the order of the transformations
 -- are defined in the pipeline list. When the expression changes,
--- it lints the resulting code, and performs a given sequence of
--- pipeline steps on it. Finally, it performs a cleanup sequence
--- after each step.
--- TODO: Remove options parameter as it should be read from the PipelineM
-optimizeWithCleanUp :: [Transformation] -> [PipelineStep] -> [PipelineStep] -> PipelineM ()
-optimizeWithCleanUp ts onChange cleanUp = loop where
+-- it lints the resulting code,
+optimizeWith
+  :: [PipelineStep]   -- ^ Pre optimisation steps
+  -> [Transformation] -- ^ Selected transformations for the optimisation
+  -> [PipelineStep]   -- ^ Steps to run after a reached fixpoint
+  -> PipelineM ()
+optimizeWith pre ts post = do
+    mapM_ pipelineStep pre
+    loop
+    mapM_ pipelineStep post
+  where
   loop :: PipelineM ()
   loop = do
-    -- Run every step and on changes run `onChange`
     e <- use psExp
     o <- ask
-    effs <- forM ts $ \t -> do
-      eff <- pipelineStep (T t)
+    effs1 <- forM ts $ \t -> do
+      eff <- pipelineStep (T RunAnalysis t)
       when (eff == ExpChanged) $ void $ do
         pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show t) <.> "grin"
         when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
-        mapM_ pipelineStep cleanUp
-        mapM_ pipelineStep onChange
         invalidateAnalysisResults
       pure eff
+
+    effs2 <- deadCodeElimination
+    let effs = effs1 ++ effs2
+
     -- Run loop again on change
     when (o ^. poStatistics)  $ void $ pipelineStep Statistics
     when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
-    if (any (==ExpChanged) effs)
-      then loop
-      else mapM_ pipelineStep cleanUp
+    when (any (==ExpChanged) effs) $ loop
+
+  -- Dead Code Elimination does not fit to the standalone transformation assumption, thus
+  -- this needs its own phase, which we run at the end of the looping simpler optimisation.
+  -- TODO: Improve this.
+  deadCodeElimination :: PipelineM [PipelineEff]
+  deadCodeElimination = do
+    o <- ask
+    forM steps $ \step -> do
+      eff <- pipelineStep step
+      when (eff == ExpChanged) $ void $ do
+        pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show step) <.> "grin"
+        when (o ^. poLintOnChange) $ lintGrin $ Just $ show step
+      pure eff
+    where
+      steps = concat
+        [ map (T RunAnalysis)
+            [ CopyPropagation
+            , SimpleDeadVariableElimination
+            , ProducerNameIntroduction
+            , BindNormalisation
+            , UnitPropagation
+            ]
+        , [ Pass $ map HPT [Compile, RunPure]
+          , Pass $ map CBy [Compile, RunPure]
+          , Pass $ map LVA [Compile, RunPure]
+          , Pass $ map Sharing [Compile, RunPure]
+          , Eff CalcEffectMap
+          ]
+        , map (T DoNotRunAnalysis)
+            [ DeadFunctionElimination
+            , DeadDataElimination
+            , DeadVariableElimination
+            , DeadParameterElimination
+            ]
+        ]
 
 invalidateAnalysisResults :: PipelineM ()
 invalidateAnalysisResults = do
@@ -703,22 +744,3 @@ runAnalysisFor t = do
       when (isNothing r) $ do
         pipelineLog $ "Analisys"
         void $ pipelineStep $ Eff CalcEffectMap
-
-optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
-optimize o e pre post = optimizeWith o e pre defaultOptimizations defaultOnChange defaultCleanUp post where
-
-optimizeWith
-  :: PipelineOpts
-  -> Exp
-  -> [PipelineStep]   -- ^ Pre optimisation steps
-  -> [Transformation] -- ^ Selected transformations for the optimisation
-  -> [PipelineStep]   -- ^ Steps to run when transformation changed the program
-  -> [PipelineStep]   -- ^ Steps to run on clean-up after a change. -- TODO: Why this necessary? Transformations should be well-contained
-  -> [PipelineStep]   -- ^ Steps to run after a reached fixpoint
-  -> IO Exp
-optimizeWith o e pre optimizations onChange cleanUp post = fmap snd $ runPipeline o emptyTypeEnv e $ do
-  lintGrin $ Just "init"
-  mapM_ pipelineStep pre
-  mapM_ pipelineStep onChange
-  optimizeWithCleanUp optimizations onChange cleanUp
-  mapM_ pipelineStep post

@@ -20,7 +20,7 @@ spec = do
           , Eff CalcEffectMap
           , HPT Compile
           , HPT RunPure
-          , T DeadFunctionElimination
+          , T DoNotRunAnalysis DeadFunctionElimination
           ]
 
     it "app_side_effect_1" $ pipeline

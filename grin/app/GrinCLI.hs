@@ -110,7 +110,7 @@ pipelineOpts =
         [ long "save-grin"
         , help "Save the generated grin"
         ])))
-  <|> (T <$> transformOpts)
+  <|> (T RunAnalysis <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
 
@@ -146,11 +146,8 @@ main = do
         opts                = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True }
         program             = if noPrelude then program' else concatPrograms [primPrelude, program']
     case steps of
-      [] -> void $ optimize opts program prePipeline postPipeline
+      [] -> void $ optimize opts program [] postPipeline
       _  -> void $ pipeline opts typeEnv program steps
-
-prePipeline :: [PipelineStep]
-prePipeline = defaultOnChange
 
 postPipeline :: [PipelineStep]
 postPipeline =

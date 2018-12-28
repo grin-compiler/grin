@@ -54,30 +54,30 @@ spec = do
               sum n7'_2 n4' p11.1.arity.2.6.arity.1
       |]
     let ppln =
-          [ T InlineEval
-          , HPT Compile
-          , HPT RunPure
-          , T ArityRaising
-          , T BindNormalisation
-          , HPT Compile
-          , HPT RunPure
-          , T CommonSubExpressionElimination
-          , T CopyPropagation
-          , HPT Compile
-          , HPT RunPure
-          , T SimpleDeadVariableElimination
-          , HPT Compile
-          , HPT RunPure
-          , T ArityRaising
-          , T BindNormalisation
-          , HPT Compile
-          , HPT RunPure
-          , T CommonSubExpressionElimination
-          , T CopyPropagation
-          , T ConstantFolding
-          , HPT Compile
-          , HPT RunPure
-          , T SimpleDeadVariableElimination
+          [ Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ InlineEval
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ ArityRaising
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ BindNormalisation
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ CommonSubExpressionElimination
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ CopyPropagation
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ SimpleDeadVariableElimination
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ ArityRaising
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ BindNormalisation
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ CommonSubExpressionElimination
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ CopyPropagation
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ ConstantFolding
+          , Pass $ map HPT [Compile, RunPure]
+          , T RunAnalysis $ SimpleDeadVariableElimination
           ]
     (pipelineInfo, transformed) <- pipeline defaultOpts emptyTypeEnv before ppln
     transformed `sameAs` after

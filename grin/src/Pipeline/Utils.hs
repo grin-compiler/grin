@@ -50,22 +50,6 @@ defaultOptimizations =
   , LateInlining
   ]
 
-defaultOnChange :: [PipelineStep]
-defaultOnChange =
-  [ T ProducerNameIntroduction
-  , T BindNormalisation
-  , T UnitPropagation
-  ]
-
--- Copy propagation, SDVE and bind normalisitaion
--- together can clean up all unnecessary artifacts
--- of producer name introduction.
-defaultCleanUp :: [PipelineStep]
-defaultCleanUp =
-  [ T CopyPropagation
-  , T SimpleDeadVariableElimination
-  ]
-
 debugPipeline :: [PipelineStep] -> [PipelineStep]
 debugPipeline ps = [PrintGrin id] ++ ps ++ [PrintGrin id]
 
