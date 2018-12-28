@@ -28,7 +28,7 @@ emptySharingResult = SharingResult emptyHPTResult mempty
 
 concat <$> mapM makeLenses [''SharingResult]
 
-toSharingResult :: SharingProgram -> R.Computer -> SharingResult
+toSharingResult :: SharingProgram -> R.ComputerState -> SharingResult
 toSharingResult SharingProgram{..} comp = SharingResult hptResult' sharedLocs where
   hptResult  = toHPTResult _hptProg comp
   hptResult' = register %~ (Map.delete sharingRegisterName) $ hptResult

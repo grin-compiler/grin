@@ -28,8 +28,8 @@ data Value
   }
   deriving (Eq, Show)
 
-data Computer
-  = Computer
+data ComputerState
+  = ComputerState
   { _memory    :: Vector NodeSet
   , _register  :: Vector Value
   }
@@ -37,14 +37,14 @@ data Computer
 
 data AbstractInterpretationResult
   = AbsIntResult
-  { _airComp :: Computer
+  { _airComp :: ComputerState
   , _airIter :: !Int
   }
   deriving (Eq, Show)
 
-concat <$> mapM makeLenses [''NodeSet, ''Value, ''Computer, ''AbstractInterpretationResult]
+concat <$> mapM makeLenses [''NodeSet, ''Value, ''ComputerState, ''AbstractInterpretationResult]
 
-type AbstractComputation = State Computer
+type AbstractComputation = State ComputerState
 
 instance Semigroup NodeSet where (<>)   = unionNodeSet
 instance Monoid    NodeSet where mempty = NodeSet mempty
@@ -290,7 +290,7 @@ evalInstruction = \case
     CNodeItem tag idx val -> selectReg dstReg.nodeSet.
                                 nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-evalDataFlowInfoWith :: HasDataFlowInfo s => Computer -> s -> AbstractInterpretationResult
+evalDataFlowInfoWith :: HasDataFlowInfo s => ComputerState -> s -> AbstractInterpretationResult
 evalDataFlowInfoWith comp (getDataFlowInfo -> AbstractProgram{..})
   = converge ((==) `on` _airComp) step (AbsIntResult comp 0)
   where nextComputer c = execState (mapM_ evalInstruction _absInstructions) c
@@ -300,7 +300,7 @@ evalDataFlowInfo :: HasDataFlowInfo s => s -> AbstractInterpretationResult
 evalDataFlowInfo dfi@(getDataFlowInfo -> AbstractProgram{..}) =
   evalDataFlowInfoWith emptyComputer dfi
   where
-    emptyComputer = Computer
+    emptyComputer = ComputerState
       { _memory   = V.replicate (fromIntegral _absMemoryCounter) mempty
       , _register = V.replicate (fromIntegral _absRegisterCounter) mempty
       }

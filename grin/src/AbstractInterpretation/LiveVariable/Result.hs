@@ -63,8 +63,8 @@ isFunDead :: (Liveness, Vector Liveness) -> Bool
 isFunDead (retLv, argsLv) = not (isLive retLv || any isLive argsLv)
 
 
-toLVAResult :: LVAProgram -> R.Computer -> LVAResult
-toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = LVAResult
+toLVAResult :: LVAProgram -> R.ComputerState -> LVAResult
+toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.ComputerState{..} = LVAResult
   { _memory   = V.map convertHeapNodeSet _memory
   , _register = Map.map convertReg _absRegisterMap
   , _function = Map.map convertFunctionRegs _absFunctionArgMap

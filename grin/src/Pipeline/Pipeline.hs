@@ -54,7 +54,7 @@ import AbstractInterpretation.HeapPointsTo.Pretty
 import AbstractInterpretation.LiveVariable.Pretty
 import AbstractInterpretation.Sharing.Pretty
 import AbstractInterpretation.Sharing.CodeGen
-import AbstractInterpretation.Reduce (Computer, AbstractInterpretationResult(..), evalDataFlowInfo)
+import AbstractInterpretation.Reduce (ComputerState, AbstractInterpretationResult(..), evalDataFlowInfo)
 import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
@@ -304,7 +304,7 @@ runHPTPure = use psHPTProgram >>= \case
         psTypeEnv .= Nothing
 
 
-runCByPureWith :: (CBy.CByProgram -> Computer -> CBy.CByResult) -> PipelineM ()
+runCByPureWith :: (CBy.CByProgram -> ComputerState -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
   Just cbyProgram -> do
@@ -340,7 +340,7 @@ runLVAPure = use psLVAProgram >>= \case
     pipelineLogIterations _airIter
     psLVAResult .= Just result
 
-runSharingPureWith :: (Sharing.SharingProgram -> Computer -> Sharing.SharingResult) -> PipelineM ()
+runSharingPureWith :: (Sharing.SharingProgram -> ComputerState -> Sharing.SharingResult) -> PipelineM ()
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
   Nothing -> psSharingResult .= Nothing
   Just shProgram -> do

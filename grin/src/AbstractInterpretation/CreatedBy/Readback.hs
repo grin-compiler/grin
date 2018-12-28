@@ -15,7 +15,7 @@ import Lens.Micro.Platform
 
 import Grin.Grin (Name, Tag)
 import AbstractInterpretation.IR (Reg(..))
-import AbstractInterpretation.Reduce (Computer)
+import AbstractInterpretation.Reduce (ComputerState)
 import AbstractInterpretation.CreatedBy.CodeGen as CBy hiding (Producer)
 import AbstractInterpretation.CreatedBy.Util
 import AbstractInterpretation.CreatedBy.Result
@@ -76,7 +76,7 @@ extractProducer :: NodeP -> (Set Producer, Node)
 extractProducer nodeP = (S.map toProducer ps, node)
   where (ps,node) = unsafeUncons nodeP
 
-toCByResult :: CByProgram -> Computer -> CByResult
+toCByResult :: CByProgram -> ComputerState -> CByResult
 toCByResult cbyProg comp = CByResult hptResult producers groupedProducers
   where prodMap = withUndefined . toProdMap . CBy._producerMap $ cbyProg
         hptProg = _hptProg . _hptProgWProd $ cbyProg
@@ -98,7 +98,7 @@ toCByResult cbyProg comp = CByResult hptResult producers groupedProducers
                           . _nodeTagMap
                           . _nodeSet
 
-toCByResultWithLiveness :: LVAResult -> CByProgram -> Computer -> CByResult
+toCByResultWithLiveness :: LVAResult -> CByProgram -> ComputerState -> CByResult
 toCByResultWithLiveness lvaResult cbyProg comp
   | CByResult hptResult producers _ <- toCByResult cbyProg comp
   , groupedProducers <- Active $ groupActiveProducers lvaResult producers

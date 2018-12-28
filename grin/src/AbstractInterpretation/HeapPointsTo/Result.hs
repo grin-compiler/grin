@@ -111,8 +111,8 @@ _T_Location :: Traversal' SimpleType Int
 _T_Location f (T_Location l) = T_Location <$> f l
 _T_Location _ rest           = pure rest
 
-toHPTResult :: HPTProgram -> R.Computer -> HPTResult
-toHPTResult (getDataFlowInfo -> AbstractProgram{..}) R.Computer{..} = HPTResult
+toHPTResult :: HPTProgram -> R.ComputerState -> HPTResult
+toHPTResult (getDataFlowInfo -> AbstractProgram{..}) R.ComputerState{..} = HPTResult
   { _memory   = V.map convertNodeSet _memory
   , _register = Map.map convertReg _absRegisterMap
   , _function = Map.map convertFunctionRegs _absFunctionArgMap
