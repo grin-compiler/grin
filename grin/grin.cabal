@@ -37,6 +37,7 @@ library
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util
     AbstractInterpretation.OptimiseAbstractProgram
+    AbstractInterpretation.Model
     Grin.Grin
     Grin.Syntax
     Grin.SyntaxDefs

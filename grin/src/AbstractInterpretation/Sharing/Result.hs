@@ -20,7 +20,8 @@ data SharingResult
   = SharingResult
   { _hptResult  :: HPTResult
   , _sharedLocs :: Set Loc
-  } deriving (Show)
+  }
+  deriving (Eq, Show)
 
 emptySharingResult :: SharingResult
 emptySharingResult = SharingResult emptyHPTResult mempty

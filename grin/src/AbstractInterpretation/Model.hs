@@ -2,10 +2,13 @@
 {-# LANGUAGE DeriveFunctor, RankNTypes, TypeApplications, OverloadedStrings #-}
 module AbstractInterpretation.Model where
 
-import Grin.Grin
-import Grin.TH
-import AbstractInterpretation.HPTResult (SimpleType(..), HPTResult(..), Loc)
-import qualified AbstractInterpretation.HPTResult as HPT
+import Grin.Grin hiding (SimpleType(..), Loc)
+import Grin.TH hiding (text)
+import AbstractInterpretation.HeapPointsTo.Pretty
+import AbstractInterpretation.HeapPointsTo.Result (HPTResult(..), SimpleType(..), Loc)
+import qualified AbstractInterpretation.HeapPointsTo.Result as HPT
+import AbstractInterpretation.Sharing.Result
+import AbstractInterpretation.Sharing.Pretty
 
 import Data.Functor.Foldable
 import Lens.Micro.Platform
@@ -18,7 +21,6 @@ import qualified Data.Map as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
-import AbstractInterpretation.PrettyHPT
 import Data.Maybe as Maybe
 import Data.List as List (foldl', nub)
 import Data.Bifunctor
@@ -91,13 +93,13 @@ data BuildState = BuildState
 
 makeLenses ''BuildState
 
-heapPointsTo :: Exp -> (HPTResult, [Warning])
+heapPointsTo :: Exp -> (SharingResult, [Warning])
 heapPointsTo exp =
   computeResult
   $ flip execState (BuildState 0 mempty mempty mempty mempty)
   $ para buildEquations exp
 
-computeResult :: BuildState -> (HPTResult, [Warning])
+computeResult :: BuildState -> (SharingResult, [Warning])
 computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
     ( snd $ until (uncurry (==)) (onPair smallStep) (zeroResult, startResult)
     , warnings
@@ -116,12 +118,14 @@ computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
       $ catMaybes
       $ Map.elems
       $ Map.mapWithKey (\k v -> (,) k <$> primitive k) functions
-    zeroResult = HPTResult mempty mempty mempty mempty
+    zeroResult = SharingResult (HPTResult mempty mempty mempty) mempty
     startResult =
-      HPTResult
-        (V.replicate maxLoc mempty)
-        (Map.fromSet (const mempty) registers)
-        (Map.map (\n -> (mempty, V.replicate n mempty)) functions)
+      SharingResult
+        (HPTResult
+          (V.replicate maxLoc mempty)
+          (Map.fromSet (const mempty) registers)
+          (Map.map (\n -> (mempty, V.replicate n mempty)) functions)
+        )
         mempty
     onPair f (_, b) = (b, f b)
     smallStep res =
@@ -129,50 +133,50 @@ computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
           result2 = oneStepSharing result1
       in result2
 
-    oneStepSharing :: HPTResult -> HPTResult
-    oneStepSharing result@(HPTResult _ _ _ sharing) = result
-      { _sharing =
+    oneStepSharing :: SharingResult -> SharingResult
+    oneStepSharing  result@(SharingResult resultHPT sharing) = result
+      { _sharedLocs =
           sharing `Set.union`
           joinSets (Set.map locationsForRegister nonLinearVars `Set.union` Set.map locationsForHeap sharing)
       }
       where
         locationsForRegister :: Name -> Set.Set Loc
-        locationsForRegister n = maybe mempty (locationsPrimitiveTypeSet . HPT._simpleType) $ Map.lookup n (HPT._register result)
+        locationsForRegister n = maybe mempty (locationsPrimitiveTypeSet . HPT._simpleType) $ Map.lookup n (HPT._register resultHPT)
 
         locationsForHeap :: Loc -> Set.Set Loc
-        locationsForHeap l = maybe mempty locationsNodeSet $ (HPT._memory result) V.!? l
+        locationsForHeap l = maybe mempty locationsNodeSet $ (HPT._memory resultHPT) V.!? l
 
-    oneStepResult :: HPTResult -> Equation -> HPTResult
-    oneStepResult result@(HPTResult _ _ _ sharing) = \case
+    oneStepResult :: SharingResult -> Equation -> SharingResult
+    oneStepResult result@(SharingResult resultHPT sharing) = \case
       VVar var ts ->
-        result & HPT.register . at var . _Just %~ mappend (calcTypeSet result ts)
+        result & hptResult . HPT.register . at var . _Just %~ mappend (calcTypeSet resultHPT ts)
 
       Param (FParam n i) ts ->
-        result & HPT.function . at n . _Just . _2 . at (i - 1) . _Just %~ mappend (calcTypeSet result ts)
+        result & hptResult . HPT.function . at n . _Just . _2 . at (i - 1) . _Just %~ mappend (calcTypeSet resultHPT ts)
 
       Fun n ts ->
-        result & HPT.function . at n . _Just . _1 %~ mappend (calcTypeSet result ts)
+        result & hptResult . HPT.function . at n . _Just . _1 %~ mappend (calcTypeSet resultHPT ts)
 
       Access var (ref, tag, i) ->
-        let (HPT.TypeSet _ (HPT.NodeSet nodeSet)) = calcTypeSet result ref -- TODO: Check if simpletypeset is empty
+        let (HPT.TypeSet _ (HPT.NodeSet nodeSet)) = calcTypeSet resultHPT ref -- TODO: Check if simpletypeset is empty
             node = Map.lookup tag nodeSet
             mith  = node >>= (V.!? (i - 1))
-            res1 = result & (maybe id (\simpleTypeSet -> HPT.register . at var . _Just %~ mappend (HPT.TypeSet simpleTypeSet mempty)) mith)
+            res1 = result & (maybe id (\simpleTypeSet -> hptResult . HPT.register . at var . _Just %~ mappend (HPT.TypeSet simpleTypeSet mempty)) mith)
         in res1
 
       Store l ns@(Ind (IF fname)) | l `Set.notMember` sharing -> result
 
       Store l ns ->
-        result & HPT.memory . at l . _Just %~ mappend (HPT._nodeSet (calcNodeSet result ns)) -- TODO: check if typeset is not empty
+        result & hptResult . HPT.memory . at l . _Just %~ mappend (HPT._nodeSet (calcNodeSet resultHPT ns)) -- TODO: check if typeset is not empty
 
       Fetch val ts0 ->
-        let HPT.TypeSet ts1 _ = calcTypeSet result ts0
+        let HPT.TypeSet ts1 _ = calcTypeSet resultHPT ts0
             setVar = case val of
-              FetchName n -> HPT.register . at n . _Just
-              FetchNode n _ _ -> HPT.register . at n . _Just
-              FetchFunc n -> HPT.function . at n . _Just . _1
+              FetchName n     -> hptResult . HPT.register . at n . _Just
+              FetchNode n _ _ -> hptResult . HPT.register . at n . _Just
+              FetchFunc n     -> hptResult . HPT.function . at n . _Just . _1
             locations = Set.filter (match _T_Location) ts1
-            fetch r l = fromMaybe mempty $ r ^. HPT.memory . at l
+            fetch r l = fromMaybe mempty $ r ^. hptResult . HPT.memory . at l
             fetchTypeName r l = HPT.TypeSet mempty (fetch r l)
             fetchTypeNode tag i r l = (HPT.TypeSet (fromMaybe mempty $ Map.lookup tag (HPT._nodeTagMap (fetch r l)) >>= (V.!? (i - 1))) mempty)
             fetchTypeFunc r l = HPT.TypeSet mempty (fetch r l)
@@ -193,8 +197,8 @@ computeResult (BuildState maxLoc equations functions nonLinearVars warnings) =
             (HPT.TypeSet _ ns1) = calcNodeSet result ns0
         in Set.foldl' (\r1 l -> r1 & HPT.memory . at l . _Just %~ mappend ns1) result locations
 --}
-    isFunction :: Name -> HPTResult -> Bool
-    isFunction n (HPTResult _ _ fs _) = Map.member n fs
+    isFunction :: Name -> SharingResult -> Bool
+    isFunction n (SharingResult (HPTResult _ _ fs) _) = Map.member n fs
 
     locationsPrimitiveTypeSet :: Set.Set SimpleType -> Set.Set Loc
     locationsPrimitiveTypeSet = Set.map (\(T_Location l) -> l) . Set.filter (match _T_Location)
@@ -349,7 +353,7 @@ calcNonLinearVariables exp = nonLinearVars %= (Set.fromList (Map.keys $ Map.filt
 buildEquations :: ExpF (Exp, State BuildState ()) -> State BuildState ()
 buildEquations = \case
 
-    ProgramF defs -> do
+    ProgramF exts defs -> do
       mapM_ snd defs
       equations %= (Set.toList . Set.fromList)
 
