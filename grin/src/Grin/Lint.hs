@@ -276,9 +276,9 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       forM_ mTypeEnv $ \typeEnv -> do
         fromMaybe (pure ()) $ do -- Maybe
           expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
-          lhsType <- normalizeType <$> extract leftExp
+          lhsType         <- normalizeType <$> extract leftExp
           pure $ do -- Lint
-            when (expectedPatType /= lhsType) $ do
+            when (sameType expectedPatType lhsType == Just False) $ do
               tell $ [beforeMsg $ unwords
                 ["Invalid pattern match. Pattern", plainShow expectedPatType, "vs LHS", plainShow lhsType]]
 

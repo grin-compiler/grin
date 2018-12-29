@@ -163,6 +163,14 @@ normalizeType = \case
   T_NodeSet    ns -> T_NodeSet $ normalizeNodeSet ns
   rest            -> rest
 
+-- | Compare types, return Nothing if types are incomparable: Dead or UnspecifiedLocation
+sameType :: Type -> Type -> Maybe Bool
+sameType (T_SimpleType T_Dead) _                = Nothing
+sameType _ (T_SimpleType T_Dead)                = Nothing
+sameType (T_SimpleType T_UnspecifiedLocation) _ = Nothing
+sameType _ (T_SimpleType T_UnspecifiedLocation) = Nothing
+sameType t1 t2 = Just $ t1 == t2
+
 ptrLocations :: TypeEnv -> Name -> [Loc]
 ptrLocations te p = case variableType te p of
   T_SimpleType (T_Location locs) -> locs
