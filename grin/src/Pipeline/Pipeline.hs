@@ -179,7 +179,7 @@ pipelineStep p = do
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
-    Optimize -> optimizeWith [] defaultOptimizations []
+    Optimize -> optimizeWithM [] defaultOptimizations []
     HPT step -> case step of
       Compile -> compileAbstractProgram HPT.codeGen psHPTProgram
       Optimise  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
@@ -629,20 +629,23 @@ pipeline o ta e ps = do
   runPipeline o ta e $ mapM (\p -> (,) p <$> pipelineStep p) ps
 
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
-optimize o e pre post =
-  fmap snd $ runPipeline o emptyTypeEnv e $ optimizeWith pre defaultOptimizations post
+optimize o e pre post = optimizeWith o e pre defaultOptimizations post
+
+optimizeWith :: PipelineOpts -> Exp -> [PipelineStep] -> [Transformation] -> [PipelineStep] -> IO Exp
+optimizeWith o e pre ts post =
+  fmap snd $ runPipeline o emptyTypeEnv e $ optimizeWithM pre ts post
 
 -- | Run the pipeline with the given set of transformations, till
 -- it reaches a fixpoint where none of the pipeline transformations
 -- change the expression itself, the order of the transformations
 -- are defined in the pipeline list. When the expression changes,
 -- it lints the resulting code,
-optimizeWith
+optimizeWithM
   :: [PipelineStep]   -- ^ Pre optimisation steps
   -> [Transformation] -- ^ Selected transformations for the optimisation
   -> [PipelineStep]   -- ^ Steps to run after a reached fixpoint
   -> PipelineM ()
-optimizeWith pre ts post = do
+optimizeWithM pre ts post = do
     mapM_ pipelineStep pre
     loop
     mapM_ pipelineStep post
