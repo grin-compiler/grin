@@ -129,6 +129,12 @@ pattern DeadCodeElimination = Pass
   , T RunAnalysis DeadParameterElimination
   ]
 
+pattern HPTPass :: PipelineStep
+pattern HPTPass = Pass
+  [ HPT Compile
+  , HPT RunPure
+  ]
+
 data Path
   = Abs FilePath
   | Rel FilePath
