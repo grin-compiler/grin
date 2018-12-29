@@ -131,7 +131,9 @@ typeOfValTE typeEnv val = fromMaybe (error $ show val) $ mTypeOfValTE typeEnv va
 
 mTypeOfValTE :: TypeEnv -> Val -> Maybe Type
 mTypeOfValTE typeEnv = \case
-  ConstTagNode  tag simpleVals ->
+  Undefined t -> Just t
+
+  ConstTagNode tag simpleVals ->
     fmap (T_NodeSet . Map.singleton tag . Vector.fromList)
       $ sequenceA $ map (fmap (\(T_SimpleType t) -> t) . mTypeOfValTE typeEnv) simpleVals
 
