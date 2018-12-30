@@ -103,10 +103,10 @@ data TransformationFunc
   = Plain          (Exp -> Exp)
   | WithTypeEnv    (TypeEnv -> Exp -> Either String Exp)
   | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> Exp)
+  | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> Exp)
   | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String Exp)
   | WithEffLVA     (LVA.LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp)
   | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String Exp)
-  | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> Exp)
 
 -- TODO: Add n paramter for the transformations that use NameM
 transformationFunc :: Int -> Transformation -> TransformationFunc
@@ -639,71 +639,132 @@ optimizeWith o e pre ts post =
 -- it reaches a fixpoint where none of the pipeline transformations
 -- change the expression itself, the order of the transformations
 -- are defined in the pipeline list. When the expression changes,
--- it lints the resulting code,
-optimizeWithM
-  :: [PipelineStep]   -- ^ Pre optimisation steps
-  -> [Transformation] -- ^ Selected transformations for the optimisation
-  -> [PipelineStep]   -- ^ Steps to run after a reached fixpoint
-  -> PipelineM ()
-optimizeWithM pre ts post = do
-    mapM_ pipelineStep pre
-    loop
-    mapM_ pipelineStep post
+-- it lints the resulting code.
+--
+-- phase optimisation
+-- - loop over transformations while the expression changes in one phase
+-- - bump to the next phase when the expression did not change
+-- - phases are ordered via complexity
+-- - the expression reaches a fixpoint when none of the phases did change the expression
+optimizeWithM :: [PipelineStep] -> [Transformation] -> [PipelineStep] -> PipelineM ()
+optimizeWithM pre trans post = do
+  mapM_ pipelineStep pre
+  loop
+  mapM_ pipelineStep post
   where
-  loop :: PipelineM ()
-  loop = do
-    e <- use psExp
-    o <- ask
-    effs1 <- forM ts $ \t -> do
-      eff <- pipelineStep (T RunAnalysis t)
-      when (eff == ExpChanged) $ void $ do
-        pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show t) <.> "grin"
-        when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
-        invalidateAnalysisResults
-      pure eff
+    loop = do
+      pipelineLog "PHASE #1"
+      c1 <- phase1
+      pipelineLog "PHASE #2"
+      c2 <- phase2
+      pipelineLog "PHASE #3"
+      c3 <- phase3
+      pipelineLog "PHASE #4"
+      c4 <- phase4
+      when (or [c1, c2, c3, c4]) loop
 
-    effs2 <- deadCodeElimination
-    let effs = effs1 ++ effs2
+    phaseLoop isChanged ts = do
+      o <- ask
+      pipelineStep (T RunAnalysis BindNormalisation)
+      effs <- forM ts $ \t -> do
+        eff <- pipelineStep (T RunAnalysis t)
+        when (eff == ExpChanged) $ do
+          pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show t) <.> "grin"
+          when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
+          when (o ^. poStatistics)  $ void $ pipelineStep Statistics
+          when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
+          invalidateAnalysisResults
+        pure eff
+      if (any (==ExpChanged) effs)
+        then phaseLoop True ts
+        else pure isChanged
 
-    -- Run loop again on change
-    when (o ^. poStatistics)  $ void $ pipelineStep Statistics
-    when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
-    when (any (==ExpChanged) effs) $ loop
+    -- No analysis is required
+    phase1 = phaseLoop False $ trans `intersect`
+      [ BindNormalisation
+      , EvaluatedCaseElimination
+      , TrivialCaseElimination
+      , UpdateElimination
+      , CopyPropagation
+      , ConstantPropagation
+      , SimpleDeadFunctionElimination
+      , SimpleDeadParameterElimination
+      , CaseCopyPropagation
+      ]
 
-  -- Dead Code Elimination does not fit to the standalone transformation assumption, thus
-  -- this needs its own phase, which we run at the end of the looping simpler optimisation.
-  -- TODO: Improve this.
-  deadCodeElimination :: PipelineM [PipelineEff]
-  deadCodeElimination = do
-    o <- ask
-    forM steps $ \step -> do
-      eff <- pipelineStep step
-      when (eff == ExpChanged) $ void $ do
-        pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show step) <.> "grin"
-        when (o ^. poLintOnChange) $ lintGrin $ Just $ show step
-      pure eff
-    where
-      steps = concat
-        [ map (T RunAnalysis)
-            [ CopyPropagation
-            , SimpleDeadVariableElimination
-            , ProducerNameIntroduction
-            , BindNormalisation
-            , UnitPropagation
+    -- HPT is required
+    phase2 = phaseLoop False $ trans `intersect`
+      [ InlineEval
+      , InlineApply
+      , InlineBuiltins
+      , CommonSubExpressionElimination
+      , CaseHoisting
+      , GeneralizedUnboxing
+      , ArityRaising
+      , LateInlining
+      , UnitPropagation
+      , SparseCaseOptimisation
+      ]
+
+    -- HPT and Sharing/Eff is required
+    phase3 = phaseLoop False $ trans `intersect`
+      [ SimpleDeadVariableElimination
+      , NonSharedElimination
+      ]
+
+    -- HPT LVA CBy is required
+    -- Only run this phase when interprocedural transformations are required.
+    phase4 = if (null (trans `intersect`
+                  [ DeadDataElimination
+                  , DeadFunctionElimination
+                  , DeadParameterElimination
+                  , DeadVariableElimination
+                  ]))
+      then pure False
+      else phase4Loop False
+
+    phase4Loop isChanged = do
+      o <- ask
+      expBefore <- use psExp
+      forM_ steps $ \step -> do
+        eff <- pipelineStep step
+        when (eff == ExpChanged) $ void $ do
+          pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show step) <.> "grin"
+          when (o ^. poLintOnChange) $ lintGrin $ Just $ show step
+          when (o ^. poStatistics)  $ void $ pipelineStep Statistics
+          when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
+      expAfter <- use psExp
+      if (mangleNames expBefore /= mangleNames expAfter)
+        then phase4Loop True
+        else pure isChanged
+      where
+        steps = concat
+          [ map (T RunAnalysis)
+              [ CopyPropagation
+              , SimpleDeadVariableElimination
+              , ProducerNameIntroduction
+              , BindNormalisation
+              , UnitPropagation
+              ]
+          , [ Pass $ map HPT [Compile, RunPure]
+            , Pass $ map CBy [Compile, RunPure]
+            , Pass $ map LVA [Compile, RunPure]
+            , Pass $ map Sharing [Compile, RunPure]
+            , Eff CalcEffectMap
             ]
-        , [ Pass $ map HPT [Compile, RunPure]
-          , Pass $ map CBy [Compile, RunPure]
-          , Pass $ map LVA [Compile, RunPure]
-          , Pass $ map Sharing [Compile, RunPure]
-          , Eff CalcEffectMap
+          , map (T DoNotRunAnalysis) $ trans `intersect`
+              [ DeadFunctionElimination
+              , DeadDataElimination
+              , DeadVariableElimination
+              , DeadParameterElimination
+              ]
+          , map (T RunAnalysis)
+              [ CopyPropagation
+              , SimpleDeadVariableElimination
+              , BindNormalisation
+              , UnitPropagation
+              ]
           ]
-        , map (T DoNotRunAnalysis)
-            [ DeadFunctionElimination
-            , DeadDataElimination
-            , DeadVariableElimination
-            , DeadParameterElimination
-            ]
-        ]
 
 invalidateAnalysisResults :: PipelineM ()
 invalidateAnalysisResults = do
