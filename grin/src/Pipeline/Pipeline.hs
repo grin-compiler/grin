@@ -375,7 +375,6 @@ saveTransformationInfo name content = do
   outputDir <- view poOutputDir
   let fname = printf "%03d.%s" n name
   liftIO $ do
-    createDirectoryIfMissing True outputDir
     writeFile (outputDir </> fname) $ showWide $ plain $ pretty content
 
 saveTypeEnv :: PipelineM ()
