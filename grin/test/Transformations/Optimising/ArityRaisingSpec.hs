@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
-module Transformations.Optimising.ArityRaisingSimpleSpec where
+module Transformations.Optimising.ArityRaisingSpec where
 
-import Transformations.Optimising.ArityRaisingSimple
+import Transformations.Optimising.ArityRaising
 
 import Test.Hspec
 import Grin.Grin

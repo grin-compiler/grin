@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Transformations.Optimising.ArityRaisingSimple  where
+module Transformations.Optimising.ArityRaising where
 
 import Grin.Grin (packName, unpackName)
 import Grin.Syntax

@@ -86,7 +86,7 @@ library
     Transformations.StaticSingleAssignment
     Transformations.UnitPropagation
     Transformations.Util
-    Transformations.Optimising.ArityRaisingSimple
+    Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CaseHoisting
     Transformations.Optimising.ConstantFolding
@@ -228,7 +228,7 @@ test-suite grin-test
                      , Transformations.Optimising.UpdateEliminationSpec
                      , Transformations.Optimising.CSESpec
                      , Transformations.Optimising.GeneralizedUnboxingSpec
-                     , Transformations.Optimising.ArityRaisingSimpleSpec
+                     , Transformations.Optimising.ArityRaisingSpec
                      , Transformations.Optimising.SimpleDeadFunctionEliminationSpec
                      , Transformations.Optimising.SimpleDeadParameterEliminationSpec
                      , Transformations.Optimising.SimpleDeadVariableEliminationSpec
