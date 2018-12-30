@@ -46,7 +46,9 @@ commonSubExpressionElimination typeEnv e = hylo skipUnit builder (mempty, e) whe
   altEnv env val cpat
     | not (isConstant val)
     = case cpat of
-      NodePat tag args  -> Map.insertWith (\new old -> old) (SReturn (ConstTagNode tag $ map Var args)) (SReturn val) env
+      NodePat tag args  -> env -- When we use scrutinee variable already HPT will include all the
+                               -- possible values, instead of the matching one. As result it will
+                               -- overapproximate the values more than needed.
       LitPat lit        -> Map.insertWith (\new old -> old) (SReturn (Lit lit)) (SReturn val) env
       TagPat tag        -> Map.insertWith (\new old -> old) (SReturn (ValTag tag)) (SReturn val) env
       DefaultPat        -> env

@@ -26,9 +26,9 @@ sum l = l2 <- eval l
 
 eval q = v <- fetch q
          case v of
-          (CInt x'1)    -> pure v
-          (CNil)        -> pure v
-          (CCons y ys)  -> pure v
+          (CInt x'1)    -> pure (CInt x'1)
+          (CNil)        -> pure (CNil)
+          (CCons y ys)  -> pure (CCons y ys)
           (Fupto a b)   -> w <- upto a b
                            update q w
                            pure w

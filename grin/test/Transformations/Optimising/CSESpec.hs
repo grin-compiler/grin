@@ -192,10 +192,10 @@ spec = do
       let after = [expr|
           case n1 of
             (CNode a1 b2) ->
-              n2 <- pure n1
+              n2 <- pure (CNode a1 b2)
               pure n2
             (CBox a2) ->
-              n3 <- pure n1
+              n3 <- pure (CBox a2)
               pure n3
             #default ->
               n4 <- pure n1
