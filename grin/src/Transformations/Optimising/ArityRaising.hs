@@ -47,7 +47,12 @@ arityRaising n te exp = if Map.null arityData then (exp, NoChange) else (phase2 
   where
     arityData = phase1 te exp
 
+-- | ArityData maps a function name to its arguments that can be arity raised.
+-- 1st: Name of the argument
+-- 2nd: The index of the argument
+-- 3rd: The tag and one possible locaition where the parameter can point to.
 type ArityData = Map Name [(Name, Int, (Tag, Int))]
+
 type ParameterInfo = Map Name (Int, (Tag, Int))
 
 data Phase1Data
@@ -90,15 +95,18 @@ phase1 te = pdArityData . cata collect where
     -- - that are not appear in other function calls
     -- - that are fetched at least once
     DefF fn ps body ->
-      FunData $ Map.singleton fn $
-        [ (p,i,(fromJust mtag))
-        | (p,i) <- ps `zip` [1..]
-        , Map.member p (bdFetch body)
-        , let mtag = pointsToOneNode te p
-        , isJust mtag
-        , p `notElem` (bdOther body)
-        , p `notElem` (snd <$> (filter ((/=fn) . fst) (bdFunCall body)))
-        ]
+      let funData =
+            [ (p,i,(fromJust mtag))
+            | (p,i) <- ps `zip` [1..]
+            , Map.member p (bdFetch body)
+            , let mtag = pointsToOneNode te p
+            , isJust mtag
+            , p `notElem` (bdOther body)
+            , p `notElem` (snd <$> (filter ((/=fn) . fst) (bdFunCall body)))
+            ]
+      in FunData $ case funData of
+          [] -> Map.empty
+          _  -> Map.singleton fn funData
 
     ProgramF exts defs -> ProgramData $ Map.unionsWith mappend (fdArityData <$> defs)
 
