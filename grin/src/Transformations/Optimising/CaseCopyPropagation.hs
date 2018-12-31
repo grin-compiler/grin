@@ -8,6 +8,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map ( fromList, union )
 import Control.Monad.Trans.State
 import Control.Monad.Trans ( lift )
+import Data.Bifunctor ( first )
 
 import Data.Functor.Foldable
 import Transformations.Names
@@ -15,8 +16,9 @@ import Transformations.Util
 
 
 
-caseCopyPropagation :: Exp -> Exp
-caseCopyPropagation exp0 = neExp $ evalNameM exp0 $ paraM folder exp0
+
+caseCopyPropagation :: Exp -> (Exp, ExpChanges)
+caseCopyPropagation exp0 = first neExp $ evalNameM exp0 $ paraM folder exp0
 
 data Changes = None | InChange Tag | Final deriving (Eq, Show)
 

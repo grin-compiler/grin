@@ -41,8 +41,10 @@ import Transformations.Names
 type TagMapping = Map (Tag, Vector Bool) Tag
 type Trf = ExceptT String (StateT TagMapping NameM)
 
-execTrf :: Exp -> Trf a -> Either String a
-execTrf e = evalNameM e . flip evalStateT mempty . runExceptT
+execTrf :: Exp -> Trf a -> Either String (a, ExpChanges)
+execTrf e = moveChangedResult . evalNameM e . flip evalStateT mempty . runExceptT
+  where
+    moveChangedResult (x, b) = either Left (\r -> Right (r, b)) x
 
 getTag :: Tag -> Vector Bool -> Trf Tag
 getTag t lv
@@ -58,7 +60,7 @@ getTag t@(Tag ty n) lv = do
       return t'
 
 
-deadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either String Exp
+deadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either String (Exp, ExpChanges)
 deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
   ddeFromProducers lvaResult cbyResult tyEnv e >>= ddeFromConsumers cbyResult tyEnv
 

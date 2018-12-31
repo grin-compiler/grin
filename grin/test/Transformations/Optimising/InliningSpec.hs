@@ -2,6 +2,7 @@
 module Transformations.Optimising.InliningSpec where
 
 import Transformations.Optimising.Inlining
+import Transformations.Names (ExpChanges(..))
 
 import qualified Data.Set as Set
 import Test.Hspec
@@ -38,7 +39,7 @@ spec = do
         funA i = pure i
       |]
     let inlineSet = Set.fromList ["funA"]
-    inlining inlineSet (inferTypeEnv before) before `sameAs` after
+    inlining inlineSet (inferTypeEnv before) before `sameAs` (after, NewNames)
 
   it "no-inline grinMain" $ do
     let before = [prog|
@@ -51,4 +52,4 @@ spec = do
           x <- pure 22
           pure x
       |]
-    lateInlining (inferTypeEnv before) before `sameAs` after
+    lateInlining (inferTypeEnv before) before `sameAs` (after, NoChange)

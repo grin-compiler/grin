@@ -13,6 +13,7 @@ import qualified Data.Set as Set; import Data.Set (Set)
 import qualified Data.Map.Strict as Map; import Data.Map (Map)
 import qualified Data.Vector as Vector; import Data.Vector (Vector)
 import Control.Monad.State.Strict
+import Transformations.Names (ExpChanges(..))
 
 {-
 1. Select one function which has a parameter of a pointer to one constructor only.
@@ -39,8 +40,10 @@ Parameters:
  - Its value points to a location, which location has only one Node with at least one parameter
 -}
 
-arityRaising :: Int -> TypeEnv -> Exp -> Exp
-arityRaising n te exp = if Map.null arityData then exp else phase2 n arityData exp
+-- TODO: True is reported even if exp stayed the same. Investigate why exp stay the same
+-- for non-null arity data.
+arityRaising :: Int -> TypeEnv -> Exp -> (Exp, ExpChanges)
+arityRaising n te exp = if Map.null arityData then (exp, NoChange) else (phase2 n arityData exp, NewNames)
   where
     arityData = phase1 te exp
 

@@ -2,6 +2,8 @@
 module Transformations.Optimising.GeneralizedUnboxingSpec where
 
 import Transformations.Optimising.GeneralizedUnboxing
+import Transformations.Names (ExpChanges(..))
+
 
 import Test.Hspec
 import Grin.Grin
@@ -179,7 +181,7 @@ spec = do
             pure (CInt unboxed.CInt.5)
           test y'
       |]
-    generalizedUnboxing teBefore before `sameAs` after
+    generalizedUnboxing teBefore before `sameAs` (after, NewNames)
 
   it "Return values are in cases" $ do
     let teBefore = emptyTypeEnv
@@ -234,7 +236,7 @@ spec = do
             #True ->
               pure 1
       |]
-    generalizedUnboxing teBefore before `sameAs` after
+    generalizedUnboxing teBefore before `sameAs` (after, NewNames)
 
   it "Step 1 for Figure 4.21" $ do
     let teBefore = emptyTypeEnv

@@ -14,6 +14,7 @@ import Grin.Grin
 import Grin.TypeEnv
 import Transformations.Util
 import Transformations.Names
+import Data.Bifunctor (first)
 
 -- analysis
 
@@ -67,7 +68,7 @@ selectInlineSet prog@(Program exts defs) = inlineSet where
 
 -- TODO: add the cloned variables to the type env
 -- QUESTION: apo OR ana ???
-inlining :: Set Name -> TypeEnv -> Program -> Program
+inlining :: Set Name -> TypeEnv -> Program -> (Program, ExpChanges)
 inlining functionsToInline typeEnv prog@(Program exts defs) = evalNameM prog $ apoM builder prog where
 
   defMap :: Map Name Def
@@ -100,21 +101,22 @@ inlining functionsToInline typeEnv prog@(Program exts defs) = evalNameM prog $ a
 
 -}
 
-lateInlining :: TypeEnv -> Exp -> Exp
-lateInlining typeEnv prog = cleanup nameSet typeEnv $ inlining nameSet typeEnv prog where
+lateInlining :: TypeEnv -> Exp -> (Exp, ExpChanges)
+lateInlining typeEnv prog = first (cleanup nameSet typeEnv) $ inlining nameSet typeEnv prog where
   nameSet = selectInlineSet prog
 
-inlineEval :: TypeEnv -> Exp -> Exp
-inlineEval te = cleanup nameSet te . inlining nameSet te where
+inlineEval :: TypeEnv -> Exp -> (Exp, ExpChanges)
+inlineEval te = first (cleanup nameSet te) . inlining nameSet te where
   nameSet = Set.fromList ["eval", "idr_{EVAL_0}"]
 
-inlineApply :: TypeEnv -> Exp -> Exp
-inlineApply te = cleanup nameSet te . inlining nameSet te where
+inlineApply :: TypeEnv -> Exp -> (Exp, ExpChanges)
+inlineApply te = first (cleanup nameSet te) . inlining nameSet te where
   nameSet = Set.fromList ["apply", "idr_{APPLY_0}"]
 
-inlineBuiltins :: TypeEnv -> Exp -> Exp
-inlineBuiltins te = cleanup nameSet te . inlining nameSet te where
+inlineBuiltins :: TypeEnv -> Exp -> (Exp, ExpChanges)
+inlineBuiltins te = first (cleanup nameSet te) . inlining nameSet te where
   nameSet = Set.fromList ["_rts_int_gt", "_rts_int_add", "_rts_int_print"] -- TODO: use proper selection
 
 cleanup :: Set Name -> TypeEnv -> Program -> Program
-cleanup nameSet typeEnv (Program exts defs) = Program exts [def | def@(Def name _ _) <- defs, Set.notMember name nameSet]
+cleanup nameSet typeEnv (Program exts defs) =
+  Program exts [def | def@(Def name _ _) <- defs, Set.notMember name nameSet]

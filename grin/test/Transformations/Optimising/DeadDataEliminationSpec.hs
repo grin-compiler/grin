@@ -12,6 +12,7 @@ import Grin.TypeCheck (typeEnvFromHPTResult)
 import Test.Hspec.PipelineExample
 import Pipeline.Definitions
 import Transformations.Optimising.DeadDataElimination
+import Transformations.Names (ExpChanges(..))
 import Test.Util
 import AbstractInterpretation.LiveVariable.CodeGen as LiveVariable (codeGen)
 import AbstractInterpretation.LiveVariable.Result (LVAResult(..), toLVAResult)

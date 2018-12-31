@@ -27,9 +27,12 @@ import Grin.TypeEnv
 import Grin.Pretty
 
 
-generalizedUnboxing :: TypeEnv -> Exp -> Exp
-generalizedUnboxing te exp =
-  evalNameM exp (transformCalls funs te =<< transformReturns funs te exp)
+generalizedUnboxing :: TypeEnv -> Exp -> (Exp, ExpChanges)
+generalizedUnboxing te exp = if (null funs)
+  then (exp, NoChange)
+  else second
+        (const NewNames) -- New functions are created, but NameM monad is not used
+        (evalNameM exp (transformCalls funs te =<< transformReturns funs te exp))
   where
     funs = functionsToUnbox te exp
 

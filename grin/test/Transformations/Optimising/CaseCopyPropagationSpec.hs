@@ -2,6 +2,7 @@
 module Transformations.Optimising.CaseCopyPropagationSpec where
 
 import Transformations.Optimising.CaseCopyPropagation
+import Transformations.Names (ExpChanges(..))
 
 import Test.Hspec
 import Grin.TH
@@ -59,7 +60,7 @@ spec = testExprContextIn ctxs $ \ctx -> do
             pure m0
           |]
     -- TODO: Inspect type env
-    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
+    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
     --(snd (ctx (teBefore, before))) `sameAs` (snd (ctx (teAfter, after)))
 
   it "One node has no Int tagged value" $ do
@@ -90,7 +91,7 @@ spec = testExprContextIn ctxs $ \ctx -> do
                 (CInt x') -> pure (CInt x')
             pure m0
           |]
-    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` (snd (ctx (teBefore, after)))
+    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teBefore, after))), NoChange)
 
   xit "Embedded good case" $ do
     let teBefore = create $
@@ -137,7 +138,7 @@ spec = testExprContextIn ctxs $ \ctx -> do
                                   pure (CInt x')
             pure m0
           |]
-    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
+    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
 
   it "Embedded bad case" $ do
     let teBefore = create $
@@ -185,7 +186,7 @@ spec = testExprContextIn ctxs $ \ctx -> do
               pure (CInt ccp.0)
             pure m0
           |]
-    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
+    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
 
   it "Leave the outher, transform the inner" $ do
     let teBefore = create $
@@ -234,7 +235,7 @@ spec = testExprContextIn ctxs $ \ctx -> do
             pure m0
           |]
 
-    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
+    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
 
   xit "last expression is a case" $ do
     let teBefore = create $
@@ -262,7 +263,7 @@ spec = testExprContextIn ctxs $ \ctx -> do
                                            pure ax'
               pure (CInt ccp.0)
           |]
-    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` (snd (ctx (teAfter, after)))
+    (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
 
 runTests :: IO ()
 runTests = hspec spec

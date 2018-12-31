@@ -8,12 +8,12 @@ import Control.Monad
 import Grin.Grin
 import Transformations.Names
 
-generateEval :: Program -> Program
+generateEval :: Program -> (Program, ExpChanges)
 generateEval prog@(Program exts defs) =
   let exclude = Set.fromList ["int_print", "grinMain"]
-      (evalFun, applyFun) = evalNameM prog $ do
+      ((evalFun, applyFun), changed) = evalNameM prog $ do
         (,) <$> genEval exclude "eval" defs <*> genApply exclude "apply" defs
-  in Program exts $ evalFun : applyFun : defs
+  in (Program exts $ evalFun : applyFun : defs, changed)
 generateEval _ = error "program expected"
 
 genEval :: Set Name -> Name -> [Def] -> NameM Def

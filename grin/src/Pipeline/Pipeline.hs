@@ -40,6 +40,7 @@ import Transformations.UnitPropagation
 import Transformations.MangleNames
 import Transformations.EffectMap
 import Transformations.StaticSingleAssignment
+import Transformations.Names (ExpChanges(..))
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Simplifying.ProducerNameIntroduction
@@ -94,60 +95,63 @@ import Control.Monad.Extra
 import System.Random
 import Data.Time.Clock
 import Data.Fixed
-import Data.Functor.Infix ((<$$>))
+import Data.Functor.Infix
 import Data.Maybe (isNothing)
 
 
-
+-- NOTE: All the return types of the transformations should be the same.
 data TransformationFunc
-  = Plain          (Exp -> Exp)
-  | WithTypeEnv    (TypeEnv -> Exp -> Either String Exp)
-  | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> Exp)
-  | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> Exp)
-  | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String Exp)
-  | WithEffLVA     (LVA.LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp)
-  | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String Exp)
+  = Plain          (Exp -> (Exp, ExpChanges))
+  | WithTypeEnv    (TypeEnv -> Exp -> Either String (Exp, ExpChanges))
+  | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
+  | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges))
+  | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
+  | WithEffLVA     (LVA.LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
+  | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
 
 -- TODO: Add n paramter for the transformations that use NameM
 transformationFunc :: Int -> Transformation -> TransformationFunc
 transformationFunc n = \case
-  Vectorisation                   -> WithTypeEnv (Right <$$> Vectorisation2.vectorisation)
+  Vectorisation                   -> WithTypeEnv (newNames <$$> Right <$$> Vectorisation2.vectorisation)
   GenerateEval                    -> Plain generateEval
-  CaseSimplification              -> Plain caseSimplification
-  SplitFetch                      -> Plain splitFetch
-  RegisterIntroduction            -> Plain $ registerIntroductionI n
+  CaseSimplification              -> Plain (noNewNames . caseSimplification)
+  SplitFetch                      -> Plain (noNewNames . splitFetch)
+  RegisterIntroduction            -> Plain (newNames . registerIntroductionI n) -- TODO
   ProducerNameIntroduction        -> Plain producerNameIntroduction
-  RightHoistFetch                 -> Plain RHF.rightHoistFetch
+  RightHoistFetch                 -> Plain (noNewNames . RHF.rightHoistFetch)
   -- misc
-  MangleNames                     -> Plain mangleNames
-  StaticSingleAssignment          -> Plain staticSingleAssignment
-  BindNormalisation               -> Plain bindNormalisation
-  ConstantFolding                 -> Plain constantFolding
+  MangleNames                     -> Plain (newNames . mangleNames) -- TODO
+  StaticSingleAssignment          -> Plain (newNames . staticSingleAssignment) -- TODO
+  BindNormalisation               -> Plain (noNewNames . bindNormalisation)
+  ConstantFolding                 -> Plain (newNames . constantFolding)
   -- optimising
-  EvaluatedCaseElimination        -> Plain evaluatedCaseElimination
-  TrivialCaseElimination          -> Plain trivialCaseElimination
-  UpdateElimination               -> Plain updateElimination
-  CopyPropagation                 -> Plain copyPropagation
-  ConstantPropagation             -> Plain constantPropagation
-  SimpleDeadFunctionElimination   -> Plain simpleDeadFunctionElimination
-  SimpleDeadParameterElimination  -> Plain simpleDeadParameterElimination
-  SimpleDeadVariableElimination   -> WithTypeEnvEff simpleDeadVariableElimination
+  EvaluatedCaseElimination        -> Plain (noNewNames . evaluatedCaseElimination)
+  TrivialCaseElimination          -> Plain (noNewNames . trivialCaseElimination)
+  UpdateElimination               -> Plain (noNewNames . updateElimination)
+  CopyPropagation                 -> Plain (noNewNames . copyPropagation) -- TODO
+  ConstantPropagation             -> Plain (noNewNames . constantPropagation) -- TODO
+  SimpleDeadFunctionElimination   -> Plain (noNewNames . simpleDeadFunctionElimination)
+  SimpleDeadParameterElimination  -> Plain (noNewNames . simpleDeadParameterElimination)
+  SimpleDeadVariableElimination   -> WithTypeEnvEff (noNewNames <$$$> simpleDeadVariableElimination)
   InlineEval                      -> WithTypeEnv (Right <$$> inlineEval)
   InlineApply                     -> WithTypeEnv (Right <$$> inlineApply)
   InlineBuiltins                  -> WithTypeEnv (Right <$$> inlineBuiltins)
-  CommonSubExpressionElimination  -> WithTypeEnv (Right <$$> commonSubExpressionElimination)
+  CommonSubExpressionElimination  -> WithTypeEnv (noNewNames <$$> Right <$$> commonSubExpressionElimination)
   CaseCopyPropagation             -> Plain caseCopyPropagation
   CaseHoisting                    -> WithTypeEnv (Right <$$> caseHoisting)
   GeneralizedUnboxing             -> WithTypeEnv (Right <$$> generalizedUnboxing)
   ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
-  UnitPropagation                 -> WithTypeEnv (Right <$$> unitPropagation)
-  NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
-  DeadFunctionElimination         -> WithEffLVA deadFunctionElimination
-  DeadVariableElimination         -> WithEffLVA deadVariableElimination
-  DeadParameterElimination        -> WithLVA deadParameterElimination
+  UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
+  NonSharedElimination            -> WithTypeEnvShr (noNewNames <$$$> nonSharedElimination)
+  DeadFunctionElimination         -> WithEffLVA (noNewNames <$$$$$> deadFunctionElimination)
+  DeadVariableElimination         -> WithEffLVA (noNewNames <$$$$$> deadVariableElimination)
+  DeadParameterElimination        -> WithLVA (noNewNames <$$$$> deadParameterElimination)
   DeadDataElimination             -> WithLVACBy deadDataElimination
-  SparseCaseOptimisation          -> WithTypeEnv sparseCaseOptimisation
+  SparseCaseOptimisation          -> WithTypeEnv (noNewNames <$$$> sparseCaseOptimisation)
+  where
+    noNewNames = flip (,) NoChange
+    newNames = flip (,) NewNames
 
 transformation :: RunAnalysis -> Transformation -> PipelineM ()
 transformation runAnalysis t = do
@@ -159,7 +163,7 @@ transformation runAnalysis t = do
   cby <- fromMaybe (traceShow "empty created by result is used" CBy.emptyCByResult) <$> use psCByResult
   lva <- fromMaybe (traceShow "empty live variable result is used" LVA.emptyLVAResult) <$> use psLVAResult
   shr <- fromMaybe (traceShow "empty sharing result is used" Sharing.emptySharingResult) <$> use psSharingResult
-  either (\err -> psErrors %= (err:)) (psExp .=) $
+  either (\e -> psErrors %= (e:)) onExp $
     case transformationFunc n t of
       Plain          f -> Right $ f e
       WithTypeEnv    f -> f te e
@@ -169,6 +173,10 @@ transformation runAnalysis t = do
       WithLVACBy     f -> f lva cby te e
       WithTypeEnvShr f -> Right $ f shr te e
   psTransStep %= (+1)
+  where
+    onExp (e, changes) = do
+      psExp .= e
+      when (changes /= NoChange) invalidateAnalysisResults
 
 pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
@@ -672,7 +680,6 @@ optimizeWithM pre trans post = do
           when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
           when (o ^. poStatistics)  $ void $ pipelineStep Statistics
           when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv
-          invalidateAnalysisResults
         pure eff
       if (any (==ExpChanged) effs)
         then phaseLoop True ts
@@ -680,8 +687,7 @@ optimizeWithM pre trans post = do
 
     -- No analysis is required
     phase1 = phaseLoop False $ trans `intersect`
-      [ BindNormalisation
-      , EvaluatedCaseElimination
+      [ EvaluatedCaseElimination
       , TrivialCaseElimination
       , UpdateElimination
       , CopyPropagation
@@ -745,13 +751,7 @@ optimizeWithM pre trans post = do
               , BindNormalisation
               , UnitPropagation
               ]
-          , [ Pass $ map HPT [Compile, RunPure]
-            , Pass $ map CBy [Compile, RunPure]
-            , Pass $ map LVA [Compile, RunPure]
-            , Pass $ map Sharing [Compile, RunPure]
-            , Eff CalcEffectMap
-            ]
-          , map (T DoNotRunAnalysis) $ trans `intersect`
+          , map (T RunAnalysis) $ trans `intersect`
               [ DeadFunctionElimination
               , DeadDataElimination
               , DeadVariableElimination
@@ -767,6 +767,7 @@ optimizeWithM pre trans post = do
 
 invalidateAnalysisResults :: PipelineM ()
 invalidateAnalysisResults = do
+  pipelineLog "Invalidating type environment"
   psHPTProgram     .= Nothing
   psHPTResult      .= Nothing
   psCByProgram     .= Nothing
@@ -786,8 +787,8 @@ runAnalysisFor t = do
     WithTypeEnv    _ -> [hpt]
     WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
-    WithEffLVA     _ -> [hpt, lva, eff]
-    WithLVACBy     _ -> [hpt, lva, cby]
+    WithEffLVA     _ -> [hpt, lva, cby, sharing, eff]
+    WithLVACBy     _ -> [hpt, lva, cby, sharing, eff]
     WithTypeEnvShr _ -> [hpt, sharing]
   where
     analisys getter ann = do

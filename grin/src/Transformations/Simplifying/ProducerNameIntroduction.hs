@@ -24,7 +24,7 @@ newNodeName = deriveNewName "v"
         because the syntax does not allow node values to be present
         in function application arguments.
 -}
-producerNameIntroduction :: Exp -> Exp
+producerNameIntroduction :: Exp -> (Exp, ExpChanges)
 producerNameIntroduction e = evalNameM e . cata alg $ e where
   alg :: ExpF (NameM Exp) -> NameM Exp
   alg e = case e of

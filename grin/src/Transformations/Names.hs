@@ -15,6 +15,7 @@ import qualified Data.Foldable
 
 import Grin.Grin
 import Transformations.Util
+import Data.Bifunctor (second)
 
 -- name monad
 
@@ -35,13 +36,23 @@ deriveNewName name = do
   (newName, conflict) <- state $ \env@NameEnv{..} ->
     let idx = Map.findWithDefault 0 name namePool
         new = packName $ printf "%s.%d" name idx
-    in ((new, Set.member new nameSet), env {namePool = Map.insert name (succ idx) namePool, nameSet = Set.insert new nameSet})
+    in  ( (new, Set.member new nameSet)
+        , env {namePool = Map.insert name (succ idx) namePool, nameSet = Set.insert new nameSet}
+        )
   if conflict
     then deriveNewName name
     else pure newName
 
-evalNameM :: Exp -> NameM a -> a
-evalNameM e m = evalState m (mkNameEnv e)
+boolTF :: a -> a -> Bool -> a
+boolTF true false x = if x then true else false
+
+data ExpChanges
+  = NoChange
+  | NewNames
+  deriving (Eq, Show)
+
+evalNameM :: Exp -> NameM a -> (a, ExpChanges)
+evalNameM e m = second (boolTF NoChange NewNames . Map.null . namePool) $ runState m (mkNameEnv e)
 
 -- refresh names
 

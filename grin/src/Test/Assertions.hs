@@ -11,6 +11,7 @@ import AbstractInterpretation.CreatedBy.Result (ProducerMap,ProducerGraph(..))
 import AbstractInterpretation.LiveVariable.Pretty
 import AbstractInterpretation.LiveVariable.Result (LVAResult)
 import AbstractInterpretation.HeapPointsTo.Result (HPTResult)
+import Transformations.Names
 
 
 class SameAs a where
@@ -30,6 +31,9 @@ instance SameAs LVAResult where
 
 instance SameAs ProducerGraph where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
+
+instance SameAs ExpChanges where
+  sameAs found expected = found `shouldBe` expected
 
 instance (SameAs a, SameAs b) => SameAs (a, b) where
   sameAs (f1, f2) (e1, e2) = do

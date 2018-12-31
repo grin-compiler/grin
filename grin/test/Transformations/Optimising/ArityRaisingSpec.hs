@@ -2,6 +2,7 @@
 module Transformations.Optimising.ArityRaisingSpec where
 
 import Transformations.Optimising.ArityRaising
+import Transformations.Names (ExpChanges(..))
 
 import Test.Hspec
 import Grin.Grin
@@ -23,7 +24,7 @@ spec :: Spec
 spec = do
   it "split_undefined" $ do
     let tyEnv = inferTypeEnv testProgBefore
-    arityRaising 0 tyEnv testProgBefore `sameAs` testProgAfter
+    arityRaising 0 tyEnv testProgBefore `sameAs` (testProgAfter, NewNames)
 
 testProgBefore :: Exp
 testProgBefore = [prog|

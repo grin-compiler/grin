@@ -3,19 +3,21 @@ module Transformations.Simplifying.ProducerNameIntroductionSpec where
 
 import Transformations.BindNormalisation
 import Transformations.Simplifying.ProducerNameIntroduction
+import Transformations.Names (ExpChanges(..))
 
 import Test.Test
 import Grin.TH
 import Grin.Grin
 import Test.Hspec
 import Test.Assertions
+import Data.Bifunctor ( first )
 
 
 runTests :: IO ()
 runTests = hspec spec
 
-pni :: Exp -> Exp
-pni = bindNormalisation . producerNameIntroduction
+pni :: Exp -> (Exp, ExpChanges)
+pni = first bindNormalisation . producerNameIntroduction
 
 spec :: Spec
 spec = do
@@ -31,7 +33,7 @@ spec = do
         p <- store v.0
         pure p
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "fetch" $ do
     let before = [prog|
@@ -45,7 +47,7 @@ spec = do
         (CInt n) <- pure v.0
         pure n
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "update" $ do
     let before = [prog|
@@ -62,7 +64,7 @@ spec = do
         update p v.1
         pure p
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "pure" $ do
     let before = [prog|
@@ -76,7 +78,7 @@ spec = do
         n <- pure v.0
         pure n
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "store_vartag" $ do
     let before = [prog|
@@ -92,7 +94,7 @@ spec = do
         p <- store v.0
         pure p
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "update_vartag" $ do
     let before = [prog|
@@ -111,7 +113,7 @@ spec = do
         update p v.1
         pure p
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "pure_vartag" $ do
     let before = [prog|
@@ -127,7 +129,7 @@ spec = do
         n <- pure v.0
         pure n
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "pure_undefined" $ do
     let before = [prog|
@@ -139,7 +141,7 @@ spec = do
         v.0 <- pure (#undefined :: T_Bool)
         pure v.0
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "store_undefined" $ do
     let before = [prog|
@@ -151,7 +153,7 @@ spec = do
         v.0 <- pure (#undefined :: {CNil[]})
         store v.0
       |]
-    (pni before) `sameAs` after
+    (pni before) `sameAs` (after, NewNames)
 
   it "update_undefined" $ do
     let before = [prog|
@@ -163,6 +165,4 @@ spec = do
         v.0 <- pure (#undefined :: {CNil[]})
         update p v.0
       |]
-    (pni before) `sameAs` after
-
-
+    (pni before) `sameAs` (after, NewNames)
