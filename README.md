@@ -76,7 +76,8 @@ stack build
 stack exec -- grin grin/grin/opt-stages-high-level/stage-00.grin
 ```
 ## How to Contribute
-See: [Issues / Tasks for new contributors](https://github.com/grin-tech/grin/issues/3)
+See: [Issues / Tasks for new contributors](https://github.com/grin-tech/grin/issues/3)  
+Keep it simple: We follow the fundamentals laid down in [HaskellerZ - Feb 2018 - Getting things done in Haskell](https://www.youtube.com/watch?v=-X1vrxQUETM)
 
 ## Example Front-End
 
