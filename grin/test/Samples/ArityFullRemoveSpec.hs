@@ -53,31 +53,19 @@ spec = do
               n7'_2 <- _prim_int_add p101 p11.1.arity.1.6.arity.1
               sum n7'_2 n4' p11.1.arity.2.6.arity.1
       |]
-    let ppln =
-          [ Pass $ map HPT [Compile, RunPure]
-          , T RunAnalysis $ InlineEval
-          , Pass $ map HPT [Compile, RunPure]
+    let steps =
+          [ T RunAnalysis $ InlineEval
           , T RunAnalysis $ ArityRaising
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ BindNormalisation
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ CommonSubExpressionElimination
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ CopyPropagation
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ SimpleDeadVariableElimination
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ ArityRaising
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ BindNormalisation
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ CommonSubExpressionElimination
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ CopyPropagation
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ ConstantFolding
-          , Pass $ map HPT [Compile, RunPure]
           , T RunAnalysis $ SimpleDeadVariableElimination
           ]
-    (pipelineInfo, transformed) <- pipeline defaultOpts emptyTypeEnv before ppln
+    transformed <- pipeline defaultOpts Nothing before steps
     transformed `sameAs` after

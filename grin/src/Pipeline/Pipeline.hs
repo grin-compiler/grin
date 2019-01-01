@@ -1,10 +1,22 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes, PatternSynonyms, TemplateHaskell #-}
 module Pipeline.Pipeline
- ( module Pipeline.Pipeline
- , module Pipeline.Definitions
- , module Pipeline.Utils
- , emptyTypeEnv
- ) where
+  ( PipelineOpts(..)
+  , defaultOpts
+  , PipelineStep(..)
+  , AbstractComputationStep(..)
+  , Transformation(..)
+  , EffectStep(..)
+  , Path(..)
+  , pattern DoNotRunAnalysis
+  , pattern RunAnalysis
+  , pattern HPTPass
+  , pattern PrintGrin
+  , pattern DeadCodeElimination
+  , pipeline
+  , optimize
+  , optimizeWith
+  , randomPipeline
+  ) where
 
 import Prelude
 import Control.Monad
@@ -16,8 +28,6 @@ import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>), (<$$>))
 import qualified Text.Show.Pretty as PP
 
 import Pipeline.Eval
-import Pipeline.Definitions
-import Pipeline.Utils
 import Grin.Grin
 import Grin.TypeEnv
 import Grin.TypeCheck
@@ -87,8 +97,6 @@ import Debug.Trace
 import Lens.Micro
 import Data.List
 
-import Grin.Lint
-
 import Data.Algorithm.Diff
 import Data.Algorithm.DiffOutput
 import Control.Monad.Extra
@@ -97,6 +105,184 @@ import Data.Time.Clock
 import Data.Fixed
 import Data.Functor.Infix
 import Data.Maybe (isNothing)
+
+
+
+data Transformation
+  -- Simplifying
+  = RegisterIntroduction
+  | ProducerNameIntroduction
+  | Vectorisation
+  | SplitFetch
+  | CaseSimplification
+  | RightHoistFetch
+  | InlineEval
+  | InlineApply
+  | InlineBuiltins
+  -- Misc
+  | GenerateEval
+  | BindNormalisation
+  | ConstantFolding
+  | UnitPropagation
+  | MangleNames
+  | StaticSingleAssignment
+  -- Optimizations
+  | EvaluatedCaseElimination
+  | TrivialCaseElimination
+  | SparseCaseOptimisation
+  | UpdateElimination
+  | NonSharedElimination
+  | CopyPropagation
+  | ConstantPropagation
+  | DeadDataElimination
+  | DeadFunctionElimination
+  | DeadParameterElimination
+  | DeadVariableElimination
+  | SimpleDeadFunctionElimination
+  | SimpleDeadVariableElimination
+  | SimpleDeadParameterElimination
+  | CommonSubExpressionElimination
+  | CaseCopyPropagation
+  | CaseHoisting
+  | GeneralizedUnboxing
+  | ArityRaising
+  | LateInlining
+  deriving (Enum, Eq, Ord, Show)
+
+newtype Hidden a = H a
+
+instance Show (Hidden a) where
+  show _ = "(hidden)"
+
+instance Eq (Hidden a) where
+  _ == _ = True
+
+data AbstractComputationStep
+  = Compile
+  | Optimise
+  | PrintProgram
+  | RunPure
+  | PrintResult
+  deriving (Eq, Show)
+
+data EffectStep
+  = CalcEffectMap
+  | PrintEffectMap
+  deriving (Eq, Show)
+
+data PipelineStep
+  = Optimize
+  | HPT AbstractComputationStep
+  | CBy AbstractComputationStep
+  | LVA AbstractComputationStep
+  | Sharing AbstractComputationStep
+  | RunCByWithLVA -- TODO: Remove
+  | Eff EffectStep
+  | T RunAnalysis Transformation
+  | Pass [PipelineStep]
+  | PrintGrinH (Hidden (Doc -> Doc))
+  | PureEval
+  | JITLLVM
+  | PrintAST
+  | SaveLLVM Bool FilePath
+  | SaveGrin Path
+  | DebugTransformationH (Hidden (Exp -> Exp))
+  | Statistics
+  | PrintTypeAnnots
+  | PrintTypeEnv
+  | SaveTypeEnv
+  | Lint
+  | ConfluenceTest
+  | PrintErrors
+  | DebugPipelineState
+  deriving (Eq, Show)
+
+type RunAnalysis         = Bool
+pattern RunAnalysis      = True
+pattern DoNotRunAnalysis = False
+
+pattern DeadCodeElimination :: PipelineStep
+pattern DeadCodeElimination = Pass
+  [ T RunAnalysis DeadFunctionElimination
+  , T RunAnalysis DeadDataElimination
+  , T RunAnalysis DeadVariableElimination
+  , T RunAnalysis DeadParameterElimination
+  ]
+
+pattern HPTPass :: PipelineStep
+pattern HPTPass = Pass
+  [ HPT Compile
+  , HPT RunPure
+  ]
+
+data Path
+  = Abs FilePath
+  | Rel FilePath
+  deriving (Eq, Show)
+
+pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern PrintGrin c <- PrintGrinH (H c)
+  where PrintGrin c =  PrintGrinH (H c)
+
+pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
+pattern DebugTransformation t <- DebugTransformationH (H t)
+  where DebugTransformation t =  DebugTransformationH (H t)
+
+data PipelineOpts = PipelineOpts
+  { _poOutputDir   :: FilePath
+  , _poFailOnLint  :: Bool
+  , _poLogging     :: Bool
+  , _poSaveTypeEnv :: Bool
+  , _poStatistics  :: Bool
+  , _poLintOnChange :: Bool
+  }
+
+defaultOpts :: PipelineOpts
+defaultOpts = PipelineOpts
+  { _poOutputDir    = ".grin-output"
+  , _poFailOnLint   = True
+  , _poLogging      = True
+  , _poSaveTypeEnv  = False
+  , _poStatistics   = False
+  , _poLintOnChange = True
+  }
+
+type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
+data PState = PState
+    { _psExp            :: Exp
+    , _psTransStep      :: Int
+    , _psSaveIdx        :: Int
+    , _psHPTProgram     :: Maybe HPT.HPTProgram
+    , _psHPTResult      :: Maybe HPT.HPTResult
+    , _psCByProgram     :: Maybe CBy.CByProgram
+    , _psCByResult      :: Maybe CBy.CByResult
+    , _psLVAProgram     :: Maybe LVA.LVAProgram
+    , _psLVAResult      :: Maybe LVA.LVAResult
+    , _psSharingProgram :: Maybe Sharing.SharingProgram
+    , _psSharingResult  :: Maybe Sharing.SharingResult
+    -- the type environment calculated by HPT
+    , _psTypeEnv        :: Maybe TypeEnv
+    -- the type environment parsed from the source code
+    , _psTypeAnnots     :: TypeEnv
+    , _psEffectMap      :: Maybe EffectMap
+    , _psErrors         :: [String]
+    } deriving (Show)
+
+makeLenses ''PState
+makeLenses ''PipelineOpts
+
+data PipelineEff
+  = None
+  | ExpChanged
+  deriving (Eq, Show)
+
+_None :: Traversal' PipelineEff ()
+_None f None = const None <$> f ()
+_None _ rest = pure rest
+
+_ExpChanged :: Traversal' PipelineEff ()
+_ExpChanged f ExpChanged = const ExpChanged <$> f ()
+_ExpChanged _ rest       = pure rest
 
 
 -- NOTE: All the return types of the transformations should be the same.
@@ -460,7 +646,7 @@ lintGrin mPhaseName = do
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
-  psErrors .= (fmap message $ concat $ Map.elems errorMap)
+  psErrors .= (fmap Lint.message $ concat $ Map.elems errorMap)
 
   -- print errors
   errors <- use psErrors
@@ -482,10 +668,14 @@ lintGrin mPhaseName = do
 
 -- confluence testing
 
+randomPipeline :: StdGen -> PipelineOpts -> Exp -> IO Exp
+randomPipeline seed opts exp
+  = fmap snd $ runPipeline opts emptyTypeEnv exp $ randomPipelineM seed
+
 -- Generate random pipeline based on the transformationWhitelist, the pipeline reaches a fixpoint
 -- and returns the list of transformation that helped to reach the fixpoint.
-randomPipeline :: StdGen -> PipelineM [Transformation]
-randomPipeline seed = do
+randomPipelineM :: StdGen -> PipelineM [Transformation]
+randomPipelineM seed = do
   liftIO $ setStdGen seed
   runBasicAnalyses
   go transformationWhitelist []
@@ -588,12 +778,12 @@ confluenceTest = do
   pipelineLog "Random pipeline #1"
   state <- MonadState.get
   gen1 <- liftIO newStdGen
-  pipeline1 <- randomPipeline gen1
+  pipeline1 <- randomPipelineM gen1
   pipelineLog "Random pipeline #2"
   exp1 <- use psExp
   MonadState.put state
   gen2 <- liftIO newStdGen
-  pipeline2 <- randomPipeline gen2
+  pipeline2 <- randomPipelineM gen2
   exp2 <- use psExp
   if (mangleNames exp1 /= mangleNames exp2)
     then do
@@ -631,9 +821,8 @@ runPipeline o ta e m = do
 
 -- | Runs the pipeline and returns the last version of the given
 -- expression.
-pipeline :: PipelineOpts -> TypeEnv -> Exp -> [PipelineStep] -> IO ([(PipelineStep, PipelineEff)], Exp)
-pipeline o ta e ps = do
-  runPipeline o ta e $ mapM (\p -> (,) p <$> pipelineStep p) ps
+pipeline :: PipelineOpts -> Maybe TypeEnv -> Exp -> [PipelineStep] -> IO Exp
+pipeline o mte e ps = fmap snd $ runPipeline o (fromMaybe emptyTypeEnv mte) e $ mapM pipelineStep ps
 
 optimize :: PipelineOpts -> Exp -> [PipelineStep] -> [PipelineStep] -> IO Exp
 optimize o e pre post = optimizeWith o e pre defaultOptimizations post
@@ -808,3 +997,68 @@ runAnalysisFor t = do
       when (isNothing r) $ do
         pipelineLog $ "Analisys"
         void $ pipelineStep $ Eff CalcEffectMap
+
+pipelineLog :: String -> PipelineM ()
+pipelineLog str = do
+  shouldLog <- view poLogging
+  when shouldLog $ liftIO $ putStrLn str
+
+pipelineLogNoLn :: String -> PipelineM ()
+pipelineLogNoLn str = do
+  shouldLog <- view poLogging
+  when shouldLog $ liftIO $ putStr str
+
+pipelineLogIterations :: Int -> PipelineM ()
+pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n ++ " "
+
+defaultOptimizations :: [Transformation]
+defaultOptimizations =
+  [ InlineEval
+  , SparseCaseOptimisation
+  , SimpleDeadFunctionElimination
+  , SimpleDeadParameterElimination
+  , SimpleDeadVariableElimination
+  , EvaluatedCaseElimination
+  , TrivialCaseElimination
+  , UpdateElimination
+  , NonSharedElimination
+  , CopyPropagation
+  , ConstantPropagation
+  , CommonSubExpressionElimination
+  , CaseCopyPropagation
+  , CaseHoisting
+  , GeneralizedUnboxing
+  , ArityRaising
+  , InlineApply
+  , LateInlining
+  ]
+
+debugPipeline :: [PipelineStep] -> [PipelineStep]
+debugPipeline ps = [PrintGrin id] ++ ps ++ [PrintGrin id]
+
+debugPipelineState :: PipelineM ()
+debugPipelineState = do
+  ps <- MonadState.get
+  liftIO $ print ps
+
+printingSteps :: [PipelineStep]
+printingSteps =
+  [ HPT PrintProgram
+  , HPT PrintResult
+  , CBy PrintProgram
+  , CBy PrintResult
+  , LVA PrintProgram
+  , LVA PrintResult
+  , Sharing PrintProgram
+  , Sharing PrintResult
+  , PrintTypeEnv
+  , Eff PrintEffectMap
+  , PrintAST
+  , PrintErrors
+  , PrintTypeAnnots
+  , DebugPipelineState
+  , PrintGrin id
+  ]
+
+isPrintingStep :: PipelineStep -> Bool
+isPrintingStep = flip elem printingSteps

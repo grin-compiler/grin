@@ -78,7 +78,7 @@ spec = do
               n7'_2 <- _prim_int_add p10 p111
               sum n7'_2 n4' p112
       |]
-    let ppln = map (T RunAnalysis)
+    let steps = map (T RunAnalysis)
           [ BindNormalisation
           , ConstantPropagation
           , BindNormalisation
@@ -93,5 +93,5 @@ spec = do
           , SimpleDeadVariableElimination
           ]
 
-    (pipelineInfo, transformed) <- pipeline defaultOpts emptyTypeEnv before ppln
+    transformed <- pipeline defaultOpts Nothing before steps
     transformed `sameAs` after

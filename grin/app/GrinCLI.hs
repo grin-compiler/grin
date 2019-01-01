@@ -147,7 +147,7 @@ main = do
         program             = if noPrelude then program' else concatPrograms [primPrelude, program']
     case steps of
       [] -> void $ optimize opts program [] postPipeline
-      _  -> void $ pipeline opts typeEnv program steps
+      _  -> void $ pipeline opts (Just typeEnv) program steps
 
 postPipeline :: [PipelineStep]
 postPipeline =

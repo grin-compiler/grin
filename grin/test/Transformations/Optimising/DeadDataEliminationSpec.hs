@@ -10,7 +10,7 @@ import Grin.Grin
 import Grin.TH
 import Grin.TypeCheck (typeEnvFromHPTResult)
 import Test.Hspec.PipelineExample
-import Pipeline.Definitions
+import Pipeline.Pipeline hiding (pipeline)
 import Transformations.Optimising.DeadDataElimination
 import Transformations.Names (ExpChanges(..))
 import Test.Util

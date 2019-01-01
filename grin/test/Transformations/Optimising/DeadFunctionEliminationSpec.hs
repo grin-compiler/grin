@@ -2,7 +2,7 @@ module Transformations.Optimising.DeadFunctionEliminationSpec where
 
 import Test.Hspec
 import Test.Hspec.PipelineExample
-import Pipeline.Definitions
+import Pipeline.Pipeline hiding (pipeline)
 
 
 runTests :: IO ()

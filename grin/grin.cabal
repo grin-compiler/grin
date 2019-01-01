@@ -58,8 +58,6 @@ library
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
-    Pipeline.Definitions
-    Pipeline.Utils
     Reducer.Base
     Reducer.IO
     Reducer.LLVM.Base
