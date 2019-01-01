@@ -235,6 +235,7 @@ data PipelineOpts = PipelineOpts
   , _poSaveTypeEnv :: Bool
   , _poStatistics  :: Bool
   , _poLintOnChange :: Bool
+  , _poTypedLint :: Bool -- Run HPT before every lint
   }
 
 defaultOpts :: PipelineOpts
@@ -245,6 +246,7 @@ defaultOpts = PipelineOpts
   , _poSaveTypeEnv  = False
   , _poStatistics   = False
   , _poLintOnChange = True
+  , _poTypedLint    = False
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -641,8 +643,10 @@ debugTransformation t = do
 
 lintGrin :: Maybe String -> PipelineM ()
 lintGrin mPhaseName = do
-  pipelineStep $ HPT Compile
-  pipelineStep $ HPT RunPure
+  o <- ask
+  when (o ^. poTypedLint) $ void $ do
+    pipelineStep $ HPT Compile
+    pipelineStep $ HPT RunPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
   let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
