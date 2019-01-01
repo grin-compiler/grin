@@ -13,11 +13,7 @@ spec = do
   describe "Dead Parameter Elimination" $ do
 
     let deadParameterEliminationPipeline =
-          [ HPT Compile
-          , HPT RunPure
-          , LVA Compile
-          , LVA RunPure
-          , T DoNotRunAnalysis DeadParameterElimination
+          [ T DeadParameterElimination
           ]
 
     it "Fnode" $ pipeline

@@ -13,12 +13,7 @@ spec = do
   describe "Dead Variable Elimination" $ do
 
     let deadVariableEliminationPipeline =
-          [ HPT Compile
-          , HPT RunPure
-          , LVA Compile
-          , LVA RunPure
-          , Eff CalcEffectMap
-          , T DoNotRunAnalysis DeadVariableElimination
+          [ T DeadVariableElimination
           ]
 
     it "simple" $ pipeline

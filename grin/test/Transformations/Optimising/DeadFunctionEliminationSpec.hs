@@ -13,14 +13,7 @@ spec = do
   describe "Dead Function Elimination" $ do
 
     let deadFunctionEliminationPipeline =
-          [ CBy Compile
-          , CBy RunPure
-          , LVA Compile
-          , LVA RunPure
-          , Eff CalcEffectMap
-          , HPT Compile
-          , HPT RunPure
-          , T DoNotRunAnalysis DeadFunctionElimination
+          [ T DeadFunctionElimination
           ]
 
     it "app_side_effect_1" $ pipeline

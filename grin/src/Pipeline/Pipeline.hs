@@ -7,8 +7,6 @@ module Pipeline.Pipeline
   , Transformation(..)
   , EffectStep(..)
   , Path(..)
-  , pattern DoNotRunAnalysis
-  , pattern RunAnalysis
   , pattern HPTPass
   , pattern PrintGrin
   , pattern DeadCodeElimination
@@ -178,7 +176,7 @@ data PipelineStep
   | Sharing AbstractComputationStep
   | RunCByWithLVA -- TODO: Remove
   | Eff EffectStep
-  | T RunAnalysis Transformation
+  | T Transformation
   | Pass [PipelineStep]
   | PrintGrinH (Hidden (Doc -> Doc))
   | PureEval
@@ -197,16 +195,12 @@ data PipelineStep
   | DebugPipelineState
   deriving (Eq, Show)
 
-type RunAnalysis         = Bool
-pattern RunAnalysis      = True
-pattern DoNotRunAnalysis = False
-
 pattern DeadCodeElimination :: PipelineStep
 pattern DeadCodeElimination = Pass
-  [ T RunAnalysis DeadFunctionElimination
-  , T RunAnalysis DeadDataElimination
-  , T RunAnalysis DeadVariableElimination
-  , T RunAnalysis DeadParameterElimination
+  [ T DeadFunctionElimination
+  , T DeadDataElimination
+  , T DeadVariableElimination
+  , T DeadParameterElimination
   ]
 
 pattern HPTPass :: PipelineStep
@@ -341,9 +335,9 @@ transformationFunc n = \case
     noNewNames = flip (,) NoChange
     newNames = flip (,) NewNames
 
-transformation :: RunAnalysis -> Transformation -> PipelineM ()
-transformation runAnalysis t = do
-  when runAnalysis $ runAnalysisFor t
+transformation :: Transformation -> PipelineM ()
+transformation t = do
+  runAnalysisFor t
   n <- use psTransStep
   e <- use psExp
   te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
@@ -404,7 +398,7 @@ pipelineStep p = do
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
-    T r t             -> transformation r t
+    T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
     PrintGrin d     -> printGrinM d
     PureEval        -> pureEval
@@ -688,7 +682,7 @@ randomPipelineM seed = do
     go [] result = do
       -- The final result must be normalised as, non-normalised and normalised
       -- grin program is semantically the same.
-      pipelineStep $ T RunAnalysis BindNormalisation
+      pipelineStep $ T BindNormalisation
       pure $ reverse result
     go available res = do
       exp <- use psExp
@@ -697,11 +691,11 @@ randomPipelineM seed = do
         then do
           runNameIntro
           runCByLVA
-          pipelineStep (T RunAnalysis t)
+          pipelineStep (T t)
           runCleanup
           exp' <- use psExp
           pure $ if exp == exp' then None else ExpChanged
-        else pipelineStep (T RunAnalysis t)
+        else pipelineStep (T t)
       case eff of
         None -> go (available Data.List.\\ [t]) res
         ExpChanged -> do
@@ -754,15 +748,15 @@ randomPipelineM seed = do
 
     runNameIntro :: PipelineM ()
     runNameIntro = void . pipelineStep $ Pass
-      [ T RunAnalysis ProducerNameIntroduction
-      , T RunAnalysis BindNormalisation
+      [ T ProducerNameIntroduction
+      , T BindNormalisation
       ]
 
     -- cleanup after producer name intro
     runCleanup :: PipelineM ()
     runCleanup = void . pipelineStep $ Pass
-      [ T RunAnalysis CopyPropagation
-      , T RunAnalysis SimpleDeadVariableElimination
+      [ T CopyPropagation
+      , T SimpleDeadVariableElimination
       ]
 
     needsCByLVA :: Transformation -> Bool
@@ -865,9 +859,9 @@ optimizeWithM pre trans post = do
 
     phaseLoop isChanged ts = do
       o <- ask
-      pipelineStep (T RunAnalysis BindNormalisation)
+      pipelineStep (T BindNormalisation)
       effs <- forM ts $ \t -> do
-        eff <- pipelineStep (T RunAnalysis t)
+        eff <- pipelineStep (T t)
         when (eff == ExpChanged) $ do
           pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show t) <.> "grin"
           when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
@@ -937,20 +931,20 @@ optimizeWithM pre trans post = do
         else pure isChanged
       where
         steps = concat
-          [ map (T RunAnalysis)
+          [ map T
               [ CopyPropagation
               , SimpleDeadVariableElimination
               , ProducerNameIntroduction
               , BindNormalisation
               , UnitPropagation
               ]
-          , map (T RunAnalysis) $ trans `intersect`
+          , map T $ trans `intersect`
               [ DeadFunctionElimination
               , DeadDataElimination
               , DeadVariableElimination
               , DeadParameterElimination
               ]
-          , map (T RunAnalysis)
+          , map T
               [ CopyPropagation
               , SimpleDeadVariableElimination
               , BindNormalisation

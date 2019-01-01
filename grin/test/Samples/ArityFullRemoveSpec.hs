@@ -54,18 +54,18 @@ spec = do
               sum n7'_2 n4' p11.1.arity.2.6.arity.1
       |]
     let steps =
-          [ T RunAnalysis $ InlineEval
-          , T RunAnalysis $ ArityRaising
-          , T RunAnalysis $ BindNormalisation
-          , T RunAnalysis $ CommonSubExpressionElimination
-          , T RunAnalysis $ CopyPropagation
-          , T RunAnalysis $ SimpleDeadVariableElimination
-          , T RunAnalysis $ ArityRaising
-          , T RunAnalysis $ BindNormalisation
-          , T RunAnalysis $ CommonSubExpressionElimination
-          , T RunAnalysis $ CopyPropagation
-          , T RunAnalysis $ ConstantFolding
-          , T RunAnalysis $ SimpleDeadVariableElimination
+          [ T InlineEval
+          , T ArityRaising
+          , T BindNormalisation
+          , T CommonSubExpressionElimination
+          , T CopyPropagation
+          , T SimpleDeadVariableElimination
+          , T ArityRaising
+          , T BindNormalisation
+          , T CommonSubExpressionElimination
+          , T CopyPropagation
+          , T ConstantFolding
+          , T SimpleDeadVariableElimination
           ]
     transformed <- pipeline defaultOpts Nothing before steps
     transformed `sameAs` after

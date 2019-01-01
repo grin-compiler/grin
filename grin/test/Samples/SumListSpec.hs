@@ -78,7 +78,7 @@ spec = do
               n7'_2 <- _prim_int_add p10 p111
               sum n7'_2 n4' p112
       |]
-    let steps = map (T RunAnalysis)
+    let steps = map T
           [ BindNormalisation
           , ConstantPropagation
           , BindNormalisation
