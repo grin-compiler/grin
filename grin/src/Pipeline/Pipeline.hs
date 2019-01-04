@@ -248,13 +248,13 @@ data PState = PState
     { _psExp            :: Exp
     , _psTransStep      :: Int
     , _psSaveIdx        :: Int
-    , _psHPTProgram     :: Maybe (AbstractProgram, HPTMapping)
+    , _psHPTProgram     :: Maybe (IR.AbstractProgram, HPT.HPTMapping)
     , _psHPTResult      :: Maybe HPT.HPTResult
-    , _psCByProgram     :: Maybe (AbstractProgram, CByMapping)
+    , _psCByProgram     :: Maybe (IR.AbstractProgram, CBy.CByMapping)
     , _psCByResult      :: Maybe CBy.CByResult
-    , _psLVAProgram     :: Maybe (AbstractProgram, LVAMapping)
+    , _psLVAProgram     :: Maybe (IR.AbstractProgram, LVA.LVAMapping)
     , _psLVAResult      :: Maybe LVA.LVAResult
-    , _psSharingProgram :: Maybe (AbstractProgram, SharingMapping)
+    , _psSharingProgram :: Maybe (IR.AbstractProgram, Sharing.SharingMapping)
     , _psSharingResult  :: Maybe Sharing.SharingResult
     -- the type environment calculated by HPT
     , _psTypeEnv        :: Maybe TypeEnv
