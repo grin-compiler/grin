@@ -162,7 +162,7 @@ spec = do
 
 calcHPTResult :: Exp -> HPTResult
 calcHPTResult prog
-  | Right hptProgram <- fst <$> codeGen prog
+  | hptProgram <- fst $ codeGen prog
   , computer <- _airComp . evalAbstractProgram $ hptProgram
   = toHPTResult hptProgram computer
 

@@ -76,7 +76,7 @@ calcSharedLocations = _sharedLocs . calcSharingResult
 
 calcSharingResult :: Exp -> SharingResult
 calcSharingResult prog
-  | Right shProgram <- codeGen prog
+  | shProgram <- codeGen prog
   , computer <- _airComp . evalAbstractProgram . fst $ shProgram
   , shResult <- toSharingResult shProgram computer
   = shResult

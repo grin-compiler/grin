@@ -20,7 +20,7 @@ import Grin.TypeEnvDefs
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (AbstractProgram(..))
 
-type CG a = ExceptT String (State AbstractProgram) a
+type CG = State AbstractProgram
 
 data Result
   = R IR.Reg
@@ -56,7 +56,7 @@ getReg :: Name -> CG IR.Reg
 getReg name = do
   regMap <- gets _absRegisterMap
   case Map.lookup name regMap of
-    Nothing   -> throwE $ "unknown variable " ++ unpackName name
+    Nothing   -> error $ "unknown variable " ++ unpackName name
     Just reg  -> pure reg
 
 getTag :: Tag -> CG IR.Tag

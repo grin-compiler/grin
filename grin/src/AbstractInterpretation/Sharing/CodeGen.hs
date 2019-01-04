@@ -132,6 +132,6 @@ codeGenM e = do
         }
   pure (prg, mapping)
 
-codeGen :: Program -> Either String (AbstractProgram, SharingMapping)
-codeGen prg@(Program{}) = Right $ evalState (codeGenM prg) emptyCGState
-codeGen _ = Left "Program expected"
+codeGen :: Program -> (AbstractProgram, SharingMapping)
+codeGen prg@(Program{}) = evalState (codeGenM prg) emptyCGState
+codeGen _ = error "Program expected"

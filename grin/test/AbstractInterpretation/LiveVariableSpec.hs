@@ -23,7 +23,7 @@ runTests = hspec spec
 
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
-  | Right lvaProgram <- codeGen prog
+  | lvaProgram <- codeGen prog
   , computer <- _airComp . evalAbstractProgram . fst $ lvaProgram
   = toLVAResult lvaProgram computer
 

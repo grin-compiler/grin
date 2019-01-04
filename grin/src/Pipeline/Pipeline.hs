@@ -456,15 +456,10 @@ optimiseAbsProgWith getProg err = do
     Just prog -> getProg . _Just . _1 %= optimiseAbstractProgram
     Nothing   -> pipelineLog err
 
-compileAbstractProgram :: (Exp -> Either String prog) -> (Lens' PState (Maybe prog)) -> PipelineM ()
+compileAbstractProgram :: (Exp -> prog) -> (Lens' PState (Maybe prog)) -> PipelineM ()
 compileAbstractProgram codeGen accessProg = do
   grin <- use psExp
-  case codeGen grin of
-    Right absProg ->
-      accessProg .= Just absProg
-    Left e -> do
-      psErrors %= (e:)
-      accessProg .= Nothing
+  accessProg .= Just (codeGen grin)
 
 printAbsProg :: IR.AbstractProgram -> PipelineM ()
 printAbsProg a = do

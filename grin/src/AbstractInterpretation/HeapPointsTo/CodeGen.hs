@@ -23,9 +23,9 @@ import AbstractInterpretation.HeapPointsTo.CodeGenBase
 
 type HPTMapping = () -- TODO
 
-codeGen :: Program -> Either String (AbstractProgram, HPTMapping)
-codeGen prg@(Program exts defs) = Right $ evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
-codeGen _ = Left "Program expected"
+codeGen :: Program -> (AbstractProgram, HPTMapping)
+codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
+codeGen _ = error "Program expected"
 
 mkAbstractProgramM :: CG (AbstractProgram, ())
 mkAbstractProgramM = do

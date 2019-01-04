@@ -32,9 +32,6 @@ type LVAMapping = ()
 
 type LivenessId = Int32
 
-throwLVA :: (Monad m) => String -> ExceptT String m a
-throwLVA s = throwE $ "LVA: " ++ s
-
 doNothing :: CG ()
 doNothing = pure ()
 
@@ -140,7 +137,7 @@ codeGenVal = \case
           , dstSelector = IR.NodeItem irTag idx
           , dstReg      = r
           }
-      _ -> throwLVA $ "illegal node item value " ++ show val
+      _ -> error $ "illegal node item value " ++ show val
     pure r
   Unit  -> emptyReg
   Lit _ -> emptyReg
@@ -155,19 +152,15 @@ codeGenVal = \case
     typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenTaggedNodeType) t
     emit $ copyStructureWithPtrInfo typed r
     pure r
-  val -> throwLVA $ "unsupported value " ++ show val
+  val -> error $ "unsupported value " ++ show val
 
 
-codeGen :: Exp -> Either String (AbstractProgram, LVAMapping)
-codeGen e = do
-  prg <- codeGen' e
-  pure (prg, ())
+codeGen :: Exp -> (AbstractProgram, LVAMapping)
+codeGen e = (codeGen' e, ())
 
-codeGen' :: Exp -> Either String AbstractProgram
+codeGen' :: Exp -> AbstractProgram
 codeGen' = --fmap reverseInstructions -- TODO
-        (\(a,s) -> s <$ a)
-        . flip runState emptyAbstractProgram
-        . runExceptT
+        flip execState emptyAbstractProgram
         . (cata folder >=> const setMainLive)
   where
   folder :: ExpF (CG Result) -> CG Result
@@ -193,7 +186,7 @@ codeGen' = --fmap reverseInstructions -- TODO
           Var name -> do
             r <- newReg
             addReg name r
-          _ -> throwLVA $ "pattern mismatch at LVA bind codegen, expected Unit got " ++ show lpat
+          _ -> error $ "pattern mismatch at LVA bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of
           Unit  -> setBasicValLive r
           Lit{} -> setBasicValLive r
@@ -208,13 +201,13 @@ codeGen' = --fmap reverseInstructions -- TODO
                   addReg name argReg
                   nodePatternDataFlow argReg r irTag idx
                 Lit {} -> emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
-                _ -> throwLVA $ "illegal node pattern component " ++ show arg
+                _ -> error $ "illegal node pattern component " ++ show arg
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
               , instructions  = bindInstructions
               }
-          _ -> throwLVA $ "unsupported lpat " ++ show lpat
+          _ -> error $ "unsupported lpat " ++ show lpat
       rightExp
 
     ECaseF val alts_ -> do
@@ -321,7 +314,7 @@ codeGen' = --fmap reverseInstructions -- TODO
               , instructions = altInstructions
               }
 
-          _ -> throwLVA $ "LVA does not support the following case pattern: " ++ show cpat
+          _ -> error $ "LVA does not support the following case pattern: " ++ show cpat
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp
@@ -367,7 +360,7 @@ codeGen' = --fmap reverseInstructions -- TODO
     -- This means, if a tag is not already present on that location,
     -- we do not update it.
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> throwLVA "LVA codegen does not support indexed fetch"
+      Just {} -> error "LVA codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         tmp        <- newReg

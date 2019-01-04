@@ -106,8 +106,8 @@ codeGenVal = \case
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeCBy) t
   val -> error $ "unsupported value " ++ show val
 
-codeGen :: Exp -> Either String (AbstractProgram, CByMapping)
-codeGen e = Right . flip evalState emptyCGState $ para folder e >> mkCByProgramM where
+codeGen :: Exp -> (AbstractProgram, CByMapping)
+codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     ProgramF exts defs -> (sequence_ . fmap snd $ defs) >> pure Z

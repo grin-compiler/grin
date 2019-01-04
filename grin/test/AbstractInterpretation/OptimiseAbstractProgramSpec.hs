@@ -18,7 +18,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   describe "HPT calculation optimiser" $ do
-    let Right absProgram0 = fst <$> codeGen testProgram
+    let absProgram0 = fst $ codeGen testProgram
     it "does not change the number of instructions" $ do
       let absProgram1 = optimiseAbstractProgram absProgram0
       instructionCount absProgram0 `shouldBe` instructionCount absProgram1

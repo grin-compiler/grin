@@ -442,7 +442,7 @@ spec = do
 
 calcCByResult :: Exp -> CByResult
 calcCByResult prog
-  | Right cbyProgram <- codeGen prog
+  | cbyProgram <- codeGen prog
   , computer <- _airComp . evalAbstractProgram . fst $ cbyProgram
   , cbyResult <- toCByResult cbyProgram computer
   = cbyResult

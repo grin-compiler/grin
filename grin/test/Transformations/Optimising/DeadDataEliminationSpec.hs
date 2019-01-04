@@ -142,13 +142,13 @@ mkGraph = toProducerGraph
 
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
-  | Right lvaProgram <- LiveVariable.codeGen prog
+  | lvaProgram <- LiveVariable.codeGen prog
   , computer <- _airComp . evalAbstractProgram . fst $ lvaProgram
   = toLVAResult lvaProgram computer
 
 calcCByResult :: Exp -> CByResult
 calcCByResult prog
-  | Right cbyProgram <- CreatedBy.codeGen prog
+  | cbyProgram <- CreatedBy.codeGen prog
   , computer <- _airComp . evalAbstractProgram . fst $ cbyProgram
   , cbyResult <- toCByResult cbyProgram computer
   = cbyResult
