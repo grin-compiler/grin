@@ -8,7 +8,6 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
 import AbstractInterpretation.IR (AbstractProgram)

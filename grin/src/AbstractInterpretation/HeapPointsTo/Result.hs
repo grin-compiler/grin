@@ -11,7 +11,6 @@ import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 import Lens.Micro.Extra
 
 import Grin.Grin (Name, Tag)

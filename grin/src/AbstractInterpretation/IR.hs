@@ -19,7 +19,6 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 
 import qualified Grin.Grin as Grin
 import Grin.Grin (Name)

@@ -17,7 +17,6 @@ import Data.Foldable
 import Data.Functor.Foldable
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 
 import Grin.Syntax
 import Grin.TypeEnvDefs

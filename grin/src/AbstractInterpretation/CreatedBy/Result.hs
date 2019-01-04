@@ -7,7 +7,6 @@ import Data.Map    (Map)
 import qualified Data.Map as Map
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
 import AbstractInterpretation.HeapPointsTo.Result

@@ -11,7 +11,6 @@ import qualified Data.Map as Map
 import Data.Functor.Foldable as Foldable
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 
 import Grin.Grin
 import Grin.TypeEnvDefs
