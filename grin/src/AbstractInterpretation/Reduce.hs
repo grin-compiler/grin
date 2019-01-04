@@ -16,7 +16,6 @@ import Control.Monad.State.Strict
 import Lens.Micro.Platform
 
 import AbstractInterpretation.IR
-import AbstractInterpretation.CodeGen
 import AbstractInterpretation.Util
 
 newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
@@ -281,26 +280,20 @@ evalInstruction = \case
     forM_ addressSet $ \address -> when (address >= 0) $
       selectLoc address %= (conditionalMoveNodeSet srcVal predicate)
 
-
   Set {..} -> case constant of
     CSimpleType ty        -> selectReg dstReg.simpleType %= (mappend $ Set.singleton ty)
     CHeapLocation (Mem l) -> selectReg dstReg.simpleType %= (mappend $ Set.singleton $ fromIntegral l)
-    CNodeType tag arity   -> selectReg dstReg.nodeSet %=
-                                (mappend $ NodeSet . Map.singleton tag $ V.replicate arity mempty)
-    CNodeItem tag idx val -> selectReg dstReg.nodeSet.
-                                nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
+    CNodeType tag arity   -> selectReg dstReg.nodeSet %= (mappend $ NodeSet . Map.singleton tag $ V.replicate arity mempty)
+    CNodeItem tag idx val -> selectReg dstReg.nodeSet.nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-evalDataFlowInfoWith :: HasDataFlowInfo s => ComputerState -> s -> AbstractInterpretationResult
-evalDataFlowInfoWith comp (getDataFlowInfo -> AbstractProgram{..})
-  = converge ((==) `on` _airComp) step (AbsIntResult comp 0)
-  where nextComputer c = execState (mapM_ evalInstruction _absInstructions) c
-        step AbsIntResult{..} = AbsIntResult (nextComputer _airComp) (succ _airIter)
+continueAbstractProgramWith :: ComputerState -> AbstractProgram -> AbstractInterpretationResult
+continueAbstractProgramWith comp AbstractProgram{..} = converge ((==) `on` _airComp) step (AbsIntResult comp 0) where
+  nextComputer c = execState (mapM_ evalInstruction _absInstructions) c
+  step AbsIntResult{..} = AbsIntResult (nextComputer _airComp) (succ _airIter)
 
-evalDataFlowInfo :: HasDataFlowInfo s => s -> AbstractInterpretationResult
-evalDataFlowInfo dfi@(getDataFlowInfo -> AbstractProgram{..}) =
-  evalDataFlowInfoWith emptyComputer dfi
-  where
-    emptyComputer = ComputerState
-      { _memory   = V.replicate (fromIntegral _absMemoryCounter) mempty
-      , _register = V.replicate (fromIntegral _absRegisterCounter) mempty
-      }
+evalAbstractProgram :: AbstractProgram -> AbstractInterpretationResult
+evalAbstractProgram p@AbstractProgram{..} = continueAbstractProgramWith emptyComputer p where
+  emptyComputer = ComputerState
+    { _memory   = V.replicate (fromIntegral _absMemoryCounter) mempty
+    , _register = V.replicate (fromIntegral _absRegisterCounter) mempty
+    }

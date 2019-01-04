@@ -18,8 +18,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   describe "HPT calculation optimiser" $ do
-    let Right hptProgram0 = codeGen testProgram
-        absProgram0       = _absProg hptProgram0
+    let Right absProgram0 = fst <$> codeGen testProgram
     it "does not change the number of instructions" $ do
       let absProgram1 = optimiseAbstractProgram absProgram0
       instructionCount absProgram0 `shouldBe` instructionCount absProgram1
@@ -27,8 +26,8 @@ spec = do
     it "creates a code that runs no worse than the original" $ do
       let absProgram1 = optimiseAbstractProgram absProgram0
       let absProgram2 = optimiseAbstractProgram absProgram1
-          AbsIntResult comp0 iters0 = evalDataFlowInfo absProgram0
-          AbsIntResult comp2 iters2 = evalDataFlowInfo absProgram2
+          AbsIntResult comp0 iters0 = evalAbstractProgram absProgram0
+          AbsIntResult comp2 iters2 = evalAbstractProgram absProgram2
       comp2 `shouldBe` comp0
       (compare iters2 iters0) `shouldSatisfy` (`elem` [LT,EQ])
 

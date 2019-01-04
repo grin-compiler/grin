@@ -16,8 +16,8 @@ import Transformations.Names (ExpChanges(..))
 import Test.Util
 import AbstractInterpretation.LiveVariable.CodeGen as LiveVariable (codeGen)
 import AbstractInterpretation.LiveVariable.Result (LVAResult(..), toLVAResult)
-import AbstractInterpretation.Reduce (evalDataFlowInfo, _airComp)
-import AbstractInterpretation.CreatedBy.CodeGen as CreatedBy (codeGen)
+import AbstractInterpretation.Reduce (evalAbstractProgram, _airComp)
+import qualified AbstractInterpretation.CreatedBy.CodeGen as CreatedBy
 import AbstractInterpretation.CreatedBy.Result
 import AbstractInterpretation.CreatedBy.Readback (toCByResult)
 import AbstractInterpretation.CreatedBy.Util
@@ -143,12 +143,12 @@ mkGraph = toProducerGraph
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
   | Right lvaProgram <- LiveVariable.codeGen prog
-  , computer <- _airComp . evalDataFlowInfo $ lvaProgram
+  , computer <- _airComp . evalAbstractProgram . fst $ lvaProgram
   = toLVAResult lvaProgram computer
 
 calcCByResult :: Exp -> CByResult
 calcCByResult prog
   | Right cbyProgram <- CreatedBy.codeGen prog
-  , computer <- _airComp . evalDataFlowInfo $ cbyProgram
+  , computer <- _airComp . evalAbstractProgram . fst $ cbyProgram
   , cbyResult <- toCByResult cbyProgram computer
   = cbyResult

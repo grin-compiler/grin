@@ -6,14 +6,14 @@ import qualified Data.Bimap as Bimap
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Text.PrettyPrint.ANSI.Leijen
+import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import Grin.Pretty ()
 import Grin.Grin (Name, unpackName)
 import qualified Grin.Grin as Grin
 import AbstractInterpretation.IR
-import AbstractInterpretation.HeapPointsTo.Result (toSimpleType)
-import AbstractInterpretation.HeapPointsTo.Pretty ()
+--import AbstractInterpretation.HeapPointsTo.Result (toSimpleType)
+--import AbstractInterpretation.HeapPointsTo.Pretty ()
 
 data IRMap
   = IRMap
@@ -79,7 +79,7 @@ prettyName :: Name -> Doc
 prettyName = red . text . unpackName
 
 prettySimpleType :: Int32 -> Doc
-prettySimpleType = pretty . toSimpleType
+prettySimpleType = pretty . (fromIntegral :: Int32 -> Int){-. toSimpleType-} -- TODO: make this generic to work with the analysis domain
 
 prettyReg :: Maybe IRMap -> Reg -> Doc
 prettyReg mirm reg@(Reg a) = regName <> (green $ text "@" <> (integer $ fromIntegral a)) where
@@ -143,9 +143,9 @@ prettyInstruction mirm = \case
     ppS = prettySelector mirm
     arr = text "-->"
 
-prettyInstructions :: HasDataFlowInfo a => Maybe a -> [Instruction] -> Doc
-prettyInstructions mDfi = vsep . map (prettyInstruction mirm) where
-  mirm = fmap (toIRMap . getDataFlowInfo) mDfi
+prettyInstructions :: Maybe AbstractProgram -> [Instruction] -> Doc
+prettyInstructions mp = vsep . map (prettyInstruction mirm) where
+  mirm = toIRMap <$> mp
   toIRMap hpt = IRMap
     { irmRegisterMap  = Map.unionsWith mappend [Map.singleton reg (Set.singleton name) | (name,reg) <- Map.toList $ _absRegisterMap hpt]
     , irmTagMap       = _absTagMap hpt

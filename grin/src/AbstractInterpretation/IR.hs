@@ -139,7 +139,7 @@ data Constant
   deriving (Eq, Ord, Show)
 
 makeBaseFunctor ''Instruction
-
+{-
 class HasDataFlowInfo a where
   dataFlowInfo :: Lens' a AbstractProgram
 
@@ -151,7 +151,7 @@ class HasDataFlowInfo a where
 
 instance HasDataFlowInfo AbstractProgram where
   dataFlowInfo = id
-
+-}
 data AbstractProgram
   = AbstractProgram
   { _absMemoryCounter    :: Word32

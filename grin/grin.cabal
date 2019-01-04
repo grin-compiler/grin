@@ -21,19 +21,21 @@ library
     AbstractInterpretation.CreatedBy.Readback
     AbstractInterpretation.CreatedBy.Util
     AbstractInterpretation.CreatedBy.CodeGen
+    AbstractInterpretation.CreatedBy.CodeGenBase
     AbstractInterpretation.CreatedBy.Pretty
     AbstractInterpretation.HeapPointsTo.CodeGen
+    AbstractInterpretation.HeapPointsTo.CodeGenBase
     AbstractInterpretation.HeapPointsTo.Pretty
     AbstractInterpretation.HeapPointsTo.Result
     AbstractInterpretation.Sharing.CodeGen
     AbstractInterpretation.Sharing.Result
     AbstractInterpretation.Sharing.Pretty
     AbstractInterpretation.LiveVariable.CodeGen
+    AbstractInterpretation.LiveVariable.CodeGenBase
     AbstractInterpretation.LiveVariable.Result
     AbstractInterpretation.LiveVariable.Pretty
     AbstractInterpretation.IR
     AbstractInterpretation.PrettyIR
-    AbstractInterpretation.CodeGen
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util
     AbstractInterpretation.OptimiseAbstractProgram
@@ -210,49 +212,49 @@ test-suite grin-test
                      , directory
 
   other-modules:
-                       Transformations.Simplifying.RegisterIntroductionSpec
-                     , Transformations.Simplifying.CaseSimplificationSpec
-                     , Transformations.Simplifying.SplitFetchSpec
-                     , Transformations.Simplifying.RightHoistFetchSpec
-                     , Transformations.Simplifying.VectorisationSpec
-                     , Transformations.Simplifying.ProducerNameIntroductionSpec
-                     , Transformations.Optimising.CaseCopyPropagationSpec
-                     , Transformations.Optimising.CopyPropagationSpec
-                     , Transformations.Optimising.ConstantFoldingSpec
-                     , Transformations.Optimising.ConstantPropagationSpec
-                     , Transformations.Optimising.EvaluatedCaseEliminationSpec
-                     , Transformations.Optimising.TrivialCaseEliminationSpec
-                     , Transformations.Optimising.SparseCaseOptimisationSpec
-                     , Transformations.Optimising.UpdateEliminationSpec
-                     , Transformations.Optimising.CSESpec
-                     , Transformations.Optimising.GeneralizedUnboxingSpec
-                     , Transformations.Optimising.ArityRaisingSpec
-                     , Transformations.Optimising.SimpleDeadFunctionEliminationSpec
-                     , Transformations.Optimising.SimpleDeadParameterEliminationSpec
-                     , Transformations.Optimising.SimpleDeadVariableEliminationSpec
-                     , Transformations.Optimising.InliningSpec
-                     , Transformations.Optimising.CaseHoistingSpec
-                     , Transformations.Optimising.DeadDataEliminationSpec
-                     , Transformations.Optimising.DeadFunctionEliminationSpec
-                     , Transformations.Optimising.DeadParameterEliminationSpec
-                     , Transformations.Optimising.DeadVariableEliminationSpec
-                     , Transformations.StaticSingleAssignmentSpec
-                     , Transformations.BindNormalisationSpec
-                     , Transformations.ConfluenceSpec
-                     , Transformations.MangleNamesSpec
-                     , Samples.SumListSpec
-                     , Samples.ArityFullRemoveSpec
-                     , LintSpec
-                     , TestSpec
-                     , PipelineSpec
-                     , ParserSpec
-                     , AbstractInterpretation.HptSpec
-                     , AbstractInterpretation.LiveVariableSpec
-                     , AbstractInterpretation.IRSpec
-                     , AbstractInterpretation.OptimiseAbstractProgramSpec
-                     , AbstractInterpretation.SharingSpec
-                     , AbstractInterpretation.CreatedBySpec
-                     , Test.Hspec.PipelineExample
+                     Transformations.Simplifying.RegisterIntroductionSpec
+                     Transformations.Simplifying.CaseSimplificationSpec
+                     Transformations.Simplifying.SplitFetchSpec
+                     Transformations.Simplifying.RightHoistFetchSpec
+                     Transformations.Simplifying.VectorisationSpec
+                     Transformations.Simplifying.ProducerNameIntroductionSpec
+                     Transformations.Optimising.CaseCopyPropagationSpec
+                     Transformations.Optimising.CopyPropagationSpec
+                     Transformations.Optimising.ConstantFoldingSpec
+                     Transformations.Optimising.ConstantPropagationSpec
+                     Transformations.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.Optimising.TrivialCaseEliminationSpec
+                     Transformations.Optimising.SparseCaseOptimisationSpec
+                     Transformations.Optimising.UpdateEliminationSpec
+                     Transformations.Optimising.CSESpec
+                     Transformations.Optimising.GeneralizedUnboxingSpec
+                     Transformations.Optimising.ArityRaisingSpec
+                     Transformations.Optimising.SimpleDeadFunctionEliminationSpec
+                     Transformations.Optimising.SimpleDeadParameterEliminationSpec
+                     Transformations.Optimising.SimpleDeadVariableEliminationSpec
+                     Transformations.Optimising.InliningSpec
+                     Transformations.Optimising.CaseHoistingSpec
+                     Transformations.Optimising.DeadDataEliminationSpec
+                     Transformations.Optimising.DeadFunctionEliminationSpec
+                     Transformations.Optimising.DeadParameterEliminationSpec
+                     Transformations.Optimising.DeadVariableEliminationSpec
+                     Transformations.StaticSingleAssignmentSpec
+                     Transformations.BindNormalisationSpec
+                     Transformations.ConfluenceSpec
+                     Transformations.MangleNamesSpec
+                     Samples.SumListSpec
+                     Samples.ArityFullRemoveSpec
+                     LintSpec
+                     TestSpec
+                     PipelineSpec
+                     ParserSpec
+                     AbstractInterpretation.HptSpec
+                     AbstractInterpretation.LiveVariableSpec
+                     AbstractInterpretation.IRSpec
+                     AbstractInterpretation.OptimiseAbstractProgramSpec
+                     AbstractInterpretation.SharingSpec
+                     AbstractInterpretation.CreatedBySpec
+                     Test.Hspec.PipelineExample
   default-language:    Haskell2010
 
 benchmark grin-benchmark

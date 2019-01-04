@@ -13,7 +13,7 @@ import Test.Hspec
 import Test.Assertions
 import Test.Util
 
-import AbstractInterpretation.Reduce (AbstractInterpretationResult(..),evalDataFlowInfo)
+import AbstractInterpretation.Reduce (AbstractInterpretationResult(..),evalAbstractProgram)
 import AbstractInterpretation.LiveVariable.CodeGen hiding (live)
 import AbstractInterpretation.LiveVariable.Result
 
@@ -24,7 +24,7 @@ runTests = hspec spec
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
   | Right lvaProgram <- codeGen prog
-  , computer <- _airComp . evalDataFlowInfo $ lvaProgram
+  , computer <- _airComp . evalAbstractProgram . fst $ lvaProgram
   = toLVAResult lvaProgram computer
 
 spec :: Spec

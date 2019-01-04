@@ -1,5 +1,5 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes #-}
-module AbstractInterpretation.CodeGen where
+{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes, TemplateHaskell #-}
+module AbstractInterpretation.HeapPointsTo.CodeGenBase where
 
 import Data.Int
 import Data.Word
@@ -13,83 +13,103 @@ import qualified Data.Set as Set
 import qualified Data.Vector as Vec
 
 import Control.Monad.State
-import Control.Monad.Trans.Except
 
-import Grin.Grin
+import Grin.Grin (Name, SimpleType(..), CPat(..), unpackName, Tag(..))
 import Grin.TypeEnvDefs
+import AbstractInterpretation.IR (Instruction(..), Reg(..))
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (AbstractProgram(..), HasDataFlowInfo(..))
 
-type CG s a = ExceptT String (State s) a
+import Lens.Micro.Platform
 
-data Result s
+data CGState
+  = CGState
+  { _sMemoryCounter   :: Word32
+  , _sRegisterCounter :: Word32
+  , _sInstructions    :: [Instruction]
+
+  -- mapping
+
+  , _sRegisterMap     :: Map.Map Name Reg
+  , _sFunctionArgMap  :: Map.Map Name (Reg, [Reg])
+  , _sTagMap          :: Bimap.Bimap Tag IR.Tag
+  }
+  deriving (Show)
+
+concat <$> mapM makeLenses [''CGState]
+
+emptyCGState :: CGState
+emptyCGState = CGState
+  { _sMemoryCounter   = 0
+  , _sRegisterCounter = 0
+  , _sInstructions    = []
+
+  -- mapping
+
+  , _sRegisterMap     = mempty
+  , _sFunctionArgMap  = mempty
+  , _sTagMap          = Bimap.empty
+  }
+
+type CG = State CGState
+
+data Result
   = R IR.Reg
   | Z
-  | A CPat (CG s (Result s))
+  | A CPat (CG Result)
 
-emit :: HasDataFlowInfo s => IR.Instruction -> CG s ()
-emit inst = modify' $ modifyInfo $ \s@AbstractProgram{..} -> s {_absInstructions = inst : _absInstructions}
-
-getsDfi :: (HasDataFlowInfo s, MonadState s m) => (AbstractProgram -> a) -> m a
-getsDfi f = gets (f . getDataFlowInfo)
-
-stateDfi :: (HasDataFlowInfo s, MonadState s m) =>
-            (AbstractProgram -> (a, AbstractProgram)) -> m a
-stateDfi f = do
-  (res, dfi) <- getsDfi f
-  modify $ modifyInfo $ const dfi
-  return res
+emit :: IR.Instruction -> CG ()
+emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
 
 -- creates regsiters for function arguments and result
-getOrAddFunRegs :: HasDataFlowInfo s => Name -> Int -> CG s (IR.Reg, [IR.Reg])
+getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])
 getOrAddFunRegs name arity = do
-  funMap <- getsDfi _absFunctionArgMap
+  funMap <- gets _sFunctionArgMap
   case Map.lookup name funMap of
     Just x  -> pure x
     Nothing -> do
       resReg <- newReg
       argRegs <- replicateM arity newReg
       let funRegs = (resReg, argRegs)
-      modify' $ modifyInfo $ \s@AbstractProgram{..} -> s {_absFunctionArgMap = Map.insert name funRegs _absFunctionArgMap}
+      modify' $ \s@CGState{..} -> s {_sFunctionArgMap = Map.insert name funRegs _sFunctionArgMap}
       pure funRegs
 
-newReg :: HasDataFlowInfo s => CG s IR.Reg
-newReg = stateDfi $ \s@AbstractProgram{..} -> (IR.Reg _absRegisterCounter, s {_absRegisterCounter = succ _absRegisterCounter})
+newReg :: CG IR.Reg
+newReg = state $ \s@CGState{..} -> (IR.Reg _sRegisterCounter, s {_sRegisterCounter = succ _sRegisterCounter})
 
-newMem :: HasDataFlowInfo s => CG s IR.Mem
-newMem = stateDfi $ \s@AbstractProgram{..} -> (IR.Mem _absMemoryCounter, s {_absMemoryCounter = succ _absMemoryCounter})
+newMem :: CG IR.Mem
+newMem = state $ \s@CGState{..} -> (IR.Mem _sMemoryCounter, s {_sMemoryCounter = succ _sMemoryCounter})
 
-addReg :: HasDataFlowInfo s => Name -> IR.Reg -> CG s ()
-addReg name reg = modify' $ modifyInfo $ \s@AbstractProgram{..} -> s {_absRegisterMap = Map.insert name reg _absRegisterMap}
+addReg :: Name -> IR.Reg -> CG ()
+addReg name reg = modify' $ \s@CGState{..} -> s {_sRegisterMap = Map.insert name reg _sRegisterMap}
 
-getReg :: HasDataFlowInfo s => Name -> CG s IR.Reg
+getReg :: Name -> CG IR.Reg
 getReg name = do
-  regMap <- getsDfi _absRegisterMap
+  regMap <- gets _sRegisterMap
   case Map.lookup name regMap of
-    Nothing   -> throwE $ "unknown variable " ++ unpackName name
+    Nothing   -> error $ "unknown variable " ++ unpackName name
     Just reg  -> pure reg
 
-getTag :: HasDataFlowInfo s => Tag -> CG s IR.Tag
+getTag :: Tag -> CG IR.Tag
 getTag tag = do
-  tagMap <- getsDfi _absTagMap
+  tagMap <- gets _sTagMap
   case Bimap.lookup tag tagMap of
     Just t  -> pure t
     Nothing -> do
       let t = IR.Tag . fromIntegral $ Bimap.size tagMap
-      modify' $ modifyInfo $ \s -> s {_absTagMap = Bimap.insert tag t tagMap}
+      modify' $ \s -> s {_sTagMap = Bimap.insert tag t tagMap}
       pure t
 
-codeGenBlock :: HasDataFlowInfo s => CG s a -> CG s (a,[IR.Instruction])
+codeGenBlock :: CG a -> CG (a,[IR.Instruction])
 codeGenBlock genM = do
-  instructions <- stateDfi $ \s@AbstractProgram{..} -> (_absInstructions, s {_absInstructions = []})
+  instructions <- state $ \s@CGState{..} -> (_sInstructions, s {_sInstructions = []})
   ret <- genM
-  blockInstructions <- stateDfi $ \s@AbstractProgram{..} -> (reverse _absInstructions, s {_absInstructions = instructions})
+  blockInstructions <- state $ \s@CGState{..} -> (reverse _sInstructions, s {_sInstructions = instructions})
   pure (ret, blockInstructions)
 
-codeGenBlock_ :: HasDataFlowInfo s => CG s a -> CG s [IR.Instruction]
+codeGenBlock_ :: CG a -> CG [IR.Instruction]
 codeGenBlock_ = fmap snd . codeGenBlock
 
-codeGenSimpleType :: HasDataFlowInfo s => SimpleType -> CG s IR.Reg
+codeGenSimpleType :: SimpleType -> CG IR.Reg
 codeGenSimpleType = \case
   T_Unit                -> newRegWithSimpleType (-1)
   T_Int64               -> newRegWithSimpleType (-2)
@@ -107,11 +127,11 @@ codeGenSimpleType = \case
   t -> newReg
   where
   -- TODO: rename simple type to something more generic,
-  newRegWithSimpleType :: HasDataFlowInfo s => IR.SimpleType -> CG s IR.Reg
+  newRegWithSimpleType :: IR.SimpleType -> CG IR.Reg
   newRegWithSimpleType irTy = newReg >>= extendSimpleType irTy
 
   -- TODO: rename simple type to something more generic,
-  extendSimpleType :: HasDataFlowInfo s => IR.SimpleType -> IR.Reg -> CG s IR.Reg
+  extendSimpleType :: IR.SimpleType -> IR.Reg -> CG IR.Reg
   extendSimpleType irTy r = do
     emit IR.Set
       { dstReg    = r
@@ -119,9 +139,7 @@ codeGenSimpleType = \case
       }
     pure r
 
-codeGenNodeSetWith :: HasDataFlowInfo s =>
-                      (Tag -> Vector SimpleType -> CG s IR.Reg) ->
-                      NodeSet -> CG s IR.Reg
+codeGenNodeSetWith :: (Tag -> Vector SimpleType -> CG IR.Reg) -> NodeSet -> CG IR.Reg
 codeGenNodeSetWith cgNodeTy ns = do
   let (tags, argss) = unzip . Map.toList $ ns
   dst <- newReg
@@ -131,8 +149,7 @@ codeGenNodeSetWith cgNodeTy ns = do
 
 -- Generate a node type from type information,
 -- but preserve the first field for tag information.
-codeGenTaggedNodeType :: HasDataFlowInfo s =>
-                         Tag -> Vector SimpleType -> CG s IR.Reg
+codeGenTaggedNodeType :: Tag -> Vector SimpleType -> CG IR.Reg -- delete
 codeGenTaggedNodeType tag ts = do
   let ts' = Vec.toList ts
   r <- newReg
@@ -144,10 +161,7 @@ codeGenTaggedNodeType tag ts = do
   pure r
 
 -- FIXME: the following type signature is a bad oman ; it's not intuitive ; no-go ; refactor!
-codeGenType :: HasDataFlowInfo s =>
-               (SimpleType -> CG s IR.Reg) ->
-               (NodeSet -> CG s IR.Reg) ->
-               Type -> CG s IR.Reg
+codeGenType :: (SimpleType -> CG IR.Reg) -> (NodeSet -> CG IR.Reg) -> Type -> CG IR.Reg
 codeGenType cgSimpleTy cgNodeTy = \case
   T_SimpleType t -> cgSimpleTy t
   T_NodeSet   ns -> cgNodeTy ns
@@ -155,7 +169,7 @@ codeGenType cgSimpleTy cgNodeTy = \case
 isPointer :: IR.Predicate
 isPointer = IR.ValueIn (IR.Range 0 (maxBound :: Int32))
 
-isNotPointer :: IR.Predicate
+isNotPointer :: IR.Predicate -- delete
 isNotPointer = IR.ValueIn (IR.Range (minBound :: Int32) 0)
 
 -- For simple types, copies only pointer information

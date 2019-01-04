@@ -63,7 +63,7 @@ import AbstractInterpretation.HeapPointsTo.Pretty
 import AbstractInterpretation.LiveVariable.Pretty
 import AbstractInterpretation.Sharing.Pretty
 import AbstractInterpretation.Sharing.CodeGen
-import AbstractInterpretation.Reduce (ComputerState, AbstractInterpretationResult(..), evalDataFlowInfo)
+import AbstractInterpretation.Reduce (ComputerState, AbstractInterpretationResult(..), evalAbstractProgram)
 import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
@@ -248,13 +248,13 @@ data PState = PState
     { _psExp            :: Exp
     , _psTransStep      :: Int
     , _psSaveIdx        :: Int
-    , _psHPTProgram     :: Maybe HPT.HPTProgram
+    , _psHPTProgram     :: Maybe (AbstractProgram, HPTMapping)
     , _psHPTResult      :: Maybe HPT.HPTResult
-    , _psCByProgram     :: Maybe CBy.CByProgram
+    , _psCByProgram     :: Maybe (AbstractProgram, CByMapping)
     , _psCByResult      :: Maybe CBy.CByResult
-    , _psLVAProgram     :: Maybe LVA.LVAProgram
+    , _psLVAProgram     :: Maybe (AbstractProgram, LVAMapping)
     , _psLVAResult      :: Maybe LVA.LVAResult
-    , _psSharingProgram :: Maybe Sharing.SharingProgram
+    , _psSharingProgram :: Maybe (AbstractProgram, SharingMapping)
     , _psSharingResult  :: Maybe Sharing.SharingResult
     -- the type environment calculated by HPT
     , _psTypeEnv        :: Maybe TypeEnv
@@ -370,31 +370,37 @@ pipelineStep p = do
   start <- liftIO getCurrentTime
   case p of
     Optimize -> optimizeWithM [] defaultOptimizations []
+
     HPT step -> case step of
-      Compile -> compileAbstractProgram HPT.codeGen psHPTProgram
-      Optimise  -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
-      PrintProgram     -> printAbstractProgram psHPTProgram
-      RunPure   -> runHPTPure
-      PrintResult      -> printAnalysisResult psHPTResult
+      Compile       -> compileAbstractProgram HPT.codeGen psHPTProgram
+      Optimise      -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
+      PrintProgram  -> printAbstractProgram psHPTProgram
+      RunPure       -> runHPTPure
+      PrintResult   -> printAnalysisResult psHPTResult
+
     CBy step -> case step of
-      Compile -> compileAbstractProgram CBy.codeGen psCByProgram
-      Optimise  -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
-      PrintProgram     -> printAbstractProgram psCByProgram
-      RunPure   -> runCByPure
-      PrintResult      -> printAnalysisResult psCByResult
+      Compile       -> compileAbstractProgram CBy.codeGen psCByProgram
+      Optimise      -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
+      PrintProgram  -> printAbstractProgram psCByProgram
+      RunPure       -> runCByPure
+      PrintResult   -> printAnalysisResult psCByResult
+
     LVA step -> case step of
-      Compile -> compileAbstractProgram LVA.codeGen psLVAProgram
-      Optimise  -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
-      PrintProgram     -> printAbstractProgram psLVAProgram
-      RunPure   -> runLVAPure
-      PrintResult      -> printAnalysisResult psLVAResult
+      Compile       -> compileAbstractProgram LVA.codeGen psLVAProgram
+      Optimise      -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
+      PrintProgram  -> printAbstractProgram psLVAProgram
+      RunPure       -> runLVAPure
+      PrintResult   -> printAnalysisResult psLVAResult
+
     RunCByWithLVA -> runCByWithLVAPure
+
     Sharing step -> case step of
-      Compile -> compileAbstractProgram Sharing.codeGen psSharingProgram
-      Optimise  -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
-      PrintProgram     -> printAbstractProgram psSharingProgram
-      RunPure   -> runSharingPure
-      PrintResult      -> printAnalysisResult psSharingResult
+      Compile       -> compileAbstractProgram Sharing.codeGen psSharingProgram
+      Optimise      -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
+      PrintProgram  -> printAbstractProgram psSharingProgram
+      RunPure       -> runSharingPure
+      PrintResult   -> printAnalysisResult psSharingResult
+
     Eff eff -> case eff of
       CalcEffectMap   -> calcEffectMap
       PrintEffectMap  -> printEffectMap
@@ -443,11 +449,11 @@ printEffectMap = do
   effs <- fromMaybe (traceShow "No effect map is available" mempty) <$> use psEffectMap
   pipelineLog $ show $ pretty effs
 
-optimiseAbsProgWith :: IR.HasDataFlowInfo a => Lens' PState (Maybe a) -> String -> PipelineM ()
+optimiseAbsProgWith :: Lens' PState (Maybe (IR.AbstractProgram, a)) -> String -> PipelineM ()
 optimiseAbsProgWith getProg err = do
   mProg <- use getProg
   case mProg of
-    Just prog -> getProg._Just %= IR.modifyInfo optimiseAbstractProgram
+    Just prog -> getProg . _Just . _1 %= optimiseAbstractProgram
     Nothing   -> pipelineLog err
 
 compileAbstractProgram :: (Exp -> Either String prog) -> (Lens' PState (Maybe prog)) -> PipelineM ()
@@ -467,10 +473,10 @@ printAbsProg a = do
   pipelineLog $ printf "register count %d" $ IR._absRegisterCounter a
   pipelineLog $ printf "variable count %d" $ Map.size $ IR._absRegisterMap a
 
-printAbstractProgram :: IR.HasDataFlowInfo a => (Lens' PState (Maybe a)) -> PipelineM ()
+printAbstractProgram :: (Lens' PState (Maybe (IR.AbstractProgram, a))) -> PipelineM ()
 printAbstractProgram accessProg = do
   progM <- use accessProg
-  mapM_ (printAbsProg . IR.getDataFlowInfo) progM
+  mapM_ (printAbsProg . fst) progM
 
 printAnalysisResult :: Pretty res => (Lens' PState (Maybe res)) -> PipelineM ()
 printAnalysisResult accessRes = use accessRes >>= \case
@@ -482,8 +488,8 @@ runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
   Just hptProgram -> do
-    let AbsIntResult{..} = evalDataFlowInfo hptProgram
-        result = HPT.toHPTResult hptProgram _airComp
+    let AbsIntResult{..} = evalAbstractProgram $ fst hptProgram
+        result = HPT.toHPTResult (fst hptProgram) _airComp
     pipelineLogIterations _airIter
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
@@ -494,11 +500,11 @@ runHPTPure = use psHPTProgram >>= \case
         psTypeEnv .= Nothing
 
 
-runCByPureWith :: (CBy.CByProgram -> ComputerState -> CBy.CByResult) -> PipelineM ()
+runCByPureWith :: ((IR.AbstractProgram, CBy.CByMapping) -> ComputerState -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
   Just cbyProgram -> do
-    let AbsIntResult{..} = evalDataFlowInfo cbyProgram
+    let AbsIntResult{..} = evalAbstractProgram $ fst cbyProgram
         result = toCByResult cbyProgram _airComp
     pipelineLogIterations _airIter
     psCByResult .= Just result
@@ -524,17 +530,17 @@ runCByWithLVAPure = do
 runLVAPure :: PipelineM ()
 runLVAPure = use psLVAProgram >>= \case
   Nothing -> psLVAResult .= Nothing
-  Just lvaProgram -> do
-    let AbsIntResult{..} = evalDataFlowInfo lvaProgram
-        result = LVA.toLVAResult lvaProgram _airComp
+  Just (lvaProgram, lvaMapping) -> do
+    let AbsIntResult{..} = evalAbstractProgram $ lvaProgram
+        result = LVA.toLVAResult (lvaProgram, lvaMapping) _airComp
     pipelineLogIterations _airIter
     psLVAResult .= Just result
 
-runSharingPureWith :: (Sharing.SharingProgram -> ComputerState -> Sharing.SharingResult) -> PipelineM ()
+runSharingPureWith :: ((IR.AbstractProgram, Sharing.SharingMapping) -> ComputerState -> Sharing.SharingResult) -> PipelineM ()
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
   Nothing -> psSharingResult .= Nothing
   Just shProgram -> do
-    let AbsIntResult{..} = evalDataFlowInfo shProgram
+    let AbsIntResult{..} = evalAbstractProgram $ fst shProgram
         result = toSharingResult shProgram _airComp
     pipelineLogIterations _airIter
     psSharingResult .= Just result

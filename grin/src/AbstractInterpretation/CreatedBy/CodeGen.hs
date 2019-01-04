@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings, RecordWildCards #-}
 module AbstractInterpretation.CreatedBy.CodeGen where
 
 import Control.Monad.Trans.Except
@@ -18,57 +18,56 @@ import Lens.Micro.Internal
 
 import Grin.Grin
 import Grin.TypeEnvDefs
-import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataFlowInfo(..))
-import AbstractInterpretation.HeapPointsTo.CodeGen (HPTProgram, emptyHPTProgram, litToSimpleType, unitType, codeGenPrimOp) -- FIXME: why? remove, refactor
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram)
+import AbstractInterpretation.CreatedBy.CodeGenBase
+import AbstractInterpretation.HeapPointsTo.CodeGen (litToSimpleType, unitType, codeGenPrimOp) -- FIXME: why? remove, refactor
+import AbstractInterpretation.HeapPointsTo.Result (undefinedProducer) -- FIXME: why? remove, refactor
 
-
--- HPT program with producer information about nodes
--- for each node, it contains the node's possible producers in the first field
-newtype HPTWProducerInfo = HPTProducerInfo { _hptProg :: HPTProgram } deriving (Show)
-
-data CByProgram =
-  CByProgram
+data CByMapping
+  = CByMapping
   { _producerMap  :: Map.Map IR.Reg Name
-  , _hptProgWProd :: HPTWProducerInfo
   } deriving (Show)
-concat <$> mapM makeLenses [''CByProgram, ''HPTWProducerInfo]
 
-instance HasDataFlowInfo CByProgram where
-  dataFlowInfo = hptProgWProd.hptProg.dataFlowInfo
+concat <$> mapM makeLenses [''CByMapping]
 
-emptyCByProgram :: CByProgram
-emptyCByProgram = CByProgram Map.empty (HPTProducerInfo emptyHPTProgram)
+-- HPT program with producer information about nodes ; for each node, it contains the node's possible producers in the first field
+mkCByProgramM :: CG (AbstractProgram, CByMapping)
+mkCByProgramM = do
+  CGState{..} <- get
+  let prg = AbstractProgram
+        { _absMemoryCounter   = _sMemoryCounter
+        , _absRegisterCounter = _sRegisterCounter
+        , _absRegisterMap     = _sRegisterMap
+        , _absInstructions    = _sInstructions
+        , _absFunctionArgMap  = _sFunctionArgMap
+        , _absTagMap          = _sTagMap
+        }
+      mapping = CByMapping
+        { _producerMap  = _sProducerMap
+        }
+  pure (prg, mapping)
 
-type ResultCBy = Result CByProgram
 type Producer = IR.Int32
 
-throwCBy :: (Monad m) => String -> ExceptT String m a
-throwCBy s = throwE $ "CBy: " ++ s
-
-addProducer :: IR.Reg -> Name -> CG CByProgram ()
-addProducer r v = producerMap %= Map.insert r v
+addProducer :: IR.Reg -> Name -> CG ()
+addProducer r v = sProducerMap %= Map.insert r v
 
 registerToProducer :: IR.Reg -> Producer
 registerToProducer (IR.Reg r) = fromIntegral r
-
-undefinedProducer :: Producer
-undefinedProducer = -1723
 
 undefinedProducerName :: Name
 undefinedProducerName = "#undefined"
 
 
-codeGenNodeTypeCBy :: HasDataFlowInfo s =>
-                      Tag -> Vector SimpleType -> CG s IR.Reg
+codeGenNodeTypeCBy :: Tag -> Vector SimpleType -> CG IR.Reg
 codeGenNodeTypeCBy tag ts = do
   irTag <- getTag tag
   r <- codeGenTaggedNodeType tag ts
   emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag 0 undefinedProducer}
   pure r
 
-codeGenVal :: Val -> CG CByProgram IR.Reg
+codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
@@ -91,7 +90,7 @@ codeGenVal = \case
           , dstSelector = IR.NodeItem irTag idx
           , dstReg      = r
           }
-      _ -> throwCBy $ "illegal node item value " ++ show val
+      _ -> error $ "illegal node item value " ++ show val
     pure r
   Unit -> do
     r <- newReg
@@ -106,11 +105,11 @@ codeGenVal = \case
     pure r
   Var name -> getReg name
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeCBy) t
-  val -> throwCBy $ "unsupported value " ++ show val
+  val -> error $ "unsupported value " ++ show val
 
-codeGen :: Exp -> Either String CByProgram
-codeGen = (\(a,s) -> s <$ a) . flip runState emptyCByProgram . runExceptT . para folder where
-  folder :: ExpF (Exp, CG CByProgram ResultCBy) -> CG CByProgram ResultCBy
+codeGen :: Exp -> Either String (AbstractProgram, CByMapping)
+codeGen e = Right . flip evalState emptyCGState $ para folder e >> mkCByProgramM where
+  folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     ProgramF exts defs -> (sequence_ . fmap snd $ defs) >> pure Z
 
@@ -140,7 +139,7 @@ codeGen = (\(a,s) -> s <$ a) . flip runState emptyCByProgram . runExceptT . para
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
             addReg name r
-          _ -> throwCBy $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show lpat
+          _ -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
           Lit{} -> pure () -- TODO: is this ok? or error?
@@ -157,13 +156,13 @@ codeGen = (\(a,s) -> s <$ a) . flip runState emptyCByProgram . runExceptT . para
                                   }
                      ]
               Lit {} -> pure []
-              _ -> throwCBy $ "illegal node pattern component " ++ show arg
+              _ -> error $ "illegal node pattern component " ++ show arg
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
               , instructions  = concat bindInstructions
               }
-          _ -> throwCBy $ "unsupported lpat " ++ show lpat
+          _ -> error $ "unsupported lpat " ++ show lpat
       rightExp
 
     ECaseF val alts_ -> do
@@ -237,7 +236,7 @@ codeGen = (\(a,s) -> s <$ a) . flip runState emptyCByProgram . runExceptT . para
                   }
             emit IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
-          _ -> throwCBy $ "CBy does not support the following case pattern: " ++ show cpat
+          _ -> error $ "CBy does not support the following case pattern: " ++ show cpat
 
       -- restore scrutinee register mapping
       maybe (pure ()) (uncurry addReg) scrutRegMapping
@@ -251,7 +250,7 @@ codeGen = (\(a,s) -> s <$ a) . flip runState emptyCByProgram . runExceptT . para
       valRegs <- mapM codeGenVal args
       zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
       -- HINT: handle primop here because it does not have definition
-      when (isPrimName name) $ codeGenPrimOp name funResultReg funArgRegs
+      when (isPrimName name) $ mapM_ emit $ codeGenPrimOp name funResultReg funArgRegs
       pure $ R funResultReg
 
     SReturnF val -> R <$> codeGenVal val
@@ -265,7 +264,7 @@ codeGen = (\(a,s) -> s <$ a) . flip runState emptyCByProgram . runExceptT . para
       pure $ R r
 
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> throwCBy "CBy codegen does not support indexed fetch"
+      Just {} -> error "CBy codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         r <- newReg

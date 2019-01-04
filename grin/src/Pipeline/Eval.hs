@@ -14,8 +14,7 @@ import qualified Reducer.LLVM.JIT as LLVM
 import qualified Reducer.LLVM.CodeGen as LLVM
 import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
 import qualified AbstractInterpretation.HeapPointsTo.Result as HPT
-import AbstractInterpretation.Reduce (AbstractInterpretationResult(..), evalDataFlowInfo)
-import AbstractInterpretation.IR (HasDataFlowInfo(..))
+import AbstractInterpretation.Reduce (AbstractInterpretationResult(..), evalAbstractProgram)
 
 
 
@@ -37,8 +36,8 @@ eval' reducer fname = do
         IOReducer   -> Reducer.IO.reduceFun program "grinMain"
         LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
           typeEnv     = either error id $ typeEnvFromHPTResult =<< hptResult
-          hptResult   = HPT.toHPTResult <$> hptProgram <*> ((_airComp . evalDataFlowInfo . getDataFlowInfo) <$> hptProgram)
-          hptProgram  = HPT.codeGen program
+          hptResult   = HPT.toHPTResult <$> hptProgram <*> ((_airComp . evalAbstractProgram) <$> hptProgram)
+          hptProgram  = fst <$> HPT.codeGen program
 
 evalProgram :: Reducer -> Program -> IO RTVal
 evalProgram reducer program =

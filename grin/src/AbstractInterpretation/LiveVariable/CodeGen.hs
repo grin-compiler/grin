@@ -17,9 +17,9 @@ import Grin.Grin
 import Grin.TypeEnvDefs
 import Transformations.Util
 import AbstractInterpretation.Util
-import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataFlowInfo(..))
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram)
+import AbstractInterpretation.LiveVariable.CodeGenBase
 
 -- NOTE: For a live variable, we could store its type information.
 
@@ -29,25 +29,17 @@ import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), HasDataF
 -- By default, every variable is dead.
 -- The data flows in two directions: the liveness information flows backwards,
 -- the structural information flows forward.
-newtype LVAProgram = LVAProgram { _absProg :: AbstractProgram } deriving (Show)
-concat <$> mapM makeLenses [''LVAProgram]
+type LVAMapping = ()
 
-instance HasDataFlowInfo LVAProgram where
-  dataFlowInfo = absProg
-
-emptyLVAProgram :: LVAProgram
-emptyLVAProgram = LVAProgram IR.emptyAbstractProgram
-
-type ResultLVA = Result LVAProgram
 type LivenessId = Int32
 
 throwLVA :: (Monad m) => String -> ExceptT String m a
 throwLVA s = throwE $ "LVA: " ++ s
 
-doNothing :: HasDataFlowInfo s => CG s ()
+doNothing :: CG ()
 doNothing = pure ()
 
-emptyReg :: HasDataFlowInfo s => CG s IR.Reg
+emptyReg :: CG IR.Reg
 emptyReg = newReg
 
 -- Tests whether the given register is live.
@@ -60,10 +52,10 @@ live = -1
 setBasicValLiveInst :: IR.Reg -> IR.Instruction
 setBasicValLiveInst r = IR.Set { dstReg = r, constant = IR.CSimpleType live }
 
-setBasicValLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
+setBasicValLive :: IR.Reg -> CG ()
 setBasicValLive = emit . setBasicValLiveInst
 
-setTagLive :: IR.Tag -> IR.Reg -> CG LVAProgram ()
+setTagLive :: IR.Tag -> IR.Reg -> CG ()
 setTagLive tag reg = do
   tmp <- newReg
   setBasicValLive tmp
@@ -81,12 +73,12 @@ setNodeTypeInfo r t n = IR.Set { dstReg = r, constant = IR.CNodeType t n }
 grinMain :: Name
 grinMain = "grinMain"
 
-setMainLive :: HasDataFlowInfo s => CG s ()
+setMainLive :: CG ()
 setMainLive = do
   (mainRetReg, _) <- getOrAddFunRegs grinMain 0
   setLive mainRetReg
 
-setLive :: HasDataFlowInfo s => IR.Reg -> CG s ()
+setLive :: IR.Reg -> CG ()
 setLive r = do
   setBasicValLive r
   emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
@@ -96,7 +88,7 @@ setLive r = do
      (CNode argReg) -> ...
    (CNode argReg) <- pure nodeReg
 -}
-nodePatternDataFlow :: IR.Reg -> IR.Reg -> IR.Tag -> Int -> CG LVAProgram ()
+nodePatternDataFlow :: IR.Reg -> IR.Reg -> IR.Tag -> Int -> CG ()
 nodePatternDataFlow argReg nodeReg irTag idx = do
   tmp    <- newReg
 
@@ -114,7 +106,7 @@ nodePatternDataFlow argReg nodeReg irTag idx = do
 
   emit $ copyStructureWithPtrInfo tmp argReg
 
-codeGenVal :: Val -> CG LVAProgram IR.Reg
+codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
@@ -167,14 +159,19 @@ codeGenVal = \case
   val -> throwLVA $ "unsupported value " ++ show val
 
 
-codeGen :: Exp -> Either String LVAProgram
-codeGen = fmap reverseProgram
-        . (\(a,s) -> s <$ a)
-        . flip runState emptyLVAProgram
+codeGen :: Exp -> Either String (AbstractProgram, LVAMapping)
+codeGen e = do
+  prg <- codeGen' e
+  pure (prg, ())
+
+codeGen' :: Exp -> Either String AbstractProgram
+codeGen' = --fmap reverseInstructions -- TODO
+        (\(a,s) -> s <$ a)
+        . flip runState emptyAbstractProgram
         . runExceptT
         . (cata folder >=> const setMainLive)
   where
-  folder :: ExpF (CG LVAProgram ResultLVA) -> CG LVAProgram ResultLVA
+  folder :: ExpF (CG Result) -> CG Result
   folder = \case
     ProgramF exts defs -> sequence_ defs >> pure Z
 
@@ -410,21 +407,20 @@ codeGen = fmap reverseProgram
 
     SBlockF exp -> exp
 
-codeGenPrimOp :: HasDataFlowInfo s => Name -> IR.Reg -> [IR.Reg] -> CG s ()
+codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> CG ()
 codeGenPrimOp name funResultReg funArgRegs
   | name == "_prim_int_print" = mapM_ setBasicValLive funArgRegs
   | otherwise = do
     allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive funArgRegs
     emit $ funResultReg `isLiveThen` allArgsLive
 
-codeGenAlt :: HasDataFlowInfo s =>
-              (Maybe Name, IR.Reg) ->
-              (IR.Reg -> Name -> CG s IR.Reg) ->
-              (IR.Reg -> CG s ()) ->
-              CG s (Result s) ->
-              (Result s -> CG s ()) ->
-              (IR.Reg -> Name -> CG s ()) ->
-              CG s [IR.Instruction]
+codeGenAlt :: (Maybe Name, IR.Reg) ->
+              (IR.Reg -> Name -> CG IR.Reg) ->
+              (IR.Reg -> CG ()) ->
+              CG Result ->
+              (Result -> CG ()) ->
+              (IR.Reg -> Name -> CG ()) ->
+              CG [IR.Instruction]
 codeGenAlt (mName, reg) restrict before altM after restore =
   codeGenBlock_ $ do
     altReg <- maybe (pure reg) (restrict reg) mName

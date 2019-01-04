@@ -23,12 +23,12 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   describe "HPT calculation" $ do
-    let Right hptProgram0 = codeGen testProgram
+    let Right hptProgram0 = fst <$> codeGen testProgram
     it "is instruction order independent" $
-      forAll (randomizeInstructions . _absInstructions ._absProg $ hptProgram0) $ \randomised ->
-        let hptProgram1 = set (absProg.absInstructions) randomised  hptProgram0
-            AbsIntResult comp0 iters0 = evalDataFlowInfo hptProgram0
-            AbsIntResult comp1 iters1 = evalDataFlowInfo hptProgram1
+      forAll (randomizeInstructions . _absInstructions $ hptProgram0) $ \randomised ->
+        let hptProgram1 = set (absInstructions) randomised  hptProgram0
+            AbsIntResult comp0 iters0 = evalAbstractProgram hptProgram0
+            AbsIntResult comp1 iters1 = evalAbstractProgram hptProgram1
         in label (printf "HPT iterations %d/%d" iters0 iters1)
                  $ comp0 == comp1
 

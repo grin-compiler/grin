@@ -15,9 +15,8 @@ import Lens.Micro.Internal
 import Lens.Micro.Extra
 
 import Grin.Grin (Name, Tag)
-import AbstractInterpretation.HeapPointsTo.CodeGen (HPTProgram(..))
-import AbstractInterpretation.CreatedBy.CodeGen (undefinedProducer)
 import AbstractInterpretation.IR hiding (Tag, SimpleType)
+import AbstractInterpretation.Reduce (ComputerState(..))
 import qualified Grin.TypeEnv as TypeEnv
 import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.Reduce as R
@@ -42,6 +41,9 @@ data SimpleType
 
 data HPTLocal = UndefinedProducer
   deriving (Eq, Ord, Show)
+
+undefinedProducer :: IR.SimpleType
+undefinedProducer = -1723
 
 fromHPTLocal :: HPTLocal -> IR.SimpleType
 fromHPTLocal UndefinedProducer = undefinedProducer
@@ -111,24 +113,26 @@ _T_Location :: Traversal' SimpleType Int
 _T_Location f (T_Location l) = T_Location <$> f l
 _T_Location _ rest           = pure rest
 
-toHPTResult :: HPTProgram -> R.ComputerState -> HPTResult
-toHPTResult (getDataFlowInfo -> AbstractProgram{..}) R.ComputerState{..} = HPTResult
-  { _memory   = V.map convertNodeSet _memory
-  , _register = Map.map convertReg _absRegisterMap
-  , _function = Map.map convertFunctionRegs _absFunctionArgMap
+toHPTResult :: AbstractProgram -> R.ComputerState -> HPTResult
+toHPTResult a@AbstractProgram{..} c@R.ComputerState{..} = HPTResult
+  { _memory   = V.map (convertNodeSet s) _memory
+  , _register = Map.map (convertReg s) _absRegisterMap
+  , _function = Map.map (convertFunctionRegs s) _absFunctionArgMap
   }
   where
-    convertReg :: Reg -> TypeSet
-    convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
+    s = (a,c)
 
-    convertNodeSet :: R.NodeSet -> NodeSet
-    convertNodeSet (R.NodeSet a) = NodeSet $ Map.fromList [(_absTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
+convertReg :: (AbstractProgram, ComputerState) -> Reg -> TypeSet
+convertReg s@(AbstractProgram{..}, R.ComputerState{..}) (Reg i) = convertValue s $ _register V.! (fromIntegral i)
 
-    convertSimpleType :: Set IR.SimpleType -> Set SimpleType
-    convertSimpleType = Set.map toSimpleType
+convertNodeSet :: (AbstractProgram, ComputerState) -> R.NodeSet -> NodeSet
+convertNodeSet s@(AbstractProgram{..}, R.ComputerState{..}) (R.NodeSet a) = NodeSet $ Map.fromList [(_absTagMap Bimap.!> k, V.map convertSimpleType v) | (k,v) <- Map.toList a]
 
-    convertValue :: R.Value -> TypeSet
-    convertValue (R.Value ty ns) = TypeSet (convertSimpleType ty) (convertNodeSet ns)
+convertSimpleType :: Set IR.SimpleType -> Set SimpleType
+convertSimpleType = Set.map toSimpleType
 
-    convertFunctionRegs :: (Reg, [Reg]) -> (TypeSet, Vector TypeSet)
-    convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])
+convertValue :: (AbstractProgram, ComputerState) -> R.Value -> TypeSet
+convertValue s@(AbstractProgram{..}, R.ComputerState{..}) (R.Value ty ns) = TypeSet (convertSimpleType ty) (convertNodeSet s ns)
+
+convertFunctionRegs :: (AbstractProgram, ComputerState) -> (Reg, [Reg]) -> (TypeSet, Vector TypeSet)
+convertFunctionRegs s@(AbstractProgram{..}, R.ComputerState{..}) (Reg retReg, argRegs) = (convertValue s $ _register V.! (fromIntegral retReg), V.fromList [convertValue s $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])

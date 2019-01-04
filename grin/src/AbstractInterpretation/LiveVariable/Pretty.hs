@@ -14,7 +14,7 @@ import Grin.Pretty
 import Grin.Grin (Tag, Name)
 
 import AbstractInterpretation.LiveVariable.Result
-import AbstractInterpretation.HeapPointsTo.Pretty
+--import AbstractInterpretation.HeapPointsTo.Pretty
 
 prettyLiveness :: Bool -> Doc
 prettyLiveness True  = green (text "LIVE")

@@ -11,7 +11,7 @@ import Grin.TypeCheck
 import qualified Data.Map as Map
 
 import AbstractInterpretation.HeapPointsTo.Result as HPT
-import AbstractInterpretation.Reduce (evalDataFlowInfo, _airComp)
+import AbstractInterpretation.Reduce (evalAbstractProgram, _airComp)
 import AbstractInterpretation.HeapPointsTo.CodeGen (codeGen)
 
 
@@ -162,7 +162,7 @@ spec = do
 
 calcHPTResult :: Exp -> HPTResult
 calcHPTResult prog
-  | Right hptProgram <- codeGen prog
-  , computer <- _airComp . evalDataFlowInfo $ hptProgram
+  | Right hptProgram <- fst <$> codeGen prog
+  , computer <- _airComp . evalAbstractProgram $ hptProgram
   = toHPTResult hptProgram computer
 

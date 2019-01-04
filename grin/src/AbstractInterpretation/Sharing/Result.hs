@@ -11,6 +11,7 @@ import Lens.Micro.Platform
 import Lens.Micro.Internal
 
 import Grin.Grin (Name, Tag)
+import AbstractInterpretation.IR (AbstractProgram)
 import AbstractInterpretation.Sharing.CodeGen
 import AbstractInterpretation.HeapPointsTo.Result
 import qualified AbstractInterpretation.Reduce as R
@@ -28,14 +29,11 @@ emptySharingResult = SharingResult emptyHPTResult mempty
 
 concat <$> mapM makeLenses [''SharingResult]
 
-toSharingResult :: SharingProgram -> R.ComputerState -> SharingResult
-toSharingResult SharingProgram{..} comp = SharingResult hptResult' sharedLocs where
+toSharingResult :: (AbstractProgram, SharingMapping) -> R.ComputerState -> SharingResult
+toSharingResult (_hptProg, SharingMapping{..}) comp = SharingResult hptResult sharedLocs where
   hptResult  = toHPTResult _hptProg comp
-  hptResult' = register %~ (Map.delete sharingRegisterName) $ hptResult
-  shRegType  = Map.lookup sharingRegisterName . _register $ hptResult
-  sharedLocs = case shRegType of
-    Just (TypeSet sty _) -> onlyLocations sty
-    Nothing -> error $ "Sharing register not found (" ++ show sharingRegisterName ++ ")"
+  sharedLocs = onlyLocations sty
+  TypeSet sty _ = convertReg (_hptProg, comp) _shRegName
 
   onlyLocations :: Set SimpleType -> Set Loc
   onlyLocations stys = Set.fromList [ l | T_Location l <- Set.toList stys ]

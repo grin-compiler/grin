@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 
 import Grin.Grin (Name, Tag)
-import AbstractInterpretation.LiveVariable.CodeGen (LVAProgram(..))
+import AbstractInterpretation.LiveVariable.CodeGen (LVAMapping)
 import AbstractInterpretation.IR hiding (Tag)
 import qualified AbstractInterpretation.Reduce as R
 
@@ -63,8 +63,8 @@ isFunDead :: (Liveness, Vector Liveness) -> Bool
 isFunDead (retLv, argsLv) = not (isLive retLv || any isLive argsLv)
 
 
-toLVAResult :: LVAProgram -> R.ComputerState -> LVAResult
-toLVAResult (getDataFlowInfo -> AbstractProgram{..}) R.ComputerState{..} = LVAResult
+toLVAResult :: (AbstractProgram, LVAMapping) -> R.ComputerState -> LVAResult
+toLVAResult (AbstractProgram{..}, ()) R.ComputerState{..} = LVAResult
   { _memory   = V.map convertHeapNodeSet _memory
   , _register = Map.map convertReg _absRegisterMap
   , _function = Map.map convertFunctionRegs _absFunctionArgMap

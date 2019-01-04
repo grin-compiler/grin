@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, TemplateHaskell, OverloadedStrings #-}
 module AbstractInterpretation.HeapPointsTo.CodeGen where
 
-import Control.Monad.Trans.Except
+import Control.Monad.Writer
 import Control.Monad.State
 
 import Data.Set (Set)
@@ -14,35 +14,42 @@ import qualified Data.Vector as Vec
 import Data.Functor.Foldable as Foldable
 
 import Lens.Micro.Platform
-import Lens.Micro.Internal
 
 import Grin.Grin
 import Grin.TypeEnv
-import AbstractInterpretation.CodeGen
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..))
+import AbstractInterpretation.HeapPointsTo.CodeGenBase
 
-data HPTProgram = HPTProgram { _absProg :: AbstractProgram } deriving (Show)
-concat <$> mapM makeLenses [''HPTProgram]
+type HPTMapping = () -- TODO
 
-instance HasDataFlowInfo HPTProgram where
-  dataFlowInfo = absProg
-
-emptyHPTProgram :: HPTProgram
-emptyHPTProgram = HPTProgram emptyAbstractProgram
-
-codeGen :: Program -> Either String HPTProgram
-codeGen prg@(Program exts defs) = (\(a,s) -> s <$ a) . flip runState emptyHPTProgram . runExceptT . codeGenM $ prg
+codeGen :: Program -> Either String (AbstractProgram, HPTMapping)
+codeGen prg@(Program exts defs) = Right $ evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
 codeGen _ = Left "Program expected"
 
-type ResultHPT = Result HPTProgram
-
-throwHPT :: (Monad m) => String -> ExceptT String m a
-throwHPT s = throwE $ "HPT: " ++ s
+mkAbstractProgramM :: CG (AbstractProgram, ())
+mkAbstractProgramM = do
+  CGState{..} <- get
+  let prg = AbstractProgram
+        { _absMemoryCounter   = _sMemoryCounter
+        , _absRegisterCounter = _sRegisterCounter
+        , _absRegisterMap     = _sRegisterMap
+        , _absInstructions    = _sInstructions
+        , _absFunctionArgMap  = _sFunctionArgMap
+        , _absTagMap          = _sTagMap
+        }
+  pure (prg, ())
 
 unitType :: IR.SimpleType
 unitType = codegenSimpleType T_Unit
+{-
+type ValueMapping = (Map Typeable Int, Int)
+type MappingM = State ValueMapping
 
+class (Typeable a, Enum a, Bounded a) => IntValue a where
+  toInt   :: Monad m => a -> m Int
+  fromInt :: Monad m => Int -> m a
+-}
 codegenSimpleType :: SimpleType -> IR.SimpleType
 codegenSimpleType = \case
   T_Unit    -> -1
@@ -56,7 +63,7 @@ codegenSimpleType = \case
 litToSimpleType :: Lit -> IR.SimpleType
 litToSimpleType = codegenSimpleType . typeOfLitST
 
-codeGenNodeTypeHPT :: HasDataFlowInfo s => Tag -> Vector SimpleType -> CG s IR.Reg
+codeGenNodeTypeHPT :: Tag -> Vector SimpleType -> CG IR.Reg
 codeGenNodeTypeHPT tag ts = do
   let ts' = Vec.toList ts
   r <- newReg
@@ -67,7 +74,7 @@ codeGenNodeTypeHPT tag ts = do
     emit IR.Extend {srcReg = argReg, dstSelector = IR.NodeItem irTag idx, dstReg = r}
   pure r
 
-codeGenVal :: Val -> CG HPTProgram IR.Reg
+codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
     r <- newReg
@@ -89,7 +96,7 @@ codeGenVal = \case
           , dstSelector = IR.NodeItem irTag idx
           , dstReg      = r
           }
-      _ -> throwHPT $ "illegal node item value " ++ show val
+      _ -> error $ "illegal node item value " ++ show val
     pure r
   Unit -> do
     r <- newReg
@@ -104,11 +111,13 @@ codeGenVal = \case
     pure r
   Var name -> getReg name
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
-  val -> throwHPT $ "unsupported value " ++ show val
+  val -> error $ "unsupported value " ++ show val
 
-codeGenPrimOp :: HasDataFlowInfo s => Name -> IR.Reg -> [IR.Reg] -> CG s ()
-codeGenPrimOp name funResultReg funArgRegs = do
-  let op argTypes resultTy = do
+codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> [Instruction]
+codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
+  let emit :: Instruction -> Writer [Instruction] ()
+      emit a = tell [a]
+      op argTypes resultTy = do
         emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
         zipWithM_ (\argReg argTy -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
 
@@ -183,21 +192,22 @@ codeGenPrimOp name funResultReg funArgRegs = do
     missing           -> error $ show missing
 
 
-codeGenM :: Exp -> CG HPTProgram ResultHPT
+codeGenM :: Exp -> CG Result
 codeGenM = cata folder where
-  folder :: ExpF (CG HPTProgram ResultHPT) -> CG HPTProgram ResultHPT
+  folder :: ExpF (CG Result) -> CG Result
   folder = \case
     ProgramF exts defs -> sequence_ defs >> pure Z
 
     DefF name args body -> do
-      instructions <- stateDfi $ \s@AbstractProgram{..} -> (_absInstructions, s {_absInstructions = []})
+      instructions <- state $ \s@CGState{..} -> (_sInstructions, s {_sInstructions = []})
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       -- QUESTION: why do we reverse?
-      modify' $ modifyInfo $ \s@AbstractProgram{..} -> s {_absInstructions = reverse _absInstructions ++ instructions}
+      -- A: because the list is built in reversed order (cons) and it is more efficient to reverse only once
+      modify' $ \s@CGState{..} -> s {_sInstructions = reverse _sInstructions ++ instructions}
       pure Z
 
     EBindF leftExp lpat rightExp -> do
@@ -208,7 +218,7 @@ codeGenM = cata folder where
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
             addReg name r
-          _ -> throwHPT $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
+          _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           Unit  -> pure () -- TODO: is this ok? or error?
           -- NOTE: I think this is okay. Could be optimised though (since we already know the result)?
@@ -222,14 +232,16 @@ codeGenM = cata folder where
                 addReg name argReg
                 pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
               Lit {} -> pure []
-              _ -> throwHPT $ "illegal node pattern component " ++ show arg
+              _ -> error $ "illegal node pattern component " ++ show arg
             -- QUESTION: In HPTProgram the instructions are in reverse order, here they are in regular order, isn't this inconsistent?
+            -- A: each cpat argument has zero or one instruction
+            --    the order of cpat binding evaluation does not matter because they does not depend on each other
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
               , instructions  = concat bindInstructions
               }
-          _ -> throwHPT $ "unsupported lpat " ++ show lpat
+          _ -> error $ "unsupported lpat " ++ show lpat
       rightExp
 
     ECaseF val alts_ -> do
@@ -305,7 +317,7 @@ codeGenM = cata folder where
             -- QUESTION: Redundant IF. Just for consistency?
             emit IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
 
-          _ -> throwHPT $ "HPT does not support the following case pattern: " ++ show cpat
+          _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
 
       -- restore scrutinee register mapping
       maybe (pure ()) (uncurry addReg) scrutRegMapping
@@ -319,7 +331,7 @@ codeGenM = cata folder where
       valRegs <- mapM codeGenVal args
       zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
       -- HINT: handle primop here because it does not have definition
-      when (isPrimName name) $ codeGenPrimOp name funResultReg funArgRegs
+      when (isPrimName name) $ mapM_ emit $ codeGenPrimOp name funResultReg funArgRegs
       pure $ R funResultReg
 
     SReturnF val -> R <$> codeGenVal val
@@ -333,7 +345,7 @@ codeGenM = cata folder where
       pure $ R r
 
     SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> throwHPT "HPT codegen does not support indexed fetch"
+      Just {} -> error "HPT codegen does not support indexed fetch"
       Nothing -> do
         addressReg <- getReg name
         r <- newReg

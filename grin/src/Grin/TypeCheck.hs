@@ -22,7 +22,6 @@ import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
 
 import qualified Grin.TypeEnv as TypeEnv
 
-import AbstractInterpretation.IR (HasDataFlowInfo(..))
 import AbstractInterpretation.Reduce (AbstractInterpretationResult(..))
 import qualified AbstractInterpretation.Reduce as R
 
@@ -96,6 +95,6 @@ typeEnvFromHPTResult hptResult = typeEnv where
 
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult =<< result where
-  hptProgram = HPT.codeGen exp
-  computer = (_airComp . R.evalDataFlowInfo . getDataFlowInfo) <$> hptProgram
-  result = HPT.toHPTResult <$>  hptProgram <*> computer
+  hptProgram = fst <$> HPT.codeGen exp
+  computer = (_airComp . R.evalAbstractProgram) <$> hptProgram
+  result = HPT.toHPTResult <$> hptProgram <*> computer

@@ -2,7 +2,6 @@
 module AbstractInterpretation.Sharing.CodeGen where
 
 import Control.Monad.State
-import Control.Monad.Trans.Except
 
 import Data.Set (Set)
 import Data.Map (Map)
@@ -23,11 +22,11 @@ import Lens.Micro.Internal
 import Grin.Syntax
 import Grin.TypeEnvDefs
 import AbstractInterpretation.Util (converge)
-import AbstractInterpretation.CodeGen
-import AbstractInterpretation.HeapPointsTo.CodeGen (HPTProgram(..), emptyHPTProgram)
-import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, HasDataFlowInfo(..))
+import AbstractInterpretation.IR (Instruction(..), Reg, AbstractProgram)
 import qualified AbstractInterpretation.IR as IR
+
+import AbstractInterpretation.HeapPointsTo.CodeGenBase
+import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
 
 {-
 [x] Calc non-linear variables, optionally ignoring updates.
@@ -49,23 +48,11 @@ import qualified AbstractInterpretation.IR as IR
 [x] Remove Mode for calcNonLinearVars
 -}
 
-data SharingProgram = SharingProgram
-  { _hptProg   :: HPTProgram
-  , _shRegName :: Name
+data SharingMapping = SharingMapping
+  { _shRegName :: Reg
   } deriving (Show)
 
-concat <$> mapM makeLenses [''SharingProgram]
-
-instance HasDataFlowInfo SharingProgram where
-  dataFlowInfo = hptProg.dataFlowInfo
-
-sharingRegisterName :: Name
-sharingRegisterName = "__sharing__register__"
-
-emptySharingProgram :: SharingProgram
-emptySharingProgram = SharingProgram emptyHPTProgram sharingRegisterName
-
-type ResultSh = Result SharingProgram
+concat <$> mapM makeLenses [''SharingMapping]
 
 -- | Calc non linear variables, ignores variables that are used in update locations
 -- This is an important difference, if a variable would become non-linear due to
@@ -112,11 +99,8 @@ calcSharedLocationsPure TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) 
   fieldsFromNodeSet = Set.fromList . concatMap Vec.toList . Map.elems
 
 
-sharingCodeGen :: Exp -> CG SharingProgram ()
-sharingCodeGen e = do
-  shReg <- newReg
-  n     <- use shRegName
-  addReg n shReg
+sharingCodeGen :: Reg -> Exp -> CG ()
+sharingCodeGen shReg e = do
   forM_ nonLinearVars $ \name -> do
     -- For all non-linear variables set the locations as shared.
     nonLinearVarReg <- getReg name
@@ -138,10 +122,17 @@ sharingCodeGen e = do
   where
     nonLinearVars = calcNonLinearNonUpdateLocVariables e
 
-codeGenM :: Exp -> CG SharingProgram ()
+codeGenM :: Exp -> CG (AbstractProgram, SharingMapping)
 codeGenM e = do
-  void $ zoom hptProg (HPT.codeGenM e)
-  sharingCodeGen e
+  HPT.codeGenM e
+  shReg <- newReg
+  sharingCodeGen shReg e
+  (prg, _) <- HPT.mkAbstractProgramM
+  let mapping = SharingMapping
+        { _shRegName  = shReg
+        }
+  pure (prg, mapping)
 
-codeGen :: Exp -> Either String SharingProgram
-codeGen = (\(a,s) -> s <$ a) . flip runState emptySharingProgram . runExceptT . codeGenM
+codeGen :: Program -> Either String (AbstractProgram, SharingMapping)
+codeGen prg@(Program{}) = Right $ evalState (codeGenM prg) emptyCGState
+codeGen _ = Left "Program expected"
