@@ -1,8 +1,0 @@
-grinMain =
-  x0 <- pure (CInt 0)
-  p0 <- store x0
-  y1 <- fetch p0
-  pure y1
-
-f x p =
-  pure 0

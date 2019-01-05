@@ -1,5 +1,0 @@
-grinMain =
-  p0 <- store (CPair 0 0)
-  update p0 (CPair (#undefined :: T_Int64) 5)
-  (CPair c0 c1) <- fetch p0
-  pure c1

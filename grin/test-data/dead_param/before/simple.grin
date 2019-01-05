@@ -1,5 +1,0 @@
-grinMain = g 5
-
-f x y = pure x
-
-g z = f 0 z

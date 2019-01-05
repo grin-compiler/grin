@@ -1,3 +1,0 @@
-grinMain =
-  n0 <- pure (#undefined :: {CNode[#ptr]})
-  pure 0

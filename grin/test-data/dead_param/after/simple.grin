@@ -1,9 +1,0 @@
-grinMain = g
-
-f x =
-  y <- pure (#undefined :: T_Int64)
-  pure x
-
-g =
-  z <- pure (#undefined :: T_Int64)
-  f 0
