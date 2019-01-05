@@ -1,8 +1,12 @@
+{-# LANGUAGE QuasiQuotes #-}
 module Transformations.Optimising.DeadVariableEliminationSpec where
 
 import Test.Hspec
 import Test.Hspec.PipelineExample
 import Pipeline.Pipeline hiding (pipeline)
+import qualified Pipeline.Pipeline as P
+import Grin.TH
+import Test.Assertions
 
 
 runTests :: IO ()
@@ -90,3 +94,48 @@ spec = do
       "dead_variable/before/true_side_effect_min.grin"
       "dead_variable/after/true_side_effect_min.grin"
       deadVariableEliminationPipeline
+
+    describe "bugs" $ do
+      xit "Not explicitly covered alternatives trigger undefined replacements" $ do
+        let before = [prog|
+              grinMain =
+                v0 <- _prim_int_add 1 1
+                v1 <- case v0 of
+                  2 ->
+                    v2 <- _prim_int_lt 1 3
+                    v3 <- case v2 of
+                      #False -> pure v0
+                      #True -> pure 1
+                    case v3 of
+                      0 -> pure (CGT)
+                      1 -> pure (CLT)
+                  1 -> pure (CEQ)
+                -- If #default is changed to explicit alternatives the undefineds are not introduced.
+                -- Undefineds are introduced for missing alternatives too.
+                case v1 of
+                  (CEQ) -> _prim_int_print 1
+                  #default -> _prim_int_print 2
+            |]
+        let after = [prog|
+              grinMain =
+                v0 <- _prim_int_add 1 1
+                v1 <- case v0 of
+                  2 ->
+                    v2 <- _prim_int_lt 1 3
+                    v3 <- case v2 of
+                      #False -> pure v0
+                      #True -> pure 1
+                    case v3 of
+                      0 -> pure (CGT)
+                      1 -> pure (CLT)
+                  1 -> pure (CEQ)
+                case v1 of
+                  (CEQ) -> _prim_int_print 1
+                  #default -> _prim_int_print 2
+            |]
+        result <- P.pipeline defaultOpts Nothing before
+          [ T ProducerNameIntroduction
+          , T DeadVariableElimination
+          , T BindNormalisation
+          ]
+        result `sameAs` after
