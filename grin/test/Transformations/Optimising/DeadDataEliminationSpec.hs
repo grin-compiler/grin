@@ -35,57 +35,451 @@ spec = do
         , LVA RunPure
         , T DeadDataElimination
         ]
-
   describe "Dead Data Elimination" $ do
-    it "Impossible alternative" $ pipeline
-      "dead_data/before/impossible_alt.grin"
-      "dead_data/after/impossible_alt.grin"
-      deadDataEliminationPipeline
+    it "Impossible alternative" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 5
+              n0 <- pure (CInt a0)
+              r <- case n0 of
+                (CInt  c0) -> pure 0
+                (CBool c1) -> pure 0
+              pure r
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 5
+              n0 <- pure (CInt.0)
+              r <- case n0 of
+                (CInt.0) ->
+                  c0 <- pure (#undefined :: T_Int64)
+                  pure 0
+                (CBool.0) ->
+                  c1 <- pure (#undefined :: T_Dead)
+                  pure 0
+              pure r
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
 
     it "Length" $ pipeline
       "dead_data/before/length.grin"
       "dead_data/after/length.grin"
       deadDataEliminationPipeline
 
-    it "Multiple fields" $ pipeline
-      "dead_data/before/multiple_fields.grin"
-      "dead_data/after/multiple_fields.grin"
-      deadDataEliminationPipeline
+    it "Multiple fields" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+              n0 <- pure (CThree a0 a1 a2 a3 a4 a5)
+              (CThree b0 b1 b2 b3 b4 b5) <- pure n0
+              r <- _prim_int_add b1 b4
+              pure r
+          |]
 
-    it "Only dummify" $ pipeline
-      "dead_data/before/only_dummify.grin"
-      "dead_data/after/only_dummify.grin"
-      deadDataEliminationPipeline
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+              n0 <- pure (CThree.0 a1 a4)
+              (CThree.0 b1 b4) <- pure n0
+              b5 <- pure (#undefined :: T_Int64)
+              b3 <- pure (#undefined :: T_Int64)
+              b2 <- pure (#undefined :: T_Int64)
+              b0 <- pure (#undefined :: T_Int64)
+              r <- _prim_int_add b1 b4
+              pure r
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
 
-    it "Deletable Single" $ pipeline
-      "dead_data/before/deletable_single.grin"
-      "dead_data/after/deletable_single.grin"
-      deadDataEliminationPipeline
+    it "Only dummify" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
 
-    it "Deletable Multi" $ pipeline
-      "dead_data/before/deletable_multi.grin"
-      "dead_data/after/deletable_multi.grin"
-      deadDataEliminationPipeline
+              -- two producers
+              n0 <- pure (CThree a0 a1 a2)
+              n1 <- pure (CThree a3 a4 a5)
 
-    it "Separate Prods" $ pipeline
-      "dead_data/before/separate_prods.grin"
-      "dead_data/after/separate_prods.grin"
-      deadDataEliminationPipeline
+              -- n01 has producers: n0, n1
+              n01 <- case 0 of
+                0 -> pure n0
+                1 -> pure n1
 
-    it "FNode Before" $ pipeline
-      "dead_code/fnode.grin"
-      "dead_data/after/fnode.grin"
-      deadDataEliminationPipeline
+              -- consumers
+              (CThree b0 b1 b2) <- pure n0
+              (CThree c0 c1 c2) <- pure n01
+              (CThree d0 d1 d2) <- pure n1
+
+              r <- pure (CLive b0 c1 d2)
+              pure r
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+
+              -- two producers
+              n0 <- pure (CThree a0 a1 (#undefined :: T_Int64))
+              n1 <- pure (CThree (#undefined :: T_Int64) a4 a5)
+
+              -- n01 has producers: n0, n1
+              n01 <- case 0 of
+                0 -> pure n0
+                1 -> pure n1
+
+              -- consumers
+              (CThree b0 b1 b2) <- pure n0
+              (CThree c0 c1 c2) <- pure n01
+              (CThree d0 d1 d2) <- pure n1
+
+              r <- pure (CLive b0 c1 d2)
+              pure r
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
+
+    it "Deletable Single" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+
+              -- two producers
+              n0 <- pure (CThree a0 a1 a2)
+              n1 <- pure (CThree a3 a4 a5)
+
+              -- n01 has producers: n0, n1
+              n01 <- case 0 of
+                0 -> pure n0
+                1 -> pure n1
+
+              -- consumers
+              (CThree b0 b1 b2) <- pure n0
+              (CThree c0 c1 c2) <- pure n01
+              (CThree d0 d1 d2) <- pure n1
+
+              r <- pure (CLive b0 d2)
+              pure r
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+
+              -- two producers
+              n0 <- pure (CThree.0 a0 (#undefined :: T_Int64))
+              n1 <- pure (CThree.0 (#undefined :: T_Int64) a5)
+
+              -- n01 has producers: n0, n1
+              n01 <- case 0 of
+                0 -> pure n0
+                1 -> pure n1
+
+              -- consumers
+              (CThree.0 b0 b2) <- pure n0
+              b1 <- pure (#undefined :: T_Int64)
+              (CThree.0 c0 c2) <- pure n01
+              c1 <- pure (#undefined :: T_Int64)
+              (CThree.0 d0 d2) <- pure n1
+              d1 <- pure (#undefined :: T_Int64)
+
+              r <- pure (CLive b0 d2)
+              pure r
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
+
+    it "Deletable Multi" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+
+              -- two producers
+              n0 <- pure (CThree a0 a1 a2)
+              n1 <- pure (CThree a3 a4 a5)
+
+              -- n01 has producers: n0, n1
+              n01 <- case 0 of
+                0 -> pure n0
+                1 -> pure n1
+
+              -- consumers
+              (CThree b0 b1 b2) <- pure n0
+              (CThree c0 c1 c2) <- pure n01
+              (CThree d0 d1 d2) <- pure n1
+
+              r <- pure (CLive c1)
+              pure r
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+
+              -- two producers
+              n0 <- pure (CThree.0 a1)
+              n1 <- pure (CThree.0 a4)
+
+              -- n01 has producers: n0, n1
+              n01 <- case 0 of
+                0 -> pure n0
+                1 -> pure n1
+
+              -- consumers
+              (CThree.0 b1) <- pure n0
+              b2 <- pure (#undefined :: T_Int64)
+              b0 <- pure (#undefined :: T_Int64)
+
+              (CThree.0 c1) <- pure n01
+              c2 <- pure (#undefined :: T_Int64)
+              c0 <- pure (#undefined :: T_Int64)
+
+              (CThree.0 d1) <- pure n1
+              d2 <- pure (#undefined :: T_Int64)
+              d0 <- pure (#undefined :: T_Int64)
+
+              r <- pure (CLive c1)
+              pure r
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
+
+    it "Separate Prods" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+
+              n0 <- pure (CThree a0 a1 a2)
+              n1 <- pure (CThree a0 a1 a2)
+              n2 <- pure (CThree a0 a1 a2)
+              n3 <- pure (CThree a0 a1 a2)
+              n4 <- pure (CThree a0 a1 a2)
+              n5 <- pure (CThree a0 a1 a2)
+              n6 <- pure (CThree a0 a1 a2)
+              n7 <- pure (CThree a0 a1 a2)
+
+              -- consumers
+              (CThree b0 b1 b2) <- pure n0
+              (CThree c0 c1 c2) <- pure n1
+              (CThree d0 d1 d2) <- pure n2
+              (CThree e0 e1 e2) <- pure n3
+              (CThree f0 f1 f2) <- pure n4
+              (CThree g0 g1 g2) <- pure n5
+              (CThree h0 h1 h2) <- pure n6
+              (CThree i0 i1 i2) <- pure n7
+
+              r <- pure (CLive b0 b1 b2 c0 d1 e2 f0 f1 g1 g2 h0 h2)
+              pure r
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+
+              n0 <- pure (CThree a0 a1 a2)
+              n1 <- pure (CThree.6 a0)
+              n2 <- pure (CThree.5 a1)
+              n3 <- pure (CThree.4 a2)
+              n4 <- pure (CThree.3 a0 a1)
+              n5 <- pure (CThree.2 a1 a2)
+              n6 <- pure (CThree.1 a0 a2)
+              n7 <- pure (CThree.0)
+
+              (CThree b0 b1 b2) <- pure n0
+
+              (CThree.6 c0) <- pure n1
+              c2 <- pure (#undefined :: T_Int64)
+              c1 <- pure (#undefined :: T_Int64)
+
+              (CThree.5 d1) <- pure n2
+              d2 <- pure (#undefined :: T_Int64)
+              d0 <- pure (#undefined :: T_Int64)
+
+              (CThree.4 e2) <- pure n3
+              e1 <- pure (#undefined :: T_Int64)
+              e0 <- pure (#undefined :: T_Int64)
+
+              (CThree.3 f0 f1) <- pure n4
+              f2 <- pure (#undefined :: T_Int64)
+
+              (CThree.2 g1 g2) <- pure n5
+              g0 <- pure (#undefined :: T_Int64)
+
+              (CThree.1 h0 h2) <- pure n6
+              h1 <- pure (#undefined :: T_Int64)
+
+              (CThree.0) <- pure n7
+              i2 <- pure (#undefined :: T_Int64)
+              i1 <- pure (#undefined :: T_Int64)
+              i0 <- pure (#undefined :: T_Int64)
+
+              r <- pure (CLive b0 b1 b2 c0 d1 e2 f0 f1 g1 g2 h0 h2)
+              pure r
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
+
+    it "FNode Before" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure (CInt 5)
+              p0 <- store x0
+              a0 <- pure (Ffoo p0 p0 p0)
+              p1 <- store a0
+              a1 <- eval p1
+              pure a1
+
+            -- functions cannot return pointers
+            foo x y z =
+              y' <- eval y
+              pure y'
+
+            eval p =
+              v <- fetch p
+              case v of
+                (CInt n) -> pure v
+                (Ffoo x1 y1 z1) ->
+                  w <- foo x1 y1 z1
+                  update p w
+                  pure w
+          |]
+
+      let after = [prog|
+            grinMain =
+              x0 <- pure (CInt 5)
+              p0 <- store x0
+              a0 <- pure (Ffoo.0 p0)
+              p1 <- store a0
+              a1 <- eval p1
+              pure a1
+
+            foo x y z =
+              y' <- eval y
+              pure y'
+
+            eval p =
+              v <- fetch p
+              case v of
+                (CInt n) -> pure v
+                (Ffoo.0 y1) ->
+                  z1 <- pure (#undefined :: #ptr)
+                  x1 <- pure (#undefined :: #ptr)
+                  w <- foo x1 y1 z1
+                  update p w
+                  pure w
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
 
     it "PNode Before" $ pipeline
       "dead_code/pnode.grin"
       "dead_data/after/pnode.grin"
       deadDataEliminationPipeline
 
-    it "PNode Opt Before" $ pipeline
-      "dead_code/pnode_opt.grin"
-      "dead_data/after/pnode_opt.grin"
-      deadDataEliminationPipeline
+    it "PNode Opt Before" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure (CInt 5)
+              a1 <- pure (CInt 5)
+              a2 <- pure (CInt 5)
+              p0 <- store a0
+              p1 <- store a1
+              p2 <- store a2
+
+              foo3   <- pure (P3foo)
+
+              (P3foo) <- pure foo3
+              foo2    <- pure (P2foo p0)
+
+              (P2foo v0) <- pure foo2
+              foo1       <- pure (P1foo v0 p1)
+
+              (P1foo v1 v2) <- pure foo1
+              fooRet        <- foo v1 v2 p2
+
+              pure fooRet
+
+
+            foo x0 y0 z0 =
+              y0' <- fetch y0
+              (CInt n) <- y0'
+              pure y0'
+          |]
+
+      let after = [prog|
+            {- NOTE:
+              P2foo is renamed to P2foo.1 because the name generation
+              takes the node name as base. So here foo will be the base,
+              for which a name was already generated: P1foo.0.
+            -}
+            grinMain =
+              a0 <- pure (CInt.0)
+              a1 <- pure (CInt 5)
+              a2 <- pure (CInt.0)
+              p0 <- store a0
+              p1 <- store a1
+              p2 <- store a2
+
+              foo3   <- pure (P3foo)
+
+              (P3foo) <- pure foo3
+              foo2    <- pure (P2foo.1)
+
+              (P2foo.1) <- pure foo2
+              v0        <- pure (#undefined :: #ptr)
+              foo1      <- pure (P1foo.0 p1)
+
+              (P1foo.0 v2) <- pure foo1
+              v1           <- pure (#undefined :: #ptr)
+              fooRet       <- foo v1 v2 p2
+
+              pure fooRet
+
+
+            foo x0 y0 z0 =
+              y0' <- fetch y0
+              (CInt n) <- y0'
+              pure y0'
+          |]
+      pipelineSrc before after deadDataEliminationPipeline
 
   describe "Producer Grouping" $ do
     let exp = [prog|

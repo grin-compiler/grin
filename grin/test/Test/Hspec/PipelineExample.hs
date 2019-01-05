@@ -2,8 +2,10 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE LambdaCase #-}
 module Test.Hspec.PipelineExample where
 
+import Grin.Syntax (Program)
 import Grin.Parse
 import Grin.Pretty (pretty)
 import Text.PrettyPrint.ANSI.Leijen (plain)
@@ -21,18 +23,25 @@ import Test.Hspec.Core.Spec hiding (pending)
 import System.Directory (getCurrentDirectory)
 
 
+data Input
+  = Src   Program
+  | File  FilePath
 
 data Pipeline = Pipeline
-  { before :: FilePath
-  , after  :: FilePath
+  { before :: Input
+  , after  :: Input
   , steps  :: [PipelineStep]
   }
 
 pipeline :: FilePath -> FilePath -> [PipelineStep] -> Pipeline
-pipeline = Pipeline
+pipeline a b s = Pipeline (File a) (File b) s
+
+pipelineSrc :: Program -> Program -> [PipelineStep] -> Pipeline
+pipelineSrc a b s = Pipeline (Src a) (Src b) s
 
 pending :: String -> ResultStatus
 pending = Pending Nothing . Just
+
 
 instance Example Pipeline where
   type Arg Pipeline = ()
@@ -43,10 +52,14 @@ instance Example Pipeline where
     let testDataDir = if | "/grin/grin" `isSuffixOf` pwd -> "test-data/"
                          | "/grin"      `isSuffixOf` pwd -> "grin/test-data/"
                          | otherwise -> error "Impossible: stack did not run inside the project dir."
+        getInput = \case
+          Src prg -> pure prg
+          File fn -> parseProg <$> Text.readFile (testDataDir </> fn)
+
     fmap (Result "" . either id (const Success)) $ runExceptT $ do
       result <- lift $ try $ do
-        (,) <$> (parseProg <$> Text.readFile (testDataDir </> before))
-            <*> (parseProg <$> Text.readFile (testDataDir </> after))
+        (,) <$> getInput before
+            <*> getInput after
       (beforeExp, afterExp) <- either (throwE . pending . show @SomeException) pure $ result
       let opts = PipelineOpts
             { _poOutputDir = ".output" -- TODO: Random test dir

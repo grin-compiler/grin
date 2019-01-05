@@ -1,4 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Transformations.Optimising.DeadVariableEliminationSpec where
 
 import Test.Hspec
@@ -20,80 +20,307 @@ spec = do
           [ T DeadVariableElimination
           ]
 
-    it "simple" $ pipeline
-      "dead_variable/before/simple.grin"
-      "dead_variable/after/simple.grin"
-      deadVariableEliminationPipeline
+    it "simple" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure 0
+              x1 <- pure (CInt 0)
+              x2 <- pure x0
+              x3 <- pure x2
+              pure 0
+          |]
 
-    it "heap" $ pipeline
-      "dead_variable/before/heap.grin"
-      "dead_variable/after/heap.grin"
-      deadVariableEliminationPipeline
+      let after = [prog|
+            grinMain =
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
 
-    it "update" $ pipeline
-      "dead_variable/before/update.grin"
-      "dead_variable/after/update.grin"
-      deadVariableEliminationPipeline
+    it "heap" $ do
+      let before = [prog|
+            grinMain =
+              p0 <- store (CInt 0)
+              n0 <- fetch p0
+              p1 <- store n0
+              y0 <- pure (CPtr p1)
+              update p1 y0
+              pure 0
+          |]
 
-    it "app_simple" $ pipeline
-      "dead_variable/before/app_simple.grin"
-      "dead_variable/after/app_simple.grin"
-      deadVariableEliminationPipeline
+      let after = [prog|
+            grinMain =
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
 
-    it "app_side_effect_1" $ pipeline
-      "dead_code/app_side_effect_1.grin"
-      "dead_variable/after/app_side_effect_1.grin"
-      deadVariableEliminationPipeline
+    it "update" $ do
+      let before = [prog|
+            grinMain =
+              p0 <- store (CInt 0)
+              update p0 (CInt 1)
+              pure 0
+          |]
 
-    it "app_side_effect_2" $ pipeline
-      "dead_variable/before/app_side_effect_2.grin"
-      "dead_variable/after/app_side_effect_2.grin"
-      deadVariableEliminationPipeline
+      let after = [prog|
+            grinMain =
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
 
-    it "pattern_match" $ pipeline
-      "dead_variable/before/pattern_match.grin"
-      "dead_variable/after/pattern_match.grin"
-      deadVariableEliminationPipeline
+    it "app_simple" $ do
+      let before = [prog|
+            grinMain =
+              y0 <- f 0
+              pure 0
 
-    it "replace_app" $ pipeline
-      "dead_variable/before/replace_app.grin"
-      "dead_variable/after/replace_app.grin"
-      deadVariableEliminationPipeline
+            f x = pure 0
+          |]
 
-    it "replace_case" $ pipeline
-      "dead_variable/before/replace_case.grin"
-      "dead_variable/after/replace_case.grin"
-      deadVariableEliminationPipeline
+      let after = [prog|
+            grinMain =
+              pure 0
 
-    it "replace_case_rec" $ pipeline
-      "dead_variable/before/replace_case_rec.grin"
-      "dead_variable/after/replace_case_rec.grin"
-      deadVariableEliminationPipeline
+            f x = pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
 
-    it "replace_pure" $ pipeline
-      "dead_variable/before/replace_pure.grin"
-      "dead_variable/after/replace_pure.grin"
-      deadVariableEliminationPipeline
+    it "app_side_effect_1" $ do
+      let before = [prog|
+            grinMain =
+              p0 <- store (CInt 0)
+              y0 <- f p0
+              y1 <- fetch p0
+              pure y1
 
-    it "replace_store" $ pipeline
-      "dead_variable/before/replace_store.grin"
-      "dead_variable/after/replace_store.grin"
-      deadVariableEliminationPipeline
+            f p =
+              update p (CInt 1)
+              pure 0
+          |]
 
-    it "replace_update" $ pipeline
-      "dead_variable/before/replace_update.grin"
-      "dead_variable/after/replace_update.grin"
-      deadVariableEliminationPipeline
+      let after = [prog|
+            grinMain =
+              p0 <- store (CInt 0)
+              y0 <- f p0
+              y1 <- fetch p0
+              pure y1
 
-    it "replace_unspec_loc" $ pipeline
-      "dead_variable/before/replace_unspec_loc.grin"
-      "dead_variable/after/replace_unspec_loc.grin"
-      deadVariableEliminationPipeline
+            f p =
+              update p (CInt 1)
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
 
-    it "true_side_effect_min" $ pipeline
-      "dead_variable/before/true_side_effect_min.grin"
-      "dead_variable/after/true_side_effect_min.grin"
-      deadVariableEliminationPipeline
+    it "app_side_effect_2" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure (CInt 0)
+              p0 <- store x0
+              y0 <- f x0 p0
+              y1 <- fetch p0
+              pure y1
+
+            f x p =
+              p' <- store x
+              x' <- fetch p
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              x0 <- pure (CInt 0)
+              p0 <- store x0
+              y1 <- fetch p0
+              pure y1
+
+            f x p =
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "pattern_match" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure 0
+              n <- pure (CNode 0 0)
+              p <- store n
+              (CNode y z) <- pure n
+              (CNode v w) <- fetch p
+              0 <- pure x
+              u <- pure ()
+              () <- pure u
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              x <- pure 0
+              n <- pure (CNode 0 0)
+              p <- store n
+              (CNode y z) <- pure n
+              (CNode v w) <- fetch p
+              0 <- pure x
+              u <- pure ()
+              () <- pure u
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "replace_app" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure 5
+              f x0 5
+
+            f x y = pure y
+          |]
+
+      let after = [prog|
+            grinMain =
+              f (#undefined :: T_Int64) 5
+
+            f x y = pure y
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "replace_case" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure 5
+              case (CInt x0) of
+                (CInt c0) -> pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              case (CInt (#undefined :: T_Int64)) of
+                (CInt c0) -> pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "replace_case_rec" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure 5
+              case (CInt x0) of
+                (CInt c0) ->
+                  n0 <- pure (CPair x0 5)
+                  p1 <- store (CPair x0 5)
+                  update p1 (CPair x0 5)
+                  y0 <- f x0
+
+                  (CPair c1 c2) <- pure n0
+                  (CPair x1 x2) <- fetch p1
+                  pure (CLive c2 x2 y0)
+
+            f x = pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              case (CInt (#undefined :: T_Int64)) of
+                (CInt c0) ->
+                  n0 <- pure (CPair (#undefined :: T_Int64) 5)
+                  p1 <- store (CPair (#undefined :: T_Int64) 5)
+                  update p1 (CPair (#undefined :: T_Int64) 5)
+                  y0 <- f (#undefined :: T_Int64)
+
+                  (CPair c1 c2) <- pure n0
+                  (CPair x1 x2) <- fetch p1
+                  pure (CLive c2 x2 y0)
+
+            f x = pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "replace_pure" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure 5
+              n0 <- pure (CPair x0 5)
+              case n0 of
+                (CPair c0 c1) -> pure c1
+          |]
+
+      let after = [prog|
+            grinMain =
+              n0 <- pure (CPair (#undefined :: T_Int64) 5)
+              case n0 of
+                (CPair c0 c1) -> pure c1
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "replace_store" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure 5
+              p0 <- store (CPair x0 5)
+              (CPair c0 c1) <- fetch p0
+              pure c1
+          |]
+
+      let after = [prog|
+            grinMain =
+              p0 <- store (CPair (#undefined :: T_Int64) 5)
+              (CPair c0 c1) <- fetch p0
+              pure c1
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "replace_update" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure 5
+              p0 <- store (CPair 0 0)
+              update p0 (CPair x0 5)
+              (CPair c0 c1) <- fetch p0
+              pure c1
+          |]
+
+      let after = [prog|
+            grinMain =
+              p0 <- store (CPair 0 0)
+              update p0 (CPair (#undefined :: T_Int64) 5)
+              (CPair c0 c1) <- fetch p0
+              pure c1
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "replace_unspec_loc" $ do
+      let before = [prog|
+            grinMain =
+              x0 <- pure (#undefined :: #ptr)
+              n0 <- pure (CPair x0 5)
+              case n0 of
+                (CPair c0 c1) -> pure c1
+          |]
+
+      let after = [prog|
+            grinMain =
+              n0 <- pure (CPair (#undefined :: #ptr) 5)
+              case n0 of
+                (CPair c0 c1) -> pure c1
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "true_side_effect_min" $ do
+      let before = [prog|
+            grinMain =
+              result_main <- Main.main1 $
+              pure ()
+
+            Main.main1 =
+              _prim_int_print $ 1
+          |]
+
+      let after = [prog|
+            grinMain =
+              result_main <- Main.main1 $
+              pure ()
+
+            Main.main1 =
+              _prim_int_print $ 1
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
 
     describe "bugs" $ do
       xit "Not explicitly covered alternatives trigger undefined replacements" $ do

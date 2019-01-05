@@ -1,8 +1,10 @@
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Transformations.Optimising.DeadFunctionEliminationSpec where
 
 import Test.Hspec
 import Test.Hspec.PipelineExample
 import Pipeline.Pipeline hiding (pipeline)
+import Grin.TH
 
 
 runTests :: IO ()
@@ -16,32 +18,106 @@ spec = do
           [ T DeadFunctionElimination
           ]
 
-    it "app_side_effect_1" $ pipeline
-      "dead_code/app_side_effect_1.grin"
-      "dead_fun/after/app_side_effect_1.grin"
-      deadFunctionEliminationPipeline
+    it "app_side_effect_1" $ do
+      let before = [prog|
+            grinMain =
+              p0 <- store (CInt 0)
+              y0 <- f p0
+              y1 <- fetch p0
+              pure y1
 
-    it "mutually_recursive" $ pipeline
-      "dead_fun/before/mutually_recursive.grin"
-      "dead_fun/after/mutually_recursive.grin"
-      deadFunctionEliminationPipeline
+            f p =
+              update p (CInt 1)
+              pure 0
+          |]
 
-    it "replace_node" $ pipeline
-      "dead_fun/before/replace_node.grin"
-      "dead_fun/after/replace_node.grin"
-      deadFunctionEliminationPipeline
+      let after = [prog|
+            grinMain =
+              p0 <- store (CInt 0)
+              y0 <- f p0
+              y1 <- fetch p0
+              pure y1
 
-    it "replace_simple_type" $ pipeline
-      "dead_fun/before/replace_simple_type.grin"
-      "dead_fun/after/replace_simple_type.grin"
-      deadFunctionEliminationPipeline
+            f p =
+              update p (CInt 1)
+              pure 0
+          |]
+      pipelineSrc before after deadFunctionEliminationPipeline
 
-    it "simple" $ pipeline
-      "dead_fun/before/simple.grin"
-      "dead_fun/after/simple.grin"
-      deadFunctionEliminationPipeline
+    it "mutually_recursive" $ do
+      let before = [prog|
+            grinMain = pure 0
+            f x = g x
+            g y = f y
+          |]
 
-    it "true_side_effect_min" $ pipeline
-      "dead_fun/before/true_side_effect_min.grin"
-      "dead_fun/after/true_side_effect_min.grin"
-      deadFunctionEliminationPipeline
+      let after = [prog|
+            grinMain = pure 0
+          |]
+      pipelineSrc before after deadFunctionEliminationPipeline
+
+    it "replace_node" $ do
+      let before = [prog|
+            grinMain =
+              n0 <- f 0
+              pure 0
+
+            f x =
+              p <- store (CInt 5)
+              pure (CNode p)
+          |]
+
+      let after = [prog|
+            grinMain =
+              n0 <- pure (#undefined :: {CNode[#ptr]})
+              pure 0
+          |]
+      pipelineSrc before after deadFunctionEliminationPipeline
+
+    it "replace_simple_type" $ do
+      let before = [prog|
+            grinMain =
+              y0 <- f 0
+              pure 0
+
+            f x = pure x
+          |]
+
+      let after = [prog|
+            grinMain =
+              y0 <- pure (#undefined :: T_Int64)
+              pure 0
+          |]
+      pipelineSrc before after deadFunctionEliminationPipeline
+
+    it "simple" $ do
+      let before = [prog|
+            grinMain = pure 0
+
+            f x = pure x
+          |]
+
+      let after = [prog|
+            grinMain = pure 0
+          |]
+      pipelineSrc before after deadFunctionEliminationPipeline
+
+    it "true_side_effect_min" $ do
+      let before = [prog|
+            grinMain =
+              result_main <- Main.main1 $
+              pure ()
+
+            Main.main1 =
+              _prim_int_print $ 1
+          |]
+
+      let after = [prog|
+            grinMain =
+              result_main <- Main.main1 $
+              pure ()
+
+            Main.main1 =
+              _prim_int_print $ 1
+          |]
+      pipelineSrc before after deadFunctionEliminationPipeline
