@@ -337,6 +337,8 @@ data Type
   | TLoc Type
   | TTag Name [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
+  | TString
+  | TChar
   deriving (Eq, Generic, Ord, Show)
 
 instance Arbitrary Type where arbitrary = genericArbitraryU
@@ -351,6 +353,8 @@ simpleType = melements
   , TUnit
   , TBool
 --  , TLoc
+  , TString
+  , TChar
   ]
 
 primitiveType :: GoalM Type
@@ -361,6 +365,8 @@ primitiveType = melements
   , TBool
 --  , TUnit
 --  , TLoc
+  , TString
+  , TChar
   ]
 
 
@@ -379,6 +385,8 @@ instance TypeOf G.SimpleVal where
     G.Lit (LWord64 _) -> TWord
     G.Lit (LFloat _)  -> TFloat
     G.Lit (LBool _)   -> TBool
+    G.Lit (LString _) -> TString
+    G.Lit (LChar _)   -> TChar
     bad              -> error $ "typeOf @G.SimpleVal got:" ++ show bad
 
 instance TypeOf G.Val where
@@ -514,7 +522,11 @@ gLiteral = fmap G.Lit . \case
   TFloat -> LFloat  <$> gen arbitrary
   TWord  -> LWord64 <$> gen arbitrary
   TBool  -> LBool   <$> gen arbitrary
+  TString -> LString <$> gen (listOf alphaNumChar)
+  TChar   -> LChar <$> gen alphaNumChar
   _      -> mzero
+  where
+    alphaNumChar = elements $ ['a' .. 'z'] ++ ['0' .. '9']
 
 varFromEnv :: Type -> GoalM G.SimpleVal
 varFromEnv t = (G.Var . G.Name <$> gEnv t)
@@ -525,6 +537,8 @@ gSimpleVal = \case
   TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
   TWord  -> varFromEnv TWord `mplus` gLiteral TWord
   TBool  -> varFromEnv TBool `mplus` gLiteral TBool
+  TString  -> varFromEnv TString `mplus` gLiteral TString
+  TChar  -> varFromEnv TChar `mplus` gLiteral TChar
   (TLoc t) -> varFromEnv (TLoc t) -- Locations have no literals
   _      -> mzero
 
@@ -543,6 +557,8 @@ gValue = \case
   TWord           -> G.SimpleVal <$> gSimpleVal TWord
   TLoc t        -> G.SimpleVal <$> gSimpleVal (TLoc t)
   TBool           -> G.SimpleVal <$> gSimpleVal TBool
+  TString         -> G.SimpleVal <$> gSimpleVal TString
+  TChar           -> G.SimpleVal <$> gSimpleVal TChar
   TTag tag types  -> gNodeValue $ TTag tag types
   TUnion types    -> do
     t <- melements (Set.toList types)

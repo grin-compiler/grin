@@ -225,11 +225,92 @@ spec = do
         |]
     exp `sameAs` (parseProg . Text.pack . show . WPP $ exp)
 
-  describe "generated" $ do
-    it "parse . pretty print == id" $ property $
-      forAll (PP <$> genProg) $ \p ->
-        let p' = parseGrin "" (Text.pack $ show p)
-        in (fmap PP p') `shouldBe` (Right p)
+  it "string literal" $ do
+    let before = [prog|
+          grinMain =
+            v0 <- fun_call $ 1 #"a" 1
+            v1 <- pure #""
+            v2 <- pure #"a"
+            v3 <- case #"" of
+              #"" -> pure 1
+              #"a" -> pure 2
+              #default -> pure 3
+            v4 <- pure (CTag1 #"")
+            v5 <- pure (CTag2 #"" #"a")
+            v6 <- pure (CTag3 #"a" #"")
+            v7 <- pure (CTag4 #"a" #"" #"b")
+            v8 <- pure (CTag5 1 #"" 1 #"a")
+            v9 <- pure (CTag6 1 #"" 1 #"a" 4)
+            v10 <- case (CTag7 1 #"" 3) of
+              (CTag7 v11 v12 v13) -> pure 1
+            v11 <- store (CTag8 #"a" 1 #"")
+            (CTag9 #"a") <- pure (CTag9 #"a")
+            pure ()
+        |]
+    let after = Program []
+          [Def "grinMain" []
+            (EBind (SApp "fun_call" [Lit (LInt64 1),Lit (LString "a"),Lit (LInt64 1)]) (Var "v0")
+            (EBind (SReturn (Lit (LString ""))) (Var "v1")
+            (EBind (SReturn (Lit (LString "a"))) (Var "v2")
+            (EBind (ECase (Lit (LString ""))
+              [Alt (LitPat (LString "")) (SReturn (Lit (LInt64 1)))
+              ,Alt (LitPat (LString "a")) (SReturn (Lit (LInt64 2)))
+              ,Alt DefaultPat (SReturn (Lit (LInt64 3)))
+              ]) (Var "v3")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag1"}) [Lit (LString "")])) (Var "v4")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag2"}) [Lit (LString ""),Lit (LString "a")])) (Var "v5")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag3"}) [Lit (LString "a"),Lit (LString "")])) (Var "v6")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag4"}) [Lit (LString "a"),Lit (LString ""),Lit (LString "b")])) (Var "v7")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag5"}) [Lit (LInt64 1),Lit (LString ""),Lit (LInt64 1),Lit (LString "a")])) (Var "v8")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag6"}) [Lit (LInt64 1),Lit (LString ""),Lit (LInt64 1),Lit (LString "a"),Lit (LInt64 4)])) (Var "v9")
+            (EBind (ECase (ConstTagNode (Tag {tagType = C, tagName = "Tag7"}) [Lit (LInt64 1),Lit (LString ""),Lit (LInt64 3)])
+                      [Alt (NodePat (Tag {tagType = C, tagName = "Tag7"}) ["v11","v12","v13"]) (SReturn (Lit (LInt64 1)))]) (Var "v10")
+            (EBind (SStore (ConstTagNode (Tag {tagType = C, tagName = "Tag8"}) [Lit (LString "a"),Lit (LInt64 1),Lit (LString "")])) (Var "v11")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LString "a")])) (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LString "a")])
+            (SReturn Unit))))))))))))))
+          ]
+    before `shouldBe` after
+
+  it "char literals" $ do
+    let before = [prog|
+          grinMain =
+            v0 <- fun_call $ 1 #'a' 1
+            v2 <- pure #'a'
+            v3 <- case #'b' of
+              #'b' -> pure 1
+              #'c' -> pure 2
+              #default -> pure 3
+            v5 <- pure (CTag2 #'a' #'b')
+            v6 <- pure (CTag3 #'a')
+            v8 <- pure (CTag5 1 #'a')
+            v9 <- pure (CTag6 1 #'a' 4)
+            v10 <- case (CTag7 1 #'b' 3) of
+              (CTag7 v11 v12 v13) -> pure 1
+            v11 <- store (CTag8 #'a' 1 #'c')
+            (CTag9 #'a') <- pure (CTag9 #'a')
+            pure ()
+        |]
+    let after = Program []
+          [Def "grinMain" []
+            (EBind (SApp "fun_call" [Lit (LInt64 1),Lit (LChar 'a'),Lit (LInt64 1)]) (Var "v0")
+            (EBind (SReturn (Lit (LChar 'a'))) (Var "v2")
+            (EBind (ECase (Lit (LChar 'b'))
+              [Alt (LitPat (LChar 'b')) (SReturn (Lit (LInt64 1)))
+              ,Alt (LitPat (LChar 'c')) (SReturn (Lit (LInt64 2)))
+              ,Alt DefaultPat (SReturn (Lit (LInt64 3)))
+              ]) (Var "v3")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag2"}) [Lit (LChar 'a'),Lit (LChar 'b')])) (Var "v5")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag3"}) [Lit (LChar 'a')])) (Var "v6")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag5"}) [Lit (LInt64 1),Lit (LChar 'a')])) (Var "v8")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag6"}) [Lit (LInt64 1),Lit (LChar 'a'),Lit (LInt64 4)])) (Var "v9")
+            (EBind (ECase (ConstTagNode (Tag {tagType = C, tagName = "Tag7"}) [Lit (LInt64 1),Lit (LChar 'b'),Lit (LInt64 3)])
+              [Alt (NodePat (Tag {tagType = C, tagName = "Tag7"}) ["v11","v12","v13"]) (SReturn (Lit (LInt64 1)))
+              ]) (Var "v10")
+            (EBind (SStore (ConstTagNode (Tag {tagType = C, tagName = "Tag8"}) [Lit (LChar 'a'),Lit (LInt64 1),Lit (LChar 'c')])) (Var "v11")
+            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LChar 'a')])) (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LChar 'a')])
+            (SReturn Unit)))))))))))
+          ]
+    before `shouldBe` after
 
   describe "external defintions" $ do
     it "primop" $ do
@@ -292,3 +373,9 @@ spec = do
             ]
             [ Def "grinMain" [] ( SReturn Unit ) ]
       before `sameAs` after
+
+  describe "generated" $ do
+    it "parse . pretty print == id" $ property $
+      forAll (PP <$> genProg) $ \p ->
+        let p' = parseGrin "" (Text.pack $ show p)
+        in (fmap PP p') `shouldBe` (Right p)
