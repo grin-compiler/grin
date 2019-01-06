@@ -138,19 +138,7 @@ data Constant
   deriving (Eq, Ord, Show)
 
 makeBaseFunctor ''Instruction
-{-
-class HasDataFlowInfo a where
-  dataFlowInfo :: Lens' a AbstractProgram
 
-  getDataFlowInfo :: a -> AbstractProgram
-  getDataFlowInfo = view dataFlowInfo
-
-  modifyInfo :: (AbstractProgram -> AbstractProgram) -> a -> a
-  modifyInfo = over dataFlowInfo
-
-instance HasDataFlowInfo AbstractProgram where
-  dataFlowInfo = id
--}
 data AbstractProgram
   = AbstractProgram
   { _absMemoryCounter    :: Word32
