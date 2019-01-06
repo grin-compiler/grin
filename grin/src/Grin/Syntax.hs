@@ -11,6 +11,7 @@ import Data.Functor.Foldable.TH
 import Control.DeepSeq
 import GHC.Generics (Generic)
 import Data.Int
+import Data.Text (Text)
 import Data.Word
 import qualified Data.ByteString.Short as B
 import Lens.Micro.Platform
@@ -54,7 +55,7 @@ data Lit
   | LWord64 Word64
   | LFloat  Float
   | LBool   Bool
-  | LString String
+  | LString Text
   | LChar   Char
   deriving (Generic, NFData, Eq, Ord, Show)
 

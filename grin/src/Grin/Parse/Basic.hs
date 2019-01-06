@@ -4,8 +4,10 @@ module Grin.Parse.Basic where
 import Data.Set (Set)
 import Data.Vector (Vector)
 import qualified Data.Set    as Set
+
 import qualified Data.Vector as Vec
 
+import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text.Short (ShortText, pack)
 import Data.Void
@@ -109,8 +111,8 @@ escaped = string "\\\"" >> pure '"'
 quotedVar :: Parser ShortText
 quotedVar = packName <$ char '"' <*> someTill (escaped <|> anyChar) (char '"')
 
-quotedString :: Parser String
-quotedString = char '"' *> manyTill (escaped <|> anyChar) (char '"')
+quotedString :: Parser Text
+quotedString = fromString <$> (char '"' *> manyTill (escaped <|> anyChar) (char '"'))
 
 simpleVar :: Parser ShortText
 simpleVar = (\c s -> packName $ c : s) <$> oneOf allowedInitial <*> many (alphaNumChar <|> oneOf allowedSpecial)

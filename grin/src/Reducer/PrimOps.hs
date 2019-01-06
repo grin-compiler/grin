@@ -7,6 +7,8 @@ import Reducer.Base
 import Data.Char (chr, ord)
 import Grin.Grin
 import Data.Map.Strict as Map
+import Data.String (fromString)
+import Data.Text as Text
 import Control.Monad.IO.Class
 
 import Control.Concurrent (threadDelay)
@@ -16,8 +18,8 @@ import System.IO.Unsafe
 
 -- primitive functions
 primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
-primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr a) >> pure RT_Unit
-primLiteralPrint ctx ps x = error $ unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
+primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (unpack a)) >> pure RT_Unit
+primLiteralPrint ctx ps x = error $ Prelude.unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
 
 
 evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal] -> m RTVal
@@ -33,11 +35,11 @@ evalPrimOp name params args = case name of
   "_prim_float_string" -> float_str
   "_prim_char_int"     -> char_int
   -- String
-  "_prim_string_reverse" -> string_un_op string reverse
-  "_prim_string_head"    -> string_un_op int (fromIntegral . ord . head)
-  "_prim_string_tail"    -> string_un_op string tail
-  "_prim_string_len"     -> string_un_op int (fromIntegral . length)
-  "_prim_string_concat"  -> string_bin_op string (++)
+  "_prim_string_reverse" -> string_un_op string Text.reverse
+  "_prim_string_head"    -> string_un_op int (fromIntegral . ord . Text.head)
+  "_prim_string_tail"    -> string_un_op string Text.tail
+  "_prim_string_len"     -> string_un_op int (fromIntegral . Text.length)
+  "_prim_string_concat"  -> string_bin_op string (\t1 t2 -> Text.concat [t1, t2])
   "_prim_string_eq"      -> string_bin_op bool (==)
   "_prim_string_cons"    -> string_cons
 
@@ -114,15 +116,15 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   string_cons = case args of
-    [RT_Lit (LInt64 a), RT_Lit (LString b)] -> string $ (chr (fromIntegral a)) : b
+    [RT_Lit (LInt64 a), RT_Lit (LString b)] -> string $ Text.cons (chr (fromIntegral a)) b
     _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_str = case args of
-    [RT_Lit (LInt64 a)] -> string $ show a
+    [RT_Lit (LInt64 a)] -> string $ fromString $ show a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   str_int = case args of
-    [RT_Lit (LString a)] -> int $ read a
+    [RT_Lit (LString a)] -> int $ read $ unpack a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_float = case args of
@@ -134,7 +136,7 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   float_str = case args of
-    [RT_Lit (LFloat a)] -> string $ show a
+    [RT_Lit (LFloat a)] -> string $ fromString $ show a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   file_eof = case args of
@@ -142,7 +144,7 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   primReadString = case args of
-    [] -> liftIO getLine >>= string
+    [] -> liftIO getLine >>= (string . fromString)
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   primUSleep = case args of

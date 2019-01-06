@@ -21,6 +21,7 @@ import Data.Functor.Foldable
 import Data.List ((\\))
 import Data.Maybe (fromJust, maybeToList)
 import Data.Semigroup
+import Data.String (fromString)
 import qualified Data.Text as Text
 import qualified Data.Text.Short as TS
 import GHC.Generics
@@ -522,7 +523,7 @@ gLiteral = fmap G.Lit . \case
   TFloat -> LFloat  <$> gen arbitrary
   TWord  -> LWord64 <$> gen arbitrary
   TBool  -> LBool   <$> gen arbitrary
-  TString -> LString <$> gen (listOf alphaNumChar)
+  TString -> LString . fromString <$> gen (listOf alphaNumChar)
   TChar   -> LChar <$> gen alphaNumChar
   _      -> mzero
   where
