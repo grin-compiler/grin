@@ -71,8 +71,8 @@ spec = do
       pipelineSrc before after deadParameterEliminationPipeline
 
     it "Pnode" $ pipeline
-      "pnode_before.grin"
-      "pnode_after_dead_param.grin"
+      "dead-parameter-elimination/pnode_before.grin"
+      "dead-parameter-elimination/pnode_after.grin"
       deadParameterEliminationPipeline
 
     it "Pnode opt" $ do

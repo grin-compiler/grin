@@ -63,8 +63,8 @@ spec = do
       pipelineSrc before after deadDataEliminationPipeline
 
     it "Length" $ pipeline
-      "length_before.grin"
-      "length_after_dead_data.grin"
+      "dead-data-elimination/length_before.grin"
+      "dead-data-elimination/length_after.grin"
       deadDataEliminationPipeline
 
     it "Multiple fields" $ do
@@ -410,8 +410,8 @@ spec = do
       pipelineSrc before after deadDataEliminationPipeline
 
     it "PNode Before" $ pipeline
-      "pnode_before.grin"
-      "pnode_after_dead_data.grin"
+      "dead-data-elimination/pnode_before.grin"
+      "dead-data-elimination/pnode_after.grin"
       deadDataEliminationPipeline
 
     it "PNode Opt Before" $ do
