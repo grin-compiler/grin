@@ -981,22 +981,22 @@ runAnalysisFor t = do
     WithLVACBy     _ -> [hpt, lva, cby, sharing, eff]
     WithTypeEnvShr _ -> [hpt, sharing]
   where
-    analisys getter ann = do
+    analysis getter ann = do
       r <- use getter
       when (isNothing r) $ do
-        pipelineLog $ "Analisys"
+        pipelineLog $ "Analysis"
         mapM_ pipelineStep $ (ann <$> [Compile, RunPure])
 
-    hpt = analisys psHPTResult HPT
-    lva = analisys psLVAResult LVA
-    cby = analisys psCByResult CBy
-    sharing = analisys psSharingResult Sharing
+    hpt = analysis psHPTResult HPT
+    lva = analysis psLVAResult LVA
+    cby = analysis psCByResult CBy
+    sharing = analysis psSharingResult Sharing
 
     eff :: PipelineM ()
     eff = do
       r <- use psEffectMap
       when (isNothing r) $ do
-        pipelineLog $ "Analisys"
+        pipelineLog $ "Analysis"
         void $ pipelineStep $ Eff CalcEffectMap
 
 pipelineLog :: String -> PipelineM ()
