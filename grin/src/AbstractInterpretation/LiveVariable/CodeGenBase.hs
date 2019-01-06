@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes #-}
+{-# LANGUAGE TemplateHaskell, LambdaCase, RecordWildCards, RankNTypes #-}
 module AbstractInterpretation.LiveVariable.CodeGenBase where
 
 import Data.Int
@@ -13,14 +13,44 @@ import qualified Data.Set as Set
 import qualified Data.Vector as Vec
 
 import Control.Monad.State
-import Control.Monad.Trans.Except
+
+import Lens.Micro.Platform
 
 import Grin.Grin
 import Grin.TypeEnvDefs
+import AbstractInterpretation.IR (Instruction(..), Reg(..))
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (AbstractProgram(..))
 
-type CG = State AbstractProgram
+data CGState
+  = CGState
+  { _sMemoryCounter   :: Word32
+  , _sRegisterCounter :: Word32
+  , _sInstructions    :: [Instruction]
+
+  -- mapping
+
+  , _sRegisterMap     :: Map.Map Name Reg
+  , _sFunctionArgMap  :: Map.Map Name (Reg, [Reg])
+  , _sTagMap          :: Bimap.Bimap Tag IR.Tag
+  }
+  deriving (Show)
+
+concat <$> mapM makeLenses [''CGState]
+
+emptyCGState :: CGState
+emptyCGState = CGState
+  { _sMemoryCounter   = 0
+  , _sRegisterCounter = 0
+  , _sInstructions    = []
+
+  -- mapping
+
+  , _sRegisterMap     = mempty
+  , _sFunctionArgMap  = mempty
+  , _sTagMap          = Bimap.empty
+  }
+
+type CG = State CGState
 
 data Result
   = R IR.Reg
@@ -28,52 +58,52 @@ data Result
   | A CPat (CG Result)
 
 emit :: IR.Instruction -> CG ()
-emit inst = modify' $ \s@AbstractProgram{..} -> s {_absInstructions = inst : _absInstructions}
+emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
 
 -- creates regsiters for function arguments and result
 getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])
 getOrAddFunRegs name arity = do
-  funMap <- gets _absFunctionArgMap
+  funMap <- gets _sFunctionArgMap
   case Map.lookup name funMap of
     Just x  -> pure x
     Nothing -> do
       resReg <- newReg
       argRegs <- replicateM arity newReg
       let funRegs = (resReg, argRegs)
-      modify' $ \s@AbstractProgram{..} -> s {_absFunctionArgMap = Map.insert name funRegs _absFunctionArgMap}
+      modify' $ \s@CGState{..} -> s {_sFunctionArgMap = Map.insert name funRegs _sFunctionArgMap}
       pure funRegs
 
 newReg :: CG IR.Reg
-newReg = state $ \s@AbstractProgram{..} -> (IR.Reg _absRegisterCounter, s {_absRegisterCounter = succ _absRegisterCounter})
+newReg = state $ \s@CGState{..} -> (IR.Reg _sRegisterCounter, s {_sRegisterCounter = succ _sRegisterCounter})
 
 newMem :: CG IR.Mem
-newMem = state $ \s@AbstractProgram{..} -> (IR.Mem _absMemoryCounter, s {_absMemoryCounter = succ _absMemoryCounter})
+newMem = state $ \s@CGState{..} -> (IR.Mem _sMemoryCounter, s {_sMemoryCounter = succ _sMemoryCounter})
 
 addReg :: Name -> IR.Reg -> CG ()
-addReg name reg = modify' $ \s@AbstractProgram{..} -> s {_absRegisterMap = Map.insert name reg _absRegisterMap}
+addReg name reg = modify' $ \s@CGState{..} -> s {_sRegisterMap = Map.insert name reg _sRegisterMap}
 
 getReg :: Name -> CG IR.Reg
 getReg name = do
-  regMap <- gets _absRegisterMap
+  regMap <- gets _sRegisterMap
   case Map.lookup name regMap of
     Nothing   -> error $ "unknown variable " ++ unpackName name
     Just reg  -> pure reg
 
 getTag :: Tag -> CG IR.Tag
 getTag tag = do
-  tagMap <- gets _absTagMap
+  tagMap <- gets _sTagMap
   case Bimap.lookup tag tagMap of
     Just t  -> pure t
     Nothing -> do
       let t = IR.Tag . fromIntegral $ Bimap.size tagMap
-      modify' $ \s -> s {_absTagMap = Bimap.insert tag t tagMap}
+      modify' $ \s -> s {_sTagMap = Bimap.insert tag t tagMap}
       pure t
 
 codeGenBlock :: CG a -> CG (a,[IR.Instruction])
 codeGenBlock genM = do
-  instructions <- state $ \s@AbstractProgram{..} -> (_absInstructions, s {_absInstructions = []})
+  instructions <- state $ \s@CGState{..} -> (_sInstructions, s {_sInstructions = []})
   ret <- genM
-  blockInstructions <- state $ \s@AbstractProgram{..} -> (reverse _absInstructions, s {_absInstructions = instructions})
+  blockInstructions <- state $ \s@CGState{..} -> (reverse _sInstructions, s {_sInstructions = instructions})
   pure (ret, blockInstructions)
 
 codeGenBlock_ :: CG a -> CG [IR.Instruction]

@@ -23,9 +23,9 @@ runTests = hspec spec
 
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
-  | lvaProgram <- codeGen prog
-  , computer <- _airComp . evalAbstractProgram . fst $ lvaProgram
-  = toLVAResult lvaProgram computer
+  | (lvaProgram, lvaMapping) <- codeGen prog
+  , computer <- _airComp . evalAbstractProgram $ lvaProgram
+  = toLVAResult lvaMapping computer
 
 spec :: Spec
 spec = describe "Live Variable Analysis" $ do

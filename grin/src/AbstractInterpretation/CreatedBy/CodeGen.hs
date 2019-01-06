@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings, RecordWildCards #-}
 module AbstractInterpretation.CreatedBy.CodeGen where
 
-import Control.Monad.Trans.Except
 import Control.Monad.State
 
 import Data.Set (Set)
@@ -18,7 +17,7 @@ import Lens.Micro.Platform
 import Grin.Grin
 import Grin.TypeEnvDefs
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram)
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, AbstractMapping(..))
 import AbstractInterpretation.CreatedBy.CodeGenBase
 import AbstractInterpretation.HeapPointsTo.CodeGen (litToSimpleType, unitType, codeGenPrimOp) -- FIXME: why? remove, refactor
 import AbstractInterpretation.HeapPointsTo.Result (undefinedProducer) -- FIXME: why? remove, refactor
@@ -26,6 +25,7 @@ import AbstractInterpretation.HeapPointsTo.Result (undefinedProducer) -- FIXME: 
 data CByMapping
   = CByMapping
   { _producerMap  :: Map.Map IR.Reg Name
+  , _hptMapping   :: AbstractMapping
   } deriving (Show)
 
 concat <$> mapM makeLenses [''CByMapping]
@@ -37,13 +37,15 @@ mkCByProgramM = do
   let prg = AbstractProgram
         { _absMemoryCounter   = _sMemoryCounter
         , _absRegisterCounter = _sRegisterCounter
-        , _absRegisterMap     = _sRegisterMap
         , _absInstructions    = _sInstructions
-        , _absFunctionArgMap  = _sFunctionArgMap
-        , _absTagMap          = _sTagMap
         }
       mapping = CByMapping
         { _producerMap  = _sProducerMap
+        , _hptMapping   = AbstractMapping
+            { _absRegisterMap     = _sRegisterMap
+            , _absFunctionArgMap  = _sFunctionArgMap
+            , _absTagMap          = _sTagMap
+            }
         }
   pure (prg, mapping)
 

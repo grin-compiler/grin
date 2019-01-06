@@ -48,7 +48,8 @@ import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
 -}
 
 data SharingMapping = SharingMapping
-  { _shRegName :: Reg
+  { _shRegName  :: Reg
+  , _hptMapping :: HPTMapping
   } deriving (Show)
 
 concat <$> mapM makeLenses [''SharingMapping]
@@ -126,9 +127,10 @@ codeGenM e = do
   HPT.codeGenM e
   shReg <- newReg
   sharingCodeGen shReg e
-  (prg, _) <- HPT.mkAbstractProgramM
+  (prg, hptMapping) <- HPT.mkAbstractProgramM
   let mapping = SharingMapping
         { _shRegName  = shReg
+        , _hptMapping = hptMapping
         }
   pure (prg, mapping)
 

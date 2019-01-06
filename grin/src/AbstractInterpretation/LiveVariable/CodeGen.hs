@@ -1,7 +1,6 @@
-{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings, RecordWildCards #-}
 module AbstractInterpretation.LiveVariable.CodeGen where
 
-import Control.Monad.Trans.Except
 import Control.Monad.State
 
 import Data.Int
@@ -17,7 +16,7 @@ import Grin.TypeEnvDefs
 import Transformations.Util
 import AbstractInterpretation.Util
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram)
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
 import AbstractInterpretation.LiveVariable.CodeGenBase
 
 -- NOTE: For a live variable, we could store its type information.
@@ -28,7 +27,7 @@ import AbstractInterpretation.LiveVariable.CodeGenBase
 -- By default, every variable is dead.
 -- The data flows in two directions: the liveness information flows backwards,
 -- the structural information flows forward.
-type LVAMapping = ()
+type LVAMapping = AbstractMapping
 
 type LivenessId = Int32
 
@@ -155,13 +154,27 @@ codeGenVal = \case
   val -> error $ "unsupported value " ++ show val
 
 
-codeGen :: Exp -> (AbstractProgram, LVAMapping)
-codeGen e = (codeGen' e, ())
+codeGen :: Program -> (AbstractProgram, LVAMapping)
+codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
+codeGen _ = error "Program expected"
 
-codeGen' :: Exp -> AbstractProgram
-codeGen' = --fmap reverseInstructions -- TODO
-        flip execState emptyAbstractProgram
-        . (cata folder >=> const setMainLive)
+mkAbstractProgramM :: CG (AbstractProgram, LVAMapping)
+mkAbstractProgramM = do
+  CGState{..} <- get
+  let prg = AbstractProgram
+        { _absMemoryCounter   = _sMemoryCounter
+        , _absRegisterCounter = _sRegisterCounter
+        , _absInstructions    = _sInstructions
+        }
+  let mpg = AbstractMapping
+        { _absRegisterMap     = _sRegisterMap
+        , _absFunctionArgMap  = _sFunctionArgMap
+        , _absTagMap          = _sTagMap
+        }
+  pure (prg, mpg)
+
+codeGenM :: Exp -> CG ()
+codeGenM = cata folder >=> const setMainLive
   where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case

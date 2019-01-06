@@ -28,11 +28,11 @@ emptySharingResult = SharingResult emptyHPTResult mempty
 
 concat <$> mapM makeLenses [''SharingResult]
 
-toSharingResult :: (AbstractProgram, SharingMapping) -> R.ComputerState -> SharingResult
-toSharingResult (_hptProg, SharingMapping{..}) comp = SharingResult hptResult sharedLocs where
-  hptResult  = toHPTResult _hptProg comp
+toSharingResult :: SharingMapping -> R.ComputerState -> SharingResult
+toSharingResult SharingMapping{..} comp = SharingResult hptResult sharedLocs where
+  hptResult  = toHPTResult _hptMapping comp
   sharedLocs = onlyLocations sty
-  TypeSet sty _ = convertReg (_hptProg, comp) _shRegName
+  TypeSet sty _ = convertReg (_hptMapping, comp) _shRegName
 
   onlyLocations :: Set SimpleType -> Set Loc
   onlyLocations stys = Set.fromList [ l | T_Location l <- Set.toList stys ]

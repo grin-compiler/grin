@@ -13,7 +13,6 @@ import qualified Data.Set as Set
 import qualified Data.Vector as Vec
 
 import Control.Monad.State
-import Control.Monad.Trans.Except
 
 import Lens.Micro.Platform
 

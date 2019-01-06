@@ -18,27 +18,27 @@ import Lens.Micro.Platform
 import Grin.Grin
 import Grin.TypeEnv
 import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..))
+import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
 import AbstractInterpretation.HeapPointsTo.CodeGenBase
-
-type HPTMapping = () -- TODO
 
 codeGen :: Program -> (AbstractProgram, HPTMapping)
 codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
 codeGen _ = error "Program expected"
 
-mkAbstractProgramM :: CG (AbstractProgram, ())
+mkAbstractProgramM :: CG (AbstractProgram, HPTMapping)
 mkAbstractProgramM = do
   CGState{..} <- get
   let prg = AbstractProgram
         { _absMemoryCounter   = _sMemoryCounter
         , _absRegisterCounter = _sRegisterCounter
-        , _absRegisterMap     = _sRegisterMap
         , _absInstructions    = _sInstructions
+        }
+  let mpg = AbstractMapping
+        { _absRegisterMap     = _sRegisterMap
         , _absFunctionArgMap  = _sFunctionArgMap
         , _absTagMap          = _sTagMap
         }
-  pure (prg, ())
+  pure (prg, mpg)
 
 unitType :: IR.SimpleType
 unitType = codegenSimpleType T_Unit

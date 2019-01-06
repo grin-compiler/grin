@@ -143,20 +143,28 @@ data AbstractProgram
   = AbstractProgram
   { _absMemoryCounter    :: Word32
   , _absRegisterCounter  :: Word32
-  , _absRegisterMap      :: Map.Map Name Reg
   , _absInstructions     :: [Instruction]
+  }
+  deriving Show
+
+data AbstractMapping
+  = AbstractMapping
+  { _absRegisterMap      :: Map.Map Name Reg
   , _absFunctionArgMap   :: Map.Map Name (Reg, [Reg])
   , _absTagMap           :: Bimap.Bimap Grin.Tag Tag
   }
   deriving Show
 
-concat <$> mapM makeLenses [''AbstractProgram]
+concat <$> mapM makeLenses [''AbstractProgram, ''AbstractMapping]
 
 emptyAbstractProgram = AbstractProgram
   { _absMemoryCounter    = 0
   , _absRegisterCounter  = 0
-  , _absRegisterMap      = Map.empty
   , _absInstructions     = []
+  }
+
+emptyAbstractMapping = AbstractMapping
+  { _absRegisterMap      = Map.empty
   , _absFunctionArgMap   = Map.empty
   , _absTagMap           = Bimap.empty
   }

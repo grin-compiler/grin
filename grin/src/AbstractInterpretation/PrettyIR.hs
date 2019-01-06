@@ -143,7 +143,7 @@ prettyInstruction mirm = \case
     ppS = prettySelector mirm
     arr = text "-->"
 
-prettyInstructions :: Maybe AbstractProgram -> [Instruction] -> Doc
+prettyInstructions :: Maybe AbstractMapping -> [Instruction] -> Doc
 prettyInstructions mp = vsep . map (prettyInstruction mirm) where
   mirm = toIRMap <$> mp
   toIRMap hpt = IRMap

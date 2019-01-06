@@ -16,10 +16,12 @@ import Control.Monad.State
 
 import Grin.Grin (Name, SimpleType(..), CPat(..), unpackName, Tag(..))
 import Grin.TypeEnvDefs
-import AbstractInterpretation.IR (Instruction(..), Reg(..))
+import AbstractInterpretation.IR (Instruction(..), Reg(..), AbstractMapping)
 import qualified AbstractInterpretation.IR as IR
 
 import Lens.Micro.Platform
+
+type HPTMapping = AbstractMapping -- TODO
 
 data CGState
   = CGState

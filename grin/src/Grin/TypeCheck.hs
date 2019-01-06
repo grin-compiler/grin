@@ -95,6 +95,6 @@ typeEnvFromHPTResult hptResult = typeEnv where
 
 inferTypeEnv :: Exp -> TypeEnv.TypeEnv
 inferTypeEnv exp = either error id $ typeEnvFromHPTResult result where
-  hptProgram = fst $ HPT.codeGen exp
+  (hptProgram, hptMapping) = HPT.codeGen exp
   computer = _airComp . R.evalAbstractProgram $ hptProgram
-  result = HPT.toHPTResult hptProgram computer
+  result = HPT.toHPTResult hptMapping computer

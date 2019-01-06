@@ -67,6 +67,7 @@ import AbstractInterpretation.Reduce (ComputerState, AbstractInterpretationResul
 import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
+import qualified AbstractInterpretation.HeapPointsTo.CodeGenBase as HPT
 import qualified AbstractInterpretation.CreatedBy.CodeGen    as CBy
 import qualified AbstractInterpretation.LiveVariable.CodeGen as LVA
 import qualified AbstractInterpretation.Sharing.CodeGen      as Sharing
@@ -463,10 +464,11 @@ compileAbstractProgram codeGen accessProg = do
 
 printAbsProg :: IR.AbstractProgram -> PipelineM ()
 printAbsProg a = do
-  pipelineLog $ show $ IR.prettyInstructions (Just a) . IR._absInstructions $ a
+  pipelineLog $ show $ IR.prettyInstructions Nothing . IR._absInstructions $ a
   pipelineLog $ printf "memory size    %d" $ IR._absMemoryCounter a
   pipelineLog $ printf "register count %d" $ IR._absRegisterCounter a
-  pipelineLog $ printf "variable count %d" $ Map.size $ IR._absRegisterMap a
+  -- TODO: pass mapping
+  --pipelineLog $ printf "variable count %d" $ Map.size $ IR._absRegisterMap a
 
 printAbstractProgram :: (Lens' PState (Maybe (IR.AbstractProgram, a))) -> PipelineM ()
 printAbstractProgram accessProg = do
@@ -482,9 +484,9 @@ printAnalysisResult accessRes = use accessRes >>= \case
 runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
-  Just hptProgram -> do
-    let AbsIntResult{..} = evalAbstractProgram $ fst hptProgram
-        result = HPT.toHPTResult (fst hptProgram) _airComp
+  Just (hptProgram, hptMapping) -> do
+    let AbsIntResult{..} = evalAbstractProgram hptProgram
+        result = HPT.toHPTResult hptMapping _airComp
     pipelineLogIterations _airIter
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
@@ -495,12 +497,12 @@ runHPTPure = use psHPTProgram >>= \case
         psTypeEnv .= Nothing
 
 
-runCByPureWith :: ((IR.AbstractProgram, CBy.CByMapping) -> ComputerState -> CBy.CByResult) -> PipelineM ()
+runCByPureWith :: (CBy.CByMapping -> ComputerState -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
-  Just cbyProgram -> do
-    let AbsIntResult{..} = evalAbstractProgram $ fst cbyProgram
-        result = toCByResult cbyProgram _airComp
+  Just (cbyProgram, cbyMapping) -> do
+    let AbsIntResult{..} = evalAbstractProgram cbyProgram
+        result = toCByResult cbyMapping _airComp
     pipelineLogIterations _airIter
     psCByResult .= Just result
     case typeEnvFromHPTResult (CBy._hptResult result) of
@@ -527,16 +529,16 @@ runLVAPure = use psLVAProgram >>= \case
   Nothing -> psLVAResult .= Nothing
   Just (lvaProgram, lvaMapping) -> do
     let AbsIntResult{..} = evalAbstractProgram $ lvaProgram
-        result = LVA.toLVAResult (lvaProgram, lvaMapping) _airComp
+        result = LVA.toLVAResult lvaMapping _airComp
     pipelineLogIterations _airIter
     psLVAResult .= Just result
 
-runSharingPureWith :: ((IR.AbstractProgram, Sharing.SharingMapping) -> ComputerState -> Sharing.SharingResult) -> PipelineM ()
+runSharingPureWith :: (Sharing.SharingMapping -> ComputerState -> Sharing.SharingResult) -> PipelineM ()
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
   Nothing -> psSharingResult .= Nothing
-  Just shProgram -> do
-    let AbsIntResult{..} = evalAbstractProgram $ fst shProgram
-        result = toSharingResult shProgram _airComp
+  Just (shrProgram, shrMapping) -> do
+    let AbsIntResult{..} = evalAbstractProgram shrProgram
+        result = toSharingResult shrMapping _airComp
     pipelineLogIterations _airIter
     psSharingResult .= Just result
     case typeEnvFromHPTResult (Sharing._hptResult result) of
