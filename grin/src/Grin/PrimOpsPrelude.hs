@@ -81,3 +81,6 @@ primPrelude = [prog|
     _prim_bool_ne   :: T_Bool -> T_Bool -> T_Bool
 
 |]
+
+withPrimPrelude :: Program -> Program
+withPrimPrelude p = concatPrograms [primPrelude, p]

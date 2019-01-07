@@ -8,18 +8,15 @@ import Grin.TH
 import Grin.Lint
 import Grin.TypeEnv as TypeEnv
 import Grin.TypeCheck
+import Grin.PrimOpsPrelude
+
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.Vector as V
 
 import AbstractInterpretation.HeapPointsTo.Result as HPT
 import AbstractInterpretation.Reduce (evalAbstractProgram, _airComp)
 import AbstractInterpretation.HeapPointsTo.CodeGen (codeGen)
-
-
-import qualified Data.Map as M
-import qualified Data.Set as S
-import qualified Data.Vector as V
-
-
 
 runTests :: IO ()
 runTests = hspec spec
@@ -49,7 +46,7 @@ spec = do
 
   describe "case" $ do
     it "default bug01" $ do
-      let code = [prog|
+      let code = withPrimPrelude [prog|
         grinMain =
           (CInt x) <- test 1 2
           y <- pure x
@@ -78,19 +75,17 @@ spec = do
                 , ("y",   int64_t)
                 ]
             , TypeEnv._function = mconcat
-                [ fun_t "_prim_int_add" [int64_t, int64_t] int64_t
-                , fun_t "_prim_int_print" [int64_t] unit_t
-                , fun_t "grinMain" [] unit_t
+                [ fun_t "grinMain" [] unit_t
                 , fun_t "test" [int64_t, int64_t] $ T_NodeSet $ cnode_t "Int" [TypeEnv.T_Int64]
                 ]
             }
       result `shouldBe` exptected
 
   let loc = tySetFromTypes . pure . HPT.T_Location
-      mkNode = V.fromList . map S.fromList
-      mkNodeSet = NodeSet . M.fromList . map (\(t,v) -> (t,mkNode v))
+      mkNode = V.fromList . map Set.fromList
+      mkNodeSet = NodeSet . Map.fromList . map (\(t,v) -> (t,mkNode v))
       mkTySet = TypeSet mempty . mkNodeSet
-      tySetFromTypes = flip TypeSet mempty . S.fromList
+      tySetFromTypes = flip TypeSet mempty . Set.fromList
       mkSimpleMain t = (tySetFromTypes [t], mempty)
 
   describe "HPT Result" $ do
@@ -109,7 +104,7 @@ spec = do
       let expected = HPTResult
             { HPT._memory   = undefinedExpectedHeap
             , HPT._register = undefinedExpectedRegisters
-            , HPT._function = M.singleton "grinMain" (mkSimpleMain HPT.T_Int64)
+            , HPT._function = Map.singleton "grinMain" (mkSimpleMain HPT.T_Int64)
             }
           nodeSetN0 = mkNodeSet [(cCons, [[HPT.T_Int64], [HPT.T_Location 0, HPT.T_Location 1]])]
           undefinedExpectedHeap = V.fromList
@@ -117,7 +112,7 @@ spec = do
             , mkNodeSet [(cCons, [[HPT.T_Int64], [HPT.T_Location 0]])]
             , nodeSetN0
             ]
-          undefinedExpectedRegisters = M.fromList
+          undefinedExpectedRegisters = Map.fromList
             [ ("p0", loc 0)
             , ("p1", loc 1)
             , ("p2", loc 2)
@@ -146,12 +141,12 @@ spec = do
       let expected = HPTResult
             { HPT._memory   = V.fromList [ nodeSetN0 ]
             , HPT._register = unspecLocExpectedRegisters
-            , HPT._function = M.singleton "grinMain" (mkSimpleMain HPT.T_Unit)
+            , HPT._function = Map.singleton "grinMain" (mkSimpleMain HPT.T_Unit)
             }
           nodeSetN0 = mkNodeSet [(cInt,  [[HPT.T_Int64]])]
           nodeSetN1 = mkNodeSet [(cNode, [[HPT.T_UnspecifiedLocation]])]
 
-          unspecLocExpectedRegisters = M.fromList
+          unspecLocExpectedRegisters = Map.fromList
             [ ("p0", tySetFromTypes [HPT.T_Location 0, HPT.T_UnspecifiedLocation])
             , ("p1", tySetFromTypes [HPT.T_UnspecifiedLocation])
             , ("n0", TypeSet mempty nodeSetN0)
@@ -165,4 +160,3 @@ calcHPTResult prog
   | (hptProgram, hptMapping) <- codeGen prog
   , computer <- _airComp . evalAbstractProgram $ hptProgram
   = toHPTResult hptMapping computer
-

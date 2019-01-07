@@ -10,6 +10,7 @@ import Test.Hspec
 import Grin.Grin
 import Grin.TH
 import Grin.Pretty
+import Grin.PrimOpsPrelude
 
 import AbstractInterpretation.Reduce
 import AbstractInterpretation.Sharing.CodeGen
@@ -82,7 +83,7 @@ calcSharingResult prog
   = shResult
 
 testProgram :: Exp
-testProgram = [prog|
+testProgram = withPrimPrelude [prog|
     grinMain = t1 <- store (CInt 1)
                t2 <- store (CInt 10000)
                t3 <- store (Fupto t1 t2)

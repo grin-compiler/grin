@@ -7,6 +7,7 @@ import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Grin.TH
+import Grin.PrimOpsPrelude
 import Test.Assertions
 import Data.List ( (\\) )
 
@@ -21,7 +22,7 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  let exp = [prog|
+  let exp = withPrimPrelude [prog|
     grinMain =
       p1 <- store (CInt 0)
       p2 <- store (CInt 1)

@@ -8,6 +8,7 @@ module Test.Hspec.PipelineExample where
 import Grin.Syntax (Program)
 import Grin.Parse
 import Grin.Pretty (pretty)
+import Grin.PrimOpsPrelude
 import Text.PrettyPrint.ANSI.Leijen (plain)
 import Pipeline.Pipeline -- as Grin
 
@@ -55,7 +56,7 @@ instance Example Pipeline where
       let testDataDir = if | "/grin/grin" `isSuffixOf` pwd -> "test-data/"
                            | "/grin"      `isSuffixOf` pwd -> "grin/test-data/"
                            | otherwise -> error "Impossible: stack did not run inside the project dir."
-          getInput = \case
+          getInput i = withPrimPrelude <$> case i of
             Src prg -> pure prg
             File fn -> parseProg <$> Text.readFile (testDataDir </> fn)
 
