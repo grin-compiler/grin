@@ -14,7 +14,7 @@ import qualified Data.Vector as Vec
 
 import Control.Monad.State
 
-import Grin.Grin (Name, SimpleType(..), CPat(..), unpackName, Tag(..))
+import Grin.Grin (Name, SimpleType(..), CPat(..), unpackName, Tag(..), External(..))
 import Grin.TypeEnvDefs
 import AbstractInterpretation.IR (Instruction(..), Reg(..), AbstractMapping)
 import qualified AbstractInterpretation.IR as IR
@@ -31,9 +31,13 @@ data CGState
 
   -- mapping
 
-  , _sRegisterMap     :: Map.Map Name Reg
-  , _sFunctionArgMap  :: Map.Map Name (Reg, [Reg])
+  , _sRegisterMap     :: Map Name Reg
+  , _sFunctionArgMap  :: Map Name (Reg, [Reg])
   , _sTagMap          :: Bimap.Bimap Tag IR.Tag
+
+  -- internal
+
+  , _sExternalMap     :: Map Name External
   }
   deriving (Show)
 
@@ -50,6 +54,10 @@ emptyCGState = CGState
   , _sRegisterMap     = mempty
   , _sFunctionArgMap  = mempty
   , _sTagMap          = Bimap.empty
+
+  -- internal
+
+  , _sExternalMap     = mempty
   }
 
 type CG = State CGState
@@ -61,6 +69,12 @@ data Result
 
 emit :: IR.Instruction -> CG ()
 emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
+
+addExternal :: External -> CG ()
+addExternal e = modify' $ \s@CGState{..} -> s {_sExternalMap = Map.insert (eName e) e _sExternalMap}
+
+getExternal :: Name -> CG (Maybe External)
+getExternal name = Map.lookup name <$> gets _sExternalMap
 
 -- creates regsiters for function arguments and result
 getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])

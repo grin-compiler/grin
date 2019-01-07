@@ -113,6 +113,16 @@ codeGenVal = \case
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
   val -> error $ "unsupported value " ++ show val
 
+codeGenExternal :: External -> [Val] -> CG Result
+codeGenExternal External{..} args = do
+  let TySimple simpleType = eRetType
+  r <- newReg
+  emit IR.Set
+    { dstReg    = r
+    , constant  = IR.CSimpleType (codegenSimpleType simpleType)
+    }
+  pure $ R r
+
 codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> [Instruction]
 codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
   let emit :: Instruction -> Writer [Instruction] ()
@@ -196,7 +206,7 @@ codeGenM :: Exp -> CG Result
 codeGenM = cata folder where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
-    ProgramF exts defs -> sequence_ defs >> pure Z
+    ProgramF exts defs -> mapM_ addExternal exts >> sequence_ defs >> pure Z
 
     DefF name args body -> do
       instructions <- state $ \s@CGState{..} -> (_sInstructions, s {_sInstructions = []})
@@ -326,13 +336,14 @@ codeGenM = cata folder where
 
     AltF cpat exp -> pure $ A cpat exp
 
-    SAppF name args -> do -- copy args to definition's variables ; read function result register
-      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-      valRegs <- mapM codeGenVal args
-      zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
-      -- HINT: handle primop here because it does not have definition
-      when (isPrimName name) $ mapM_ emit $ codeGenPrimOp name funResultReg funArgRegs
-      pure $ R funResultReg
+    SAppF name args -> getExternal name >>= \case
+      Just ext  -> codeGenExternal ext args
+      Nothing   -> do
+        -- copy args to definition's variables ; read function result register
+        (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+        valRegs <- mapM codeGenVal args
+        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
+        pure $ R funResultReg
 
     SReturnF val -> R <$> codeGenVal val
 
