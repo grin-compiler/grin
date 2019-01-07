@@ -337,7 +337,19 @@ codeGenM = cata folder where
     AltF cpat exp -> pure $ A cpat exp
 
     SAppF name args -> getExternal name >>= \case
-      Just ext  -> codeGenExternal ext args
+      Just ext  -> do
+        res <- codeGenExternal ext args
+        let R r = res
+        -- HINT: workaround
+        -----------
+        -- copy args to definition's variables ; read function result register
+        (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+        valRegs <- mapM codeGenVal args
+        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
+        emit IR.Move {srcReg = r, dstReg = funResultReg}
+        pure $ R funResultReg
+        -----------
+
       Nothing   -> do
         -- copy args to definition's variables ; read function result register
         (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args

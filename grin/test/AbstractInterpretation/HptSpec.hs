@@ -75,7 +75,9 @@ spec = do
                 , ("y",   int64_t)
                 ]
             , TypeEnv._function = mconcat
-                [ fun_t "grinMain" [] unit_t
+                [ fun_t "_prim_int_add" [int64_t, int64_t] int64_t
+                , fun_t "_prim_int_print" [int64_t] unit_t
+                , fun_t "grinMain" [] unit_t
                 , fun_t "test" [int64_t, int64_t] $ T_NodeSet $ cnode_t "Int" [TypeEnv.T_Int64]
                 ]
             }
