@@ -20,12 +20,6 @@ import Data.Text.Short (ShortText, isPrefixOf)
 import Grin.SyntaxDefs
 import Grin.TypeEnvDefs
 
-data Name2
-  = Name        B.ShortByteString
-  | DerivedName B.ShortByteString Int
-  | NewName     Name2 Int -- Block scope with shadowing support
-  deriving (Ord, Eq, Show)
-
 isPrimName :: Name -> Bool
 isPrimName = isPrefixOf "_prim_"
 
