@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TupleSections, TemplateHaskell, OverloadedStrings #-}
 module AbstractInterpretation.HeapPointsTo.CodeGen where
 
-import Control.Monad.Writer
 import Control.Monad.State
 
 import Data.Set (Set)
@@ -113,94 +112,36 @@ codeGenVal = \case
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
   val -> error $ "unsupported value " ++ show val
 
+{-
+data Ty
+  = TyCon     Name [Ty]
+  | TyVar     Name
+  | TySimple  SimpleType
+  deriving (Generic, NFData, Eq, Ord, Show)
+
+data External
+  = External
+  { eName       :: Name
+  , eRetType    :: Ty
+  , eArgsType   :: [Ty]
+  , eEffectful  :: Bool
+  }
+-}
 codeGenExternal :: External -> [Val] -> CG Result
-codeGenExternal External{..} args = do
-  let TySimple simpleType = eRetType
-  r <- newReg
-  emit IR.Set
-    { dstReg    = r
-    , constant  = IR.CSimpleType (codegenSimpleType simpleType)
-    }
-  pure $ R r
-
-codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> [Instruction]
-codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
-  let emit :: Instruction -> Writer [Instruction] ()
-      emit a = tell [a]
-      op argTypes resultTy = do
-        emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
-        zipWithM_ (\argReg argTy -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
-
-      unit  = -1
-      int   = litToSimpleType $ LInt64 0
-      word  = litToSimpleType $ LWord64 0
-      float = litToSimpleType $ LFloat 0
-      bool  = litToSimpleType $ LBool False
-      string = litToSimpleType $ LString ""
-      char  = litToSimpleType $ LChar ' '
-
-
-  case name of
-    "_prim_int_print" -> op [int] unit
-    "_prim_string_print" -> op [string] unit
-    "_prim_read_string" -> op [] string
-    "_prim_usleep" -> op [int] unit
-
-    -- String
-    "_prim_string_concat"  -> op [string, string] string
-    "_prim_string_reverse" -> op [string] string
-    "_prim_string_eq"      -> op [string, string] bool
-    "_prim_string_head"    -> op [string] int
-    "_prim_string_tail"    -> op [string] string
-    "_prim_string_cons"    -> op [int, string] string
-    "_prim_string_len"     -> op [string] int
-
-    -- Conversion
-    "_prim_int_str"      -> op [int] string
-    "_prim_str_int"      -> op [string] int
-    "_prim_int_float"    -> op [int] float
-    "_prim_float_string" -> op [float] string
-    "_prim_char_int"     -> op [char] int
-    -- Int
-    "_prim_int_add"   -> op [int, int] int
-    "_prim_int_sub"   -> op [int, int] int
-    "_prim_int_mul"   -> op [int, int] int
-    "_prim_int_div"   -> op [int, int] int
-    "_prim_int_eq"    -> op [int, int] bool
-    "_prim_int_ne"    -> op [int, int] bool
-    "_prim_int_gt"    -> op [int, int] bool
-    "_prim_int_ge"    -> op [int, int] bool
-    "_prim_int_lt"    -> op [int, int] bool
-    "_prim_int_le"    -> op [int, int] bool
-    -- Word
-    "_prim_word_add"  -> op [word, word] word
-    "_prim_word_sub"  -> op [word, word] word
-    "_prim_word_mul"  -> op [word, word] word
-    "_prim_word_div"  -> op [word, word] word
-    "_prim_word_eq"   -> op [word, word] bool
-    "_prim_word_ne"   -> op [word, word] bool
-    "_prim_word_gt"   -> op [word, word] bool
-    "_prim_word_ge"   -> op [word, word] bool
-    "_prim_word_lt"   -> op [word, word] bool
-    "_prim_word_le"   -> op [word, word] bool
-    -- Float
-    "_prim_float_add" -> op [float, float] float
-    "_prim_float_sub" -> op [float, float] float
-    "_prim_float_mul" -> op [float, float] float
-    "_prim_float_div" -> op [float, float] float
-    "_prim_float_eq"  -> op [float, float] bool
-    "_prim_float_ne"  -> op [float, float] bool
-    "_prim_float_gt"  -> op [float, float] bool
-    "_prim_float_ge"  -> op [float, float] bool
-    "_prim_float_lt"  -> op [float, float] bool
-    "_prim_float_le"  -> op [float, float] bool
-    -- Bool
-    "_prim_bool_eq"   -> op [bool, bool] bool
-    "_prim_bool_ne"   -> op [bool, bool] bool
-    -- FFI - TODO: Handle FFI appropiatey
-    "_prim_ffi_file_eof" -> op [int] int
-    missing           -> error $ show missing
-
+codeGenExternal External{..} args = case eRetType of
+  TySimple simpleType -> do
+    r <- newReg
+    emit IR.Set
+      { dstReg    = r
+      , constant  = IR.CSimpleType (codegenSimpleType simpleType)
+      }
+    pure $ R r
+{-
+  primop effectful
+    newMutVar   :: %a -> {State %s} -> {Tup2 {State %s} {MutVar %s %a}}
+    readMutVar  :: {MutVar %s %a} -> {State %s} -> {Tup2 {State %s} %a}
+    writeMutVar :: {MutVar %s %a} -> %a -> {State %s} -> {State %s}
+-}
 
 codeGenM :: Exp -> CG Result
 codeGenM = cata folder where
@@ -346,7 +287,15 @@ codeGenM = cata folder where
         (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
         valRegs <- mapM codeGenVal args
         zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
-        emit IR.Move {srcReg = r, dstReg = funResultReg}
+        -- old prim codegen
+        let External{..} = ext
+            TySimple retTy = eRetType
+        emit IR.Set
+          { dstReg    = funResultReg
+          , constant  = IR.CSimpleType (codegenSimpleType retTy)
+          }
+        zipWithM_ (\argReg (TySimple argTy) -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType (codegenSimpleType argTy)}) funArgRegs eArgsType
+        --emit IR.Move {srcReg = r, dstReg = funResultReg}
         pure $ R funResultReg
         -----------
 
