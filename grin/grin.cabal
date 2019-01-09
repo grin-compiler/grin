@@ -134,6 +134,7 @@ library
     llvm-hs ==7.*,
     llvm-hs-pure ==7.*,
     llvm-hs-pretty >=0.6.1,
+    inline-c,
     filepath,
     transformers,
     microlens,

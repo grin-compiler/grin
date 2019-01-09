@@ -1,6 +1,16 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 module Reducer.PrimOps (evalPrimOp) where
+
+import           Foreign.C.Types
+import qualified Language.C.Inline as C
+import qualified Language.C.Inline.Unsafe as CU
+import Foreign.Marshal.Alloc
+import Foreign.C.String
 
 import Reducer.Base
 
@@ -15,6 +25,8 @@ import Control.Concurrent (threadDelay)
 import System.IO (hIsEOF, stdin)
 import System.IO.Unsafe
 
+C.include "<math.h>"
+C.include "<stdio.h>"
 
 -- primitive functions
 primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
@@ -136,7 +148,11 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   float_str = case args of
-    [RT_Lit (LFloat a)] -> string $ fromString $ show a
+    [RT_Lit (LFloat a)] -> liftIO $ allocaBytes 32 $ \buf -> do
+        let cf = CFloat a
+        [C.exp| void { snprintf($(char* buf), 32, "%.16g", $(float cf)) } |]
+        string . fromString =<< peekCString buf
+
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   file_eof = case args of
