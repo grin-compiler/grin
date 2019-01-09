@@ -191,7 +191,7 @@ prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a 
 instance Pretty Ty where
   pretty = \case
     TyCon name tys      -> braces . hsep $ pretty name : map pretty tys
-    TyVar name          -> pretty name
+    TyVar name          -> text "%" <> pretty name
     TySimple simpleType -> pretty simpleType
 
 prettyBracedList :: [Doc] -> Doc
