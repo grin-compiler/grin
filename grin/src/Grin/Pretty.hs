@@ -185,13 +185,13 @@ instance Pretty EffectMap where
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b) exts) where
   prettyExtGroup [] = mempty
-  prettyExtGroup l@(a : _) = text "primop" <+> (if eEffectful a then text "effectful" else text "pure") <$$> indent 2
+  prettyExtGroup l@(a : _) = keyword "primop" <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
     (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l] <> line)
 
 instance Pretty Ty where
   pretty = \case
-    TyCon name tys      -> braces . hsep $ pretty name : map pretty tys
-    TyVar name          -> text "%" <> pretty name
+    TyCon name tys      -> braces . hsep $ (green $ pretty name) : map pretty tys
+    TyVar name          -> text "%" <> cyan (pretty name)
     TySimple simpleType -> pretty simpleType
 
 prettyBracedList :: [Doc] -> Doc
