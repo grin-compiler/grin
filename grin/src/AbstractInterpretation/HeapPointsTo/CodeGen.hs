@@ -165,13 +165,6 @@ codeGenExternal External{..} args = do
   r <- constructType argMap eRetType
   pure $ R r
 
-{-
-  primop effectful
-    newMutVar   :: %a -> {State %s} -> {Tup2 {State %s} {MutVar %s %a}}
-    readMutVar  :: {MutVar %s %a} -> {State %s} -> {Tup2 {State %s} %a}
-    writeMutVar :: {MutVar %s %a} -> %a -> {State %s} -> {State %s}
--}
-
 codeGenM :: Exp -> CG Result
 codeGenM = cata folder where
   folder :: ExpF (CG Result) -> CG Result
