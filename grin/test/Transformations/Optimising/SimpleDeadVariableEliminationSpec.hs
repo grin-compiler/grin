@@ -7,6 +7,7 @@ import Grin.TypeCheck
 
 import Test.Hspec
 import Grin.TH
+import Grin.PrimOpsPrelude
 import Test.Test hiding (newVar)
 import Test.Assertions
 
@@ -52,7 +53,7 @@ spec = do
       dveExp `sameAs` after
 
     it "do not remove effectful case" $ do
-      let before = [prog|
+      let before = withPrimPrelude [prog|
           sideeff s1 =
             s2 <- _prim_int_add s1 1
             _prim_int_print s2
@@ -66,7 +67,7 @@ spec = do
                              pure 2 -- pure (CInt y2)
             pure ()
         |]
-      let after = [prog|
+      let after = withPrimPrelude [prog|
           sideeff s1 =
             s2 <- _prim_int_add s1 1
             _prim_int_print s2
@@ -83,6 +84,29 @@ spec = do
           effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
+
+    it "do not remove effectful case 2" $ do
+      let before = withPrimPrelude [prog|
+          grinMain =
+            y <- pure (CInt #"str")
+            x <- case y of
+              (CInt x1) -> _prim_string_print x1
+                           pure 1 -- pure (CInt 1)
+            pure ()
+        |]
+      let after = withPrimPrelude [prog|
+          grinMain =
+            y <- pure (CInt #"str")
+            x <- case y of
+              (CInt x1) -> _prim_string_print x1
+                           pure 1
+            pure ()
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = simpleDeadVariableElimination tyEnv effMap before
+      dveExp `sameAs` after
+
 
   describe "Simple dead variable elimination works for" $ do
     it "simple" $ do

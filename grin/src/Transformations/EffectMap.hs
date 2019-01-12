@@ -22,22 +22,27 @@ import Transformations.Util
 
 effectMap :: (TypeEnv, Exp) -> EffectMap
 effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ para buildEffectMap e where
+
+  effectfulExternals :: Set Name
+  effectfulExternals = case e of
+    Program es _ -> Set.fromList $ map eName $ filter eEffectful es
+    _            -> Set.empty
+
   buildEffectMap :: ExpF (Exp, (Set EffectWithCalls, MMap Name (Set EffectWithCalls))) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
-  buildEffectMap = \case
+  buildEffectMap =  \case
     DefF name _ (_,(effs, _)) -> (mempty, MMap $ Map.singleton name effs)
     EBindF (SStore _,lhs) (Var v) (_,rhs)
       | Just locs <- te ^? variable . at v . _Just . _T_SimpleType . _T_Location
       -> let storeEff = (Set.singleton $ EffectW $ storesEff locs, mempty)
          in lhs <> rhs <> storeEff
-    -- FIXME: handle effectful primops properly
-    SAppF "_prim_int_print" _  -> (Set.singleton (EffectW $ primopEff "_prim_int_print"), mempty)
-    SAppF "_prim_string_print" _  -> (Set.singleton (EffectW $ primopEff "_prim_string_print"), mempty)
-    SAppF "_prim_usleep" _ -> (Set.singleton (EffectW $ primopEff "_prim_usleep"), mempty)
-    SAppF    name _ -> (Set.singleton (CallsW name), mempty)
+    SAppF name _
+      | Set.member name effectfulExternals -> (Set.singleton (EffectW $ primopEff name), mempty)
+      | otherwise -> (Set.singleton (CallsW name), mempty)
     SUpdateF name _
       | Just locs <- te ^? variable . at name . _Just . _T_SimpleType . _T_Location
       -> (Set.singleton $ EffectW $ updatesEff locs, mempty)
     rest -> Data.Foldable.fold . fmap snd $ rest
+
 
 data EffectWithCalls
   = EffectW { toEffects :: Effects }

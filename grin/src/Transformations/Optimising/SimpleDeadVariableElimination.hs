@@ -16,9 +16,15 @@ import Grin.EffectMap
 import Transformations.Util
 import Lens.Micro.Platform
 
--- TODO: Write for dead code elimination.
+
+-- TODO: Write for dead code elimination.???
 simpleDeadVariableElimination :: TypeEnv -> EffectMap -> Exp -> Exp
 simpleDeadVariableElimination typeEnv effMap e = cata folder e ^. _1 where
+
+  effectfulExternals :: Set Name
+  effectfulExternals = case e of
+    Program es _ -> Set.fromList $ map eName $ filter eEffectful es
+    _            -> Set.empty
 
   folder :: ExpF (Exp, Set Name, Bool) -> (Exp, Set Name, Bool)
   folder = \case
@@ -33,7 +39,8 @@ simpleDeadVariableElimination typeEnv effMap e = cata folder e ^. _1 where
           SBlock{}  -> embedExp exp
           _         -> right
 
-    exp@(SAppF name _) -> embedExp exp & _3 .~ hasPossibleSideEffect name effMap
+    exp@(SAppF name _) ->
+      embedExp exp & _3 .~ (hasPossibleSideEffect name effMap || Set.member name effectfulExternals)
 
     exp -> embedExp exp
     where
