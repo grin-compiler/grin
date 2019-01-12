@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
-module Transformations.EffectMap where
+module Transformations.EffectMap
+  ( effectMap
+  ) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -28,31 +30,27 @@ effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ para buildEf
     Program es _ -> Set.fromList $ map eName $ filter eEffectful es
     _            -> Set.empty
 
-  buildEffectMap :: ExpF (Exp, (Set EffectWithCalls, MMap Name (Set EffectWithCalls))) -> (Set EffectWithCalls, MMap Name (Set EffectWithCalls))
+  buildEffectMap :: ExpF (Exp, (Set EffectWithCalls, MonoidMap Name (Set EffectWithCalls))) -> (Set EffectWithCalls, MonoidMap Name (Set EffectWithCalls))
   buildEffectMap =  \case
     DefF name _ (_,(effs, _)) -> (mempty, MMap $ Map.singleton name effs)
     EBindF (SStore _,lhs) (Var v) (_,rhs)
       | Just locs <- te ^? variable . at v . _Just . _T_SimpleType . _T_Location
-      -> let storeEff = (Set.singleton $ EffectW $ storesEff locs, mempty)
+      -> let storeEff = (Set.singleton $ Effect $ storesEff locs, mempty)
          in lhs <> rhs <> storeEff
     SAppF name _
-      | Set.member name effectfulExternals -> (Set.singleton (EffectW $ primopEff name), mempty)
-      | otherwise -> (Set.singleton (CallsW name), mempty)
+      | Set.member name effectfulExternals -> (Set.singleton (Effect $ primopEff name), mempty)
+      | otherwise -> (Set.singleton (Call name), mempty)
     SUpdateF name _
       | Just locs <- te ^? variable . at name . _Just . _T_SimpleType . _T_Location
-      -> (Set.singleton $ EffectW $ updatesEff locs, mempty)
+      -> (Set.singleton $ Effect $ updatesEff locs, mempty)
     rest -> Data.Foldable.fold . fmap snd $ rest
 
 
-data EffectWithCalls
-  = EffectW { toEffects :: Effects }
-  | CallsW { callsFunction :: Name }
-  deriving (Eq, Show, Ord)
 
-isCall :: EffectWithCalls -> Bool
-isCall = \case
-  CallsW _ -> True
-  _        -> False
+data EffectWithCalls
+  = Effect { toEffects     :: Effects }
+  | Call   { callsFunction :: Name }
+  deriving (Eq, Show, Ord)
 
 -- Removes the calls information and collects all the transitive effects.
 -- Returns a Map that contains only the effectful function calls.
@@ -66,12 +64,17 @@ effectfulFunctions em = removeCalls $ go em where
                         in Set.unions [calls, rest, mconcat $ map (fromMaybe mempty . flip Map.lookup em . callsFunction) $ Set.toList calls]
            in if em0 == em1 then em0 else go em1
 
+  isCall = \case
+    Call _ -> True
+    _      -> False
+
 -- MonoidMap
-newtype MMap k m = MMap { unMMap :: Map k m }
+
+newtype MonoidMap k m = MMap { unMMap :: Map k m }
   deriving Show
 
-instance (Ord k, Semigroup m) => Semigroup (MMap k m) where
+instance (Ord k, Semigroup m) => Semigroup (MonoidMap k m) where
   (MMap m1) <> (MMap m2) = MMap (Map.unionWith (<>) m1 m2)
-instance (Ord k, Monoid m) => Monoid (MMap k m) where
+instance (Ord k, Monoid m) => Monoid (MonoidMap k m) where
   mempty = MMap mempty
   mappend (MMap m1) (MMap m2) = MMap (Map.unionWith mappend m1 m2)

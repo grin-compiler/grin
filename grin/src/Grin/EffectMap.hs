@@ -1,5 +1,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, TemplateHaskell #-}
-module Grin.EffectMap where
+module Grin.EffectMap
+  ( EffectMap(..)
+  , Effects(..)
+  , hasPossibleSideEffect
+  , storesEff
+  , primopEff
+  , updatesEff
+  , hasTrueSideEffect
+  ) where
 
 import Data.Map (Map)
 import Data.Set (Set)
