@@ -29,6 +29,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 
 import Data.Text.Short (ShortText)
+import Data.Text (unpack)
 
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
@@ -121,7 +122,7 @@ instance Pretty Lit where
     LWord64 a  -> integer (fromIntegral a) <> text "u"
     LFloat a   -> float a
     LBool a    -> text "#" <> text (show a)
-    LString a  -> text "#" <> text (show a)
+    LString a  -> text "#\"" <> text (unpack a) <> "\""
     LChar a    -> text "#" <> text (show a)
 
 instance Pretty CPat where
