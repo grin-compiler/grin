@@ -24,7 +24,7 @@ runTests = hspec spec
 spec :: Spec
 spec = describe "Sharing analysis" $ do
   it "has not changed for sum simple." $ do
-    result <- calcSharedLocations testProgram
+    let result = calcSharedLocations testProgram
     let exptected = Set.fromList [0,1,4,5]
     result `shouldBe` exptected
 
@@ -39,7 +39,7 @@ spec = describe "Sharing analysis" $ do
             v <- fetch l0
             pure ()
         |]
-    result <- calcSharedLocations code
+    let result = calcSharedLocations code
     let exptected = Set.fromList [0]
     result `shouldBe` exptected
 
@@ -53,7 +53,7 @@ spec = describe "Sharing analysis" $ do
             v <- fetch l1
             pure ()
         |]
-    result <- calcSharedLocations code
+    let result = calcSharedLocations code
     let exptected = Set.fromList [0,1]
     result `shouldBe` exptected
 
@@ -68,18 +68,19 @@ spec = describe "Sharing analysis" $ do
             fun l2
             pure ()
         |]
-    result <- calcSharedLocations code
+    let result = calcSharedLocations code
     let exptected = Set.fromList [1]
     result `shouldBe` exptected
 
-calcSharedLocations :: Exp -> IO (Set Loc)
-calcSharedLocations = fmap _sharedLocs . calcSharingResult
+calcSharedLocations :: Exp -> Set Loc
+calcSharedLocations = _sharedLocs . calcSharingResult
 
-calcSharingResult :: Exp -> IO SharingResult
-calcSharingResult prog = do
-  let (shProgram, shMapping) = codeGen prog
-  computer <- _airComp <$> evalAbstractProgram shProgram
-  pure $ toSharingResult shMapping computer
+calcSharingResult :: Exp -> SharingResult
+calcSharingResult prog
+  | (shProgram, shMapping) <- codeGen prog
+  , computer <- _airComp . evalAbstractProgram $ shProgram
+  , shResult <- toSharingResult shMapping computer
+  = shResult
 
 testProgram :: Exp
 testProgram = withPrimPrelude [prog|

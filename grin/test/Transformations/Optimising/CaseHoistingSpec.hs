@@ -42,8 +42,7 @@ spec = do
                 (CCons a2.0 b2.0) <- pure u.1
                 pure 2
       |]
-    typeEnv <- inferTypeEnv before
-    caseHoisting typeEnv before `sameAs` (after, NewNames)
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
 
   it "middle case" $ do
     let before = [prog|
@@ -73,8 +72,7 @@ spec = do
                 pure 2
             pure r
       |]
-    typeEnv <- inferTypeEnv before
-    caseHoisting typeEnv before `sameAs` (after, NewNames)
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
 
   it "default pattern" $ do
     let before = [prog|
@@ -103,8 +101,7 @@ spec = do
                 pure 2
             pure r
       |]
-    typeEnv <- inferTypeEnv before
-    caseHoisting typeEnv before `sameAs` (after, NewNames)
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
 
   it "case chain + no code duplication" $ do
     let before = [prog|
@@ -141,8 +138,7 @@ spec = do
                                 pure r
             pure q
       |]
-    typeEnv <- inferTypeEnv before
-    caseHoisting typeEnv before `sameAs` (after, NewNames)
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
 
   it "default chain" $ do
     let before = [prog|
@@ -172,8 +168,7 @@ spec = do
                 pure r.0
             pure q
       |]
-    typeEnv <- inferTypeEnv before
-    caseHoisting typeEnv before `sameAs` (after, NewNames)
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
 
   it "ignore non linear variable" $ do
     let before = [prog|
@@ -196,5 +191,4 @@ spec = do
             x <- pure u
             pure r
       |]
-    typeEnv <- inferTypeEnv before
-    caseHoisting typeEnv before `sameAs` (after, NoChange)
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NoChange)

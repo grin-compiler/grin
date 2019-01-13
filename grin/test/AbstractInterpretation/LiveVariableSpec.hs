@@ -21,11 +21,11 @@ import AbstractInterpretation.LiveVariable.Result
 runTests :: IO ()
 runTests = hspec spec
 
-calcLiveness :: Exp -> IO LVAResult
-calcLiveness prog = do
-  let (lvaProgram, lvaMapping) = codeGen prog
-  computer <- _airComp <$> evalAbstractProgram lvaProgram
-  pure $ toLVAResult lvaMapping computer
+calcLiveness :: Exp -> LVAResult
+calcLiveness prog
+  | (lvaProgram, lvaMapping) <- codeGen prog
+  , computer <- _airComp . evalAbstractProgram $ lvaProgram
+  = toLVAResult lvaMapping computer
 
 spec :: Spec
 spec = describe "Live Variable Analysis" $ do
@@ -44,8 +44,7 @@ spec = describe "Live Variable Analysis" $ do
           , _register = [ ("a0", deadVal), ("c0", liveVal), ("c1", deadVal) ]
           , _function = [ ("grinMain", fun (nodeSet [ (cBool, [live]) ], [])) ]
           }
-    result <- calcLiveness exp
-    result `sameAs` caseAnonymousExpected
+    (calcLiveness exp) `sameAs` caseAnonymousExpected
 
   it "case_min_lit" $ do
     let exp = [prog|
@@ -71,8 +70,7 @@ spec = describe "Live Variable Analysis" $ do
               ]
           , _function = mkFunctionLivenessMap []
           }
-    result <- calcLiveness exp
-    result `sameAs` caseMinLitExpected
+    (calcLiveness exp) `sameAs` caseMinLitExpected
 
   it "case_min_nodes" $ do
     let exp = [prog|
@@ -98,8 +96,7 @@ spec = describe "Live Variable Analysis" $ do
           }
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cNode, [live]) ]
-    result <- calcLiveness exp
-    result `sameAs` caseMinNodesExpected
+    (calcLiveness exp) `sameAs` caseMinNodesExpected
 
   it "case_nested" $ do
     let exp = [prog|
@@ -146,8 +143,7 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", fun (livenessFRet, [liveVal]))
           , ("grinMain", fun (livenessMainRet,[]))
           ]
-    result <- calcLiveness exp
-    result `sameAs` caseNestedExpected
+    (calcLiveness exp) `sameAs` caseNestedExpected
 
   it "case_restricted" $ do
     let exp = [prog|
@@ -181,8 +177,7 @@ spec = describe "Live Variable Analysis" $ do
         caseRestrictedExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessFRet, [liveVal])) ]
         livenessFRet = nodeSet [ (cInt,  [live]), (cWord, [live]) ]
-    result <- calcLiveness exp
-    result `sameAs` caseRestrictedExpected
+    (calcLiveness exp) `sameAs` caseRestrictedExpected
 
   it "case_restricted_nodes" $ do
     let exp = [prog|
@@ -227,8 +222,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("grinMain", fun (livenessFRet, []))
           ]
         livenessFRet = nodeSet [ (cInt,  [live]), (cBool, [live]), (cWord, [live]) ]
-    result <- calcLiveness exp
-    result `sameAs` caseRestrictedNodesExpected
+    (calcLiveness exp) `sameAs` caseRestrictedNodesExpected
 
   it "dead_tags" $ do
     let exp = [prog|
@@ -273,8 +267,7 @@ spec = describe "Live Variable Analysis" $ do
         livenessN2 = deadNodeSet [ (cNil, 0),  (cInt, 1) ]
         livenessN3 = deadNodeSet [ (cCons, 2), (cInt, 1) ]
         livenessN4 = deadNodeSet [ (cNil, 0), (cCons, 2),  (cInt, 1) ]
-    result <- calcLiveness exp
-    result `sameAs` deadTagsExpected
+    (calcLiveness exp) `sameAs` deadTagsExpected
 
   it "fields" $ do
     let exp = [prog|
@@ -309,8 +302,7 @@ spec = describe "Live Variable Analysis" $ do
         fieldsExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [livenessX])) ]
         livenessX = nodeSet [ (cNode, [dead, live]) ]
-    result <- calcLiveness exp
-    result `sameAs` fieldsExpected
+    (calcLiveness exp) `sameAs` fieldsExpected
 
   it "function_call_1" $ do
     let exp = [prog|
@@ -340,8 +332,7 @@ spec = describe "Live Variable Analysis" $ do
         livenessX = nodeSet [ (cFoo, [live]) ]
         functionCall1ExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [livenessX])) ]
-    result <- calcLiveness exp
-    result `sameAs` functionCall1Expected
+    (calcLiveness exp) `sameAs` functionCall1Expected
 
   it "function_call_2" $ do
     let exp = [prog|
@@ -372,8 +363,7 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f",        fun (nodeSet [ (cTwo, [live, dead]) ], []))
           , ("grinMain", fun (nodeSet [ (cOne, [live]) ], []))
           ]
-    result <- calcLiveness exp
-    result `sameAs` functionCall2Expected
+    (calcLiveness exp) `sameAs` functionCall2Expected
 
   it "heap_case_min" $ do
     let exp = [prog|
@@ -389,8 +379,7 @@ spec = describe "Live Variable Analysis" $ do
           , _function = mkFunctionLivenessMap []
           }
         livenessLoc1 = nodeSet [ (cBool, [live]) ]
-    result <- calcLiveness exp
-    result `sameAs` heapCaseMinExpected
+    (calcLiveness exp) `sameAs` heapCaseMinExpected
 
   it "heap_case" $ do
     let exp = [prog|
@@ -438,8 +427,7 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", fun (livenessFRet,[liveVal])) ]
         livenessLoc1 = nodeSet [ (cBoolH, [live]), (cWordH, [dead]) ]
         livenessFRet = nodeSet [ (cBool, [live]), (cWord, [dead]) ]
-    result <- calcLiveness exp
-    result `sameAs` heapCaseExpected
+    (calcLiveness exp) `sameAs` heapCaseExpected
 
   it "heap_indirect_simple" $ do
     let exp = [prog|
@@ -474,8 +462,7 @@ spec = describe "Live Variable Analysis" $ do
         livenessN0 = nodeSet [ (cNil, []) ]
         livenessN1 = nodeSet [ (cCons, [dead,live]) ]
         livenessMainRet = nodeSet [ (cNil, []) ]
-    result <- calcLiveness exp
-    result `sameAs` heapIndirectSimpleExpected
+    (calcLiveness exp) `sameAs` heapIndirectSimpleExpected
 
   it "heap_simple" $ do
     let exp = [prog|
@@ -501,8 +488,7 @@ spec = describe "Live Variable Analysis" $ do
           ]
         livenessN = nodeSet $ [ (cTwo, [live, dead]) ]
         livenessX = livenessN
-    result <- calcLiveness exp
-    result `sameAs` heapSimpleExpected
+    (calcLiveness exp) `sameAs` heapSimpleExpected
 
   it "heap_update_complex" $ do
     let exp = [prog|
@@ -548,8 +534,7 @@ spec = describe "Live Variable Analysis" $ do
                              , (cWord, [dead])
                              , (cNode, [live])
                              ]
-    result <- calcLiveness exp
-    result `sameAs` heapUpdateComplexExpected
+    (calcLiveness exp) `sameAs` heapUpdateComplexExpected
 
   it "heap_update_fun_call" $ do
     let exp = [prog|
@@ -611,8 +596,7 @@ spec = describe "Live Variable Analysis" $ do
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cWord, [dead]) ]
         livenessN2 = nodeSet [ (cNode, [live]) ]
-    result <- calcLiveness exp
-    result `sameAs` heapUpdateFunCallExpected
+    (calcLiveness exp) `sameAs` heapUpdateFunCallExpected
 
   it "heap_update_local" $ do
     let exp = [prog|
@@ -646,8 +630,7 @@ spec = describe "Live Variable Analysis" $ do
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cWord, [dead]) ]
         livenessN2 = nodeSet [ (cBool, [live]), (cWord, [dead]) ]
-    result <- calcLiveness exp
-    result `sameAs` heapUpdateLocalExpected
+    (calcLiveness exp) `sameAs` heapUpdateLocalExpected
 
   it "lit_pat" $ do
     let exp = [prog|
@@ -665,8 +648,7 @@ spec = describe "Live Variable Analysis" $ do
           }
         litPatExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [liveVal])) ]
-    result <- calcLiveness exp
-    result `sameAs` litPatExpected
+    (calcLiveness exp) `sameAs` litPatExpected
 
   it "main_node_ret" $ do
     let exp = [prog|
@@ -687,8 +669,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("n", livenessN)
           ]
         livenessN = nodeSet [ (cTwo, [live, live]) ]
-    result <- calcLiveness exp
-    result `sameAs` mainNodeRetExpected
+    (calcLiveness exp) `sameAs` mainNodeRetExpected
 
   it "nodes_simple" $ do
     let exp = [prog|
@@ -726,8 +707,7 @@ spec = describe "Live Variable Analysis" $ do
         nodesSimpleExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessN0, [liveVal, liveVal, deadVal])) ]
         livenessN0 = nodeSet [ (cInt,  [live]), (cBool, [dead]) ]
-    result <- calcLiveness exp
-    result `sameAs` nodesSimpleExpected
+    (calcLiveness exp) `sameAs` nodesSimpleExpected
 
   it "nodes_tricky" $ do
     let exp = [prog|
@@ -758,8 +738,7 @@ spec = describe "Live Variable Analysis" $ do
         nodesTrickyExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessN0, [liveVal])) ]
         livenessN0 = nodeSet [ (cOne, [dead]), (cTwo, [live, dead]) ]
-    result <- calcLiveness exp
-    result `sameAs` nodesTrickyExpected
+    (calcLiveness exp) `sameAs` nodesTrickyExpected
 
   it "sum_opt" $ do
     let exp = [prog|
@@ -797,8 +776,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("_prim_int_gt",  fun (liveVal, [liveVal, liveVal]))
           , ("_prim_int_print", fun (liveVal, [liveVal]))
           ]
-    result <- calcLiveness exp
-    result `sameAs` sumOptExpected
+    (calcLiveness exp) `sameAs` sumOptExpected
 
   it "undefined" $ do
     let exp = [prog|
@@ -837,8 +815,7 @@ spec = describe "Live Variable Analysis" $ do
         livenessN1 = cConsBothDead
         livenessN2 = nodeSet [ (cCons, [live, dead]) ]
         cConsBothDead = deadNodeSet [ (cCons, 2) ]
-    result <- calcLiveness exp
-    result `sameAs` undefinedExpected
+    (calcLiveness exp) `sameAs` undefinedExpected
 
   it "undefined_with_loc_info" $ do
     let exp = [prog|
@@ -865,8 +842,7 @@ spec = describe "Live Variable Analysis" $ do
           [ ("grinMain", fun (cNilLiveness, [])) ]
         livenessN0 = nodeSet [ (cCons, [live, dead]) ]
         cNilLiveness = nodeSet [ (cNil, []) ]
-    result <- calcLiveness exp
-    result `sameAs` undefinedWithLocInfoExpected
+    (calcLiveness exp) `sameAs` undefinedWithLocInfoExpected
 
 live :: Bool
 live = True

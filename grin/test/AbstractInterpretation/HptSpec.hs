@@ -31,7 +31,7 @@ spec = do
           b <- nondeffun a
           pure ()
         |]
-      result <- inferTypeEnv code
+      let result = inferTypeEnv code
       let exptected = emptyTypeEnv
             { _variable = Map.fromList
                 [ ("a", int64_t)
@@ -63,8 +63,8 @@ spec = do
                   e1 <- pure c
                   pure (CInt e1)
         |]
-      result <- inferTypeEnv code
-      let exptected = emptyTypeEnv
+      let result = inferTypeEnv code
+          exptected = emptyTypeEnv
             { TypeEnv._variable = Map.fromList
                 [ ("a",   int64_t)
                 , ("b",   int64_t)
@@ -126,8 +126,7 @@ spec = do
           typeN1 = mkTySet [ (cCons, [[HPT.T_Int64], [HPT.T_Location 2]]) , (cNil, []) ]
           typeN2 = mkTySet [ (cCons, [[HPT.T_Int64], [HPT.T_Location 0]]) ]
 
-      result <- calcHPTResult exp
-      result `shouldBe` expected
+      (calcHPTResult exp) `shouldBe` expected
 
     it "unspec_loc" $ do
       let exp = [prog|
@@ -156,11 +155,10 @@ spec = do
             , ("n1", TypeSet mempty nodeSetN1)
             , ("x0", tySetFromTypes [])
             ]
-      result <- calcHPTResult exp
-      result `shouldBe` expected
+      (calcHPTResult exp) `shouldBe` expected
 
-calcHPTResult :: Exp -> IO HPTResult
-calcHPTResult prog = do
-  let (hptProgram, hptMapping) = codeGen prog
-  computer <- _airComp <$> evalAbstractProgram hptProgram
-  pure $ toHPTResult hptMapping computer
+calcHPTResult :: Exp -> HPTResult
+calcHPTResult prog
+  | (hptProgram, hptMapping) <- codeGen prog
+  , computer <- _airComp . evalAbstractProgram $ hptProgram
+  = toHPTResult hptMapping computer

@@ -218,5 +218,4 @@ spec = do
             d <- pure c
             pure d
       |]
-    typeEnv <- inferTypeEnv before
-    commonSubExpressionElimination typeEnv before `sameAs` after
+    commonSubExpressionElimination (inferTypeEnv before) before `sameAs` after

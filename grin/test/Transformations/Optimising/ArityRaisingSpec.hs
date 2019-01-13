@@ -23,7 +23,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   it "split_undefined" $ do
-    tyEnv <- inferTypeEnv testProgBefore
+    let tyEnv = inferTypeEnv testProgBefore
     arityRaising 0 tyEnv testProgBefore `sameAs` (testProgAfter, NewNames)
 
 testProgBefore :: Exp

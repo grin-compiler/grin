@@ -47,8 +47,8 @@ spec = do
             _prim_int_print $ 12
             store (F"GHC.Tuple.()")
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap  = effectMap (tyEnv, before)
+      let tyEnv   = inferTypeEnv before
+          effMap  = effectMap (tyEnv, before)
           dveExp  = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -80,8 +80,8 @@ spec = do
               (CFloat y1) -> pure 2
             pure ()
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -102,8 +102,8 @@ spec = do
                            pure 1
             pure ()
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -122,8 +122,8 @@ spec = do
           grinMain =
             pure 0
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -147,8 +147,8 @@ spec = do
             _prim_int_print i1
             pure 0
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -177,8 +177,8 @@ spec = do
               #default  -> pure ()
             pure 0
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -212,8 +212,8 @@ spec = do
               #default  -> pure ()
             pure 0
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -232,8 +232,8 @@ spec = do
             i1 <- pure 1
             pure i1
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after
 
@@ -254,7 +254,7 @@ spec = do
           grinMain =
             pure 0
         |]
-      tyEnv <- inferTypeEnv before
-      let effMap = effectMap (tyEnv, before)
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
           dveExp = simpleDeadVariableElimination tyEnv effMap before
       dveExp `sameAs` after

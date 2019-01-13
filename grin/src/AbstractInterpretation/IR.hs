@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
-{-# LANGUAGE TemplateHaskell, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
 module AbstractInterpretation.IR
  ( module AbstractInterpretation.IR
  , Int32
@@ -22,9 +22,6 @@ import Lens.Micro.Platform
 
 import qualified Grin.Grin as Grin
 import Grin.Grin (Name)
-import GHC.Generics (Generic)
-import Control.DeepSeq
-
 
 newtype Reg = Reg Word32 deriving (Eq, Ord, Show)
 newtype Mem = Mem Word32 deriving (Eq, Ord, Show)
@@ -35,7 +32,7 @@ data Selector
   | AllFields
   deriving (Eq, Ord, Show)
 
-newtype Tag = Tag Word32 deriving (Eq, Ord, Show, Generic, NFData)
+newtype Tag = Tag Word32 deriving (Eq, Ord, Show)
 
 type SimpleType = Int32 -- TODO: rename to a generic name; should not be related to a specific domain
 
