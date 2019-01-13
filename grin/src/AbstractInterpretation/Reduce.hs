@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, ViewPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module AbstractInterpretation.Reduce where
 
+import Control.DeepSeq
 import Data.Int
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -11,6 +13,7 @@ import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 import qualified Data.Foldable
 import Data.Function (on)
+import GHC.Generics (Generic)
 
 import Control.Monad.State.Strict
 import Lens.Micro.Platform
@@ -18,28 +21,29 @@ import Lens.Micro.Platform
 import AbstractInterpretation.IR
 import AbstractInterpretation.Util
 
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))} deriving (Eq, Show)
+newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))}
+  deriving (Eq, Show, Generic, NFData)
 
 data Value
   = Value
   { _simpleType :: Set Int32
   , _nodeSet    :: NodeSet
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, NFData)
 
 data ComputerState
   = ComputerState
   { _memory    :: Vector NodeSet
   , _register  :: Vector Value
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, NFData)
 
 data AbstractInterpretationResult
   = AbsIntResult
   { _airComp :: ComputerState
   , _airIter :: !Int
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, NFData)
 
 concat <$> mapM makeLenses [''NodeSet, ''Value, ''ComputerState, ''AbstractInterpretationResult]
 
@@ -287,7 +291,7 @@ evalInstruction = \case
     CNodeItem tag idx val -> selectReg dstReg.nodeSet.nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
 continueAbstractProgramWith :: ComputerState -> AbstractProgram -> AbstractInterpretationResult
-continueAbstractProgramWith comp AbstractProgram{..} = converge ((==) `on` _airComp) step (AbsIntResult comp 0) where
+continueAbstractProgramWith comp AbstractProgram{..} = converge ((==) `on` (_airComp . force)) step (AbsIntResult comp 0) where
   nextComputer c = execState (mapM_ evalInstruction _absInstructions) c
   step AbsIntResult{..} = AbsIntResult (nextComputer _airComp) (succ _airIter)
 
