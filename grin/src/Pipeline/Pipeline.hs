@@ -104,6 +104,7 @@ import Data.Time.Clock
 import Data.Fixed
 import Data.Functor.Infix
 import Data.Maybe (isNothing)
+import System.IO (BufferMode(..), hSetBuffering, stdout)
 
 
 
@@ -585,7 +586,9 @@ statistics = do
 pureEval :: PipelineM ()
 pureEval = do
   e <- use psExp
-  val <- liftIO $ evalProgram PureReducer e
+  val <- liftIO $ do
+    hSetBuffering stdout NoBuffering
+    evalProgram PureReducer e
   pipelineLog $ show $ pretty val
 
 printGrinM :: (Doc -> Doc) -> PipelineM ()
