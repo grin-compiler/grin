@@ -293,6 +293,7 @@ evalInstruction = \case
 
 continueAbstractProgramWith :: ComputerState -> AbstractProgram -> IO AbstractInterpretationResult
 continueAbstractProgramWith comp AbstractProgram{..} = do
+    -- converge ((==) `on` _airComp) step (AbsIntResult comp 0)
     loop (AbsIntResult comp 0)
   where
     loop air = do
