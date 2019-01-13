@@ -486,8 +486,8 @@ runHPTPure :: PipelineM ()
 runHPTPure = use psHPTProgram >>= \case
   Nothing -> psHPTResult .= Nothing
   Just (hptProgram, hptMapping) -> do
-    let AbsIntResult{..} = evalAbstractProgram hptProgram
-        result = HPT.toHPTResult hptMapping _airComp
+    AbsIntResult{..} <- liftIO $ evalAbstractProgram hptProgram
+    let result = HPT.toHPTResult hptMapping _airComp
     pipelineLogIterations _airIter
     psHPTResult .= Just result
     case typeEnvFromHPTResult result of
@@ -502,8 +502,8 @@ runCByPureWith :: (CBy.CByMapping -> ComputerState -> CBy.CByResult) -> Pipeline
 runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
   Just (cbyProgram, cbyMapping) -> do
-    let AbsIntResult{..} = evalAbstractProgram cbyProgram
-        result = toCByResult cbyMapping _airComp
+    AbsIntResult{..} <- liftIO $ evalAbstractProgram cbyProgram
+    let result = toCByResult cbyMapping _airComp
     pipelineLogIterations _airIter
     psCByResult .= Just result
     case typeEnvFromHPTResult (CBy._hptResult result) of
@@ -529,8 +529,8 @@ runLVAPure :: PipelineM ()
 runLVAPure = use psLVAProgram >>= \case
   Nothing -> psLVAResult .= Nothing
   Just (lvaProgram, lvaMapping) -> do
-    let AbsIntResult{..} = evalAbstractProgram $ lvaProgram
-        result = LVA.toLVAResult lvaMapping _airComp
+    AbsIntResult{..} <- liftIO $ evalAbstractProgram lvaProgram
+    let result = LVA.toLVAResult lvaMapping _airComp
     pipelineLogIterations _airIter
     psLVAResult .= Just result
 
@@ -538,8 +538,8 @@ runSharingPureWith :: (Sharing.SharingMapping -> ComputerState -> Sharing.Sharin
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
   Nothing -> psSharingResult .= Nothing
   Just (shrProgram, shrMapping) -> do
-    let AbsIntResult{..} = evalAbstractProgram shrProgram
-        result = toSharingResult shrMapping _airComp
+    AbsIntResult{..} <- liftIO $ evalAbstractProgram shrProgram
+    let result = toSharingResult shrMapping _airComp
     pipelineLogIterations _airIter
     psSharingResult .= Just result
     case typeEnvFromHPTResult (Sharing._hptResult result) of

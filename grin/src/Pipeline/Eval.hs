@@ -34,10 +34,12 @@ eval' reducer fname = do
       case reducer of
         PureReducer -> Reducer.Pure.reduceFun program "grinMain"
         IOReducer   -> Reducer.IO.reduceFun program "grinMain"
-        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
-          typeEnv   = either error id $ typeEnvFromHPTResult hptResult
-          hptResult = HPT.toHPTResult hptMapping ((_airComp . evalAbstractProgram) $ hptProgram)
-          (hptProgram, hptMapping) = HPT.codeGen program
+        LLVMReducer -> do
+          let (hptProgram, hptMapping) = HPT.codeGen program
+          computer <- _airComp <$> evalAbstractProgram hptProgram
+          let hptResult = HPT.toHPTResult hptMapping computer
+              typeEnv = either error id $ typeEnvFromHPTResult hptResult
+          LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
 
 evalProgram :: Reducer -> Program -> IO RTVal
 evalProgram reducer program =

@@ -160,7 +160,8 @@ library
     template-haskell,
     Diff,
     random,
-    set-extra
+    set-extra,
+    deepseq
 
   default-language:    Haskell2010
 

@@ -31,8 +31,8 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  let calcProducers = _producers . calcCByResult
-      calcHPTResultWithCBy = _hptResult . calcCByResult
+  let calcProducers = fmap _producers . calcCByResult
+      calcHPTResultWithCBy = fmap _hptResult . calcCByResult
       mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
       emptyProducerSet = mkProducerSet []
       unspecLoc = tySetFromTypes [T_UnspecifiedLocation]
@@ -60,7 +60,8 @@ spec = do
               , ("b", producerA)
               , ("c", producerA)
               ]
-      (calcProducers exp) `shouldBe` puresExpected
+      result <- calcProducers exp
+      result `shouldBe` puresExpected
 
     it "function_call" $ do
       let exp = [prog|
@@ -91,7 +92,8 @@ spec = do
                        , ("y",  emptyProducerSet)
                        , ("y1", producerX1)
                        ]
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "case_simple" $ do
       let exp = [prog|
@@ -117,7 +119,8 @@ spec = do
                                      ]
           producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
           producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "heap" $ do
       let exp = [prog|
@@ -147,7 +150,8 @@ spec = do
           producerX2 = mkProducerSet [(Tag C "Bool", ["x2"])]
           producerY0 = producerX0 <> producerX2
           producerY1 = producerX1 <> producerX2
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "pointer_in_node" $ do
       let exp = [prog|
@@ -170,7 +174,8 @@ spec = do
           producerN0 = mkProducerSet [(Tag C "Nil",  ["n0"])]
           producerN1 = mkProducerSet [(Tag C "Cons", ["n1"])]
           producerXS = producerN0
-      (calcProducers exp)` shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "case_restricted_1" $ do
       let exp = [prog|
@@ -212,7 +217,8 @@ spec = do
           producerB0 = mkProducerSet [(Tag C "Int",  ["b0"])]
           producerB1 = mkProducerSet [(Tag C "Bool", ["b1"])]
           producerR0 = producerB0 <> producerB1
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "case_restricted_2" $ do
       let exp = [prog|
@@ -253,7 +259,8 @@ spec = do
           producerB0 = producerX0 <> producerX1
           producerB1 = mkProducerSet [(Tag C "Bool", ["b1"])]
           producerR0 = producerB0 <> producerB1
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "case_restricted_3" $ do
       let exp = [prog|
@@ -318,7 +325,8 @@ spec = do
           producerB0 = producerY0 <> producerY2 -- because the analysis is not context sensitive
           producerB1 = producerY0 <> producerY2 -- because the analysis is not context sensitive
           producerR0 = producerB0 <> producerB1
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "undefined" $ do
       let exp = [prog|
@@ -344,7 +352,8 @@ spec = do
           producerN0 = mkProducerSet [(Tag C "Cons", [undefinedProducerName])]
           producerN1 = mkProducerSet [(Tag C "Cons", [undefinedProducerName]), (Tag C "Nil", [undefinedProducerName])]
           producerN2 = mkProducerSet [(Tag C "Cons", ["n2"])]
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
     it "unspec_loc" $ do
       let exp = [prog|
@@ -362,7 +371,8 @@ spec = do
                        , ("p0",  emptyProducerSet)
                        ]
           producerN0 = mkProducerSet [(cNil, ["n0"])]
-      (calcProducers exp) `shouldBe` expected
+      result <- calcProducers exp
+      result `shouldBe` expected
 
   describe "Created-By type info" $ do
 
@@ -404,9 +414,9 @@ spec = do
             , nodeSetN0
             ]
 
-
           nodeSetN0 = mkNodeSet [(cCons, [[T_Int64], [T_Location 0, T_Location 1]])]
-      (calcHPTResultWithCBy exp) `shouldBe` expected
+      result <- calcHPTResultWithCBy exp
+      result `shouldBe` expected
 
     it "unspec_loc" $ do
       let exp = [prog|
@@ -438,11 +448,11 @@ spec = do
             , ("x0", tySetFromTypes [])
             ]
           unspecLocExpectedFunctions = M.singleton "grinMain" (mkSimpleMain T_Unit)
-      (calcHPTResultWithCBy exp) `shouldBe` expected
+      result <- calcHPTResultWithCBy exp
+      result `shouldBe` expected
 
-calcCByResult :: Exp -> CByResult
-calcCByResult prog
-  | (cbyProgram, cbyMapping) <- codeGen prog
-  , computer <- _airComp . evalAbstractProgram $ cbyProgram
-  , cbyResult <- toCByResult cbyMapping computer
-  = cbyResult
+calcCByResult :: Exp -> IO CByResult
+calcCByResult prog = do
+  let (cbyProgram, cbyMapping) = codeGen prog
+  computer <- _airComp <$> evalAbstractProgram cbyProgram
+  pure $ toCByResult cbyMapping computer

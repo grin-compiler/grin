@@ -7,6 +7,7 @@ import Control.Monad
 import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
+import Test.QuickCheck.Monadic
 
 import Lens.Micro
 
@@ -25,12 +26,12 @@ spec = do
   describe "HPT calculation" $ do
     let hptProgram0 = fst $ codeGen testProgram
     it "is instruction order independent" $
-      forAll (randomizeInstructions . _absInstructions $ hptProgram0) $ \randomised ->
+      forAll (randomizeInstructions . _absInstructions $ hptProgram0) $ \randomised -> monadicIO $ do
         let hptProgram1 = set (absInstructions) randomised  hptProgram0
-            AbsIntResult comp0 iters0 = evalAbstractProgram hptProgram0
-            AbsIntResult comp1 iters1 = evalAbstractProgram hptProgram1
-        in label (printf "HPT iterations %d/%d" iters0 iters1)
-                 $ comp0 == comp1
+        AbsIntResult comp0 iters0 <- run $ evalAbstractProgram hptProgram0
+        AbsIntResult comp1 iters1 <- run $ evalAbstractProgram hptProgram1
+        monitor $ label (printf "HPT iterations %d/%d" iters0 iters1)
+        assert (comp0 == comp1)
 
 randomizeInstructions :: [Instruction] -> Gen [Instruction]
 randomizeInstructions is0 = do

@@ -27,8 +27,8 @@ spec = do
     xit "creates a code that runs no worse than the original" $ do
       let absProgram1 = optimiseAbstractProgram absProgram0
       let absProgram2 = optimiseAbstractProgram absProgram1
-          AbsIntResult comp0 iters0 = evalAbstractProgram absProgram0
-          AbsIntResult comp2 iters2 = evalAbstractProgram absProgram2
+      AbsIntResult comp0 iters0 <- evalAbstractProgram absProgram0
+      AbsIntResult comp2 iters2 <- evalAbstractProgram absProgram2
       comp2 `shouldBe` comp0
       (compare iters2 iters0) `shouldSatisfy` (`elem` [LT,EQ])
 

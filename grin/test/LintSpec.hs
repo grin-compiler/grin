@@ -62,7 +62,7 @@ spec = do
             case l of
               3 -> pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["case variable l has a location type"]
 
@@ -101,7 +101,7 @@ spec = do
               (CInt a) -> pure ()
               (CFloat b) -> pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["case has non-covered alternative CBool"]
 
@@ -117,7 +117,7 @@ spec = do
               (CFloat b) -> pure ()
               #default -> pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` []
 
@@ -140,7 +140,7 @@ spec = do
             l <- store v
             pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["store has given a primitive value: v :: T_Int64"]
 
@@ -152,7 +152,7 @@ spec = do
             x <- fetch l
             pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["the parameter of fetch is a primitive type: l :: T_Int64"]
 
@@ -164,7 +164,7 @@ spec = do
             x <- update l (CInt 1)
             pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["the parameter of update is a primitive type: l :: T_Int64"]
 
@@ -176,7 +176,7 @@ spec = do
             x <- update l v
             pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["update has given a primitive value: v :: T_Int64"]
 
@@ -187,6 +187,6 @@ spec = do
             (CInt x) <- pure (CFloat 2.0)
             pure ()
         |]
-      let typeEnv = inferTypeEnv program
+      typeEnv <- inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["Invalid pattern match. Pattern {CInt[T_Dead]} vs LHS {CFloat[T_Float]}"]

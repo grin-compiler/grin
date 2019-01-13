@@ -515,7 +515,7 @@ spec = do
             , ("n2", [ (cBool, ["n1", "n2", "n3"]) ])
             , ("n3", [ (cBool, ["n1", "n2", "n3"]) ])
             ]
-          found = groupAllProducers . _producers . calcCByResult $ exp
+      found <- groupAllProducers . _producers <$> calcCByResult exp
       found `shouldBe` multiProdSimpleAllExpected
 
     it "multi_prod_simple_active" $ do
@@ -525,7 +525,7 @@ spec = do
             , ("n2", [ (cBool, ["n2"]) ])
             , ("n3", [ (cBool, ["n3"]) ])
             ]
-      let found = groupActiveProducers <$> calcLiveness <*> (_producers . calcCByResult) $ exp
+      found <- groupActiveProducers <$> calcLiveness exp <*> (_producers <$> calcCByResult exp)
       found `shouldBe` multiProdSimpleActiveExpected
 
 mkGraph :: [ (Name, [(Tag, [Name])]) ] -> ProducerGraph
@@ -534,15 +534,14 @@ mkGraph = toProducerGraph
         . Map.map Map.fromList
         . Map.fromList
 
-calcLiveness :: Exp -> LVAResult
-calcLiveness prog
-  | (lvaProgram, lvaMapping) <- LiveVariable.codeGen prog
-  , computer <- _airComp . evalAbstractProgram $ lvaProgram
-  = toLVAResult lvaMapping computer
+calcLiveness :: Exp -> IO LVAResult
+calcLiveness prog = do
+  let (lvaProgram, lvaMapping) = LiveVariable.codeGen prog
+  computer <- _airComp <$> evalAbstractProgram lvaProgram
+  pure $ toLVAResult lvaMapping computer
 
-calcCByResult :: Exp -> CByResult
-calcCByResult prog
-  | (cbyProgram, cbyMapping) <- CreatedBy.codeGen prog
-  , computer <- _airComp . evalAbstractProgram $ cbyProgram
-  , cbyResult <- toCByResult cbyMapping computer
-  = cbyResult
+calcCByResult :: Exp -> IO CByResult
+calcCByResult prog = do
+  let (cbyProgram, cbyMapping) = CreatedBy.codeGen prog
+  computer <- _airComp <$> evalAbstractProgram cbyProgram
+  pure $ toCByResult cbyMapping computer

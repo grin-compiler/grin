@@ -39,7 +39,8 @@ spec = do
         funA i = pure i
       |]
     let inlineSet = Set.fromList ["funA"]
-    inlining inlineSet (inferTypeEnv before) before `sameAs` (after, NewNames)
+    typeEnv <- inferTypeEnv before
+    inlining inlineSet typeEnv before `sameAs` (after, NewNames)
 
   it "no-inline grinMain" $ do
     let before = [prog|
@@ -52,4 +53,5 @@ spec = do
           x <- pure 22
           pure x
       |]
-    lateInlining (inferTypeEnv before) before `sameAs` (after, NoChange)
+    typeEnv <- inferTypeEnv before
+    lateInlining typeEnv before `sameAs` (after, NoChange)
