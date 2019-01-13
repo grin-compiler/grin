@@ -7,13 +7,14 @@ import Data.Int
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map (Map)
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 import qualified Data.Foldable
 import Data.Function (on)
 import GHC.Generics (Generic)
+import System.IO.Unsafe
 
 import Control.Monad.State.Strict
 import Lens.Micro.Platform
@@ -26,28 +27,28 @@ newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))}
 
 data Value
   = Value
-  { _simpleType :: Set Int32
-  , _nodeSet    :: NodeSet
+  { _simpleType :: !(Set Int32)
+  , _nodeSet    :: !(NodeSet)
   }
   deriving (Eq, Show, Generic, NFData)
 
 data ComputerState
   = ComputerState
-  { _memory    :: Vector NodeSet
-  , _register  :: Vector Value
+  { _memory    :: !(Vector NodeSet)
+  , _register  :: !(Vector Value)
   }
   deriving (Eq, Show, Generic, NFData)
 
 data AbstractInterpretationResult
   = AbsIntResult
-  { _airComp :: ComputerState
+  { _airComp :: !ComputerState
   , _airIter :: !Int
   }
   deriving (Eq, Show, Generic, NFData)
 
 concat <$> mapM makeLenses [''NodeSet, ''Value, ''ComputerState, ''AbstractInterpretationResult]
 
-type AbstractComputation = State ComputerState
+type AbstractComputation = StateT ComputerState IO
 
 instance Semigroup NodeSet where (<>)   = unionNodeSet
 instance Monoid    NodeSet where mempty = NodeSet mempty
@@ -290,14 +291,26 @@ evalInstruction = \case
     CNodeType tag arity   -> selectReg dstReg.nodeSet %= (mappend $ NodeSet . Map.singleton tag $ V.replicate arity mempty)
     CNodeItem tag idx val -> selectReg dstReg.nodeSet.nodeTagMap.at tag.non mempty.ix idx %= (mappend $ Set.singleton val)
 
-continueAbstractProgramWith :: ComputerState -> AbstractProgram -> AbstractInterpretationResult
-continueAbstractProgramWith comp AbstractProgram{..} = converge ((==) `on` (_airComp . force)) step (AbsIntResult comp 0) where
-  nextComputer c = execState (mapM_ evalInstruction _absInstructions) c
-  step AbsIntResult{..} = AbsIntResult (nextComputer _airComp) (succ _airIter)
+continueAbstractProgramWithIO :: ComputerState -> AbstractProgram -> IO AbstractInterpretationResult
+continueAbstractProgramWithIO comp AbstractProgram{..} = loop (AbsIntResult comp 0) where
+  loop air = do
+    air' <- force <$> step air
+    if (_airComp air == _airComp air')
+      then pure air
+      else loop air'
 
-evalAbstractProgram :: AbstractProgram -> AbstractInterpretationResult
-evalAbstractProgram p@AbstractProgram{..} = continueAbstractProgramWith emptyComputer p where
+  nextComputer c = execStateT (mapM_ evalInstruction _absInstructions) c
+  step AbsIntResult{..} = AbsIntResult <$> (nextComputer _airComp) <*> (pure $ succ _airIter)
+
+evalAbstractProgramIO :: AbstractProgram -> IO AbstractInterpretationResult
+evalAbstractProgramIO p@AbstractProgram{..} = continueAbstractProgramWithIO emptyComputer p where
   emptyComputer = ComputerState
     { _memory   = V.replicate (fromIntegral _absMemoryCounter) mempty
     , _register = V.replicate (fromIntegral _absRegisterCounter) mempty
     }
+
+evalAbstractProgram :: AbstractProgram -> AbstractInterpretationResult
+evalAbstractProgram a = unsafePerformIO $ evalAbstractProgramIO a
+
+continueAbstractProgramWith :: ComputerState -> AbstractProgram -> AbstractInterpretationResult
+continueAbstractProgramWith s p = unsafePerformIO $ continueAbstractProgramWithIO s p
