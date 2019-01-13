@@ -111,8 +111,20 @@ escaped = string "\\\"" >> pure '"'
 quotedVar :: Parser ShortText
 quotedVar = packName <$ char '"' <*> someTill (escaped <|> anyChar) (char '"')
 
+escapedStringChar :: Parser Char
+escapedStringChar =
+  (string "\\\"" >> pure '"') <|>
+  (string "\\\\" >> pure '\\') <|>
+  (string "\\a" >> pure '\a') <|>
+  (string "\\b" >> pure '\b') <|>
+  (string "\\f" >> pure '\f') <|>
+  (string "\\n" >> pure '\n') <|>
+  (string "\\r" >> pure '\r') <|>
+  (string "\\t" >> pure '\t') <|>
+  (string "\\v" >> pure '\v')
+
 quotedString :: Parser Text
-quotedString = fromString <$> (char '"' *> manyTill (escaped <|> anyChar) (char '"'))
+quotedString = fromString <$> (char '"' *> manyTill (escapedStringChar <|> anyChar) (char '"'))
 
 simpleVar :: Parser ShortText
 simpleVar = (\c s -> packName $ c : s) <$> oneOf allowedInitial <*> many (alphaNumChar <|> oneOf allowedSpecial)

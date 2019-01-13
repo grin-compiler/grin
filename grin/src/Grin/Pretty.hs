@@ -122,7 +122,7 @@ instance Pretty Lit where
     LWord64 a  -> integer (fromIntegral a) <> text "u"
     LFloat a   -> float a
     LBool a    -> text "#" <> text (show a)
-    LString a  -> text "#\"" <> text (unpack a) <> "\""
+    LString a  -> text "#" <> text (show a)
     LChar a    -> text "#" <> text (show a)
 
 instance Pretty CPat where
