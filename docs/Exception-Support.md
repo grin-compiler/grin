@@ -1,4 +1,4 @@
-# Execption Support
+# Exception Support
 
 The goal is to support GHC Exception semantics in GRIN.
 
