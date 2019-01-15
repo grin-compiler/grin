@@ -34,6 +34,9 @@ instance FoldNames CPat where
     LitPat _    -> mempty
     DefaultPat  -> mempty
 
+instance FoldNames n => FoldNames [n] where
+  foldNames f = mconcat . map (foldNames f)
+
 dCoAlg :: (a -> String) -> (a -> ExpF b) -> (a -> ExpF b)
 dCoAlg dbg f = f . (\x -> trace (dbg x) x)
 
