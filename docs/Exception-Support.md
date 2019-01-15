@@ -10,4 +10,4 @@ The goal is to support GHC Exception semantics in GRIN.
 
 ## Exception support in UHC
 
-[Exceptional GRIN](http://nbviewer.jupyter.org/github.com/uhc/uhc/blob/master/EHC/text/grinc/exceptionalgrin-final.pdf) (Christof Douma's master thesis)
+[Exceptional GRIN](http://nbviewer.jupyter.org/github/uhc/uhc/blob/master/EHC/text/grinc/exceptionalgrin-final.pdf) (Christof Douma's master thesis)
