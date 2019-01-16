@@ -7,18 +7,22 @@ module Grin.Syntax
   , module Grin.SyntaxDefs
   ) where
 
-import Data.Functor.Foldable.TH
 import Control.DeepSeq
-import GHC.Generics (Generic)
+import Data.Binary
+import Data.Functor.Foldable.TH
 import Data.Int
 import Data.Text (Text)
-import Data.Word
-import qualified Data.ByteString.Short as B
-import Lens.Micro.Platform
 import Data.Text.Short (ShortText, isPrefixOf)
+import Data.Vector
+import Data.Word
+import GHC.Generics (Generic)
+import Lens.Micro.Platform
+import qualified Data.ByteString.Short as B
 
 import Grin.SyntaxDefs
 import Grin.TypeEnvDefs
+
+
 
 isPrimName :: Name -> Bool
 isPrimName = isPrefixOf "_prim_"
@@ -104,6 +108,23 @@ data Exp
   -- Alt
   | Alt CPat Exp
   deriving (Generic, NFData, Eq, Ord, Show)
+
+-- * Binary instances
+
+deriving instance Binary External
+deriving instance Binary Ty
+deriving instance Binary SimpleType
+deriving instance Binary TagType
+deriving instance Binary Type
+deriving instance Binary Lit
+deriving instance Binary Tag
+deriving instance Binary CPat
+deriving instance Binary Val
+deriving instance Binary Exp
+
+instance Binary a => Binary (Vector a) where
+  get = Data.Vector.fromList <$> get
+  put = put . Data.Vector.toList
 
 -- See: https://github.com/ekmett/recursion-schemes/blob/master/Data/Functor/Foldable/TH.hs#L31
 makeBaseFunctor ''Exp

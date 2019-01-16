@@ -161,7 +161,8 @@ library
     Diff,
     random,
     set-extra,
-    deepseq
+    deepseq,
+    binary
 
   default-language:    Haskell2010
 
@@ -187,6 +188,7 @@ executable grin
                      , microlens-platform
                      , optparse-applicative
                      , directory
+                     , binary
   default-language:    Haskell2010
 
 test-suite grin-test

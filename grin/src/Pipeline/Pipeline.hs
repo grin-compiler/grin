@@ -105,6 +105,7 @@ import Data.Fixed
 import Data.Functor.Infix
 import Data.Maybe (isNothing)
 import System.IO (BufferMode(..), hSetBuffering, stdout)
+import Data.Binary as Binary
 
 
 
@@ -186,6 +187,7 @@ data PipelineStep
   | PrintAST
   | SaveLLVM Bool FilePath
   | SaveGrin Path
+  | SaveBinary String
   | DebugTransformationH (Hidden (Exp -> Exp))
   | Statistics
   | PrintTypeAnnots
@@ -232,6 +234,7 @@ data PipelineOpts = PipelineOpts
   , _poStatistics  :: Bool
   , _poLintOnChange :: Bool
   , _poTypedLint :: Bool -- Run HPT before every lint
+  , _poSaveBinary :: Bool
   }
 
 defaultOpts :: PipelineOpts
@@ -243,13 +246,14 @@ defaultOpts = PipelineOpts
   , _poStatistics   = False
   , _poLintOnChange = True
   , _poTypedLint    = False
+  , _poSaveBinary   = False
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
 data PState = PState
     { _psExp            :: Exp
-    , _psTransStep      :: Int
-    , _psSaveIdx        :: Int
+    , _psTransStep      :: !Int
+    , _psSaveIdx        :: !Int
     , _psHPTProgram     :: Maybe (IR.AbstractProgram, HPT.HPTMapping)
     , _psHPTResult      :: Maybe HPT.HPTResult
     , _psCByProgram     :: Maybe (IR.AbstractProgram, CBy.CByMapping)
@@ -413,6 +417,7 @@ pipelineStep p = do
     JITLLVM         -> jitLLVM
     SaveLLVM relPath path -> saveLLVM relPath path
     SaveGrin path   -> saveGrin path
+    SaveBinary name -> saveBinary name
     PrintAST        -> printAST
     PrintTypeAnnots -> printTypeAnnots
     PrintTypeEnv    -> printTypeEnv
@@ -436,6 +441,7 @@ pipelineStep p = do
     T{} -> pipelineLog $ printf "had effect: %s (%s)"
               (show eff) (showMS $ toRational $ diffUTCTime end start)
     _   -> pipelineLog $ printf "(%s)" (showMS $ toRational $ diffUTCTime end start)
+  when (eff == ExpChanged) $ psSaveIdx %= succ
   -- TODO: Test this only for development mode.
   return eff
 
@@ -610,17 +616,24 @@ printAST = do
 
 saveGrin :: Path -> PipelineM ()
 saveGrin path = do
-  psSaveIdx %= succ
   e <- use psExp
   case path of
     Rel fn -> saveTransformationInfo fn e
     Abs fn -> liftIO $ do
       writeFile fn $ show $ plain $ pretty e
 
+-- | Save binary similar as transformation info.
+saveBinary :: String -> PipelineM ()
+saveBinary name = do
+  n <- use psSaveIdx
+  e <- use psExp
+  outputDir <- view poOutputDir
+  let fname = printf "%03d.%s.binary" n name
+  liftIO $ Binary.encodeFile (outputDir </> fname) e
+
 saveLLVM :: Bool -> FilePath -> PipelineM ()
 saveLLVM relPath fname' = do
   e <- use psExp
-  psSaveIdx %= succ
   n <- use psSaveIdx
   Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
@@ -863,13 +876,15 @@ optimizeWithM pre trans post = do
       c4 <- phase4
       when (or [c1, c2, c3, c4]) loop
 
+    phaseLoop _         [] = pure False
     phaseLoop isChanged ts = do
       o <- ask
-      pipelineStep (T BindNormalisation)
-      effs <- forM ts $ \t -> do
+      effs <- forM (BindNormalisation:ts) $ \t -> do
         eff <- pipelineStep (T t)
         when (eff == ExpChanged) $ do
-          pipelineStep $ SaveGrin $ Rel $ (fmap (\case ' ' -> '-' ; c -> c) $ show t) <.> "grin"
+          let tname = (fmap (\case ' ' -> '-' ; c -> c) $ show t)
+          pipelineStep $ SaveGrin $ Rel $ tname <.> "grin"
+          when (o ^. poSaveBinary) $ void $ pipelineStep $ SaveBinary tname
           when (o ^. poLintOnChange) $ lintGrin $ Just $ show t
           when (o ^. poStatistics)  $ void $ pipelineStep Statistics
           when (o ^. poSaveTypeEnv) $ void $ pipelineStep SaveTypeEnv

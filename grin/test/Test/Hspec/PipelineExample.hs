@@ -73,6 +73,7 @@ instance Example Pipeline where
               , _poStatistics = False
               , _poLintOnChange = False
               , _poTypedLint = False
+              , _poSaveBinary = False
               }
         resultExp <- lift $ Pipeline.Pipeline.pipeline opts Nothing beforeExp steps
         when (afterExp /= resultExp) $ do

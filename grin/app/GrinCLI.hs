@@ -6,6 +6,7 @@ import Data.Map as Map
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Data.Text.IO as Text
 import qualified Text.Megaparsec as M
+import qualified Data.Binary as Binary
 
 import Options.Applicative
 
@@ -20,6 +21,8 @@ data Options = Options
   , optOutputDir :: FilePath
   , optNoPrelude :: Bool
   , optQuiet     :: Bool
+  , optLoadBinary :: Bool
+  , optSaveBinary :: Bool
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -103,14 +106,9 @@ pipelineOpts =
   <|> flg PureEval "eval" "Evaluate the grin program (pure)"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
-  <|> (SaveLLVM True <$> (strOption (mconcat
-        [ long "save-llvm"
-        , help "Save the generated llvm"
-        ])))
-  <|> (SaveGrin . Abs <$> (strOption (mconcat
-        [ long "save-grin"
-        , help "Save the generated grin"
-        ])))
+  <|> (SaveLLVM True  <$> (strOption (mconcat [long "save-llvm", help "Save the generated llvm"])))
+  <|> (SaveGrin . Abs <$> (strOption (mconcat [long "save-grin", help "Save the generated grin"])))
+  <|> (SaveBinary     <$> (strOption (mconcat [long "save-binary", help "Save the generated grin in binary format"])))
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
@@ -142,18 +140,30 @@ options = execParser $ info
             , long "quiet"
             , help "Quiet mode. Silent pipeline logs"
             ])
+      <*> switch (mconcat
+            [ long "load-binary"
+            , help "Read grin from a binary file"
+            ])
+      <*> switch (mconcat
+            [ long "save-binary-intermed"
+            , help "Save intermediate results in binary format"
+            ])
 
 main :: IO ()
 main = do
-  Options files steps outputDir noPrelude quiet <- options
+  Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options
   forM_ files $ \fname -> do
-    content <- Text.readFile fname
-    let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
-        program  = if noPrelude then program' else concatPrograms [primPrelude, program']
-        opts     = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet }
+    (mTypeEnv, program) <- if loadBinary
+      then do
+        (,) Nothing <$> Binary.decodeFile fname
+      else do
+        content <- Text.readFile fname
+        let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
+        pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
+    let opts     = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
     case steps of
       [] -> void $ optimize opts program [] postPipeline
-      _  -> void $ pipeline opts (Just typeEnv) program steps
+      _  -> void $ pipeline opts mTypeEnv program steps
 
 postPipeline :: [PipelineStep]
 postPipeline =
