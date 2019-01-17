@@ -327,7 +327,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       syntaxE SimpleExpCtx
       -- Test existence of the function.
       Env{..} <- get
-      when (not $ "_prim_" `isPrefixOf` name) $
+      when (not $ "_prim_" `isPrefixOf` (unNM name)) $
         case Map.lookup name envDefinedNames of
           (Just FunName) -> pure ()
           (Just _)       -> tell [msg $ printf "non-function in function call: %s" name]

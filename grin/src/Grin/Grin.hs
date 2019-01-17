@@ -115,10 +115,10 @@ isSimpleExp e = case e of
   _           -> False
 
 unpackName :: Name -> String
-unpackName = TS.unpack
+unpackName (NM name) = TS.unpack name
 
 packName :: String -> Name
-packName = TS.pack
+packName = NM . TS.pack
 
 showTS :: Show a => a -> Name
 showTS = packName . show

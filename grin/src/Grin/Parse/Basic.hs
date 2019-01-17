@@ -108,7 +108,7 @@ anySingleBut t = satisfy (/= t)
 escaped :: Parser Char
 escaped = string "\\\"" >> pure '"'
 
-quotedVar :: Parser ShortText
+quotedVar :: Parser Name
 quotedVar = packName <$ char '"' <*> someTill (escaped <|> anyChar) (char '"')
 
 escapedStringChar :: Parser Char
@@ -126,12 +126,12 @@ escapedStringChar =
 quotedString :: Parser Text
 quotedString = fromString <$> (char '"' *> manyTill (escapedStringChar <|> anyChar) (char '"'))
 
-simpleVar :: Parser ShortText
+simpleVar :: Parser Name
 simpleVar = (\c s -> packName $ c : s) <$> oneOf allowedInitial <*> many (alphaNumChar <|> oneOf allowedSpecial)
 
 -- TODO: allow keywords in quotes
-var :: Parser ShortText
-var = try $ lexeme (quotedVar <|> simpleVar) >>= \x -> case Set.member x keywords of
+var :: Parser Name
+var = try $ lexeme (quotedVar <|> simpleVar) >>= \x@(NM x') -> case Set.member x' keywords of
   True -> fail $ "keyword: " ++ unpackName x
   False -> return x
 

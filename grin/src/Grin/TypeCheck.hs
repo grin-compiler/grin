@@ -66,7 +66,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
     , locs <- [l | T_Location l <- tys]
     = if null locs then pure $ TypeEnv.T_UnspecifiedLocation
                    else pure $ TypeEnv.T_Location locs
-    | otherwise = throwError $ printf "%s has illegal node item type %s in %s" n (show . pretty $ Set.fromList tys) (show $ pretty ns)
+    | otherwise = throwError $ printf "%s has illegal node item type %s in %s" (TypeEnv.unNM n) (show . pretty $ Set.fromList tys) (show $ pretty ns)
 
   convertNodeSet :: Name -> NodeSet -> Either String (Map Tag (Vector TypeEnv.SimpleType))
   convertNodeSet n a@(NodeSet ns) = mapM (mapM (convertSimpleTypeSet n a . Set.toList)) ns
@@ -82,7 +82,7 @@ typeEnvFromHPTResult hptResult = typeEnv where
       (stCount,nsCount) | stCount == 0 && nsCount > 0 -> TypeEnv.T_NodeSet <$> convertNodeSet n ns
       (stCount,nsCount) | stCount > 0 && nsCount == 0 -> TypeEnv.T_SimpleType <$> convertSimpleTypeSet n ns (Set.toList st)
       (0,0)                                           -> pure TypeEnv.dead_t
-      _ -> throwError $ printf "%s has illegal type of %s" n (show . pretty $ ts)
+      _ -> throwError $ printf "%s has illegal type of %s" (TypeEnv.unNM n) (show . pretty $ ts)
 
   convertFunction :: Name -> (TypeSet, Vector TypeSet) -> Either String (TypeEnv.Type, Vector TypeEnv.Type)
   convertFunction name (ret, args) = (,) <$> convertTypeSet name ret <*> mapM (convertTypeSet name) args

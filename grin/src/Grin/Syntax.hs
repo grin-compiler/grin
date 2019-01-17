@@ -25,7 +25,7 @@ import Grin.TypeEnvDefs
 
 
 isPrimName :: Name -> Bool
-isPrimName = isPrefixOf "_prim_"
+isPrimName (NM name) = isPrefixOf "_prim_" name
 
 -- * GRIN Externals, i.e. primops and foreign functions
 
@@ -111,6 +111,7 @@ data Exp
 
 -- * Binary instances
 
+deriving instance Binary Name
 deriving instance Binary External
 deriving instance Binary Ty
 deriving instance Binary SimpleType

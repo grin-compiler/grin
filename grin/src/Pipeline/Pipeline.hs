@@ -106,7 +106,7 @@ import Data.Functor.Infix
 import Data.Maybe (isNothing)
 import System.IO (BufferMode(..), hSetBuffering, stdout)
 import Data.Binary as Binary
-
+import Grin.Nametable as Nametable
 
 
 data Transformation
@@ -626,7 +626,7 @@ saveGrin path = do
 saveBinary :: String -> PipelineM ()
 saveBinary name = do
   n <- use psSaveIdx
-  e <- use psExp
+  (e, nt) <- Nametable.convert <$> use psExp
   outputDir <- view poOutputDir
   let fname = printf "%03d.%s.binary" n name
   liftIO $ Binary.encodeFile (outputDir </> fname) e

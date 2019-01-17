@@ -217,7 +217,7 @@ semanticallyIncorrectPrograms = resize 1 (G.asExp <$> arbitrary @G.Prog)
 downScale :: Gen a -> Gen a
 downScale = scale (`div` 2)
 
-instance Arbitrary TS.ShortText where arbitrary = TS.pack <$> arbitrary
+instance Arbitrary Name where arbitrary = NM . TS.pack <$> arbitrary
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
 instance Arbitrary G.Prog where arbitrary = genericArbitraryU

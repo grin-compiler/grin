@@ -66,7 +66,7 @@ simpleExp i = SReturn <$ kw "pure" <*> value <|>
       _               -> False
 
 primNameOrDefName :: Parser Name
-primNameOrDefName = ("_"<>) <$ char '_' <*> var <|> var
+primNameOrDefName = nMap ("_"<>) <$ char '_' <*> var <|> var
 
 alternative :: Pos -> Parser Alt
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)

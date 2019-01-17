@@ -78,7 +78,7 @@ showName n = case unpackName n of
       go ('"':xs) = '\\' : '"' : go xs
       go (a : xs) = a : go xs
 
-instance Pretty ShortText where
+instance Pretty Name where
   pretty = text . showName
 
 -- TODO

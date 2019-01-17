@@ -92,7 +92,7 @@ extend t (Endo c) = c t
 
 variableType :: TypeEnv -> Name -> Type
 variableType TypeEnv{..} name = case Map.lookup name _variable of
-  Nothing -> error $ printf "variable %s is missing from type environment" name
+  Nothing -> error $ printf "variable %s is missing from type environment" (unNM name)
   Just t -> t
 
 functionType :: TypeEnv -> Name -> (Type, Vector Type)
