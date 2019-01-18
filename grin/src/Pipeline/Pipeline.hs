@@ -626,10 +626,10 @@ saveGrin path = do
 saveBinary :: String -> PipelineM ()
 saveBinary name = do
   n <- use psSaveIdx
-  (e, nt) <- Nametable.convert <$> use psExp
+  ent <- Nametable.convert <$> use psExp
   outputDir <- view poOutputDir
   let fname = printf "%03d.%s.binary" n name
-  liftIO $ Binary.encodeFile (outputDir </> fname) e
+  liftIO $ Binary.encodeFile (outputDir </> fname) ent
 
 saveLLVM :: Bool -> FilePath -> PipelineM ()
 saveLLVM relPath fname' = do

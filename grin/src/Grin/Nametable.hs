@@ -1,17 +1,23 @@
 {-# LANGUAGE LambdaCase, TemplateHaskell, RecordWildCards #-}
-module Grin.Nametable where
+module Grin.Nametable
+  ( Nametable
+  , convert
+  , restore
+  ) where
 
 import Data.Text.Short (ShortText, unpack)
 import Grin.Syntax
-import Data.Map.Strict as Map
+import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable
 import Control.Monad.State
 import Lens.Micro.Platform
 import Data.Bifunctor
 
 
-type Nametable = Map Int ShortText
-type ReverseTable = Map ShortText Int
+-- * Convert
+
+type Nametable = Map.Map Int ShortText
+type ReverseTable = Map.Map ShortText Int
 
 data NS = NS
   { _latest       :: !Int
@@ -33,7 +39,7 @@ nameToIdx (NM n) = do
   case mIdx of
     Just i  -> pure $ NI i
     Nothing -> do
-      idx <- latest <<%= succ -- Modify the state and return the old value
+      idx <- latest <<%= succ -- Modifies the state and returns the old value
       nametable       %= Map.insert idx n
       reverseTable    %= Map.insert n idx
       pure $ NI idx
@@ -42,7 +48,7 @@ tag :: Tag -> NametableM Tag
 tag (Tag tt tn) = Tag tt <$> nameToIdx tn
 
 lit :: Lit -> NametableM Lit
-lit = pure -- TODO: Handle stirng literals
+lit = pure -- TODO: Handle string literals
 
 value :: Val -> NametableM Val
 value = \case
@@ -92,10 +98,61 @@ convert = second (view nametable) . flip runState emptyNS . cata build where
     SBlockF body      -> SBlock <$> body
     AltF cp e         -> Alt <$> cpat cp <*> e
 
+-- * Restore
+
 -- | Restore names from a nametable, assuming that all the
 -- identifiers are present in the table.
-restore :: (Nametable, Exp) -> Exp
-restore (nt, exp) = cata build exp where
+restore :: (Exp, Nametable) -> Exp
+restore (exp, nt) = cata build exp where
   build :: ExpF Exp -> Exp
   build = \case
-    _ -> undefined
+    ProgramF es defs  -> Program (map rexternal es) defs
+    DefF fn ps body   -> Def (rname fn) (map rname ps) body
+    EBindF l v r      -> EBind l (rvalue v) r
+    ECaseF v alts     -> ECase (rvalue v) alts
+    SAppF v ps        -> SApp (rname v) (map rvalue ps)
+    SReturnF v        -> SReturn (rvalue v)
+    SStoreF v         -> SStore (rvalue v)
+    SFetchIF n p      -> SFetchI (rname n) p
+    SUpdateF n v      -> SUpdate (rname n) (rvalue v)
+    SBlockF body      -> SBlock body
+    AltF cp e         -> Alt (rcpat cp) e
+
+  rname :: Name -> Name
+  rname (NI i) = maybe (error $ show i ++ " is not found") NM $ Map.lookup i nt
+
+  rvalue :: Val -> Val
+  rvalue = \case
+    ConstTagNode t vs -> ConstTagNode (rtag t) (map rvalue vs)
+    VarTagNode   n vs -> VarTagNode (rname n) (map rvalue vs)
+    ValTag       t    -> ValTag (rtag t)
+    Unit              -> Unit
+    Lit l             -> Lit (rlit l)
+    Var n             -> Var (rname n)
+    Undefined ty      -> Undefined ty
+
+  rlit :: Lit -> Lit
+  rlit = id -- TODO: Handle String literals
+
+  rtag :: Tag -> Tag
+  rtag (Tag tt tn) = Tag tt (rname tn)
+
+  rcpat :: CPat -> CPat
+  rcpat = \case
+    NodePat t ns -> NodePat (rtag t) (map rname ns)
+    LitPat  l    -> LitPat (rlit l)
+    DefaultPat   -> DefaultPat
+    TagPat  t    -> TagPat (rtag t)
+
+  rexternal :: External -> External
+  rexternal External{..} =
+    External (rname eName)
+             (rty eRetType)
+             (map rty eArgsType)
+             eEffectful
+
+  rty :: Ty -> Ty
+  rty = \case
+    TyCon    n ts -> TyCon (rname n) (map rty ts)
+    TyVar    n    -> TyVar (rname n)
+    TySimple st   -> TySimple st

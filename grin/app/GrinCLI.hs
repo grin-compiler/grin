@@ -13,6 +13,7 @@ import Options.Applicative
 import Grin.Grin
 import Grin.PrimOpsPrelude
 import Grin.Parse hiding (value)
+import Grin.Nametable as Nametable
 import Pipeline.Pipeline
 
 data Options = Options
@@ -155,7 +156,7 @@ main = do
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
       then do
-        (,) Nothing <$> Binary.decodeFile fname
+        ((,) Nothing . Nametable.restore) <$> Binary.decodeFile fname
       else do
         content <- Text.readFile fname
         let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
