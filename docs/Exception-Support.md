@@ -15,3 +15,5 @@ The goal is to support GHC Exception semantics in GRIN.
 ## Exception Handling in LLVM
 
 https://llvm.org/docs/ExceptionHandling.html
+
+http://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
