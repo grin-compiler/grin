@@ -1,1 +1,3 @@
 higher order IR  = first order IR + function cloning
+
+is STG equal to GRIN + central dispatch function calling per-module eval?
