@@ -17,7 +17,6 @@ import qualified Data.Set as Set
 import Data.List (findIndices)
 import Lens.Micro.Platform
 import Lens.Micro.Extra
-import Data.Text.Short (isPrefixOf)
 import Text.PrettyPrint.ANSI.Leijen (Pretty, plain)
 import Data.String
 import Control.Comonad (extract)
@@ -327,7 +326,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       syntaxE SimpleExpCtx
       -- Test existence of the function.
       Env{..} <- get
-      when (not $ "_prim_" `isPrefixOf` (unNM name)) $
+      when (not $ isPrimName name) $
         case Map.lookup name envDefinedNames of
           (Just FunName) -> pure ()
           (Just _)       -> tell [msg $ printf "non-function in function call: %s" name]

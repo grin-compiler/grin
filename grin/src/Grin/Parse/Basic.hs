@@ -9,7 +9,6 @@ import qualified Data.Vector as Vec
 
 import Data.String (fromString)
 import Data.Text (Text)
-import Data.Text.Short (ShortText, pack)
 import Data.Void
 
 import Control.Monad (void)

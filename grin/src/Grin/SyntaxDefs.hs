@@ -1,25 +1,21 @@
 {-# LANGUAGE DeriveDataTypeable, DeriveGeneric, DeriveAnyClass, StandaloneDeriving #-}
 module Grin.SyntaxDefs where
 
-import Data.Text.Short (ShortText, unpack)
-import Data.Text.Short.Internal (ShortText(..))
+import Data.Text (Text, unpack)
 import Control.DeepSeq
 import GHC.Generics (Generic)
 import Data.Data
 import Data.String
 import Text.Printf
 
-
-deriving instance Data ShortText
-
 -- Names are stored in NM form when we do program generation. NI is only used
 -- when we seralize the Exp
 data Name
-  = NM { unNM :: !ShortText }
+  = NM { unNM :: !Text }
   | NI !Int
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
-nMap :: (ShortText -> ShortText) -> Name -> Name
+nMap :: (Text -> Text) -> Name -> Name
 nMap f (NM n) = NM (f n)
 
 instance Semigroup Name where

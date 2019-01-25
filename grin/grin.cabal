@@ -144,7 +144,6 @@ library
     microlens-platform,
     process,
     text,
-    text-short,
     time,
     optparse-applicative,
     directory,

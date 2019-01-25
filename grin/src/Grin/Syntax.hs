@@ -12,8 +12,7 @@ import Control.DeepSeq
 import Data.Binary
 import Data.Functor.Foldable.TH
 import Data.Int
-import Data.Text (Text)
-import Data.Text.Short (ShortText, isPrefixOf)
+import Data.Text (Text, isPrefixOf)
 import Data.Vector
 import Data.Word
 import GHC.Generics (Generic)

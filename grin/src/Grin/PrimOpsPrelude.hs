@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
-
 module Grin.PrimOpsPrelude where
 
 import Grin.Grin
@@ -12,7 +11,7 @@ import Grin.TH
 -}
 
 primPrelude :: Program
-primPrelude = [prog|
+primPrelude = [progConst|
 
   primop effectful
     _prim_int_print     :: T_Int64  -> T_Unit

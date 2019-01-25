@@ -23,7 +23,6 @@ import Data.Maybe (fromJust, maybeToList)
 import Data.Semigroup
 import Data.String (fromString)
 import qualified Data.Text as Text
-import qualified Data.Text.Short as TS
 import GHC.Generics
 import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
@@ -217,7 +216,7 @@ semanticallyIncorrectPrograms = resize 1 (G.asExp <$> arbitrary @G.Prog)
 downScale :: Gen a -> Gen a
 downScale = scale (`div` 2)
 
-instance Arbitrary Name where arbitrary = NM . TS.pack <$> arbitrary
+instance Arbitrary Name where arbitrary = NM <$> arbitrary
 instance Arbitrary Text.Text where arbitrary = Text.pack <$> arbitrary
 
 instance Arbitrary G.Prog where arbitrary = genericArbitraryU

@@ -8,7 +8,7 @@ import Data.Functor.Foldable as Foldable
 import Debug.Trace (trace)
 import Lens.Micro.Platform
 import Data.Maybe
-import qualified Data.Text.Short as TS
+import Data.Text (pack, unpack)
 
 import Grin.Syntax
 import Grin.TypeEnvDefs
@@ -115,10 +115,10 @@ isSimpleExp e = case e of
   _           -> False
 
 unpackName :: Name -> String
-unpackName (NM name) = TS.unpack name
+unpackName (NM name) = unpack name
 
 packName :: String -> Name
-packName = NM . TS.pack
+packName = NM . pack
 
 showTS :: Show a => a -> Name
 showTS = packName . show

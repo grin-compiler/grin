@@ -30,7 +30,7 @@ C.include "<stdio.h>"
 
 -- primitive functions
 primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
-primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (unpack a)) >> pure RT_Unit
+primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (Text.unpack a)) >> pure RT_Unit
 primLiteralPrint ctx ps x = error $ Prelude.unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
 
 
@@ -136,7 +136,7 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   str_int = case args of
-    [RT_Lit (LString a)] -> int $ read $ unpack a
+    [RT_Lit (LString a)] -> int $ read $ Text.unpack a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_float = case args of

@@ -9,6 +9,7 @@ module Grin.TH
 
 import Data.List (sort)
 import Data.Char
+import Data.Data
 import Data.Maybe
 import NeatInterpolation
 import Text.Megaparsec
@@ -17,6 +18,7 @@ import qualified Grin.Parse as P
 import qualified Data.Text as T
 
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
 import Language.Haskell.TH.Quote
 
 prog :: QuasiQuoter
@@ -37,6 +39,12 @@ expr = text { quoteExp = applyParseExpr . quoteExp text }
 applyParseExpr :: Q Exp -> Q Exp
 applyParseExpr q = appE [|P.parseExpr|] q
 
+liftText :: T.Text -> Q Exp
+liftText txt = AppE (VarE 'T.pack) <$> lift (T.unpack txt)
+
+liftDataWithText :: Data a => a -> Q Exp
+liftDataWithText = dataToExpQ (\a -> liftText <$> cast a)
+
 -- NOTE: does not support metavariables
 progConst :: QuasiQuoter
 progConst = QuasiQuoter
@@ -44,7 +52,7 @@ progConst = QuasiQuoter
       let src = T.pack $ normalizeQQInput input
       case P.parseGrin "" src of
         Left  e -> fail $ parseErrorPretty' src e
-        Right p -> dataToExpQ (const Nothing) p
+        Right p -> liftDataWithText p
   , quotePat  = undefined
   , quoteType = undefined
   , quoteDec  = undefined

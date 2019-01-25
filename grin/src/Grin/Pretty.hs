@@ -28,7 +28,6 @@ import qualified Data.IntMap as IntMap
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
-import Data.Text.Short (ShortText)
 import Data.Text (unpack)
 
 import Data.Functor.Foldable as Foldable

@@ -5,7 +5,7 @@ module Grin.Nametable
   , restore
   ) where
 
-import Data.Text.Short (ShortText, unpack)
+import Data.Text (Text, unpack)
 import Grin.Syntax
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable
@@ -13,11 +13,10 @@ import Control.Monad.State
 import Lens.Micro.Platform
 import Data.Bifunctor
 
-
 -- * Convert
 
-type Nametable = Map.Map Int ShortText
-type ReverseTable = Map.Map ShortText Int
+type Nametable = Map.Map Int Text
+type ReverseTable = Map.Map Text Int
 
 data NS = NS
   { _latest       :: !Int
