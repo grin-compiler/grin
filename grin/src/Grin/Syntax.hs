@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving, OverloadedStrings #-}
 
@@ -7,6 +7,7 @@ module Grin.Syntax
   , module Grin.SyntaxDefs
   ) where
 
+import Data.Data
 import Control.DeepSeq
 import Data.Binary
 import Data.Functor.Foldable.TH
@@ -33,7 +34,7 @@ data Ty
   = TyCon     Name [Ty]
   | TyVar     Name
   | TySimple  SimpleType
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
 
 data External
   = External
@@ -42,7 +43,7 @@ data External
   , eArgsType   :: [Ty]
   , eEffectful  :: Bool
   }
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
 
 -- * GRIN Literal
 
@@ -55,7 +56,7 @@ data Lit
   | LBool   Bool
   | LString Text
   | LChar   Char
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
 
 -- * GRIN Value
 
@@ -71,7 +72,7 @@ data Val
   | Lit Lit                        -- HIGH level GRIN
   | Var Name                       -- HIGH level GRIN
   | Undefined     Type
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
 
 -- See: https://github.com/ekmett/recursion-schemes/blob/master/Data/Functor/Foldable/TH.hs#L31
 makeBaseFunctor ''Val
@@ -83,7 +84,7 @@ data CPat
   | LitPat  Lit         -- HIGH level GRIN
   | DefaultPat          -- HIGH level GRIN
   | TagPat  Tag
-  deriving (Generic, NFData, Eq, Show, Ord)
+  deriving (Generic, Data, NFData, Eq, Show, Ord)
 
 -- * GRIN Expression
 
@@ -107,7 +108,7 @@ data Exp
   | SBlock      Exp
   -- Alt
   | Alt CPat Exp
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
 
 -- * Binary instances
 

@@ -20,6 +20,8 @@ extra-deps:
   - neat-interpolation-0.3.2.2
   - set-extra-1.4.1
   - llvm-hs-pretty-0.6.1.0
+  - github: csabahruska/text-short
+    commit: a2f87b7d8f35c6ca86104b617f9759a98b484646
 
 flags:
   llvm-hs:

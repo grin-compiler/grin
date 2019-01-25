@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveAnyClass, DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Grin.TypeEnvDefs where
 
+import Data.Data
 import Data.Map (Map)
 import Data.Vector (Vector)
 
@@ -25,7 +26,7 @@ data Type
   | T_Item        {_tagVariable :: Name       -- tag variable name that holds the node tag on which the item type depends
                   ,_itemIndex   :: Int        -- item index in the node
                   }
-  deriving (Generic, NFData, Eq, Ord, Show)
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
 
 data TypeEnv
   = TypeEnv
