@@ -33,7 +33,7 @@ getReturnTagSet typeEnv = cata folder where
     ECaseF _ alts -> mconcat <$> sequence alts
 
     SReturnF val
-      | T_NodeSet ns <- typeOfValTE typeEnv val
+      | Just (T_NodeSet ns) <- mTypeOfValTE typeEnv val
       -> Just (Map.keysSet ns)
 
     SAppF name _
