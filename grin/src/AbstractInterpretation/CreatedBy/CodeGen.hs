@@ -303,6 +303,7 @@ codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
     "_prim_string_print" -> op [string] unit
     "_prim_read_string" -> op [] string
     "_prim_usleep" -> op [int] unit
+    "_prim_error" -> op [string] unit
 
     -- String
     "_prim_string_concat"  -> op [string, string] string

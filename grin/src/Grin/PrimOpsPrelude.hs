@@ -18,6 +18,7 @@ primPrelude = [progConst|
     _prim_string_print  :: T_String -> T_Unit
     _prim_read_string   :: T_String
     _prim_usleep        :: T_Int64 -> T_Unit
+    _prim_error         :: T_String -> T_Unit
 
     -- FFI - TODO: Handle FFI appropiately
     _prim_ffi_file_eof  :: T_Int64 -> T_Int64

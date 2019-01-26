@@ -40,6 +40,7 @@ evalPrimOp name params args = case name of
   "_prim_string_print" -> primLiteralPrint "string" params args
   "_prim_read_string"  -> primReadString
   "_prim_usleep"       -> primUSleep
+  "_prim_error"        -> primError
   -- Conversion
   "_prim_int_str"      -> int_str
   "_prim_str_int"      -> str_int
@@ -166,4 +167,8 @@ evalPrimOp name params args = case name of
 
   primUSleep = case args of
     [RT_Lit (LInt64 us)] -> liftIO $ threadDelay (fromIntegral us) >> pure RT_Unit
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  primError = case args of
+    [RT_Lit (LString msg)] -> liftIO (ioError $ userError $ Text.unpack msg) >> pure RT_Unit
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
