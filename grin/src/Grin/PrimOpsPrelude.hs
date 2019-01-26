@@ -26,6 +26,7 @@ primPrelude = [progConst|
     -- String
     _prim_string_concat  :: T_String -> T_String -> T_String
     _prim_string_reverse :: T_String -> T_String
+    _prim_string_lt      :: T_String -> T_String -> T_Bool
     _prim_string_eq      :: T_String -> T_String -> T_Bool
     _prim_string_head    :: T_String -> T_Int64
     _prim_string_tail    :: T_String -> T_String

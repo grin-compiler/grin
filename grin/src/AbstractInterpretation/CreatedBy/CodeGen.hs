@@ -307,6 +307,7 @@ codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
     -- String
     "_prim_string_concat"  -> op [string, string] string
     "_prim_string_reverse" -> op [string] string
+    "_prim_string_lt"      -> op [string, string] bool
     "_prim_string_eq"      -> op [string, string] bool
     "_prim_string_head"    -> op [string] int
     "_prim_string_tail"    -> op [string] string

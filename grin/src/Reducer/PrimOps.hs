@@ -52,6 +52,7 @@ evalPrimOp name params args = case name of
   "_prim_string_tail"    -> string_un_op string Text.tail
   "_prim_string_len"     -> string_un_op int (fromIntegral . Text.length)
   "_prim_string_concat"  -> string_bin_op string (\t1 t2 -> Text.concat [t1, t2])
+  "_prim_string_lt"      -> string_bin_op bool (<)
   "_prim_string_eq"      -> string_bin_op bool (==)
   "_prim_string_cons"    -> string_cons
 
