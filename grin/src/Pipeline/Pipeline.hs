@@ -268,6 +268,7 @@ data PState = PState
     , _psTypeAnnots     :: TypeEnv
     , _psEffectMap      :: Maybe EffectMap
     , _psErrors         :: [String]
+    , _psIntendation    :: Int
     } deriving (Show)
 
 makeLenses ''PState
@@ -368,10 +369,12 @@ transformation t = do
 
 pipelineStep :: PipelineStep -> PipelineM PipelineEff
 pipelineStep p = do
+  inceaseIntendation
+  i <- use psIntendation
   case p of
-    Pass{}               -> pure () -- each pass step will be printed anyway
-    _ | isPrintingStep p -> pipelineLog $ printf "PipelineStep: %-35s" (show p)
-    _                    -> pipelineLogNoLn $ printf "PipelineStep: %-35s" (show p)
+    Pass{} -> pipelineLog "Pass"
+    _ | isPrintingStep p -> pipelineLog     $ printf ("PipelineStep: %-" ++ show (80 - 2 * i) ++ "s") (show p)
+    _                    -> pipelineLogNoLn $ printf ("PipelineStep: %-" ++ show (80 - 2 * i) ++ "s") (show p)
   before <- use psExp
   start <- liftIO getCurrentTime
   case p of
@@ -443,6 +446,7 @@ pipelineStep p = do
     _   -> pipelineLog $ printf "(%s)" (showMS $ toRational $ diffUTCTime end start)
   when (eff == ExpChanged) $ psSaveIdx %= succ
   -- TODO: Test this only for development mode.
+  decreateIntendation
   return eff
 
 
@@ -834,6 +838,7 @@ runPipeline o ta e m = do
       , _psTypeAnnots     = ta
       , _psEffectMap      = Nothing
       , _psErrors         = []
+      , _psIntendation    = 0
       }
 
 -- | Runs the pipeline and returns the last version of the given
@@ -1002,6 +1007,7 @@ runAnalysisFor t = do
     analysis getter ann = do
       r <- use getter
       when (isNothing r) $ do
+        pipelineLog ""
         pipelineLog $ "Analysis"
         mapM_ pipelineStep $ (ann <$> [Compile, RunPure])
 
@@ -1014,18 +1020,27 @@ runAnalysisFor t = do
     eff = do
       r <- use psEffectMap
       when (isNothing r) $ do
+        pipelineLog ""
         pipelineLog $ "Analysis"
         void $ pipelineStep $ Eff CalcEffectMap
+
+inceaseIntendation :: PipelineM ()
+inceaseIntendation = psIntendation %= succ
+
+decreateIntendation :: PipelineM ()
+decreateIntendation = psIntendation %= pred
 
 pipelineLog :: String -> PipelineM ()
 pipelineLog str = do
   shouldLog <- view poLogging
-  when shouldLog $ liftIO $ putStrLn str
+  ident <- use psIntendation
+  when shouldLog $ liftIO $ putStrLn $ replicate ident ' ' ++ str
 
 pipelineLogNoLn :: String -> PipelineM ()
 pipelineLogNoLn str = do
   shouldLog <- view poLogging
-  when shouldLog $ liftIO $ putStr str
+  ident <- use psIntendation
+  when shouldLog $ liftIO $ putStr $ replicate ident ' ' ++ str
 
 pipelineLogIterations :: Int -> PipelineM ()
 pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n ++ " "
