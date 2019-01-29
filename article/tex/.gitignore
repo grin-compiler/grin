@@ -1,0 +1,8 @@
+*.toc
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.gz
+_minted-main/

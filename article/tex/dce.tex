@@ -1,4 +1,20 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
 	
+	Dead code elimination is one of the most well-known compiler optimization techniques. The aim of dead code elimination is to remove parts of the program that neither affect its final result nor its side effects. This includes code that can never be executed, and also code which only consists of irrelevant operations on dead variables. Dead code elimination can reduce the size of the input program, as well as increase its execution speed. Furthermore, it can facilitate other optimizing transformation by restructuring the code.
+	
+	\subsection{Dead Code Elmination in GRIN}
+	
+	The original GRIN framework has three different type of dead code eliminating transformations. These are dead function elimination, dead variable elimination and dead function paramater elimination. In general, the effectiveness of most optimizations solely depends on the accuracy of the information it has about the program. The more precise information it has, the more agressive it can be. Furthermore, in most cases the optimizations themselves do not even need to be modified.
+	
+	In the original framework, the dead code eliminating transformations were provided only a very rough approximation of the liveness of variables and function parameters. In fact, a variable was deemed dead only if it was never used in the program. As a consequence, the required analyses were really fast, but the transformations themselves were very limited as well.
+	
+	\subsection{Interprocedural Liveness Analysis}
+	
+	In order to improve the effectiveness of dead code elimination, we need more sophisticated data-flow analyses. Liveness analysis is a standard data-flow analysis that determines which variables are live in the program and which ones are not. It is important to note, that even if a variable is used in the program, it does not necessarily mean it is live. By extending the analysis with interprocedural elements, we can obtain quite a good estimate of the live variables in the program, while minimizing the cost of the algorithm.
+	
+	%TODO: example here?
+	
+
+	
 \end{document}

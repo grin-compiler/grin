@@ -3,7 +3,7 @@
 	
 	%TODO: GRIN: functional domain - imperative domain, LLVM: architecture independent domain - architecture specific domain
 	
-	In this section, we will discuss the benefits and challenges of compiling GRIN to LLVM.
+	LLVM is a collection of compiler technologies consisting of an intermediate representation called the LLVM IR, a modularly built compiler framework and many other tools built on these technologies. This section discusses the benefits and challenges of compiling GRIN to LLVM.
 	
 	\subsection{Benefits and Challenges}
 	
@@ -23,7 +23,9 @@
 	
 	The original version of the analysis presented in \cite{boquist-phd} and further detailed in \cite{boquist-grin} only supports node level granularity. This means, that the types of literals are not differentiated, they are unified under a common "basic value" type. Therefore, the analysis cannot be used for type inference as it is. In order to facilitate type inference, HPT has to be extended, so that it propagates type information about literals as well. This can be easily achieved by slightly adjusting the original version. Using the result of the modified algorithm, we can generate LLVM IR code from GRIN.
 	
-	However, in some cases the monomorphic type inference algorithm presented above is not sufficient. For example, the Glasgow Haskell Compiler has polymorphic primitive operations. This means, that despite GRIN being a monomorphic language, certain compiler front ends can introduce polymorphic functions to GRIN programs. To resolve this problem, we need to further extend the heap points-to analysis. The algorithm now needs a table of external functions with their respective type information. These functions \emph{can} be polymorphic, hence they need special treatment during the analysis. While propagating information through these functions, the algorithm will introduce new abstract heap locations for each unique type variable, and it will keep track of its possible concrete types. Fortunately, this can be accomplished by the same data-flow operations the algorithm already uses.
+	%TODO: reference UHC paper
+	
+	However, in some cases the monomorphic type inference algorithm presented above is not sufficient. For example, the Glasgow Haskell Compiler has polymorphic primitive operations. This means, that despite GRIN being a monomorphic language, certain compiler front ends can introduce external polymorphic functions to GRIN programs. To resolve this problem, we have to further extend the heap points-to analysis. The algorithm now needs a table of external functions with their respective type information. These functions \emph{can} be polymorphic, hence they need special treatment during the analysis. When encountering external function applications, the algorithm has to determine the concrete type of the return value based on the possible types of the function arguments. Essentially, it has to fill all the type variables present in the type of the return value with concrete types. This can be achieved by unification. Fortunately, the unification algorithm can be expressed in terms of the same data-flow operations HPT already uses.
 	
 	
 \end{document}
