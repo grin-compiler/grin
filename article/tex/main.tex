@@ -1,0 +1,38 @@
+\documentclass[10pt,a4paper,oneside]{article}
+
+\usepackage{style}
+\usepackage{subfiles}
+
+\title{A modern look at GRIN, an optimizing functional language back-end}
+%\title{Dead Code Elimination for GRIN with Interprocedural Whole-Program Analysis}
+\date{\today}
+\author{Péter Dávid Podlovics, Csaba Hruska}
+
+\begin{document}
+	
+	\subfile{abstract}
+	
+	\tableofcontents
+	
+	\section{Introduction} \label{sec-intro}
+	\subfile{introduction}
+	
+	\section{Graph Reduction Intermediate Notation}
+	\subfile{grin}
+	
+	\section{Compiling to LLVM}
+	\subfile{llvm}
+	
+	\section{Interprocedural Dead Code Elimination}
+	\subfile{dce}
+	
+	\section{Compiled Abstract Interpretation}
+	\section{Related Work}
+	\section{Results}
+	\section{Conclusion}
+	\section{References}
+	
+	\subfile{bibliography}
+
+	
+\end{document}
