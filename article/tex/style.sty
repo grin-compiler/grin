@@ -13,32 +13,52 @@
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
 \usepackage{float}
+\usepackage{newfloat}
+\usepackage{footnote}
 \usepackage{subcaption}
 \usepackage{cite}
 \usepackage{url}
 \usepackage{caption}
 \usepackage{graphicx}
 \graphicspath{ {../img/} }
+\usepackage[bottom]{footmisc}
 
 \usepackage{enumitem}
 \setlist{nosep}
 
 \usepackage[utf8]{inputenc}
 \usepackage{etoolbox}
-\usepackage{latexsym,amssymb,amsmath}
+\usepackage{latexsym,amssymb,amsmath,mathtools}
 
 \usepackage{algorithm}
 \usepackage{algorithmicx}
 \usepackage{algpseudocode}
 
 \floatstyle{plain}
-\newfloat{codeFloat}{htbp}{lop}[section]
-\floatname{codeFloat}{Program code}
-\def\lstfloatautorefname{Program code}
 
-\newfloat{tableFloat}{htbp}{lop}[section]
-\floatname{tableFloat}{Table}
-\def\lstfloatautorefname{Table}
+\DeclareFloatingEnvironment
+[ name 			= {Program code}
+, placement = htbp
+, fileext   = loc
+, within 		= section
+]{codeFloat}
+
+\DeclareFloatingEnvironment
+[ name 			= {Table}
+, placement = htbp
+, fileext   = lot
+, within 		= section
+]{tableFloat}
+
+\DeclareFloatingEnvironment
+[ name 			= {Analysis example}
+, placement = htbp
+, fileext   = loc
+, within 		= section
+]{analysisFloat}
+
+\DeclarePairedDelimiter\set\{\}
+
 
 \hypersetup{%
 	colorlinks=true,% hyperlinks will be coloured

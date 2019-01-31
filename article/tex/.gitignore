@@ -5,4 +5,5 @@
 *.log
 *.out
 *.gz
+*.listing
 _minted-main/

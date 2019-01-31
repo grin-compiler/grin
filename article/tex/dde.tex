@@ -1,17 +1,98 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
 	
-	% intro: DDE vs general DCE, restructuing the data itself, laziness vs DDE
+	% TODO: reference Remi Turk & HRC
 	
-	\subsection{Prerequisites}
+	Conventional dead code eliminating optimizations usually only remove statements or expressions from programs. However, \emph{dead data elimination} can transform the underlying data structures themselves. Essentially, it can specialize a certain data structure for a given use-site by removing or transforming unnecessary parts of it. It is a very powerful optimization technique that can significantly decrease memory usage and reduce the number of heap operations.
 	
-	% examples n stuff
+	\subsection{Dead Data elimination in GRIN}
+	
+	In the context of GRIN, dead data elimination removes dead fields of data constructors (or nodes) for both definition- and use-sites. In the followings, we will refer to definition-sites as \emph{producers} and to use-sites as \emph{consumers}. Producers and consumers are in a \emph{many-to-many} relationship with each other. A producer can define a variable used by many consumers, and a consumer can use a variable possibly defined by many producers. It only depends on the control-flow of the program. Program~code~\ref{code:dde-simple} illustrates dead data elimination on a very simple example with a single producer and a single consumer.
+	
+	\begin{codeFloat}[h]
+		\begin{center}
+			\begin{minipage}{0.35\textwidth}
+				\begin{haskell}
+					main = 
+					  x <- pure (CPair 0 1)
+					  y <- snd x
+					  pure y 
+					
+					snd p =
+					  (CPair a b) <- pure p
+					  pure b
+				\end{haskell}
+				\subcaption{Before the transformation}
+			\end{minipage}
+			$\xRightarrow{\text{\emph{a} is dead}}$
+			\begin{minipage}{0.35\textwidth}
+				\begin{haskell}
+					main = 
+					  x <- pure (CPair' 1)
+					  y <- snd x
+					  pure y 
+					
+					snd p =
+					  (CPair' b) <- pure p
+					  pure b
+				\end{haskell}
+				\subcaption{After the transformation}
+			\end{minipage}
+		\end{center}
+		\caption{A simple example for dead data elimination}
+		\label{code:dde-simple}
+	\end{codeFloat}
+
+	As we can see, the first component of the pair is never used, so the optimization can safely eliminate the first field of the node. It is important to note, that the transformation has to remove the dead field for both the producer and the consumer. Furthermore, the name of the node also has to be changed to preserve type correctness, since the transformation is specific to each producer-consumer group. This means, the data constructor \pilcode{CPair} still exists, and it can be used by other parts of the program, but a new, specialized version is introduced for any optimizable producer-consumer group~\footnote{Strictly speaking, a new version is only introduced for each different set of live fields used by producer-consumer groups}.
+	
+	Dead data elimination requires a considerable amount of data-flow analyses and possibly multiple transformation passes. First of all, it has to identify potentially removable dead fields of a node. This information can be acquired by running liveness analysis on the program (see Section~\ref{sub-sec:lva}). After that, it has to connect producers with consumers by running the \emph{created-by data-flow analysis}. Then it has to group producers together sharing at least one common consumer, and determine whether a given field for a given producer can be removed globally, or just dummified locally. Finally, it has to transform both the producers and the consumers.
 	
 	\subsection{Created-by Analysis}
 	
+	The created-by analysis, as its name suggests is responsible for determining the set of producers a given variable-was possibly created by. For our purposes, it is sufficient to track only node valued variables, since these are the only potential candidates for dead data elimination. Analysis~example~\ref{analysis:cby} demonstrates how the algorithm works on a simple program.
+	
+	\begin{analysisFloat}[h]
+		\begin{center}
+			\begin{minipage}{0.35\textwidth}
+				\begin{haskell}
+					null xs = 
+					  y <- case xs of
+					    (CNil) -> 
+					      a <- pure (CTrue)
+					      pure a
+					    (CCons z zs) ->
+					      b <- pure (CFalse)
+					      pure b
+					  pure y 
+				\end{haskell}
+				\subcaption{Input program}
+			\end{minipage}
+			\hspace{1cm}
+			\begin{minipage}{0.40\textwidth}
+				\begin{tcolorbox}[tab2,tabularx={l|r}]
+					Variable        & Producers \\
+					\hline\hline
+					\pilcode{xs}    & $\set{CNil[\dots], CCons[\dots]}$\footnotemark[2] \\\hline
+					\pilcode{a}     & $\set{CTrue[\pilcode{a}]}$	\\\hline
+					\pilcode{b}     & $\set{CFalse[\pilcode{b}]}$ \\\hline
+					\pilcode{y}     & $\set{CTrue[\pilcode{a}], CFalse[\pilcode{b}]}$ \\
+				\end{tcolorbox}
+				\subcaption{Anyalsis result}
+			\end{minipage}
+		\end{center}
+		\caption{An example demonstrating the created-by analysis}
+		\label{analysis:cby}
+	\end{analysisFloat}
+
+	\footnotetext[2]{\label{footnote:cby-example}For the sake of simplicity, we will assume that \pilcode{xs} was constructed with the \pilcode{CNil} and \pilcode{CCons} tags. Also its producers are irrelevant in this example}
+
+	The result of the analysis is a mapping from variable names to set of producers grouped by their tags. For example, we could say that ''variable \pilcode{y} was created by the producer \pilcode{a} given it was constructed with the \pilcode{CTrue} tag''. Naturally, a variable can be constructed with many different tags, and each tag can have multiple producers. Also, it is important to note that some variables are their own producers. This is because producers are basically definitions-sites or bindings, identified by the name of the variable on their left-hand sides. However, not all bindings have variables on their left-hand side, and some values may not be bound to variables. Fortunately, this problem can be easily solved by a simple program transformation.
+	
+	On a higher abstraction level, the result of the created-by analysis can be interpreted as a bipartite graph between producers and consumers. One group of nodes represents the producers and the other one represents the consumers. A producer is connected to a consumer if and only if the value created by the producer can be consumed by the consumer.
+	
 	\subsection{Grouping Producers}
 	
-	\subsection{Transforming Producers}
+	\subsection{Transforming Producers and Consumers}
 	
 	\subsection{The \pilcode{undefined} value}
 	

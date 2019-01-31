@@ -9,9 +9,39 @@
 	
 	In the original framework, the dead code eliminating transformations were provided only a very rough approximation of the liveness of variables and function parameters. In fact, a variable was deemed dead only if it was never used in the program. As a consequence, the required analyses were really fast, but the transformations themselves were very limited as well.
 	
-	\subsection{Interprocedural Liveness Analysis}
+	\subsection{Interprocedural Liveness Analysis} \label{sub-sec:lva}
 	
-	In order to improve the effectiveness of dead code elimination, we need more sophisticated data-flow analyses. Liveness analysis is a standard data-flow analysis that determines which variables are live in the program and which ones are not. It is important to note, that even if a variable is used in the program, it does not necessarily mean it is live. By extending the analysis with interprocedural elements, we can obtain quite a good estimate of the live variables in the program, while minimizing the cost of the algorithm.
+	In order to improve the effectiveness of dead code elimination, we need more sophisticated data-flow analyses. Liveness analysis is a standard data-flow analysis that determines which variables are live in the program and which ones are not. It is important to note, that even if a variable is used in the program, it does not necessarily mean it is live. See Program~code~\ref{code:lva-example}.
+	
+	\begin{codeFloat}[h]
+		\begin{center}
+			\begin{minipage}{0.35\textwidth}
+				\begin{haskell}
+					main = 
+					  n <- pure 5
+					  y <- pure (CInt n)
+					  pure 0
+				\end{haskell}
+				\subcaption{Put into a data constructor}
+			\end{minipage}
+			\hspace{1cm}
+			\begin{minipage}{0.35\textwidth}
+				\begin{haskell}
+					main = 
+					  n <- pure 5
+					  foo n
+					foo x = pure 0
+				\end{haskell}
+				\subcaption{Argument to a function call}
+			\end{minipage}
+		\end{center}
+		\caption{Examples demonstrating that a used variable can still be dead}
+		\label{code:lva-example}
+	\end{codeFloat}
+
+	In the first example, we can see a program where the variable \pilcode{n} is used, it is put into a \pilcode{CInt} node, but despite this, it is obvious to see that \pilcode{n} is still dead. Moreover, the liveness analysis can determine this fact just by examining the function body locally. It does not need to analyze any function calls. However, in the second example, we can see a very similar situation, but here \pilcode{n} is an argument to a function call. To calculate the liveness of \pilcode{n}, the analysis either has to assume that the arguments of \pilcode{foo} are always live, or it has to analyze the body of the function. The former decision yields a faster, but less precise \emph{intraprocedural} analysis, the latter results in a bit more costly, but also more accurate \emph{interprocedural} analysis.
+	
+	By extending the analysis with interprocedural elements, we can obtain quite a good estimate of the live variables in the program, while minimizing the cost of the algorithm. Using the information gathered by the liveness analysis, the original optimizations can remove even more dead code segments.
 	
 	%TODO: example here?
 	
