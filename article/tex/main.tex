@@ -3,19 +3,22 @@
 \usepackage{style}
 \usepackage{subfiles}
 
-\title{A modern look at GRIN, an optimizing functional language back-end}
+%TODO: remove vspace from title
+\title{\vspace{-2cm}A modern look at GRIN,\\ an optimizing functional language back end}
 %\title{Dead Code Elimination for GRIN with Interprocedural Whole-Program Analysis}
 \date{\today}
 \author{Péter Dávid Podlovics, Csaba Hruska}
 
 \begin{document}
 	
+	\maketitle
 	\subfile{abstract}
-	
-	\tableofcontents
 	
 	\section{Introduction} \label{sec-intro}
 	\subfile{introduction}
+	
+	\section{Related Work}
+	\subfile{related-work}
 	
 	\section{Graph Reduction Intermediate Notation}
 	\subfile{grin}
@@ -29,17 +32,15 @@
 	\section{Dead Data Elimination}
 	\subfile{dde}
 	
-	\section{Applications of Dead Data Elimination}
-	\subfile{dde-app}
 	
-	\section{Compiled Abstract Interpretation}
+	% \section{Applications of Dead Data Elimination}
+	% \subfile{dde-app}
+	% \section{Compiled Abstract Interpretation}
+	% \section{Results}
+	% \section{Conclusion}
 	
-	\section{Related Work}
-	%TODO: original GRIN framework ~ Boquist
-	
-	\section{Results}
-	\section{Conclusion}
-	\section{References}
+	\section*{Acknowledgements}
+	\subfile{acknowledgements}
 	
 	\subfile{bibliography}
 

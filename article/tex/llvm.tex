@@ -11,7 +11,36 @@
 	
 	However, compiling unrefined functional code to LLVM does not yield the results one would expect. Since LLVM was mainly designed for imperative languages, functional programs may prove to be difficult to optimize. The reason for this is that functional artifacts or even just the general structuring of functional programs can render conventional optimization techniques useless.
 	
-	While LLVM acts as a transitional layer between architecture independent, and architecture specific domains, GRIN serves the same purpose for the functional and imperative domains. The purpose of GRIN is to eliminate functional artifacts and restructure functional programs in a way that they can be efficiently optimized by conventional techniques.
+	While LLVM acts as a transitional layer between architecture independent, and architecture specific domains, GRIN serves the same purpose for the functional and imperative domains. Figure~\ref{fig:grin-back-end} illustrates this domain separtion. The purpose of GRIN is to eliminate functional artifacts and restructure functional programs in a way so that they can be efficiently optimized by conventional techniques.
+	
+	\begin{figure}[h]
+		\centering
+		\begin{adjustbox}{scale = 1.4}
+			\tikzset{every loop/.style={-{Stealth[scale=1.5]}}}
+			
+			\begin{tikzpicture}[ node distance = 1.2cm and 1.5cm
+			, on grid 
+			, loop/.append style={-triangle 60}
+			]
+			
+			\node [draw=black] (haskell)    									{Haskell};
+			\node [draw=black] (idris)   [left  =of haskell]  {Idris};
+			\node [draw=black] (agda)    [right =of haskell]  {Agda};
+			\node [draw=black] (grin)    [below =of haskell]  {GRIN};
+			\node [draw=black] (llvm)    [below =of grin]     {LLVM};
+			
+			\path[-{Stealth[scale=1.5]}] 
+			(idris) edge [] (grin)
+			(haskell) edge [] (grin)
+			(agda) edge [] (grin)
+			(grin) edge [] (llvm);
+			
+			
+			\end{tikzpicture}
+		\end{adjustbox}
+		\caption{Possible representation of different function languages}
+		\label{fig:grin-back-end}
+	\end{figure}
 	
 	The main challenge of compiling GRIN to LLVM has to do with the discrepancy between the respective type systems of these languages: GRIN is untyped, while LLVM has static typing. In order to make compilation to LLVM possible, we need a typed representation for GRIN as well. Fortunately, this problem can be circumvented by implementing a type inference algorithm for the language. To achieve this, we can extend an already existing component of the framework, the heap points-to data-flow analysis.
 	
