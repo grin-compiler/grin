@@ -152,3 +152,15 @@ _CPatLit _ other        = pure other
 _CPatDefault :: Traversal' CPat ()
 _CPatDefault f DefaultPat = const DefaultPat <$> f ()
 _CPatDefault _ other      = pure other
+
+_TyCon :: Traversal' Ty (Name, [Ty])
+_TyCon f (TyCon n ts) = uncurry TyCon <$> f (n, ts)
+_TyCon _ other        = pure other
+
+_TyVar :: Traversal' Ty Name
+_TyVar f (TyVar n) = TyVar <$> f n
+_TyVar _ other     = pure other
+
+_TySimple :: Traversal' Ty SimpleType
+_TySimple f (TySimple t) = TySimple <$> f t
+_TySimple _ other        = pure other

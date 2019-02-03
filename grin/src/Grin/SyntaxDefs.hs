@@ -7,6 +7,7 @@ import GHC.Generics (Generic)
 import Data.Data
 import Data.String
 import Text.Printf
+import Lens.Micro.Platform
 
 -- Names are stored in NM form when we do program generation. NI is only used
 -- when we seralize the Exp
@@ -57,3 +58,13 @@ data SimpleType
   | T_String
   | T_Char
   deriving (Generic, Data, NFData, Eq, Ord, Show)
+
+-- * Traversals
+
+_NM :: Traversal' Name Text
+_NM f (NM n) = NM <$> f n
+_NM _ other  = pure other
+
+_NI :: Traversal' Name Int
+_NI f (NI i) = NI <$> f i
+_NI _ other  = pure other

@@ -58,6 +58,7 @@ library
     Grin.EffectMap
     Grin.PrimOpsPrelude
     Grin.Nametable
+    Grin.Research
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
