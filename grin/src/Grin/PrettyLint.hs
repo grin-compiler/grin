@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module Grin.PrettyLint (prettyLintExp) where
+module Grin.PrettyLint (prettyLintExp, prettyAnnExp) where
 
 import Prelude hiding ((<$>))
 import qualified Control.Comonad.Trans.Cofree as CCTC
@@ -16,13 +16,10 @@ import Grin.Lint
 
 keyword :: String -> Doc
 keyword = yellow . text
-
 keywordR = red . text
 
 prettyLintExp :: (Cofree ExpF Int, Map Int [Error]) -> Doc
-prettyLintExp (exp, errorMap) = cata folder exp where
-  folder (expId CCTC.:< e) = addError expId (prettyExpAlgebra e)
-
+prettyLintExp (cexp, errorMap) = prettyAnnExp $ fmap addError cexp where
   addError expId d =
     maybe
       d
@@ -31,6 +28,10 @@ prettyLintExp (exp, errorMap) = cata folder exp where
           then (<$> d) . red . align . vsep . map (string . ("-- LINT: " <>) . message) $ errors
           else (d <>) . red . (string " -- LINT: "<>) . align . vsep . map (string . message) $ errors)
       (Map.lookup expId errorMap)
+
+prettyAnnExp :: Cofree ExpF (Doc -> Doc) -> Doc
+prettyAnnExp exp = cata folder exp where
+  folder (ann CCTC.:< e) = ann (prettyExpAlgebra e)
 
   prettyExpAlgebra = \case
       ProgramF exts defs  -> vcat (map pretty defs)
@@ -49,9 +50,3 @@ prettyLintExp (exp, errorMap) = cata folder exp where
       SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
       AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
-
-{-
-  NOTES:
-    do not use line numbers, use colors instead
-    backpropagate errors to the referred expression
--}
