@@ -6,4 +6,4 @@
 *.out
 *.gz
 *.listing
-_minted-main/
+**/_minted-main/
