@@ -8,6 +8,7 @@ import qualified Data.Vector as V
 
 import Grin.TH
 import Grin.Grin
+import Grin.PrimOpsPrelude
 
 import Test.Hspec
 import Test.Assertions
@@ -741,7 +742,7 @@ spec = describe "Live Variable Analysis" $ do
     (calcLiveness exp) `sameAs` nodesTrickyExpected
 
   it "sum_opt" $ do
-    let exp = [prog|
+    let exp = withPrimPrelude [prog|
           grinMain =
             n13 <- sum 0 1 100000
             _prim_int_print n13

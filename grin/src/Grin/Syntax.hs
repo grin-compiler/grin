@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, DeriveGeneric, DeriveAnyClass, DeriveFunctor, TypeFamilies #-}
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving, OverloadedStrings #-}
-
+{-# LANGUAGE LambdaCase #-}
 module Grin.Syntax
   ( module Grin.Syntax
   , module Grin.SyntaxDefs
@@ -24,9 +24,6 @@ import Grin.TypeEnvDefs
 
 
 
-isPrimName :: Name -> Bool
-isPrimName (NM name) = isPrefixOf "_prim_" name
-
 -- * GRIN Externals, i.e. primops and foreign functions
 
 data Ty
@@ -43,6 +40,9 @@ data External
   , eEffectful  :: Bool
   }
   deriving (Generic, Data, NFData, Eq, Ord, Show)
+
+isExternalName :: [External] -> Name -> Bool
+isExternalName es n = n `Prelude.elem` (eName <$> es)
 
 -- * GRIN Literal
 
@@ -108,6 +108,11 @@ data Exp
   -- Alt
   | Alt CPat Exp
   deriving (Generic, Data, NFData, Eq, Ord, Show)
+
+externals :: Exp -> [External]
+externals = \case
+  Program es _ -> es
+  _            -> []
 
 -- * Binary instances
 

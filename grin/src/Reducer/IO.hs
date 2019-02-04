@@ -67,9 +67,9 @@ pprint exp = trace (f exp) exp where
     a -> show a
 
 
-evalExp :: Env -> Exp -> GrinS RTVal
-evalExp env exp = case {-pprint-} exp of
-  EBind op pat exp -> evalSimpleExp env op >>= \v -> evalExp (bindPat env v pat) exp
+evalExp :: [External] -> Env -> Exp -> GrinS RTVal
+evalExp exts env exp = case {-pprint-} exp of
+  EBind op pat exp -> evalSimpleExp exts env op >>= \v -> evalExp exts (bindPat env v pat) exp
   ECase v alts ->
     let defaultAlts = [exp | Alt DefaultPat exp <- alts]
         defaultAlt  = if Prelude.length defaultAlts > 1
@@ -81,24 +81,24 @@ evalExp env exp = case {-pprint-} exp of
                          go a [] [] = a
                          go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                          go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
-                     in  evalExp (go env vars l) exp
-      RT_ValTag t -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
-      RT_Lit l    -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
+                     in  evalExp exts (go env vars l) exp
+      RT_ValTag t -> evalExp exts env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
+      RT_Lit l    -> evalExp exts env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
       x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
-  exp -> evalSimpleExp env exp
+  exp -> evalSimpleExp exts env exp
 
-evalSimpleExp :: Env -> SimpleExp -> GrinS RTVal
-evalSimpleExp env = \case
+evalSimpleExp :: [External] -> Env -> SimpleExp -> GrinS RTVal
+evalSimpleExp exts env = \case
   SApp n a -> do
               let args = map (evalVal env) a
                   go a [] [] = a
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                   go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
-              if isPrimName n
+              if isExternalName exts n
                 then evalPrimOp n [] args
                 else do
                   Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ unpackName n) n) <$> getProg
-                  evalExp (go env vars args) body
+                  evalExp exts (go env vars args) body
   SReturn v -> pure $ evalVal env v
   SStore v -> do
               let v' = evalVal env v
@@ -114,13 +114,13 @@ evalSimpleExp env = \case
               case lookupEnv n env of
                 RT_Loc l -> updateStore l v' >> pure v'
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
-  SBlock a -> evalExp env a
+  SBlock a -> evalExp exts env a
   x -> error $ "evalSimpleExp: " ++ show x
 
 reduceFun :: Program -> Name -> IO RTVal
 reduceFun (Program exts l) n = do
   store <- emptyStore1
-  (val, _, _) <- runRWST (evalExp mempty e) m store
+  (val, _, _) <- runRWST (evalExp exts mempty e) m store
   pure val
   where
     m = Map.fromList [(n,d) | d@(Def n _ _) <- l]

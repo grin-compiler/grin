@@ -38,8 +38,8 @@ lookupStore i s = IntMap.findWithDefault (error $ printf "missing location: %d" 
 debug :: Bool
 debug = False
 
-evalSimpleExp :: Env -> SimpleExp -> GrinM RTVal
-evalSimpleExp env s = do
+evalSimpleExp :: [External] -> Env -> SimpleExp -> GrinM RTVal
+evalSimpleExp exts env s = do
   when debug $ do
     liftIO $ print s
     void $ liftIO $ getLine
@@ -49,11 +49,11 @@ evalSimpleExp env s = do
                     go a [] [] = a
                     go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                     go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (prettyDebug x) (prettyDebug y)
-                if isPrimName n
+                if isExternalName exts n
                   then evalPrimOp n a args
                   else do
                     Def _ vars body <- reader $ Map.findWithDefault (error $ printf "unknown function: %s" n) n
-                    evalExp (go env vars args) body
+                    evalExp exts (go env vars args) body
     SReturn v -> pure $ evalVal env v
     SStore v -> do
                 l <- gets storeSize
@@ -71,19 +71,19 @@ evalSimpleExp env s = do
                               False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
                               True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> pure RT_Unit
                   x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (prettyDebug x)
-    SBlock a -> evalExp env a
+    SBlock a -> evalExp exts env a
 
-    e@ECase{} -> evalExp env e -- FIXME: this should not be here!!! please investigate.
+    e@ECase{} -> evalExp exts env e -- FIXME: this should not be here!!! please investigate.
 
     x -> error $ printf "invalid simple expression %s" (prettyDebug x)
 
-evalExp :: Env -> Exp -> GrinM RTVal
-evalExp env = \case
+evalExp :: [External] -> Env -> Exp -> GrinM RTVal
+evalExp exts env = \case
   EBind op pat exp -> do
-    v <- evalSimpleExp env op
+    v <- evalSimpleExp exts env op
     when debug $ do
       liftIO $ putStrLn $ unwords [show pat,":=",show v]
-    evalExp (bindPat env v pat) exp
+    evalExp exts (bindPat env v pat) exp
   ECase v alts ->
     let defaultAlts = [exp | Alt DefaultPat exp <- alts]
         defaultAlt  = if length defaultAlts > 1
@@ -96,17 +96,18 @@ evalExp env = \case
                          go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                          go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
                      in  evalExp
+                            exts
                             (case vars of -- TODO: Better error check: If not default then parameters must match
                               [] -> {-defualt-} env
                               _  -> go env vars l)
                             exp
-      RT_ValTag t -> evalExp env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
-      RT_Lit l    -> evalExp env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
+      RT_ValTag t -> evalExp exts env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
+      RT_Lit l    -> evalExp exts env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
-  exp -> evalSimpleExp env exp
+  exp -> evalSimpleExp exts env exp
 
 reduceFun :: Program -> Name -> IO RTVal
-reduceFun (Program exts l) n = evalStateT (runReaderT (evalExp mempty e) m) emptyStore where
+reduceFun (Program exts l) n = evalStateT (runReaderT (evalExp exts mempty e) m) emptyStore where
   m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
   e = case Map.lookup n m of
         Nothing -> error $ printf "missing function: %s" n

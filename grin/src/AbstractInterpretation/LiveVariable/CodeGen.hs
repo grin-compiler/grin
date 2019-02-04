@@ -174,7 +174,7 @@ mkAbstractProgramM = do
   pure (prg, mpg)
 
 codeGenM :: Exp -> CG ()
-codeGenM = cata folder >=> const setMainLive
+codeGenM e = (cata folder >=> const setMainLive) e
   where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
@@ -338,7 +338,7 @@ codeGenM = cata folder >=> const setMainLive
       zipWithM_ (\src dst -> emit IR.RestrictedMove {srcReg = src, dstReg = dst}) funArgRegs valRegs
       zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) valRegs funArgRegs
       -- HINT: handle primop here because it does not have definition
-      when (isPrimName name) $ codeGenPrimOp name funResultReg funArgRegs
+      when (isExternalName (externals e) name) $ codeGenPrimOp name funResultReg funArgRegs
       pure $ R funResultReg
 
     SReturnF val -> R <$> codeGenVal val

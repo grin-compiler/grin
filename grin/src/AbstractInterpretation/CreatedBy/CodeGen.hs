@@ -252,7 +252,7 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       valRegs <- mapM codeGenVal args
       zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
       -- HINT: handle primop here because it does not have definition
-      when (isPrimName name) $ mapM_ emit $ codeGenPrimOp name funResultReg funArgRegs
+      when (isExternalName (externals e) name) $ mapM_ emit $ codeGenPrimOp name funResultReg funArgRegs
       pure $ R funResultReg
 
     SReturnF val -> R <$> codeGenVal val

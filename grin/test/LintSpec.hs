@@ -8,6 +8,7 @@ import Grin.Lint
 import Grin.TypeEnv
 import Grin.TypeCheck (inferTypeEnv)
 import qualified Data.Map as Map
+import Grin.PrimOpsPrelude
 
 
 runTests :: IO ()
@@ -21,9 +22,9 @@ spec = do
 
   describe "Variable lint" $ do
     it "finds undefined variables" $ do
-      let program = [prog|
+      let program = withPrimPrelude [prog|
           undefinedParam p1 p2 =
-            _prim_int p3 p2
+            _prim_int_print p3 p2
         |]
       let (_, errors) = lint Nothing program
       lintErrors errors `shouldBe` ["undefined variable: p3"]
@@ -43,7 +44,7 @@ spec = do
       lintErrors errors `shouldBe` ["non-function in function call: p11"]
 
     it "finds non-saturated function calls" $ do
-      let program = [prog|
+      let program = withPrimPrelude [prog|
           fun1 p1 p2 =
             _prim_int_add p1 p2
 

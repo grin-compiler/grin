@@ -31,6 +31,10 @@ prettyLintExp (cexp, errorMap) = prettyAnnExp $ fmap addError cexp where
 
 prettyAnnExp :: Cofree ExpF (Doc -> Doc) -> Doc
 prettyAnnExp exp = cata folder exp where
+  exts = case exp of
+    (_ :< ProgramF es _) -> es
+    _                    -> []
+
   folder (ann CCTC.:< e) = ann (prettyExpAlgebra e)
 
   prettyExpAlgebra = \case
@@ -41,7 +45,7 @@ prettyAnnExp exp = cata folder exp where
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
       ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
-      SAppF name args         -> hsep (((if isPrimName name then dullyellow else cyan) $ pretty name) : map pretty args)
+      SAppF name args         -> hsep (((if isExternalName exts name then dullyellow else cyan) $ pretty name) : map pretty args)
       SReturnF val            -> keyword "pure" <+> pretty val
       SStoreF val             -> keywordR "store" <+> pretty val
       SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name

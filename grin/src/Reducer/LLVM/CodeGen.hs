@@ -156,7 +156,7 @@ toModule Env{..} = defaultModule
     ok - SUpdate     Name Val
 -}
 codeGen :: TypeEnv -> Exp -> AST.Module
-codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) . para folder where
+codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv}) $ para folder exp where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     SReturnF val -> do
@@ -197,7 +197,7 @@ codeGen typeEnv = toModule . flip execState (emptyEnv {_envTypeEnv = typeEnv}) .
       operandsTypes <- mapM (\x -> toCGType <$> typeOfVal x) args
       -- convert values to function argument type
       convertedArgs <- sequence $ zipWith3 codeGenValueConversion operandsTypes operands argTypes
-      if isPrimName name
+      if isExternalName (externals exp) name
         then codeGenPrimOp name args convertedArgs
         else do
           -- call to top level functions

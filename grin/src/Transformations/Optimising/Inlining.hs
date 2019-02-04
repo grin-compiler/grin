@@ -59,7 +59,7 @@ selectInlineSet prog@(Program exts defs) = inlineSet where
       -> mconcat [left, right, Stat 1 mempty]
 
     SAppF name _
-      | not (isPrimName name)
+      | not (isExternalName exts name)
       -> Stat 0 $ Map.singleton name 1
 
     exp -> Data.Foldable.fold exp

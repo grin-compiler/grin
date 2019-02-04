@@ -51,6 +51,7 @@ import Data.List
 import Transformations.Optimising.SimpleDeadFunctionElimination
 import Transformations.Optimising.SimpleDeadParameterElimination
 import Transformations.StaticSingleAssignment
+import Grin.PrimOpsPrelude
 
 
 type SpecWithProg = Exp -> Spec
@@ -572,11 +573,15 @@ gPureFunction p t = do
   (name, (params, ret, _)) <- melements funs
   pure (name, params)
 
+preludePurePrimOps :: [External]
+preludePurePrimOps = filter (not . eEffectful) es where
+  (Program es _) = primPrelude
+
 gPureNonPrimFun :: Type -> GoalM (Name, [Type])
-gPureNonPrimFun = gPureFunction (not . isPrimName)
+gPureNonPrimFun = gPureFunction (not . isExternalName preludePurePrimOps)
 
 gPurePrimFun :: Type -> GoalM (Name, [Type])
-gPurePrimFun = gPureFunction isPrimName
+gPurePrimFun = gPureFunction (isExternalName preludePurePrimOps)
 
 mGetSize :: GoalM Int
 mGetSize = gen $ sized pure

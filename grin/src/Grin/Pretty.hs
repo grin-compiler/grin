@@ -85,7 +85,10 @@ instance Pretty Name where
 --  better node type syntax (C | F | P)
 
 instance Pretty Exp where
-  pretty = cata folder where
+  pretty exp = cata folder exp where
+    externals = case exp of
+      (Program es _) -> es
+      _              -> []
     folder = \case
       ProgramF exts defs  -> vcat (prettyExternals exts : map pretty defs)
       DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
@@ -94,7 +97,7 @@ instance Pretty Exp where
       EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
       ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
-      SAppF name args         -> hsep (((if isPrimName name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
+      SAppF name args         -> hsep (((if isExternalName externals name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
       SReturnF val            -> keyword "pure" <+> pretty val
       SStoreF val             -> keywordR "store" <+> pretty val
       SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name

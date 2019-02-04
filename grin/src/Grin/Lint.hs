@@ -243,7 +243,7 @@ check exp nodeCheckM = do
   pure (idx CCTC.:< exp )
 
 lint :: Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
-lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
+lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ do
   cata functionNames exp
   anaM builder (ProgramCtx, maybe noAnnotation annotate mTypeEnv exp)
   where
@@ -326,7 +326,7 @@ lint mTypeEnv exp = fmap envErrors $ flip runState emptyEnv $ do
       syntaxE SimpleExpCtx
       -- Test existence of the function.
       Env{..} <- get
-      when (not $ isPrimName name) $
+      when (not $ isExternalName exts name) $
         case Map.lookup name envDefinedNames of
           (Just FunName) -> pure ()
           (Just _)       -> tell [msg $ printf "non-function in function call: %s" name]
