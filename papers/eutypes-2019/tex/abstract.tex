@@ -1,0 +1,12 @@
+\documentclass[main.tex]{subfiles}
+\begin{document}
+	\begin{abstract}
+							
+		GRIN is short for Graph Reduction Intermediate Notation~\cite{boquist-phd}, a modern back end for lazy functional languages. Most of the currently available compilers for such languages share a common flaw: they can only optimize programs on a per-module basis. The GRIN framework allows for interprocedural whole program analysis, enabling optimizing code transformations across functions and modules as well.
+		
+		One of the optimizations supported by GRIN is dead data elimination, a special case of dead code elimination~\cite{remi-masters}. Conventional dead code eliminating optimizations usually only remove statements or expressions from programs; however, dead data elimination can transform the underlying data structures themselves. Essentially, it can specialize a certain data structure for a given use-site by removing or transforming unnecessary parts of it. It is a very powerful optimization technique that can significantly decrease memory usage and reduce the number of required heap operations.
+		
+		In the context of dependently typed languages, dead data elimination (with the help of other front end side transformations) is capable of erasing unnecessary type indices from dependent data constructors. In this talk, I will outline a general overview of GRIN, elaborate on dead data elimination, and also present some initial results of their applications to dependently typed languages.
+		
+	\end{abstract}
+\end{document}
