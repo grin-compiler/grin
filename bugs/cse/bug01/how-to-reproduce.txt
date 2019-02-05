@@ -1,0 +1,16 @@
+euler% stack exec grin -- ./bugs/cse/bug01/034.SimpleDeadParameterElimination.binary --load-binary --eval --quiet
+Same 4
+Same 5
+Same 3
+Same 4
+True
+True
+True
+euler% stack exec grin -- ./bugs/cse/bug01/034.SimpleDeadParameterElimination.binary --load-binary --hpt --cse --eval --quiet
+Same 4
+Same 5
+Same 3
+True
+True
+True
+euler%
