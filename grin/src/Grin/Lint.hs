@@ -345,7 +345,7 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
     -- which means it is inside a SimpleExpCtx.
     -- This is becuase only binding left-hand sides can be in SimpleExpCtx.
     (_ :< SReturnF val) -> checkWithChild ctx $ do
-      unless (ctx == SimpleExpCtx) (syntaxV SimpleValCtx val)
+      unless (ctx == SimpleExpCtx || val == Unit) (syntaxV SimpleValCtx val)
       syntaxE SimpleExpCtx
 
     (_ :< SStoreF val) -> checkWithChild ctx $ do

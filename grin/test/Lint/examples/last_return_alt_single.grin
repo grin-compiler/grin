@@ -1,3 +1,0 @@
-grinMain =
-  case 0 of
-    0 -> pure (CInt 5)

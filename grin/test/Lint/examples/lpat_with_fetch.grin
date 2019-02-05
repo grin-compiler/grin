@@ -1,5 +1,0 @@
-grinMain =
-  n <- pure (CInt 5)
-  p <- store n
-  (CInt 5) <- fetch p
-  pure 0

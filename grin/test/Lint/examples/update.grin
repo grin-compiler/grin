@@ -1,4 +1,0 @@
-grinMain =
-  n <- pure (CInt 5)
-  p <- store n
-  update p (CInt 0)

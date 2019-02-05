@@ -59,7 +59,8 @@ spec = do
     it "finds location used as matched value" $ do
       let program = [prog|
           main =
-            l <- store (CInt 3)
+            n <- pure (CInt 3)
+            l <- store n
             case l of
               3 -> pure ()
         |]
@@ -94,9 +95,12 @@ spec = do
     it "finds non-covered node alternatives" $ do
       let program = [prog|
           main =
-            l <- store (CInt 1)
-            update l (CFloat 1)
-            update l (CBool #True)
+            n0 <- pure (CInt 1)
+            n1 <- pure (CFloat 1)
+            n2 <- pure (CBool #True)
+            l <- store n0
+            update l n1
+            update l n2
             v <- fetch l
             case v of
               (CInt a) -> pure ()
@@ -109,9 +113,12 @@ spec = do
     it "does not report non-covered nodes with default branch" $ do
       let program = [prog|
           main =
-            l <- store (CInt 1)
-            update l (CFloat 1)
-            update l (CBool #True)
+            n0 <- pure (CInt 1)
+            n1 <- pure (CFloat 1)
+            n2 <- pure (CBool #True)
+            l <- store n0
+            update l n1
+            update l n2
             v <- fetch l
             case v of
               (CInt a) -> pure ()
@@ -162,7 +169,8 @@ spec = do
       let program = [prog|
           main =
             l <- pure 1
-            x <- update l (CInt 1)
+            n <- pure (CInt 1)
+            x <- update l n
             pure ()
         |]
       let typeEnv = inferTypeEnv program
@@ -172,7 +180,8 @@ spec = do
     it "finds primitive value as argument." $ do
       let program = [prog|
           main =
-            l <- store (CInt 1)
+            n <- pure (CInt 1)
+            l <- store n
             v <- pure 2
             x <- update l v
             pure ()
@@ -191,3 +200,90 @@ spec = do
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
       lintErrors errors `shouldBe` ["Invalid pattern match. Pattern {CInt[T_Dead]} vs LHS {CFloat[T_Float]}"]
+
+  describe "Producer lint" $ do
+    it "finds nodes in single return statment" $ do
+      let program = [prog|
+          grinMain =
+            pure (CInt 5)
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+
+    it "finds nodes in last return statment" $ do
+      let program = [prog|
+          grinMain =
+            n <- pure (CInt 5)
+            p <- store n
+            update p (CInt 0)
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+
+    it "finds nodes in single return statment in case alternative" $ do
+      let program = [prog|
+          grinMain =
+            case 0 of
+              0 -> pure (CInt 5)
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+
+    it "finds nodes in last return statment in case alternative" $ do
+      let program = [prog|
+          grinMain =
+            case 0 of
+              0 ->
+                n <- pure 0
+                pure (CInt 5)
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+
+    it "allows nodes as patterns for bindings" $ do
+      let program = [prog|
+          grinMain =
+            (CInt 5) <- pure (CInt 5)
+            pure 0
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` []
+
+    it "finds nodes in Stores" $ do
+      let program = [prog|
+          grinMain =
+            p <- store (CInt 5)
+            pure 0
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+
+    it "finds nodes in updates" $ do
+      let program = [prog|
+          grinMain =
+            n <- pure (CInt 5)
+            p <- store n
+            update p (CInt 0)
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+
+    -- this is optional, but makes DDE simpler
+    it "finds nodes LPat of a binding with a Fetch left-hand side" $ do
+      let program = [prog|
+          grinMain =
+            n <- pure (CInt 5)
+            p <- store n
+            (CInt 5) <- fetch p
+            pure 0
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]

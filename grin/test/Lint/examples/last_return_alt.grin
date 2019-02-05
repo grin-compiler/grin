@@ -1,5 +1,0 @@
-grinMain =
-  case 0 of
-    0 ->
-      n <- pure 0
-      pure (CInt 5)
