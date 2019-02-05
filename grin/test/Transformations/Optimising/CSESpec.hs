@@ -9,10 +9,13 @@ import Test.Test hiding (newVar)
 import Test.Assertions
 import Grin.TypeEnv
 import Grin.TypeCheck
+import Transformations.EffectMap
 
 
 runTests :: IO ()
 runTests = hspec spec
+
+cseOptNoEff (tyEnv, exp) = commonSubExpressionElimination tyEnv mempty exp
 
 spec :: Spec
 spec = do
@@ -47,7 +50,7 @@ spec = do
           (CInt b') <- pure (r' z')
           fun 3 4
         |]
-      uncurry commonSubExpressionElimination (ctx (teBefore, before)) `sameAs` (snd $ ctx (teBefore, after))
+      cseOptNoEff (ctx (teBefore, before)) `sameAs` (snd $ ctx (teBefore, after))
 
     let te = emptyTypeEnv
     it "store - fetch" $ do
@@ -61,7 +64,7 @@ spec = do
           (CInt a1) <- pure (CInt 0)
           pure ()
         |]
-      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "store - fetch - update" $ do
       let before = [expr|
@@ -90,7 +93,7 @@ spec = do
           update p1 (CInt 1)
           pure (CInt 1)
         |]
-      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "store - update" $ do
       let before = [expr|
@@ -108,7 +111,7 @@ spec = do
           p2 <- store v1
           pure ()
         |]
-      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     let te = emptyTypeEnv
     it "fetch - update" $ do
@@ -121,7 +124,7 @@ spec = do
           v <- fetch p
           pure 1
         |]
-      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "constant" $ do
       let before = [expr|
@@ -148,7 +151,7 @@ spec = do
           (CInt i7) <- pure (CInt i6)
           pure v2
         |]
-      uncurry commonSubExpressionElimination (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
     it "application" $ do
       let te = create $ mconcat
@@ -174,7 +177,7 @@ spec = do
           v4 <- _prim_int_add v2 v3
           pure v4
         |]
-      (uncurry commonSubExpressionElimination (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
+      (cseOptNoEff (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
 
     it "case alternative tracking" $ do
       let before = [expr|
@@ -201,7 +204,7 @@ spec = do
               n4 <- pure n1
               pure n4
         |]
-      (uncurry commonSubExpressionElimination (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
+      (cseOptNoEff (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
 
   it "no copy propagation of def arguments" $ do
     let before = [prog|
@@ -218,4 +221,42 @@ spec = do
             d <- pure c
             pure d
       |]
-    commonSubExpressionElimination (inferTypeEnv before) before `sameAs` after
+    let tyEnv   = inferTypeEnv before
+        effMap  = effectMap (tyEnv, before)
+    commonSubExpressionElimination tyEnv effMap before `sameAs` after
+
+  describe "bugfix" $ do
+    it "do not memoize effectful functions" $ do
+      let before = [prog|
+            primop effectful
+              _prim_int_print :: T_Int64  -> T_Unit
+            funPure a =
+              pure (CData)
+            funEff b =
+              _prim_int_print b
+              pure (CData)
+            grinMain =
+              c <- funPure 1
+              d <- funPure 1
+              e <- funEff 2
+              f <- funEff 2
+              pure ()
+        |]
+      let after = [prog|
+            primop effectful
+              _prim_int_print :: T_Int64  -> T_Unit
+            funPure a =
+              pure (CData)
+            funEff b =
+              _prim_int_print b
+              pure (CData)
+            grinMain =
+              c <- funPure 1
+              d <- pure c
+              e <- funEff 2
+              f <- funEff 2
+              pure ()
+        |]
+      let tyEnv   = inferTypeEnv before
+          effMap  = effectMap (tyEnv, before)
+      commonSubExpressionElimination tyEnv effMap before `sameAs` after

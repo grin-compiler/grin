@@ -325,7 +325,7 @@ transformationFunc n = \case
   InlineEval                      -> WithTypeEnv (Right <$$> inlineEval)
   InlineApply                     -> WithTypeEnv (Right <$$> inlineApply)
   InlineBuiltins                  -> WithTypeEnv (Right <$$> inlineBuiltins)
-  CommonSubExpressionElimination  -> WithTypeEnv (noNewNames <$$> Right <$$> commonSubExpressionElimination)
+  CommonSubExpressionElimination  -> WithTypeEnvEff (noNewNames <$$$> commonSubExpressionElimination)
   CaseCopyPropagation             -> Plain caseCopyPropagation
   CaseHoisting                    -> WithTypeEnv (Right <$$> caseHoisting)
   GeneralizedUnboxing             -> WithTypeEnv (Right <$$> generalizedUnboxing)
@@ -915,7 +915,6 @@ optimizeWithM pre trans post = do
       [ InlineEval
       , InlineApply
       , InlineBuiltins
-      , CommonSubExpressionElimination
       , CaseHoisting
       , GeneralizedUnboxing
       , ArityRaising
@@ -927,6 +926,7 @@ optimizeWithM pre trans post = do
     -- HPT and Sharing/Eff is required
     phase3 = phaseLoop False $ trans `intersect`
       [ SimpleDeadVariableElimination
+      , CommonSubExpressionElimination
       , NonSharedElimination
       ]
 
