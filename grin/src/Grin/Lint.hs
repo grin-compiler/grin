@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns, LambdaCase, TupleSections, RecordWildCards, OverloadedStrings, ScopedTypeVariables #-}
 {-# LANGUAGE MultiWayIf #-}
 module Grin.Lint (lint, Error(..)) where
 
@@ -141,7 +141,8 @@ syntaxVal ctx = \case
     | ctx == ValCtx
     -> mapM_ (syntaxVal SimpleValCtx) args
 
-  Undefined _ -> pure ()
+  Undefined (T_NodeSet{})
+    | ctx == ValCtx -> pure ()
 
   _ | ctx == ValCtx
     -> pure ()
@@ -269,8 +270,10 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
       syntaxE DefCtx
 
     -- Exp
+    -- The result Fetch should be bound to a variable to make DDE simpler
     (_ :< EBindF leftExp lpat rightExp) -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
       syntaxE ExpCtx
+      when (isFetchF leftExp) (syntaxV SimpleValCtx lpat)
 
       forM_ mTypeEnv $ \typeEnv -> do
         fromMaybe (pure ()) $ do -- Maybe
@@ -336,13 +339,18 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
         tell [msg $ printf "non-saturated function call: %s" name]
       mapM_ (syntaxV SimpleValCtx) args
 
+    -- Only simple values should be returned,
+    -- unless the returned value is bound to a variblae.
+    -- In that case the Return node is a left-hand side of a binding,
+    -- which means it is inside a SimpleExpCtx.
+    -- This is becuase only binding left-hand sides can be in SimpleExpCtx.
     (_ :< SReturnF val) -> checkWithChild ctx $ do
+      unless (ctx == SimpleExpCtx) (syntaxV SimpleValCtx val)
       syntaxE SimpleExpCtx
-      syntaxV ValCtx val
 
     (_ :< SStoreF val) -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
-      syntaxV ValCtx val
+      syntaxV SimpleValCtx val
       forM_ mTypeEnv $ \typeEnv -> do
         -- Store has given a primitive type
         case val of
@@ -367,7 +375,7 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
 
     (_ :< SUpdateF name val) -> checkWithChild ctx $ do
       syntaxE SimpleExpCtx
-      syntaxV ValCtx val
+      syntaxV SimpleValCtx val
 
       -- Non location parameter for update
       forM_ mTypeEnv $ \typeEnv -> if
@@ -401,3 +409,6 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
       syntaxV = syntaxVal
       checkWithChild childCtx m = check ((childCtx,) <$> (getF e)) m
       getF (_ :< f) = f
+
+      isFetchF (getF -> SFetchF{}) = True
+      isFetchF _ = False

@@ -1,0 +1,4 @@
+-- should pass this
+grinMain =
+  (CInt 5) <- pure (CInt 5)
+  pure 0

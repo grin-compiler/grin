@@ -1,0 +1,3 @@
+grinMain =
+  n <- pure 0
+  pure (CInt 5)

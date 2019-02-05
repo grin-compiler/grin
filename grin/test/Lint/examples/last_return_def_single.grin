@@ -1,0 +1,2 @@
+grinMain =
+  pure (CInt 5)

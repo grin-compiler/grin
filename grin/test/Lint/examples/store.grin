@@ -1,0 +1,3 @@
+grinMain =
+  p <- store (CInt 5)
+  pure 0
