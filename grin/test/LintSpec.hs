@@ -199,7 +199,44 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match. Pattern {CInt[T_Dead]} vs LHS {CFloat[T_Float]}"]
+      lintErrors errors `shouldBe` ["Invalid pattern match for (CInt x). Expected pattern of type: {CInt[T_Dead]}, but got: {CFloat[T_Float]}"]
+
+    it "disregards variable patterns" $ do
+      let program = [prog|
+          main =
+            n0 <- pure (CInt 0)
+            n1 <- case n0 of
+              (CInt c0) -> pure n0
+              (CFloat c1) ->
+                a0 <- pure (CFloat 2.0)
+                pure a0
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` []
+
+    -- NOTE: Bottom-up typing can only approximate the result of HPT.
+    it "can give false positive errors" $ do
+      let program = [prog|
+          main =
+            n0 <- case 0 of
+              0 ->
+                n1 <- pure (CInt 0)
+                pure n1
+              1 ->
+                n2 <- pure (CFloat 0.0)
+                pure n2
+            (CInt x) <- case n0 of
+              (CInt c0) -> pure n0
+              (CFloat c1) ->
+                a0 <- pure (CInt 0)
+                pure a0
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["Invalid pattern match for (CInt x). Expected pattern of type: {CInt[T_Int64]}, but got: {CFloat[T_Float],CInt[T_Int64]}"]
 
   describe "Producer lint" $ do
     it "finds nodes in single return statment" $ do

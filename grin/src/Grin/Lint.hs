@@ -275,14 +275,16 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
       syntaxE ExpCtx
       when (isFetchF leftExp) (syntaxV SimpleValCtx lpat)
 
-      forM_ mTypeEnv $ \typeEnv -> do
-        fromMaybe (pure ()) $ do -- Maybe
-          expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
-          lhsType         <- normalizeType <$> extract leftExp
-          pure $ do -- Lint
-            when (sameType expectedPatType lhsType == Just False) $ do
-              tell $ [beforeMsg $ unwords
-                ["Invalid pattern match. Pattern", plainShow expectedPatType, "vs LHS", plainShow lhsType]]
+      when (notVariable lpat) $ do
+        forM_ mTypeEnv $ \typeEnv -> do
+          fromMaybe (pure ()) $ do -- Maybe
+            expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
+            lhsType         <- normalizeType <$> extract leftExp
+            pure $ do -- Lint
+              -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.
+              when (sameType expectedPatType lhsType == Just False) $ do
+                tell $ [beforeMsg $ unwords
+                  ["Invalid pattern match for", plainShow lpat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
 
     (_ :< ECaseF val alts0) -> checkWithChild AltCtx $ do
       syntaxE SimpleExpCtx
@@ -412,3 +414,6 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
 
       isFetchF (getF -> SFetchF{}) = True
       isFetchF _ = False
+
+      notVariable Var{} = False
+      notVariable _     = True
