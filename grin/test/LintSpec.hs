@@ -334,4 +334,4 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+      lintErrors errors `shouldBe` ["The result of Fetch can only be bound to a variable: (CInt 5)"]

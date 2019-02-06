@@ -285,7 +285,7 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
       let lhsCtx = if notVariable lpat then SEWithoutNodesCtx else SimpleExpCtx
       check (EBindF (lhsCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
         syntaxE ExpCtx
-        when (isFetchF leftExp) (syntaxVal_ SimpleValCtx lpat)
+        when (isFetchF leftExp && notVariable lpat) (tell [msg $ "The result of Fetch can only be bound to a variable: " ++ plainShow lpat])
 
         when (notVariable lpat) $ do
           forM_ mTypeEnv $ \typeEnv -> do
