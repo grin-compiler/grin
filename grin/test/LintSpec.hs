@@ -194,7 +194,8 @@ spec = do
     it "find ill-matching patterns" $ do
       let program = [prog|
           main =
-            (CInt x) <- pure (CFloat 2.0)
+            n <- pure (CFloat 2.0)
+            (CInt x) <- pure n
             pure ()
         |]
       let typeEnv = inferTypeEnv program
@@ -246,18 +247,17 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+      lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "finds nodes in last return statment" $ do
       let program = [prog|
           grinMain =
-            n <- pure (CInt 5)
-            p <- store n
-            update p (CInt 0)
+            n <- pure (CInt 0)
+            pure (CInt 5)
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+      lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "finds nodes in single return statment in case alternative" $ do
       let program = [prog|
@@ -267,7 +267,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+      lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "finds nodes in last return statment in case alternative" $ do
       let program = [prog|
@@ -279,9 +279,20 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
+      lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "allows nodes as patterns for bindings" $ do
+      let program = [prog|
+          grinMain =
+            n <- pure (CInt 5)
+            (CInt 5) <- pure n
+            pure 0
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` []
+
+    it "finds expressions with nodes bound to non-variable patterns" $ do
       let program = [prog|
           grinMain =
             (CInt 5) <- pure (CInt 5)
@@ -289,7 +300,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` []
+      lintErrors errors `shouldBe` ["Syntax error - expected SimpleExp without nodes"]
 
     it "finds nodes in Stores" $ do
       let program = [prog|

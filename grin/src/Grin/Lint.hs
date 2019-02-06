@@ -75,6 +75,7 @@ data ExpCtx
   | DefCtx
   | ExpCtx
   | SimpleExpCtx
+  | SEWithoutNodesCtx
   | AltCtx
   deriving Eq
 
@@ -85,11 +86,12 @@ data ValCtx
 
 showExpCtx :: ExpCtx -> String
 showExpCtx = \case
-  ProgramCtx    -> "Program"
-  DefCtx        -> "Def"
-  ExpCtx        -> "Exp"
-  SimpleExpCtx  -> "SimpleExp"
-  AltCtx        -> "Alt"
+  ProgramCtx        -> "Program"
+  DefCtx            -> "Def"
+  ExpCtx            -> "Exp"
+  SimpleExpCtx      -> "SimpleExp"
+  SEWithoutNodesCtx -> "SimpleExp without nodes"
+  AltCtx            -> "Alt"
 
 showValCtx :: ValCtx -> String
 showValCtx = \case
@@ -128,26 +130,29 @@ nextId = modify' $ \env@Env{..} -> env {envNextId = succ envNextId}
     type check
 -}
 
-syntaxVal :: ValCtx -> Val -> Check ()
+syntaxVal :: ValCtx -> Val -> Check Bool
 syntaxVal ctx = \case
-  Lit{} -> pure ()
-  Var{} -> pure ()
+  Lit{} -> pure True
+  Var{} -> pure True
 
   ConstTagNode _ args
     | ctx == ValCtx
-    -> mapM_ (syntaxVal SimpleValCtx) args
+    -> and <$> mapM (syntaxVal SimpleValCtx) args
 
   VarTagNode _ args
     | ctx == ValCtx
-    -> mapM_ (syntaxVal SimpleValCtx) args
+    -> and <$> mapM (syntaxVal SimpleValCtx) args
 
   Undefined (T_NodeSet{})
-    | ctx == ValCtx -> pure ()
+    | ctx == ValCtx -> pure True
 
   _ | ctx == ValCtx
-    -> pure ()
+    -> pure True
 
-  _ -> tell [msg $ "Syntax error - expected " ++ showValCtx ctx]
+  _ -> tell [msg $ "Syntax error - expected " ++ showValCtx ctx] >> pure False
+
+syntaxVal_ :: ValCtx -> Val -> Check ()
+syntaxVal_ = void <$$> syntaxVal
 
 {-
   ConstTagNode  Tag  [SimpleVal] -- complete node (constant tag) ; HIGH level GRIN
@@ -158,11 +163,16 @@ syntaxVal ctx = \case
   Var Name                       -- HIGH level GRIN
 -}
 
-syntaxExp :: ExpCtx -> ExpCtx -> Check ()
-syntaxExp ctx expCtx
-  | expCtx == ctx = pure ()
-  | expCtx == SimpleExpCtx && ctx == ExpCtx = pure () -- simple exp is also an exp
-  | otherwise = tell [msg $ "Syntax error - expected " ++ showExpCtx ctx]
+syntaxExp :: ExpCtx -> ExpCtx -> Check Bool
+syntaxExp expected given
+  | given == expected = pure True
+  | (SimpleExpCtx,      ExpCtx)       <- (given, expected) = pure True -- simple exp is also an exp
+  | (SEWithoutNodesCtx, SimpleExpCtx) <- (given, expected) = pure True -- simple exp without nodes is also a simple exp
+  | (SEWithoutNodesCtx, ExpCtx)       <- (given, expected) = pure True -- simple exp without nodes is also an exp
+  | otherwise = tell [msg $ "Syntax error - expected " ++ showExpCtx expected] >> pure False
+
+syntaxExp_ :: ExpCtx -> ExpCtx -> Check ()
+syntaxExp_ = void <$$> syntaxExp
 
 checkNameDef :: DefRole -> Name -> Check ()
 checkNameDef role name = do
@@ -271,23 +281,25 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
 
     -- Exp
     -- The result Fetch should be bound to a variable to make DDE simpler
-    (_ :< EBindF leftExp lpat rightExp) -> check (EBindF (SimpleExpCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
-      syntaxE ExpCtx
-      when (isFetchF leftExp) (syntaxV SimpleValCtx lpat)
+    (_ :< EBindF leftExp lpat rightExp) -> do
+      let lhsCtx = if notVariable lpat then SEWithoutNodesCtx else SimpleExpCtx
+      check (EBindF (lhsCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
+        syntaxE ExpCtx
+        when (isFetchF leftExp) (syntaxVal_ SimpleValCtx lpat)
 
-      when (notVariable lpat) $ do
-        forM_ mTypeEnv $ \typeEnv -> do
-          fromMaybe (pure ()) $ do -- Maybe
-            expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
-            lhsType         <- normalizeType <$> extract leftExp
-            pure $ do -- Lint
-              -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.
-              when (sameType expectedPatType lhsType == Just False) $ do
-                tell $ [beforeMsg $ unwords
-                  ["Invalid pattern match for", plainShow lpat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
+        when (notVariable lpat) $ do
+          forM_ mTypeEnv $ \typeEnv -> do
+            fromMaybe (pure ()) $ do -- Maybe
+              expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
+              lhsType         <- normalizeType <$> extract leftExp
+              pure $ do -- Lint
+                -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.
+                when (sameType expectedPatType lhsType == Just False) $ do
+                  tell $ [beforeMsg $ unwords
+                    ["Invalid pattern match for", plainShow lpat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
 
     (_ :< ECaseF val alts0) -> checkWithChild AltCtx $ do
-      syntaxE SimpleExpCtx
+      syntaxE SEWithoutNodesCtx
       let alts = getF <$> alts0
       -- Overlapping node alternatives
       let tagOccurences =
@@ -326,9 +338,7 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
 
     -- Simple Exp
     (_ :< SAppF name args) -> checkWithChild ctx $ do
-      syntaxE SimpleExpCtx
-
-      syntaxE SimpleExpCtx
+      syntaxE SEWithoutNodesCtx
       -- Test existence of the function.
       Env{..} <- get
       when (not $ isExternalName exts name) $
@@ -339,20 +349,30 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
       -- Non saturated function call
       forM_ (Map.lookup name envFunArity) $ \n -> when (n /= length args) $ do
         tell [msg $ printf "non-saturated function call: %s" name]
-      mapM_ (syntaxV SimpleValCtx) args
+      mapM_ (syntaxVal_ SimpleValCtx) args
 
     -- Only simple values should be returned,
-    -- unless the returned value is bound to a variblae.
+    -- unless the returned value is bound to a variable.
     -- In that case the Return node is a left-hand side of a binding,
     -- which means it is inside a SimpleExpCtx.
     -- This is becuase only binding left-hand sides can be in SimpleExpCtx.
     (_ :< SReturnF val) -> checkWithChild ctx $ do
-      unless (ctx == SimpleExpCtx || val == Unit) (syntaxV SimpleValCtx val)
-      syntaxE SimpleExpCtx
+      (onlySimpleVals,errs) <- censorListen $ syntaxVal SimpleValCtx val
+      let hasNoNodes = val == Unit || onlySimpleVals
+      case ctx of
+        -- last expression in a binding sequence or a single, standalone expression
+        ExpCtx | hasNoNodes -> syntaxE SEWithoutNodesCtx
+               | otherwise  -> tell [msg $ "Last return expressions can only return non-node values: " ++ plainShow (SReturn val)]
+        -- lhs of a binding
+        SimpleExpCtx | hasNoNodes -> syntaxE SEWithoutNodesCtx
+        -- lhs of a bidning where the LPat is not a variable
+        SEWithoutNodesCtx | hasNoNodes -> syntaxE SEWithoutNodesCtx
+
+        _ -> syntaxE SimpleExpCtx
 
     (_ :< SStoreF val) -> checkWithChild ctx $ do
-      syntaxE SimpleExpCtx
-      syntaxV SimpleValCtx val
+      syntaxE SEWithoutNodesCtx
+      syntaxVal_ SimpleValCtx val
       forM_ mTypeEnv $ \typeEnv -> do
         -- Store has given a primitive type
         case val of
@@ -364,7 +384,7 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
           _ -> pure ()
 
     (_ :< SFetchIF name _) -> checkWithChild ctx $ do
-      syntaxE SimpleExpCtx
+      syntaxE SEWithoutNodesCtx
       -- Non location parameter for fetch
       forM_ mTypeEnv $ \typeEnv -> if
         | Just _ <- typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location
@@ -376,8 +396,8 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
         | otherwise -> pure ()
 
     (_ :< SUpdateF name val) -> checkWithChild ctx $ do
-      syntaxE SimpleExpCtx
-      syntaxV SimpleValCtx val
+      syntaxE SEWithoutNodesCtx
+      syntaxVal_ SimpleValCtx val
 
       -- Non location parameter for update
       forM_ mTypeEnv $ \typeEnv -> if
@@ -400,15 +420,14 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
           _ -> pure ()
 
     (_ :< SBlockF{}) -> checkWithChild ExpCtx $ do
-      syntaxE SimpleExpCtx
+      syntaxE SEWithoutNodesCtx
 
     -- Alt
     (_ :< AltF cpat _) -> checkWithChild ExpCtx $ do
       syntaxE AltCtx
 
     where
-      syntaxE = syntaxExp ctx
-      syntaxV = syntaxVal
+      syntaxE = syntaxExp_ ctx
       checkWithChild childCtx m = check ((childCtx,) <$> (getF e)) m
       getF (_ :< f) = f
 
@@ -417,3 +436,7 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
 
       notVariable Var{} = False
       notVariable _     = True
+
+      -- Collects the side-effects without appending it to the output.
+      censorListen :: (Monoid w, Monad m) => WriterT w m a -> WriterT w m (a,w)
+      censorListen = censor (const mempty) . listen
