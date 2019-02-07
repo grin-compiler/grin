@@ -342,7 +342,7 @@ transformationFunc n = \case
   ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
   UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
-  NonSharedElimination            -> WithTypeEnvShr (deletedHeapOp <$$$> nonSharedElimination)
+  NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
   DeadFunctionElimination         -> WithEffLVA (noNewNames <$$$$$> deadFunctionElimination)
   DeadVariableElimination         -> WithEffLVA (noNewNames <$$$$$> deadVariableElimination)
   DeadParameterElimination        -> WithLVA (noNewNames <$$$$> deadParameterElimination)
@@ -351,7 +351,6 @@ transformationFunc n = \case
   where
     noNewNames    = flip (,) NoChange
     newNames      = flip (,) NewNames
-    deletedHeapOp = flip (,) DeletedHeapOperation
 
 transformation :: Transformation -> PipelineM ()
 transformation t = do

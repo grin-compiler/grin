@@ -46,6 +46,7 @@ deriveNewName name = do
 boolTF :: a -> a -> Bool -> a
 boolTF true false x = if x then true else false
 
+--TODO: this should be put into a Piple.Definitions module
 data ExpChanges
   = NoChange
   | NewNames
