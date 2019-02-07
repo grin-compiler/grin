@@ -1,0 +1,11 @@
+Put tests into separate files:
+  Why?:
+    - do not need to recompile each time a test case is modified
+    - data is seprated from functionality
+    - a piece of test code can be reused
+      - for other tests
+      - for playing with it manually (this can be really useful)
+
+  How?:
+    - a well structured testing framework is required
+    - some prototypes can be find on Anabra/grin:dde-old

@@ -78,9 +78,12 @@ setLive r = do
   setBasicValLive r
   emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
 
+-- Only structural information should flow forwards,
+-- and only liveness information should flow backwards.
 {- Data flow info propagation for node pattern:
    case nodeReg of
      (CNode argReg) -> ...
+   or
    (CNode argReg) <- pure nodeReg
 -}
 nodePatternDataFlow :: IR.Reg -> IR.Reg -> IR.Tag -> Int -> CG ()
@@ -100,6 +103,16 @@ nodePatternDataFlow argReg nodeReg irTag idx = do
                   }
 
   emit $ copyStructureWithPtrInfo tmp argReg
+
+-- Only structural information should flow forwards,
+-- and only liveness information should flow backwards.
+{- Data flow info propagation for variable patterns
+   v <- pure ...
+-}
+varPatternDataFlow :: IR.Reg -> IR.Reg -> CG ()
+varPatternDataFlow varReg lhsReg = do
+  emit $ copyStructureWithPtrInfo      lhsReg varReg
+  emit $ copyStructureWithLivenessInfo varReg lhsReg
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
@@ -203,7 +216,10 @@ codeGenM e = (cata folder >=> const setMainLive) e
         R r -> case lpat of
           Unit  -> setBasicValLive r
           Lit{} -> setBasicValLive r
-          Var name -> addReg name r
+          Var name -> do
+            varReg <- newReg
+            addReg name varReg
+            varPatternDataFlow varReg r
           ConstTagNode tag args -> do
             irTag <- getTag tag
             setTagLive irTag r
