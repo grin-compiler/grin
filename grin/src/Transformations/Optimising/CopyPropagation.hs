@@ -53,7 +53,7 @@ copyPropagation e = hylo folder builder (mempty, e) where
   folder :: ExpF Exp -> Exp
   folder = \case
     -- right unit law
-    EBindF leftExp lpat (SReturn val) | val == lpat -> leftExp
+    EBindF leftExp lpat (SReturn val) | val == lpat, notVariable lpat -> leftExp
 
     -- left unit law ; cleanup matching constants
     EBindF (SReturn val) lpat rightExp
@@ -62,3 +62,6 @@ copyPropagation e = hylo folder builder (mempty, e) where
       -> rightExp
 
     exp -> embed exp
+
+    where notVariable Var{} = False
+          notVariable _     = True

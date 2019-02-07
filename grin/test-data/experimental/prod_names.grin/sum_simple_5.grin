@@ -1,0 +1,46 @@
+grinMain =
+  t1 <- store (CInt 1) -- LINT: Syntax error - expected SimpleVal
+  t2 <- store (CInt 10000) -- LINT: Syntax error - expected SimpleVal
+  t3 <- store (Fupto t1 t2) -- LINT: Syntax error - expected SimpleVal
+  v.0 <- pure (Fsum t3)
+  (CInt r') <- case v.0 of
+    (CInt x'1.0) ->
+      pure (CInt x'1.0) -- LINT: Last return expressions can only return non-node values: pure (CInt x'1.0)
+    (Fsum c.0) ->
+      unboxed.CInt.0 <- sum.unboxed c.0
+      z.0 <- pure (CInt unboxed.CInt.0)
+      pure z.0
+  _prim_int_print r'
+
+sum.unboxed l =
+  v.3 <- fetch l
+  l2 <- case v.3 of
+    (CNil) ->
+      pure (CNil) -- LINT: Last return expressions can only return non-node values: pure (CNil)
+    (CCons y.3 ys.3) ->
+      pure (CCons y.3 ys.3) -- LINT: Last return expressions can only return non-node values: pure (CCons y.3 ys.3)
+    (Fupto a.3 b.3) ->
+      v.1.0 <- fetch a.3
+      (CInt m'.0) <- pure v.1.0
+      v.2.0 <- fetch b.3
+      (CInt n'.0) <- pure v.2.0
+      b'.0 <- _prim_int_gt m'.0 n'.0
+      w.3 <- case b'.0 of
+        #True ->
+          pure (CNil) -- LINT: Last return expressions can only return non-node values: pure (CNil)
+        #False ->
+          m1'.0 <- _prim_int_add m'.0 1
+          m1.0 <- store (CInt m1'.0) -- LINT: Syntax error - expected SimpleVal
+          p.0 <- store (Fupto m1.0 b.3) -- LINT: Syntax error - expected SimpleVal
+          pure (CCons a.3 p.0) -- LINT: Last return expressions can only return non-node values: pure (CCons a.3 p.0)
+      pure w.3
+  ccp.0 <- case l2 of
+    (CNil) ->
+      pure 0
+    (CCons x xs) ->
+      v.4 <- fetch x
+      (CInt x') <- pure v.4
+      unboxed.CInt.1 <- sum.unboxed xs
+      ax' <- _prim_int_add x' unboxed.CInt.1
+      pure ax'
+  pure ccp.0

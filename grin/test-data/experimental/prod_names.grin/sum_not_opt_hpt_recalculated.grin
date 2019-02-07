@@ -1,0 +1,48 @@
+Heap
+    0      -> {CInt[{T_Int64}]}
+    1      -> {CInt[{T_Int64}]}
+    2      -> {Fupto[{0},{1}]}
+    3      -> {CInt[{T_Int64}]}
+    4      -> {Fupto[{3},{1}]}
+Env
+    a.3    -> {0,3}
+    ax'    -> {T_Int64}
+    b'.0   -> {T_Bool}
+    b.3    -> {1}
+    ccp.0  -> {T_Int64}
+    l      -> {2,4}
+    l2     -> {CCons[{0,3},{4}]
+              ,CNil[]}
+    m'.0   -> {T_Int64}
+    m1'.0  -> {T_Int64}
+    m1.0   -> {3}
+    n'.0   -> {T_Int64}
+    p.0    -> {4}
+    t1     -> {0}
+    t2     -> {1}
+    t3     -> {2}
+    unboxed.CInt.0 -> {T_Int64}
+    unboxed.CInt.1 -> {T_Int64}
+    v.1.0  -> {CInt[{T_Int64}]}
+    v.2.0  -> {CInt[{T_Int64}]}
+    v.3    -> {Fupto[{0,3},{1}]}
+    v.4    -> {CInt[{T_Int64}]}
+    w.3    -> {CCons[{0,3},{4}]
+              ,CNil[]}
+    x      -> {0,3}
+    x'     -> {T_Int64}
+    xs     -> {4}
+    y.3    -> {}
+    ys.3   -> {}
+Function
+    _prim_int_add :: {T_Int64}
+                  -> {T_Int64}
+                  -> {T_Int64}
+    _prim_int_gt :: {T_Int64}
+                 -> {T_Int64}
+                 -> {T_Bool}
+    _prim_int_print :: {T_Int64}
+                    -> {T_Unit}
+    grinMain :: {T_Unit}
+    sum.unboxed :: {2,4}
+                -> {T_Int64}

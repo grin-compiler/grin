@@ -76,7 +76,7 @@ spec = do
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
 
-    it "right unit law" $ do
+    xit "right unit law" $ do
       let before = [expr|
           a1 <- pure 1
           b1 <- pure 0

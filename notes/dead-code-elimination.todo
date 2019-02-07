@@ -5,17 +5,17 @@ Dead data elimination:
     - we have to scrutinize every case expression, and group the overlapping producers together
     - in order to be able to delete a field (wtih a given tag), that field must be dead (with the given tag) for all producers in the group
   - when deleting node fields, some expressions might still reference them
-  - so we must bind #undefineds to these names to produce semantically valid code 
+  - so we must bind #undefineds to these names to produce semantically valid code
     (these will be cleaned up by DVE)
 
 Dead parameter elimination:
   - delete dead parameters from function definitions
   - delete the same arguments from function applications as well
-  - we have to bind #undefineds to the deleted function parameters inside the function body 
+  - we have to bind #undefineds to the deleted function parameters inside the function body
     (see DDE reasoning)
 
 Dead function elimination:
-  - a function definition can be removed if its return value and all of its arguments are dead 
+  - a function definition can be removed if its return value and all of its arguments are dead
   - a parameter can be live even though the return value is dead, if it has some sort of side effect
     e.g.: it's a pointer that is updated, or a side-effecting primop is called on it
   - replace funapp bindings with #undefined (where the function was deleted)
@@ -24,9 +24,9 @@ Dead function elimination:
 Dead variable elimination:
   - for (y <- pure x) bindings, delete the binding if y is dead
   - for (y <- fun args) bindings, we can only delete it, if fun's return value and all of its arguments are dead
-  - for (x <- fetch p) bindings, delete it if x is dead 
-  - for (p <- store x) bindings, delete it if p is dead 
-  - for (update p x), delete it if p is dead 
+  - for (x <- fetch p) bindings, delete it if x is dead
+  - for (p <- store x) bindings, delete it if p is dead
+  - for (update p x), delete it if p is dead
   - when deleting a binding, replace all occurences of the deleted name with #undefined
   - when deleting a store, update #undefined types
 
@@ -35,7 +35,7 @@ Undefined:
   - we will only know that the field/value is a pointer, but we won't know where it points
   - this way, transformations won't invalidate #undefineds' types
   - HPT will now have less information, but this should not be a problem (see next point)
-  - #undefineds should always have DEAD liveness 
+  - #undefineds should always have DEAD liveness
   - currently, after running all dead code eliminating transformations (in the right order), we should only see #undefineds in dead fields of certain nodes (producers)
   - currently, all data flow analyses correctly handle #undefineds (even with location info)
 
@@ -58,7 +58,7 @@ Producer name introduction:
   - but, we hae to exclude these two transformation from the optimizing pipeline
   - and run them manually each time a transformation changes the AST
 
-  (* DDE and DVE simplification): 
+  (* DDE and DVE simplification):
     - DDE needs to remove dead fields from node patterns
     - for this, it needs liveness and producer information
     - for bindings of form: (CInt n) <- fetch p
@@ -76,6 +76,15 @@ Producer name introduction:
       - and replace all those as well
     - instead, we make sure that all fetch-bindings can only have variable patterns, so that replacing dead variables is simpler
 
+  introduce PNI conventions:
+    - add PNI convention checks to linter
+      - every single node in the code must have a name
+    - check which transformations can violate these constructions
+      - CopyPropagation can violate this by grouping together bindings (when they are the last in a binding sequence)
+      - ConstantPropagation can violate this (see test-data/experimental/prod_names/sum_simple_5.grin -> sum_simple_4.grin)
+      - TrivialCaseElimination can violate this (see test-data/experimental/prod_names/sum_simple_12.grin -> sum_simple_11.grin)
+    - redefine IR so that it upholds to these conventions BY CONSTRUCTION
+
 Avoid looping optimization:
   - use taboo sets of previous ASTs
   - let e' be the resulting AST after running all possible optimizations
@@ -85,7 +94,7 @@ Avoid looping optimization:
 
 Liveness tracking at pattern matching:
   - currently when we pattern match on a concrete value of a node field we deem the given field LIVE
-  - but they are only LIVE if there is at least one other pattern match on the same field position with a different value 
+  - but they are only LIVE if there is at least one other pattern match on the same field position with a different value
   - in the current implemtation, tags are trated differently:
     - a tag is deemed LIVE iff we pattern matchd on it, and there is at least one LIVE field
 
@@ -93,17 +102,17 @@ TODO:
   HIGH:
     - make sure that all transformations handles #undefineds and unspecified locations correctly
       - make sure GeneralizedUnboxing handles #undefineds
-    - in type env parsing/pprinting: make difference between empty nodeset and empty location set 
+    - in type env parsing/pprinting: make difference between empty nodeset and empty location set
     - apply inlining should also inline ap
-    - implement type safe undefined node generation for tests (Test.Test) 
-  
+    - implement type safe undefined node generation for tests (Test.Test)
+
   LOW:
     - optimize pipeline, so that only the necessary analyses run before each transformation
     - improve parse error message for "satisfyM" style parsing failures
     - implement type env transformation for DDE
     - linter should check whether calculated types match with annotations
-    - tests: HeapIndirectSimple -> HeapIndirectComplex ? 
-  
+    - tests: HeapIndirectSimple -> HeapIndirectComplex ?
+
   NOTES:
     - before optimising P nodes, make sure to test whether the current optimisations are unable to handle the task
 
@@ -111,13 +120,14 @@ TODO:
     - do all P nodes of the same function have the same liveness?
     (even after apply inlining)
     - if they do, can their fields be deleted solely based on the function args' liveness?
-  
+    - why does inlining need the TypeEnv?
+
   if they do:
     - we don't have to introduce new names for them (probably same for F nodes)
-    - (args' == args after dde) and (l == no. live args of foo) and (n == no. args'): 
+    - (args' == args after dde) and (l == no. live args of foo) and (n == no. args'):
     - PNfoo args --> P(l-n)foo args'
     - if last argument is deleted, then do ... ?
-  
+
 Archive:
   ✘ for analyses handle Unit arg in ConstTagNode bindings (not needed, since node fields can only be simple values) @cancelled(18-11-26 00:25) @project(TODO.HIGH)
   ✔ refactor out utility code pieces from Pipeline.hs @done(18-11-19 00:22) @project(TODO.LOW)

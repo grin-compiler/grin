@@ -1,0 +1,61 @@
+grinMain =
+  t1 <- store (CInt 1) -- LINT: Syntax error - expected SimpleVal
+  t2 <- store (CInt 10000) -- LINT: Syntax error - expected SimpleVal
+  t3 <- store (Fupto t1 t2) -- LINT: Syntax error - expected SimpleVal
+  t4 <- store (Fsum t3) -- LINT: Syntax error - expected SimpleVal
+  q.0 <- pure t4
+  v.0 <- fetch q.0
+  (CInt r') <- case v.0 of
+    (CInt x'1.0) ->
+      pure (CInt x'1.0) -- LINT: Last return expressions can only return non-node values: pure (CInt x'1.0)
+    (Fsum c.0) ->
+      unboxed.CInt.0 <- sum.unboxed c.0
+      z.0 <- pure (CInt unboxed.CInt.0)
+      pure z.0
+  _prim_int_print r'
+
+sum.unboxed l =
+  q.3 <- pure l
+  v.3 <- fetch q.3
+  l2 <- case v.3 of
+    (CNil) ->
+      pure (CNil) -- LINT: Last return expressions can only return non-node values: pure (CNil)
+    (CCons y.3 ys.3) ->
+      pure (CCons y.3 ys.3) -- LINT: Last return expressions can only return non-node values: pure (CCons y.3 ys.3)
+    (Fupto a.3 b.3) ->
+      m.0 <- pure a.3
+      n.0 <- pure b.3
+      q.1.0 <- pure m.0
+      v.1.0 <- fetch q.1.0
+      (CInt m'.0) <- do
+        (CInt x'1.1.0) <- pure v.1.0
+        pure (CInt x'1.1.0) -- LINT: Last return expressions can only return non-node values: pure (CInt x'1.1.0)
+      q.2.0 <- pure n.0
+      v.2.0 <- fetch q.2.0
+      (CInt n'.0) <- do
+        (CInt x'1.2.0) <- pure v.2.0
+        pure (CInt x'1.2.0) -- LINT: Last return expressions can only return non-node values: pure (CInt x'1.2.0)
+      b'.0 <- _prim_int_gt m'.0 n'.0
+      w.3 <- case b'.0 of
+        #True ->
+          pure (CNil) -- LINT: Last return expressions can only return non-node values: pure (CNil)
+        #False ->
+          m1'.0 <- _prim_int_add m'.0 1
+          m1.0 <- store (CInt m1'.0) -- LINT: Syntax error - expected SimpleVal
+          p.0 <- store (Fupto m1.0 n.0) -- LINT: Syntax error - expected SimpleVal
+          pure (CCons m.0 p.0) -- LINT: Last return expressions can only return non-node values: pure (CCons m.0 p.0)
+      pure w.3
+  ccp.0 <- case l2 of
+    (CNil) ->
+      pure 0
+    (CCons x xs) ->
+      q.4 <- pure x
+      v.4 <- fetch q.4
+      (CInt x') <- do
+        (CInt x'1.4) <- pure v.4
+        pure (CInt x'1.4) -- LINT: Last return expressions can only return non-node values: pure (CInt x'1.4)
+      unboxed.CInt.1 <- sum.unboxed xs
+      (CInt s') <- pure (CInt unboxed.CInt.1) -- LINT: Syntax error - expected SimpleExp without nodes
+      ax' <- _prim_int_add x' s'
+      pure ax'
+  pure ccp.0

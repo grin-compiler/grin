@@ -49,6 +49,9 @@ boolTF true false x = if x then true else false
 data ExpChanges
   = NoChange
   | NewNames
+  -- only relevant heap operations
+  -- (e.g.: deleting a dead case alternative should not trigger this)
+  | DeletedHeapOperation
   deriving (Eq, Show)
 
 evalNameM :: Exp -> NameM a -> (a, ExpChanges)
