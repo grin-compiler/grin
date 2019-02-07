@@ -153,6 +153,9 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
       rhs' <- bindToUndefineds tyEnv rhs deletedArgs
       t' <- getTag t lv
       pure $ EBind lhs (ConstTagNode t' args') rhs'
+
+    -- We need not to handle Fetch, because ProducerNameIntroduction
+    -- already introduced names for bindings with Fetch left-hand sides.
     e -> pure . embed $ e
 
   deleteDeadFieldsM :: Name -> Tag -> [a] -> Trf ([a], Vector Bool)
