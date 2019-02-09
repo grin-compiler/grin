@@ -95,8 +95,8 @@ set p = Set.fromList <$> bracedList p
 set1 :: Ord a => Parser a -> Parser (Set a)
 set1 p = Set.fromList <$> bracedList p
 
-anySingle :: MonadParsec e s m => m (Token s)
-anySingle = satisfy (const True)
+-- anySingle :: MonadParsec e s m => m (Token s)
+-- anySingle = satisfy (const True)
 
 anySingleBut :: MonadParsec e s m => Token s -> m (Token s)
 anySingleBut t = satisfy (/= t)
@@ -108,7 +108,7 @@ escaped :: Parser Char
 escaped = string "\\\"" >> pure '"'
 
 quotedVar :: Parser Name
-quotedVar = packName <$ char '"' <*> someTill (escaped <|> anyChar) (char '"')
+quotedVar = packName <$ char '"' <*> someTill (escaped <|> anySingle) (char '"')
 
 escapedStringChar :: Parser Char
 escapedStringChar =
@@ -123,7 +123,7 @@ escapedStringChar =
   (string "\\v" >> pure '\v')
 
 quotedString :: Parser Text
-quotedString = fromString <$> (char '"' *> manyTill (escapedStringChar <|> anyChar) (char '"'))
+quotedString = fromString <$> (char '"' *> manyTill (escapedStringChar <|> anySingle) (char '"'))
 
 simpleVar :: Parser Name
 simpleVar = (\c s -> packName $ c : s) <$> oneOf allowedInitial <*> many (alphaNumChar <|> oneOf allowedSpecial)

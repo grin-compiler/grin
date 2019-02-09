@@ -131,7 +131,7 @@ library
     bimap,
     mtl,
     comonad,
-    megaparsec,
+    megaparsec ==7.0.*,
     pretty-show,
     vector,
     deepseq,
@@ -182,7 +182,7 @@ executable grin
                      , grin
                      , recursion-schemes
                      , ansi-wl-pprint
-                     , megaparsec
+                     , megaparsec ==7.0.*
                      , containers
                      , process
                      , pretty-show
