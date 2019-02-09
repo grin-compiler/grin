@@ -71,7 +71,7 @@ spec = do
 varTagCover :: Exp -> Property -> Property
 varTagCover exp =
   within 10000000 {-microsecond-} .
-  cover (getAny $ valuesInCases (Any . isVarTagNode) exp) 1 "Case with VarTagNode"
+  cover 1 (getAny $ valuesInCases (Any . isVarTagNode) exp) "Case with VarTagNode"
 
 programSizeDoesNotChange :: Exp -> Property
 programSizeDoesNotChange exp = varTagCover exp $ unchangedSize exp $ caseSimplification exp

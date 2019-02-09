@@ -132,8 +132,8 @@ smallerThan transformed original  =
   let sizeReduced  = programSize transformed
       sizeOriginal = programSize original
   in
-    cover (sizeReduced == sizeOriginal) 0 "Non Reduced" $
-    cover (sizeReduced <  sizeOriginal) 1 "Reduced"     $
+    cover 0 (sizeReduced == sizeOriginal) "Non Reduced" $
+    cover 1 (sizeReduced <  sizeOriginal) "Reduced"     $
     (sizeReduced <= sizeOriginal)
 
 checkUniqueNames :: Exp -> Property
