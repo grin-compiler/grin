@@ -155,7 +155,7 @@ library
     hspec-core,
     extra,
     logict,
-    QuickCheck,
+    QuickCheck ==2.12.*,
     quickcheck-instances,
     neat-interpolation,
     template-haskell,
@@ -205,7 +205,7 @@ test-suite grin-test
                      , hspec
                      , hspec-core
                      , hspec-discover
-                     , QuickCheck
+                     , QuickCheck ==2.12.*
                      , deepseq
                      , vector
                      , text
