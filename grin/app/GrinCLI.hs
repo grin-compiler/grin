@@ -159,7 +159,7 @@ main = do
         ((,) Nothing . Nametable.restore) <$> Binary.decodeFile fname
       else do
         content <- Text.readFile fname
-        let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
+        let (typeEnv, program') = either (error . M.errorBundlePretty) id $ parseGrinWithTypes fname content
         pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
     let opts     = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
     case steps of
