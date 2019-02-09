@@ -12,7 +12,7 @@ import Options.Applicative
 
 import Grin.Grin
 import Grin.PrimOpsPrelude
-import Grin.Parse hiding (value)
+import Grin.Parse -- hiding (value)
 import Grin.Nametable as Nametable
 import Pipeline.Pipeline
 
