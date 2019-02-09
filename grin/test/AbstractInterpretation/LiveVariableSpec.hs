@@ -669,6 +669,31 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", fun (deadVal, [deadVal])) ]
     (calcLiveness exp) `sameAs` varPatExpected
 
+  it "node_pat" $ do
+    let exp = [prog|
+          grinMain =
+            y <- pure (CInt 5)
+            (CInt n) <- f y
+            pure y
+
+          f x = pure x
+        |]
+    let nodePatExpected = LVAResult
+          { _memory   = []
+          , _register = [ ("n", deadVal), ("y", livenessY), ("x", livenessFRet) ]
+          , _function = nodePatExpectedFunctions
+          }
+        nodePatExpectedFunctions =
+          [ ("f",        fun (livenessFRet, [livenessFArg]))
+          , ("grinMain", fun (livenessY, []))
+          ]
+
+        livenessY    = nodeSet [ (cInt, [live]) ]
+        livenessFRet = nodeSet [ (cInt, [dead]) ]
+        livenessFArg = livenessFRet
+
+    (calcLiveness exp) `sameAs` nodePatExpected
+
   it "main_node_ret" $ do
     let exp = [prog|
           grinMain =

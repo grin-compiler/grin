@@ -1,0 +1,6 @@
+grinMain =
+  x <- pure (CInt 5)
+  y <- case x of
+    (CInt n) -> case n of
+                  0 -> pure 0
+  pure 0

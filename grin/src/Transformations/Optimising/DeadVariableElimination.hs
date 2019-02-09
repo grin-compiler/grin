@@ -12,6 +12,7 @@ import qualified Data.Vector as Vec
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Set.Extra as Set
 
 import qualified Data.Foldable
 import Data.Functor.Foldable as Foldable
@@ -52,16 +53,21 @@ runTrf = flip evalState mempty . runExceptT
 
 -- P and F nodes are handled by Dead Data Elimination
 deadVariableElimination :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp
-deadVariableElimination lvaResult effMap tyEnv
-  = runTrf . (deleteDeadBindings lvaResult effMap tyEnv >=> replaceDeletedVars tyEnv)
+deadVariableElimination lvaResult effMap tyEnv exp =
+  let protected = analyzeCases effMap tyEnv exp in
+  runTrf . (deleteDeadBindings protected lvaResult effMap tyEnv >=> replaceDeletedVars tyEnv) $ exp
 
 {- NOTE: Fetches do not have to be handled separately,
    since producer name introduction guarantees
    that all bindings with a fetch LHS will have a Var PAT
    (handled by the last case in alg).
+
+   Also, protected case expressions bound to a variable
+   cannot be eliminated because it might result in
+   change of semantics. See `analyzeCases` for more info.
 -}
-deleteDeadBindings :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
-deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
+deleteDeadBindings :: Set Name -> LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
+deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     e@(EBindF SStore{} (Var p) rhs)
@@ -77,9 +83,11 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
     e@(EBindF (SUpdate p v) Unit rhs) -> do
       varDead <- isVarDeadM p
       rmWhen varDead e rhs mempty mempty
-    e@(EBindF _ (Var v) rhs) -> do
-      varDead <- isVarDeadM v
-      rmWhen varDead e rhs (Set.singleton v) mempty
+    e@(EBindF _ (Var v) rhs)
+      | v `Set.member` protected -> pure . embed $ e
+      | otherwise -> do
+        varDead <- isVarDeadM v
+        rmWhen varDead e rhs (Set.singleton v) mempty
     e -> pure . embed $ e
 
   rmWhenAllDead :: ExpF Exp -> Exp -> Val -> Trf Exp
@@ -120,6 +128,68 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
 
+{- Collects the name of case expressions and scrutinees(*) that cannot be eliminated.
+   The name of a case expression is the variable it is bound to.
+   A case expression cannot be eliminated if the scrutinee
+   has at least one tag/literal not covered by any of the alternatives
+   (i.e. the pattern match can fail), or any of the alternatives
+   contain a side-effecting function or external.
+
+   (*) Sometimes, even if the scrutinee is dead,
+   its original binding cannot be removed.
+   This is becase there can be an execution path which can lead to
+   a pattern match failure or a side-effecting computation.
+
+   Also, it is assumed that all case alternatives are live (i.e.: after SCO).
+-}
+analyzeCases :: EffectMap -> TypeEnv -> Exp -> Set Name
+analyzeCases effMap tyEnv = flip execState mempty . paraM alg where
+
+  -- We store the names of the case expressions and scrutinees in the state.
+  -- The result is a boolean represeneting the presence of side effects
+  -- or filable patterns inside the expression (and its subexpressions).
+  alg :: ExpF (Exp, Bool) -> State (Set Name) Bool
+  alg = \case
+    SAppF f _ -> pure $ hasTrueSideEffect f effMap
+    AltF _ (_,s) -> pure s
+    ECaseF scrut alts -> do
+      let altPats = Set.fromList $ mapMaybe (^? _AltCPat) (fmap fst alts)
+          altTags = Set.mapMaybe (^? _CPatNodeTag) altPats
+          alts'   = and . fmap snd $ alts
+
+          addScrutinee = case scrut of
+            Var x -> modify (Set.insert x)
+            _     -> pure ()
+
+      case mTypeOfValTE tyEnv scrut of
+        -- There is a case nested case expression
+        -- in the alternatives which cannot be removed.
+        _ | alts' -> addScrutinee >> pure True
+        -- The pattern match can fail on a node tag.
+        Just (T_NodeSet ns)
+          | DefaultPat `Set.notMember` altPats
+          , scrutTags <- Map.keysSet ns
+          , any (`Set.notMember` altTags) scrutTags
+          -> addScrutinee >> pure True
+        -- The pattern match can fail on a literal.
+        Just T_SimpleType{}
+          | hasDef   <- DefaultPat    `Set.member` altPats
+          , hasTrue  <- BoolPat True  `Set.member` altPats
+          , hasFalse <- BoolPat False `Set.member` altPats
+          , not (hasTrue && hasFalse || hasDef)
+          -> addScrutinee >> pure True
+        Nothing -> error $ "DVE: case analysis: scrutinee's type cannot be calculated (" ++ show (PP scrut) ++ ")"
+        _ -> pure alts'
+
+    EBindF (ECase{}, lhs) (Var v) (_,rhs) -> do
+      when lhs $ modify (Set.insert v)
+      pure $ lhs || rhs
+
+    EBindF (_,lhs) _ (_,rhs) -> pure $ lhs || rhs
+    SBlockF (_,s) -> pure s
+
+    -- The other cases are not important.
+    _ -> pure False
 
 -- This will not replace the occurences of a deleted pointer
 -- in fetches and in updates. But it does not matter,

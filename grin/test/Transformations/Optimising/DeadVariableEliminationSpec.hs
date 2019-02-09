@@ -165,6 +165,147 @@ spec = do
           |]
       pipelineSrc before after deadVariableEliminationPipeline
 
+    it "case_node_pat_failure" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure (CInt 5)
+              y <- case x of
+                (CUnit) -> pure 5
+              pure 0
+          |]
+
+      let after = before
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    -- NOTE: literals are not tracked
+    it "case_lit_pat_failure" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure 5
+              y <- case x of
+                5 -> pure 5
+              pure 0
+          |]
+
+      let after = before
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "case_pat_default" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure (CInt 5)
+              y <- case x of
+                (CUnit) -> pure 5
+                #default -> pure 3
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain = pure 0
+          |]
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    -- NOTE: literals are not tracked, but bool patterns are checked
+    xit "case_bool_pat_covered" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure #True
+              y <- case x of
+                #True  -> pure 5
+                #False -> pure 3
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain = pure 0
+          |]
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "case_pat_side_effect" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure (CInt 5)
+              y <- case x of
+                (CInt n) ->
+                  _prim_int_print 5
+                  pure 5
+              pure 0
+          |]
+
+      let after = before
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    -- NOTE: weird indentation rules
+    it "case_nested_side_effect" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure (CInt 5)
+              y <- case x of
+                (CInt n) -> case n of
+                              #default -> _prim_int_print 5
+              pure 0
+          |]
+
+      let after = before
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "case_nested_pat_failure" $ do
+      let before = [prog|
+            grinMain =
+              x <- pure (CInt 5)
+              y <- case x of
+                (CInt n) -> case n of
+                              0 -> pure 0
+              pure 0
+          |]
+
+      let after = before
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    xit "case_pure_covered_pats" $ do
+      let before = [prog|
+            grinMain =
+              x <- case 0 of
+                0 -> pure (CInt 5)
+                #default -> pure (CUnit)
+              y <- case x of
+                (CInt n) -> pure 0
+                (CUnit) -> pure 0
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain = pure 0
+          |]
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    xit "case_nested_pure_covered_pats" $ do
+      let before = [prog|
+            grinMain =
+              x <- case 0 of
+                0 -> pure (CInt 5)
+                #default -> pure (CUnit)
+              y <- case x of
+                (CInt n) -> case n of
+                              #default -> pure 0
+                (CUnit) -> pure 0
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain = pure 0
+          |]
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
     it "replace_app" $ do
       let before = [prog|
             grinMain =

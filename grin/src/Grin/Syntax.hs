@@ -149,6 +149,12 @@ deriving instance Ord a   => Ord  (ExpF a)
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
 
+pattern BoolPat b = LitPat (LBool b)
+
+_AltCPat :: Traversal' Exp CPat
+_AltCPat f (Alt p e) = (`Alt` e) <$> f p
+_AltCPat _ other     = pure other
+
 _AltFCPat :: Traversal' (ExpF a) CPat
 _AltFCPat f (AltF p e) = (`AltF` e) <$> f p
 _AltFCPat _ other      = pure other
