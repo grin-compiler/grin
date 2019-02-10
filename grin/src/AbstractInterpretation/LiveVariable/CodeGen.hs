@@ -39,7 +39,13 @@ emptyReg = newReg
 
 -- Tests whether the given register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
-isLiveThen r i = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = i }
+isLiveThen r is = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = is }
+
+isLiveThenM :: IR.Reg -> CG () -> CG ()
+isLiveThenM r actionM = do
+  is <- codeGenBlock_ actionM
+  let condIs = isLiveThen r is
+  emit condIs
 
 live :: LivenessId
 live = -1
@@ -276,7 +282,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
           processAltResult = \case
             Z -> doNothing
             R altResultReg -> do
-              --NOTE: We propagate liveness information rom the case result register
+              --NOTE: We propagate liveness information from the case result register
               -- to the alt result register. But we also have to propagate
               -- structural and pointer information from the alt result register
               -- into the case result register.
@@ -309,14 +315,11 @@ codeGenM e = (cata folder >=> const setMainLive) e
                                                      processAltResult
                                                      restoreScrutReg
 
-            codeGenAltSimple actionM = codeGenBlock_ $
-              actionM >> (altM >>= processAltResult)
-
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
             altInstructions <- codeGenAltExists irTag $ \altScrutReg -> do
-              setTagLive irTag altScrutReg
+              caseResultReg `isLiveThenM` setTagLive irTag altScrutReg
               -- bind pattern variables
               forM_ (zip [1..] vars) $ \(idx, name) -> do
                 argReg <- newReg
@@ -331,8 +334,8 @@ codeGenM e = (cata folder >=> const setMainLive) e
           -- NOTE: if we stored type information for basic val,
           -- we could generate code conditionally here as well
           LitPat lit -> do
-            altInstructions <- codeGenAltSimple $ setBasicValLive valReg
-            mapM_ emit altInstructions
+            caseResultReg `isLiveThenM` setBasicValLive valReg
+            altM >>= processAltResult
 
           DefaultPat -> do
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]

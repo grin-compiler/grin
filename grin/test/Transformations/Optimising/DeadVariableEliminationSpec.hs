@@ -209,7 +209,7 @@ spec = do
       pipelineSrc before after deadVariableEliminationPipeline
 
     -- NOTE: literals are not tracked, but bool patterns are checked
-    xit "case_bool_pat_covered" $ do
+    it "case_bool_pat_covered" $ do
       let before = [prog|
             grinMain =
               x <- pure #True
@@ -269,7 +269,7 @@ spec = do
 
       pipelineSrc before after deadVariableEliminationPipeline
 
-    xit "case_pure_covered_pats" $ do
+    it "case_pure_covered_pats" $ do
       let before = [prog|
             grinMain =
               x <- case 0 of
@@ -287,7 +287,7 @@ spec = do
 
       pipelineSrc before after deadVariableEliminationPipeline
 
-    xit "case_nested_pure_covered_pats" $ do
+    it "case_nested_pure_covered_pats" $ do
       let before = [prog|
             grinMain =
               x <- case 0 of
