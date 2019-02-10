@@ -13,6 +13,9 @@ hpkg.developPackage {
       llvm-config = pkgs.llvm_7;
     });
   };
-  modifier = drv: hlib.addBuildTool drv (import nix/llvm.nix {});
+  modifier = drv: hlib.addBuildTools drv [
+    (import nix/llvm.nix {})
+    pkgs.llvm_7
+  ];
   returnShellEnv = false;
 }

@@ -1,4 +1,4 @@
-resolver: nightly-2018-11-07
+resolver: nightly-2019-02-09
 
 # due to functor-infix
 allow-newer: true
@@ -16,8 +16,6 @@ extra-deps:
   - monad-gen-0.3.0.1
   - functor-infix-0.0.5
   - QuickCheck-GenT-0.2.0
-  - megaparsec-6.5.0
-  - neat-interpolation-0.3.2.2
   - set-extra-1.4.1
   - llvm-hs-pretty-0.6.1.0
 
