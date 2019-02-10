@@ -165,6 +165,18 @@ spec = do
           |]
       pipelineSrc before after deadVariableEliminationPipeline
 
+    it "binding_pat_match_failure" $ do
+      let before = [prog|
+            grinMain =
+              n <- pure (CNode 0 0)
+              (CUnit) <- pure n
+              pure 0
+          |]
+
+      let after = before
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
     it "case_node_pat_failure" $ do
       let before = [prog|
             grinMain =

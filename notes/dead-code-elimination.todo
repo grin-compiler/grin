@@ -93,21 +93,35 @@ Avoid looping optimization:
   - we could choose an "optimal" AST from the loop
 
 Liveness tracking at pattern matching:
-  - currently when we pattern match on a concrete value of a node field we deem the given field LIVE
+  - currently when we pattern match on a concrete (literal) value of a node field we deem the given field LIVE
   - but they are only LIVE if there is at least one other pattern match on the same field position with a different value
-  - in the current implemtation, tags are trated differently:
-    - a tag is deemed LIVE iff we pattern matchd on it, and there is at least one LIVE field
+  - in the current implentation, tags are treated differently:
+    - a tag is deemed LIVE iff we pattern matched on it, and the result of the containing case expression is LIVE
+    - behviour for non-case pattern matches need specfication
+
+  - LVA deems a variable LIVE if its value is relevant for the result of the program
+    - it either contributes to the final result
+    - or it is part of a side-effecting computation
+  - however not all DEAD variables are irrelevant to the exectution of the program
+  - e.g.: a DEAD variable can be scrutinized by a case expression that does not cover all patterns
+    - in this case, the program can fail while evaluationg this expression
+    - hence it cannot be removed without changing the semantics of the program
+  - another is example is also a case expression where an alternative has a side-effecting computation
+    - this expression cannot be removed either, without changing the semantics of the program
+    - (even though the scrutinee itself, the result of case expression might be DEAD)
+  - these extraordinary cases are handled on the transformation level (DVE) by a simple bottom-up analysis
 
 TODO:
   HIGH:
-    - make sure that all transformations handles #undefineds and unspecified locations correctly
+    - handle pattern match failure checks in LVA instead of DVE
+    - handle binding pattern matches (possibly in LVA)
+    - make sure that all transformations handle #undefineds and unspecified locations correctly
       - make sure GeneralizedUnboxing handles #undefineds
     - in type env parsing/pprinting: make difference between empty nodeset and empty location set
     - apply inlining should also inline ap
     - implement type safe undefined node generation for tests (Test.Test)
 
   LOW:
-    - optimize pipeline, so that only the necessary analyses run before each transformation
     - improve parse error message for "satisfyM" style parsing failures
     - implement type env transformation for DDE
     - linter should check whether calculated types match with annotations
@@ -129,6 +143,7 @@ TODO:
     - if last argument is deleted, then do ... ?
 
 Archive:
+  ✔ optimize pipeline, so that only the necessary analyses run before each transformation @done(19-02-10 18:58) @project(TODO.LOW)
   ✘ for analyses handle Unit arg in ConstTagNode bindings (not needed, since node fields can only be simple values) @cancelled(18-11-26 00:25) @project(TODO.HIGH)
   ✔ refactor out utility code pieces from Pipeline.hs @done(18-11-19 00:22) @project(TODO.LOW)
   ✔ for DVE, implement proper liveness lookup for bindings @done(18-11-19 00:22) @project(TODO.HIGH)

@@ -44,8 +44,7 @@ isLiveThen r is = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructi
 isLiveThenM :: IR.Reg -> CG () -> CG ()
 isLiveThenM r actionM = do
   is <- codeGenBlock_ actionM
-  let condIs = isLiveThen r is
-  emit condIs
+  emit $ isLiveThen r is
 
 live :: LivenessId
 live = -1
@@ -319,6 +318,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
           NodePat tag vars -> do
             irTag <- getTag tag
             altInstructions <- codeGenAltExists irTag $ \altScrutReg -> do
+              -- NOTE: should be altResultRegister
               caseResultReg `isLiveThenM` setTagLive irTag altScrutReg
               -- bind pattern variables
               forM_ (zip [1..] vars) $ \(idx, name) -> do
@@ -334,6 +334,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
           -- NOTE: if we stored type information for basic val,
           -- we could generate code conditionally here as well
           LitPat lit -> do
+            -- NOTE: should be altResultRegister
             caseResultReg `isLiveThenM` setBasicValLive valReg
             altM >>= processAltResult
 

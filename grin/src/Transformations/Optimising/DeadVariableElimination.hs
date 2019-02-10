@@ -128,6 +128,10 @@ deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
 
+{- TODO: Pattern match failure checks should be moved to LVA.
+         New instructions to the abstarct machine IR are required.
+         (new Condition: NodeTypeDoesNotExist Tag)
+-}
 {- Collects the name of case expressions and scrutinees(*) that cannot be eliminated.
    The name of a case expression is the variable it is bound to.
    A case expression cannot be eliminated if the scrutinee
