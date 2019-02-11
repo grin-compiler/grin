@@ -18,6 +18,7 @@ import qualified Data.Foldable
 import Data.Functor.Foldable as Foldable
 
 import Lens.Micro
+import Lens.Micro.Extra
 import Lens.Micro.Platform
 
 import Control.Monad.Extra
@@ -144,7 +145,11 @@ deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
    This is becase there can be an execution path which can lead to
    a pattern match failure or a side-effecting computation.
 
-   Also, it is assumed that all case alternatives are live (i.e.: after SCO).
+   Also, it is assumed that all case alternatives are live (i.e.: after SCO),
+   and all pattern bindings and case scrutinees are simple (i.e.: after BPS).
+
+   SCO only makes the transformation more precise (can be omitted),
+   but BPS is essential and must be performed before DVE.
 -}
 analyzeCases :: EffectMap -> TypeEnv -> Exp -> Set Name
 analyzeCases effMap tyEnv = flip execState mempty . paraM alg where
@@ -189,6 +194,26 @@ analyzeCases effMap tyEnv = flip execState mempty . paraM alg where
       when lhs $ modify (Set.insert v)
       pure $ lhs || rhs
 
+    -- SBP guarantees that a binding pattern will always have a
+    -- simple SReturn on the left-hand side.
+    EBindF (SReturn (Var v),lhs) pat (_,rhs)
+      -- This is the case when the lhs has only one possible tag,
+      -- the one being pattern matched on. Everything is fine here.
+      | ConstTagNode t _ <- pat
+      , T_NodeSet ns <- variableType tyEnv v
+      , [onlyTag] <- Map.keys ns
+      , onlyTag == t
+      -> pure $ lhs || rhs
+      -- Very primitive case of binding a unit to unit ...
+      | Unit <- pat
+      , T_SimpleType T_Unit <- variableType tyEnv v
+      -> pure $ lhs || rhs
+      -- In any other case, where the pattern is anything else than a variable,
+      -- the pattern match can fail.
+      | isn't _ValVar pat -> modify (Set.insert v) >> pure True
+
+    -- This binding can only have a variable pattern.
+    -- In this case we only have to propagate information.
     EBindF (_,lhs) _ (_,rhs) -> pure $ lhs || rhs
     SBlockF (_,s) -> pure s
 
