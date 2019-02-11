@@ -43,6 +43,7 @@ import Transformations.BindNormalisation
 import qualified Grin.Lint as Lint
 import Grin.PrettyLint
 import Transformations.Simplifying.SplitFetch
+import Transformations.Simplifying.BindingPatternSimplification
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
 import Transformations.UnitPropagation
@@ -116,6 +117,7 @@ data Transformation
   -- Simplifying
   = RegisterIntroduction
   | ProducerNameIntroduction
+  | BindingPatternSimplification
   | Vectorisation
   | SplitFetch
   | CaseSimplification
@@ -317,6 +319,7 @@ transformationFunc n = \case
   SplitFetch                      -> Plain (noNewNames . splitFetch)
   RegisterIntroduction            -> Plain (newNames . registerIntroductionI n) -- TODO
   ProducerNameIntroduction        -> Plain producerNameIntroduction
+  BindingPatternSimplification         -> Plain bindingPatternSimplification
   RightHoistFetch                 -> Plain (noNewNames . RHF.rightHoistFetch)
   -- misc
   MangleNames                     -> Plain (newNames . mangleNames) -- TODO

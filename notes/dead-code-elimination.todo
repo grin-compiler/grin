@@ -93,23 +93,19 @@ Avoid looping optimization:
   - we could choose an "optimal" AST from the loop
 
 Liveness tracking at pattern matching:
-  - currently when we pattern match on a concrete (literal) value of a node field we deem the given field LIVE
-  - but they are only LIVE if there is at least one other pattern match on the same field position with a different value
-  - in the current implentation, tags are treated differently:
-    - a tag is deemed LIVE iff we pattern matched on it, and the result of the containing case expression is LIVE
-    - behviour for non-case pattern matches need specfication
-
-  - LVA deems a variable LIVE if its value is relevant for the result of the program
-    - it either contributes to the final result
-    - or it is part of a side-effecting computation
-  - however not all DEAD variables are irrelevant to the exectution of the program
-  - e.g.: a DEAD variable can be scrutinized by a case expression that does not cover all patterns
+  - LVA deems a variable LIVE if:
+    - it is relevant for the final (pure) result of the program
+    - it is relevant for the execution of the program:
+      - it is part of a side-effecting computation
+      - a pattern match can fail on this variable (FUTURE WORK)
+  - e.g.: a variable that is irrevelant for the pure part of the program, can be scrutinized by a case expression that does not cover all patterns
     - in this case, the program can fail while evaluationg this expression
     - hence it cannot be removed without changing the semantics of the program
-  - another is example is also a case expression where an alternative has a side-effecting computation
-    - this expression cannot be removed either, without changing the semantics of the program
-    - (even though the scrutinee itself, the result of case expression might be DEAD)
-  - these extraordinary cases are handled on the transformation level (DVE) by a simple bottom-up analysis
+      (every scrutinizing site of the variable would be replaced by an undefined)
+      (FUTURE WORK)
+  - if a node can fail on a pattern match, then all of its tags not present amongst the patterns are deemed live
+    (they are relevant for the execution)
+    (FUTURE WORK)
 
 TODO:
   HIGH:

@@ -8,10 +8,6 @@ import Data.Functor.Foldable as Foldable
 import Grin.Grin
 import Transformations.Names
 
--- TODO: remove this
-import Grin.Parse
-import Grin.Pretty
-import Transformations.BindNormalisation
 
 newNodeName :: NameM Name
 newNodeName = deriveNewName "v"
@@ -37,8 +33,6 @@ producerNameIntroduction e = evalNameM e . cata alg $ e where
     SReturnF   x@VarTagNode{}   -> bindVal SReturn x
     SReturnF   x@ConstTagNode{} -> bindVal SReturn x
     SReturnF   x@Undefined{}    -> bindVal SReturn x
-    -- This is not a producer, but helps in the propagation of producer info (makes DDE simpler)
-    SFetchF    p                -> bindFetch p
     expf -> fmap embed . sequence $ expf
 
   -- binds a Val (usually a node) to a name, then puts it into some context
@@ -46,9 +40,3 @@ producerNameIntroduction e = evalNameM e . cata alg $ e where
   bindVal context val = do
     nodeVar <- fmap Var newNodeName
     return $ SBlock $ EBind (SReturn val) nodeVar (context nodeVar)
-
-  -- bind the lhs of a fetch-binding to a variable
-  bindFetch :: Name -> NameM Exp
-  bindFetch p = do
-    fetchResult <- fmap Var newNodeName
-    return $ SBlock $ EBind (SFetch p) fetchResult (SReturn fetchResult)

@@ -171,6 +171,10 @@ _CPatDefault :: Traversal' CPat ()
 _CPatDefault f DefaultPat = const DefaultPat <$> f ()
 _CPatDefault _ other      = pure other
 
+_ValVar :: Traversal' Val Name
+_ValVar f (Var name) = Var <$> f name
+_ValVar _ other      = pure other
+
 _TyCon :: Traversal' Ty (Name, [Ty])
 _TyCon f (TyCon n ts) = uncurry TyCon <$> f (n, ts)
 _TyCon _ other        = pure other

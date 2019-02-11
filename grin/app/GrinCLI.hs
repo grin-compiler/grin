@@ -37,6 +37,7 @@ transformOpts =
   <|> flg Vectorisation "v" "Vectorisation"
   <|> flg RegisterIntroduction "ri" "Register Introduction"
   <|> flg ProducerNameIntroduction "pni" "Producer Name Introduction"
+  <|> flg BindingPatternSimplification "bps" "Binding Pattern Simplification"
   <|> flg InlineEval "ie" "Inline Eval"
   <|> flg InlineApply "ia" "Inline Apply"
   <|> flg BindNormalisation "bn" "Bind Normalisation"
