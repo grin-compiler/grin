@@ -1,4 +1,0 @@
-grinMain =
-  v0 <- pure (CInt 5)
-  v1 <- pure v0
-  pure v0

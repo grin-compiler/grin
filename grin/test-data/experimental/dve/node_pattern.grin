@@ -1,6 +1,0 @@
-grinMain =
-  y <- pure (CInt 5)
-  (CInt n) <- f y
-  pure y
-
-f x = pure x
