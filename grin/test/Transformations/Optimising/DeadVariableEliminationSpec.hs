@@ -318,6 +318,29 @@ spec = do
 
       pipelineSrc before after deadVariableEliminationPipeline
 
+    it "store_fetch_in_dead_alt" $ do
+      let before = [prog|
+            grinMain =
+              case (CNil) of
+                (CNil) ->  pure 0
+                (CCons x xs) ->
+                  p <- store (CInt 5)
+                  n <- fetch p
+                  (CBad) <- pure n
+                  pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              case (CNil) of
+                (CNil) ->  pure 0
+                (CCons x xs) ->
+                  (CBad) <- pure (#undefined :: T_Dead)
+                  pure 0
+          |]
+
+      pipelineSrc before after deadVariableEliminationPipeline
+
     it "replace_app" $ do
       let before = [prog|
             grinMain =

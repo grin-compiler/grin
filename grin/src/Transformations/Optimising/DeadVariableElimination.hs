@@ -204,6 +204,9 @@ analyzeCases effMap tyEnv = flip execState mempty . paraM alg where
       , [onlyTag] <- Map.keys ns
       , onlyTag == t
       -> pure $ lhs || rhs
+      -- Just in case SCO was not run beforehand
+      | T_SimpleType T_Dead <- variableType tyEnv v
+      -> pure $ lhs || rhs
       -- Very primitive case of binding a unit to unit ...
       | Unit <- pat
       , T_SimpleType T_Unit <- variableType tyEnv v
