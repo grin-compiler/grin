@@ -374,6 +374,46 @@ spec = do
             [ Def "grinMain" [] ( SReturn Unit ) ]
       before `sameAs` after
 
+    it "indentation" $ do
+      let before = [prog|
+        primop pure
+          -- comment
+          _primA :: T_String
+                 -> T_String
+                 -> T_String
+          {-
+            comment
+          -}
+          _primB
+           :: T_String
+           -> T_String
+
+          -- comment
+          {-
+            comment
+          -}
+        |]
+      let after =
+            Program
+              [ External
+                  { eName = NM { unNM = "_primA" }
+                  , eRetType = TySimple T_String
+                  , eArgsType =
+                      [ TySimple T_String
+                      , TySimple T_String
+                      ]
+                  , eEffectful = False
+                  }
+              , External
+                  { eName = NM { unNM = "_primB" }
+                  , eRetType = TySimple T_String
+                  , eArgsType = [ TySimple T_String ]
+                  , eEffectful = False
+                  }
+              ] []
+
+      before `sameAs` after
+
   describe "generated" $ do
     it "parse . pretty print == id" $ property $
       forAll (PP <$> genProg) $ \p ->

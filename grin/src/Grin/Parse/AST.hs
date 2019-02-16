@@ -117,8 +117,8 @@ external :: Bool -> Pos -> Parser External
 external eff i = do
   L.indentGuard sc EQ i
   name <- var
-  op "::"
-  ty <- reverse <$> sepBy1 tyP (op "->")
+  L.indentGuard sc GT i >> op "::"
+  ty <- reverse <$> sepBy1 (L.indentGuard sc GT i >> L.lexeme sc tyP ) (L.indentGuard sc GT i >> op "->")
   let (retTy:argTyRev) = ty
   pure External
     { eName       = name
