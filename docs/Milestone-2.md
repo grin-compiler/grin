@@ -10,16 +10,17 @@ deadline: May 6
 
 ### new additions
 - [ ] module system
-- [ ] name handling
-  - [ ] locally new names (in block + pass to flatten out and maintain uniqueness)
-  - [ ] name scopes (module, function)
-  - [ ] liberal name support (like in llvm, i.e. %"any characer 1234 {}!@#$%} -"
+- [x] name handling
+  - [x] SSA name conversion pass to allow local name scopes
+  - ~~locally new names (in block + pass to flatten out and maintain uniqueness)~~
+  - ~~name scopes (module, function)~~
+  - [x] liberal name support (like in llvm, i.e. %"any characer 1234 {}!@#$%} -"
 - [ ] context aware logging framework (for errors and debugging)
 - [x] pass manager ; run passes until the fixpoint is reached
 - ~~add `allocate` memory operation to grin ; required by circular data structures~~
-- [ ] grin syntax for type signatures
-- [ ] grin syntax to declare primops with their type signature
-- [ ] grin validator pass
+- [x] grin syntax for type signatures
+- [x] grin syntax to declare primops with their type signature
+- [x] grin validator pass
 - ~~hpt result based dead code elimination pass~~
 
 ### finish
