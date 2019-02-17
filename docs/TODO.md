@@ -26,7 +26,6 @@
 
 - LLVM backend for HPT IR
 - inline support
-- sharing analysis
 
 # SIMD / SPMD
 - [The story of ispc](http://pharr.org/matt/blog/2018/04/30/ispc-all.html)
@@ -38,3 +37,8 @@
 ### shared blocks
 
 - add support for named blocks and a corresponding call block command i.e. `tailcall` / `continue` / `join` / `follow` __BLOCK_NAME__
+
+### STG primops
+
+- add primops to support STG style unknown funtion call. Whith these primops incremental compilation could be supported
+- static analysis of STG primops to transform STG closures and info tables to ordinary GRIN C/F/P nodes
