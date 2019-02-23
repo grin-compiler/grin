@@ -32,12 +32,18 @@ data Ty
   | TySimple  SimpleType
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
+data ExternalKind
+  = PrimOp -- ^ Implemented in the internal code generator
+  | FFI    -- ^ Implemented in C and linked during the linker phase
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
+
 data External
   = External
   { eName       :: Name
   , eRetType    :: Ty
   , eArgsType   :: [Ty]
   , eEffectful  :: Bool
+  , eKind       :: ExternalKind
   }
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
@@ -117,6 +123,7 @@ externals = \case
 -- * Binary instances
 
 deriving instance Binary Name
+deriving instance Binary ExternalKind
 deriving instance Binary External
 deriving instance Binary Ty
 deriving instance Binary SimpleType

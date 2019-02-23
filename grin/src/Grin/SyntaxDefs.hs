@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, DeriveAnyClass, StandaloneDeriving #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, DeriveAnyClass, StandaloneDeriving, LambdaCase #-}
 module Grin.SyntaxDefs where
 
 import Data.Text (Text, unpack)
@@ -30,6 +30,11 @@ instance IsString Name where
 
 instance PrintfArg Name where
   formatArg = formatString . unpack . unNM
+
+nameString :: Name -> String
+nameString = \case
+  NM n -> unpack n
+  _    -> error "Name index found." -- This could have left in the AST after a problematic deserialisation.
 
 -- * GRIN Tag
 

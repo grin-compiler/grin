@@ -18,6 +18,7 @@ import Data.Char (chr, ord)
 import Grin.Grin
 import Data.Map.Strict as Map
 import Data.String (fromString)
+import Data.Functor.Infix ((<$$>))
 import Data.Text as Text
 import Control.Monad.IO.Class
 
@@ -54,8 +55,8 @@ evalPrimOp name params args = case name of
   "_prim_string_tail"    -> string_un_op string Text.tail
   "_prim_string_len"     -> string_un_op int (fromIntegral . Text.length)
   "_prim_string_concat"  -> string_bin_op string (\t1 t2 -> Text.concat [t1, t2])
-  "_prim_string_lt"      -> string_bin_op bool (<)
-  "_prim_string_eq"      -> string_bin_op bool (==)
+  "_prim_string_lt"      -> string_bin_op int (boolean 0 1 <$$> (<))
+  "_prim_string_eq"      -> string_bin_op int (boolean 0 1 <$$> (==))
   "_prim_string_cons"    -> string_cons
 
   -- Int
@@ -178,3 +179,5 @@ evalPrimOp name params args = case name of
   primError = case args of
     [RT_Lit (LString msg)] -> liftIO (ioError $ userError $ Text.unpack msg) >> pure RT_Unit
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  boolean f t x = if x then t else f
