@@ -7,7 +7,6 @@ import Data.Functor.Foldable
 import Data.Maybe
 import Data.Monoid
 import Grin.Grin
-import Test.PrimOps
 
 import Data.List       as List
 import Data.Map.Strict as Map
@@ -21,7 +20,6 @@ data Check
   | OnlyBasicValuesInCases
   | OnlyTagsInAlts
   | OnlyUniqueNames
---  | AllowedBindStoreValues
   | SimpleExpOnLHS
   deriving (Enum, Eq, Show)
 
@@ -60,22 +58,6 @@ boolResult :: Bool -> Result
 boolResult = \case
   True  -> Ok
   False -> Failed ""
-{-
-allowedBindStoreValues :: Exp -> Bool
-allowedBindStoreValues = getAll . bindStoreValues (\case
-  Loc _ -> All True
-  _     -> All False)
--}
-{-
-onlyExplicitNodes :: HPTResult -> Exp -> Result
-onlyExplicitNodes hpt e = result . Set.toList $ cata (usedNames Set.singleton) e `Set.intersection` varsOfTagNodes hpt
-
-varsOfTagNodes :: HPTResult -> Set Name
-varsOfTagNodes = Set.fromList . Map.keys . Map.filter (not . Set.null . Set.filter isNode) . undefined -- envMap
-  where
-    isNode (N _) = True
-    isNode (V _) = False
--}
 
 bindStoreValues :: Monoid m => (Val -> m) -> Exp -> m
 bindStoreValues f = para $ \case
@@ -130,7 +112,7 @@ nonDefinedNames :: Exp -> [Name]
 nonDefinedNames e = Set.toList $ Prelude.foldl Set.difference
   (cata (usedNames Set.singleton) e)
   [ (cata (definedNames Set.singleton) e)
-  , Set.fromList $ Map.keys primOps
+  , Set.fromList $ fmap eName $ externals e
   ]
 
 storedValues :: Monoid m => (Val -> m) -> ExpF m -> m

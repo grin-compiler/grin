@@ -76,7 +76,6 @@ library
     Test.Check
     Test.Grammar
     Test.IO
-    Test.PrimOps
     Test.Test
     Test.Util
     Transformations.BindNormalisation

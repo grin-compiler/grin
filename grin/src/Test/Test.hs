@@ -27,7 +27,8 @@ import GHC.Generics
 import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
 import qualified Grin.TypeEnvDefs as Grin
-import qualified Test.PrimOps as PrimOps
+import qualified Grin.PrimOpsPrelude as PrimOps'
+-- import qualified Test.PrimOps as PrimOps
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Vector
 import Generic.Random
@@ -329,6 +330,7 @@ getSExpTypeInEff = \case
 
 instance Arbitrary Eff where arbitrary = genericArbitraryU
 
+-- TODO: Remove
 data Type
   = TUnit -- TODO: Rename
   | TInt
@@ -454,13 +456,47 @@ type GoalM a = ReaderT Context (LogicT Gen) a
 initContext :: GoalM G.Exp -> Context
 initContext expGen = Context (Env mempty primitives mempty) mempty expGen
   where
+    primitives = Map.fromList [ (eName p, (tyToType <$> eArgsType p, tyToType $ eRetType p, [])) | p <- preludePurePrimOps ]
+    tyToType = \case
+      TySimple ty -> case ty of
+        T_Int64  -> TInt
+        T_Word64 -> TWord
+        T_Float  -> TFloat
+        T_Bool   -> TBool
+        T_Unit   -> TUnit
+        T_String -> TString
+        T_Char   -> TChar
+      ty -> error $ "Unsupported type when testing: " ++ show ty
+
+{-
+  = TUnit -- TODO: Rename
+  | TInt
+  | TFloat
+  | TBool
+  | TWord
+  | TLoc Type
+  | TTag Name [Type] -- Only constant tags, only simple types, or variables with location info
+  | TUnion (Set Type)
+  | TString
+  | TChar
+
+
+  = External
+  { eName       :: Name
+  , eRetType    :: Ty
+  , eArgsType   :: [Ty]
+  , eEffectful  :: Bool
+  }
+
     primitives = Map.map (\(params, ret) -> (convPrimTypes <$> params, convPrimTypes ret, [])) PrimOps.primOps
+    primitives = primPrelude
     convPrimTypes = \case
       PrimOps.TInt   -> TInt
       PrimOps.TWord  -> TWord
       PrimOps.TFloat -> TFloat
       PrimOps.TBool  -> TBool
       PrimOps.TUnit  -> TUnit
+-}
 
 runGoalM :: GoalM G.Exp -> GoalM a -> Gen [a]
 runGoalM expGen = observeManyT 1 . flip runReaderT (initContext expGen)
