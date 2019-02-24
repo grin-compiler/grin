@@ -42,6 +42,7 @@ primPrelude = [progConst|
     _prim_char_int     :: T_Char  -> T_Int64
 
     -- Int
+    _prim_int_shr   :: T_Int64 -> T_Int64
     _prim_int_add   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_sub   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_mul   :: T_Int64 -> T_Int64 -> T_Int64

@@ -322,6 +322,7 @@ codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
     "_prim_float_string" -> op [float] string
     "_prim_char_int"     -> op [char] int
     -- Int
+    "_prim_int_shr"   -> op [int] int
     "_prim_int_add"   -> op [int, int] int
     "_prim_int_sub"   -> op [int, int] int
     "_prim_int_mul"   -> op [int, int] int

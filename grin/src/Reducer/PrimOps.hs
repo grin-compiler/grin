@@ -22,6 +22,7 @@ import Data.Text as Text
 import Control.Monad.IO.Class
 
 import Control.Concurrent (threadDelay)
+import Data.Bits
 import System.IO (hIsEOF, stdin)
 import System.IO.Unsafe
 
@@ -58,6 +59,7 @@ evalPrimOp name params args = case name of
   "_prim_string_cons"    -> string_cons
 
   -- Int
+  "_prim_int_shr"   -> int_un_op int (`shiftR` 1)
   "_prim_int_add"   -> int_bin_op int (+)
   "_prim_int_sub"   -> int_bin_op int (-)
   "_prim_int_mul"   -> int_bin_op int (*)
@@ -104,6 +106,10 @@ evalPrimOp name params args = case name of
   bool  x = pure . RT_Lit . LBool $ x
   string x = pure . RT_Lit . LString $ x
 --  char x = pure . RT_Lit . LChar $ x
+
+  int_un_op retTy fn = case args of
+    [RT_Lit (LInt64 a)] -> retTy $ fn a
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_bin_op retTy fn = case args of
     [RT_Lit (LInt64 a), RT_Lit (LInt64 b)] -> retTy $ fn a b
