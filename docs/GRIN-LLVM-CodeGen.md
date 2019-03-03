@@ -120,3 +120,7 @@ Node operations:
   - hash cons TypeEnv to get rid of duplicate types
   - use better variable names in the generated LLVM IR
   - remove special heap pointer handling from codegen ; expose it in GRIN via a transfromation ; heap pointer should be a parameter and return value of `store`.
+
+## Readings
+
+- https://mapping-high-level-constructs-to-llvm-ir.readthedocs.io/en/latest/README.html
