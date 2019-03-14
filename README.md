@@ -20,6 +20,10 @@ Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.ju
 <img src="https://raw.githubusercontent.com/grin-tech/grin/master/images/grin-syntax.png" width="500" >
 </a>
 
+## Showcase
+
+![](https://pbs.twimg.com/media/Dpasi9OW4AAxpwi.jpg)
+
 ## Setup
 
 ### Installing LLVM
