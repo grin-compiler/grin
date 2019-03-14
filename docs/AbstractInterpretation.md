@@ -23,6 +23,11 @@ method: compiled abstract interpretation
 -  http://www.iro.umontreal.ca/~feeley/papers/BoucherFeeleyCC96.pdf ; Abstract compilation: A new implementation paradigm for static analysis
 -  https://pdfs.semanticscholar.org/5ad8/cb6b477793ffb5ec29dde89df6b82dbb6dba.pdf ; A Graph–Free Approach to Data–Flow Analysis
 
+### efficient implementation
+- [EigenCFA: Accelerating Flow Analysis with GPUs](http://matt.might.net/papers/prabhu2011eigencfa.pdf)
+- [A GPU Implementation of Inclusion-based Points-to Analysis](https://userweb.cs.txstate.edu/~mb92/papers/ppopp12.pdf)
+- [Parallel Inclusion-based Points-to Analysis](http://iss.ices.utexas.edu/Publications/Papers/oopsla10-mendezlojo.pdf)
+
 ## Notes
   - HPT is liberal as much as possible; allow variadic case type (i.e. ANY -> ANY)
 
