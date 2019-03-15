@@ -19,6 +19,8 @@ method: compiled abstract interpretation
 - https://en.wikipedia.org/wiki/Data-flow_analysis
 - https://en.wikipedia.org/wiki/Abstract_interpretation
 
+- [Pointer analysis overview](http://www.cs.cmu.edu/afs/cs/academic/class/15745-s11/public/lectures/L27-Pointer-Analysis.pdf)
+
 ### search for: abstract compilation
 -  http://www.iro.umontreal.ca/~feeley/papers/BoucherFeeleyCC96.pdf ; Abstract compilation: A new implementation paradigm for static analysis
 -  https://pdfs.semanticscholar.org/5ad8/cb6b477793ffb5ec29dde89df6b82dbb6dba.pdf ; A Graph–Free Approach to Data–Flow Analysis
