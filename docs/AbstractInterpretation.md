@@ -19,7 +19,7 @@ method: compiled abstract interpretation
 - https://en.wikipedia.org/wiki/Data-flow_analysis
 - https://en.wikipedia.org/wiki/Abstract_interpretation
 
-## points-to analysis
+### points-to analysis
 - [Pointer analysis overview (CMU)](http://www.cs.cmu.edu/afs/cs/academic/class/15745-s11/public/lectures/L27-Pointer-Analysis.pdf)
 - [Pointer analysis overview (IAState)](http://web.cs.iastate.edu/~weile/cs513x/2.PointerAnalysis.pdf)
 - [Lecture Notes: Pointer Analysis](https://www.cs.cmu.edu/~aldrich/courses/15-819O-13sp/resources/pointer.pdf)
