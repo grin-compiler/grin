@@ -24,6 +24,9 @@ method: compiled abstract interpretation
 - [Pointer analysis overview (IAState)](http://web.cs.iastate.edu/~weile/cs513x/2.PointerAnalysis.pdf)
 - [Lecture Notes: Pointer Analysis](https://www.cs.cmu.edu/~aldrich/courses/15-819O-13sp/resources/pointer.pdf)
 - [Pointer Analysis Tutorial](https://yanniss.github.io/points-to-tutorial15.pdf)
+- [Cloning-Based Context-Sensitive Pointer Alias Analysis Using Binary Decision Diagrams](https://suif.stanford.edu/papers/pldi04.pdf)
+- [Points-to Analysis in Almost Linear Time](https://www.cs.cornell.edu/courses/cs711/2005fa/papers/steensgaard-popl96.pdf)
+- [Fast and accurate flow-insensitive points-to analysis](http://www.cs.utexas.edu/users/pingali/CS380C/2007fa/papers/popl97.pdf)
 
 ### search for: abstract compilation
 -  http://www.iro.umontreal.ca/~feeley/papers/BoucherFeeleyCC96.pdf ; Abstract compilation: A new implementation paradigm for static analysis
