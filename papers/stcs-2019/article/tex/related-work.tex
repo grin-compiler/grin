@@ -1,0 +1,22 @@
+\documentclass[main.tex]{subfiles}
+\begin{document}
+	
+	\subsection{GRIN}
+	
+	%TODO: reference to hbcc
+	
+	The original GRIN framework was developed by U. Boquist, and first described in an article~\cite{boquist-grin}, then in his PhD thesis~\cite{boquist-phd}. This version of GRIN used the Chalmers Haskell-B Compiler as its front end and RISC as its back end. At that time, his implementation of GRIN already compared favorably to the existing Glasgow Haskell Compiler of version 4.01.
+	
+	\subsection{Adaptations of GRIN}
+	
+	Other compilers also use GRIN as their back end. Probably the most notable one is the Utrecht Haskell Compiler~\cite{uhc}. UHC is a completely standalone Haskell compiler with its own front end. The main idea behind UHC is to use attribute grammars handle the ever-growing complexity of compiler construction in an easily manageable way.
+	
+	\subsection{Other Intermediate Representations}
+	
+	GRIN is not the only IR available for functional languages. In fact, it is not even the most advanced one. The Haskell Research Compiler~\cite{hrc} and the MLton~\cite{mlton} Standard ML compiler both use IR languages very similar to GRIN. However, these IRs are built from basic blocks instead of monadic bindings. This approach opens up a whole spectrum of new optimization opportunities. For example, the Haskell Research Compiler uses SIMD vectorization passes in its optimization pipeline, and achieves performance metrics comparable to native C~\cite{haskell-gap}.
+	
+	\subsection{Compilers with LLVM Back Ends}
+	
+	In the imperative setting, probably the most well-known compiler with an LLVM back end is Clang~\cite{clang}. Clang's main goal is to provide a production quality compiler with a reusable, library-like structure. However, certain functional language compilers also have LLVM back ends. The two most notable ones are the Glasgow Haskell Compiler~\cite{ghc} and MLton~\cite{mlton-llvm}.
+	
+\end{document}

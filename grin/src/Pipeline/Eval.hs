@@ -7,6 +7,7 @@ import Text.Megaparsec
 import Grin.Grin
 import Grin.TypeCheck
 import Grin.Parse
+import Grin.Statistics
 import Reducer.Base (RTVal)
 import qualified Reducer.IO
 import qualified Reducer.Pure
@@ -44,3 +45,6 @@ evalProgram reducer program =
   case reducer of
     PureReducer -> Reducer.Pure.reduceFun program "grinMain"
     IOReducer   -> Reducer.IO.reduceFun program "grinMain"
+
+pureEvalWithRTStats :: Program -> IO (RTVal, Statistics)
+pureEvalWithRTStats p = Reducer.Pure.reduceFunWithRTStats p "grinMain"

@@ -1,0 +1,48 @@
+\documentclass[10pt,a4paper,oneside]{article}
+
+\usepackage{style}
+\usepackage{subfiles}
+
+%TODO: remove vspace from title
+\title{\vspace{-2cm}A modern look at GRIN,\\ an optimizing functional language back end}
+%\title{Dead Code Elimination for GRIN with Interprocedural Whole-Program Analysis}
+\date{\today}
+\author{Péter Dávid Podlovics, Csaba Hruska}
+
+\begin{document}
+	
+	\maketitle
+	\subfile{abstract}
+	
+	\section{Introduction} \label{sec-intro}
+	\subfile{introduction}
+	
+	\section{Related Work}
+	\subfile{related-work}
+	
+	\section{Graph Reduction Intermediate Notation}
+	\subfile{grin}
+	
+	\section{Compiling to LLVM}
+	\subfile{llvm}
+	
+	\section{Dead Code Elimination}
+	\subfile{dce}
+	
+	\section{Dead Data Elimination}
+	\subfile{dde}
+	
+	
+	% \section{Applications of Dead Data Elimination}
+	% \subfile{dde-app}
+	% \section{Compiled Abstract Interpretation}
+	% \section{Results}
+	% \section{Conclusion}
+	
+	\section*{Acknowledgements}
+	\subfile{acknowledgements}
+	
+	\subfile{bibliography}
+
+	
+\end{document}
