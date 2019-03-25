@@ -41,7 +41,7 @@ type SimpleType = Int32 -- TODO: rename to a generic name; should not be related
 data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
-  | NotIn             (Set Tag)
+  | AnyNotIn          (Set Tag)
   -- A field satisfies a predicate iff at least one of its possible values
   -- satisfy that predicate.
   -- NOTE: "non-deterministic" selector for Any?

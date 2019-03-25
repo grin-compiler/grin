@@ -232,11 +232,11 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.NotIn tags
+                  { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
                   , srcReg = valReg
                   , dstReg = altScrutReg
                   }
-            emit IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
+            emit IR.If {condition = IR.AnyNotIn tags, srcReg = valReg, instructions = altInstructions}
 
           _ -> error $ "CBy does not support the following case pattern: " ++ show cpat
 

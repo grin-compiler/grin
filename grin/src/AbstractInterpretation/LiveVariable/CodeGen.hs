@@ -250,7 +250,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
             addReg scrutName altScrutReg
             -- restricting scrutinee to alternative's domain
             emit IR.Project
-              { srcSelector = IR.ConditionAsSelector $ IR.NotIn tags
+              { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
               , srcReg = scrutReg
               , dstReg = altScrutReg
               }
@@ -322,7 +322,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
             altInstructions <- codeGenAltNotIn tags (const doNothing)
             emit IR.If
-              { condition    = IR.NotIn tags
+              { condition    = IR.AnyNotIn tags
               , srcReg       = valReg
               , instructions = altInstructions
               }

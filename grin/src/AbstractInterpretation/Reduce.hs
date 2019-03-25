@@ -162,7 +162,7 @@ evalInstruction = \case
       SimpleTypeExists ty -> do
         typeSet <- use $ selectReg srcReg.simpleType
         pure $ Set.member ty typeSet
-      NotIn tags -> do
+      AnyNotIn tags -> do
         tagMap <- use $ selectTagMap srcReg
         typeSet <- use $ selectReg srcReg.simpleType
         pure $ not (Set.null typeSet) || Data.Foldable.any (`Set.notMember` tags) (Map.keysSet tagMap)
@@ -197,7 +197,7 @@ evalInstruction = \case
         when (Set.member ty typeSet) $ do
           selectReg dstReg.simpleType %= (Set.insert ty)
 
-      NotIn tags -> do
+      AnyNotIn tags -> do
         value <- use $ selectReg srcReg
         tagMap <- use $ selectTagMap srcReg
         typeSet <- use $ selectReg srcReg.simpleType
