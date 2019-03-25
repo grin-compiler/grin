@@ -100,7 +100,6 @@ prettyCondition mirm = \case
     NodeTypeExists  tag -> prettyTag mirm tag <+> text "exists in"
     SimpleTypeExists ty -> prettySimpleType ty <> text "#" <> (integer $ fromIntegral ty) <+> text "exists in"
     NotIn          tags -> text "not in" <+> list (map (prettyTag mirm) $ Set.toList tags)
-    All       predicate -> text "all" <+> prettyPredicate mirm predicate True
     Any       predicate -> text "any" <+> prettyPredicate mirm predicate False
 
 prettyConstant :: Maybe IRMap -> Constant -> Doc

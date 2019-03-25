@@ -46,7 +46,6 @@ data Condition
   -- satisfy that predicate.
   -- NOTE: "non-deterministic" selector for Any?
   | Any               Predicate
-  | All               Predicate
   deriving (Eq, Ord, Show)
 
 data Predicate

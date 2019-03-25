@@ -166,24 +166,12 @@ evalInstruction = \case
         tagMap <- use $ selectTagMap srcReg
         typeSet <- use $ selectReg srcReg.simpleType
         pure $ not (Set.null typeSet) || Data.Foldable.any (`Set.notMember` tags) (Map.keysSet tagMap)
-      All (TagIn tagSet) -> do
-        tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition all Set.member tagMap
-      All (TagNotIn tagSet) -> do
-        tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition all Set.notMember tagMap
       Any (TagIn tagSet) -> do
         tagMap <- use $ selectTagMap srcReg
         pure $ tagPredicateCondition any Set.member tagMap
       Any (TagNotIn tagSet) -> do
         tagMap <- use $ selectTagMap srcReg
         pure $ tagPredicateCondition any Set.notMember tagMap
-      All (ValueIn rng) -> do
-        val <- use $ selectReg srcReg
-        pure $ valPredicateCondition all (`inRange` rng) val
-      All (ValueNotIn rng) -> do
-        val <- use $ selectReg srcReg
-        pure $ valPredicateCondition all (`notInRange` rng) val
       Any (ValueIn rng) -> do
         val <- use $ selectReg srcReg
         pure $ valPredicateCondition any (`inRange` rng) val
@@ -231,13 +219,7 @@ evalInstruction = \case
       NodeItem tag itemIndex -> selectTagMap dstReg.at tag.non mempty.ix itemIndex %= (mappend value)
       AllFields -> selectTagMap dstReg %= (Map.map (V.map (mappend value)))
       ConditionAsSelector cond -> case cond of
-        -- selects all fields/simpleType having at least one possible value satisfying the predicate
-        All (ValueIn    rng) -> do
-          selectReg dstReg.simpleType %= (mappendIf (any (`inRange` rng)) value)
-          selectTagMap dstReg %= Map.map (V.map (mappendIf (any (`inRange` rng)) value))
-        All (ValueNotIn rng) -> do
-          selectReg dstReg.simpleType %= (mappendIf (any (`notInRange` rng)) value)
-          selectTagMap dstReg %= Map.map (V.map (mappendIf (any (`notInRange` rng)) value))
+        _ -> pure () -- TODO
 
   Move {..} -> move srcReg dstReg
 
