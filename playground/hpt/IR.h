@@ -14,7 +14,7 @@ typedef int32_t simple_type_t;
 typedef int32_t tag_t;
 typedef int32_t reg_t;
 typedef int32_t mem_t;
-typedef int32_t constant_id_t; // constant id
+typedef int32_t intset_id_t;
 typedef int32_t block_id_t;
 
 /////////////////////////////////////
@@ -38,7 +38,7 @@ enum predicate_type {
 struct predicate_t {
   enum predicate_type type;
   union {
-    constant_id_t constant_id;
+    intset_id_t   tag_set_id;
     range_t       range;
   };
 };
@@ -58,7 +58,7 @@ struct condition_t {
   union {
     tag_t         tag;
     simple_type_t simple_type;
-    constant_id_t constant_id;
+    intset_id_t   tag_set_id;
     predicate_t   predicate;
   };
 };
@@ -85,20 +85,44 @@ struct selector_t {
 
 /////////////////////////////////////
 
+// constant
+enum constant_type {
+  CONST_SIMPLE_TYPE   = 400,
+  CONST_HEAP_LOCATION = 401,
+  CONST_NODE_TYPE     = 402,
+  CONST_NODE_ITEM     = 403,
+};
+
+struct constant_t {
+  enum constant_type type;
+  union {
+    simple_type_t simple_type;
+    mem_t mem;
+    struct {
+      tag_t     node_tag;
+      int32_t   item_index; // index or arity
+      int32_t   item_value;
+    };
+    condition_t condition;
+  };
+};
+
+/////////////////////////////////////
+
 // instructions
 enum cmd_type {
-  CMD_IF                  = 400,
-  CMD_PROJECT             = 401,
-  CMD_EXTEND              = 402,
-  CMD_MOVE                = 403,
-  CMD_RESTRICTED_MOVE     = 404,
-  CMD_CONDITIONAL_MOVE    = 405,
-  CMD_FETCH               = 406,
-  CMD_STORE               = 407,
-  CMD_UPDATE              = 408,
-  CMD_RESTRICTED_UPDATE   = 409,
-  CMD_CONDITIONAL_UPDATE  = 410,
-  CMD_SET                 = 411,
+  CMD_IF                  = 500,
+  CMD_PROJECT             = 501,
+  CMD_EXTEND              = 502,
+  CMD_MOVE                = 503,
+  CMD_RESTRICTED_MOVE     = 504,
+  CMD_CONDITIONAL_MOVE    = 505,
+  CMD_FETCH               = 506,
+  CMD_STORE               = 507,
+  CMD_UPDATE              = 508,
+  CMD_RESTRICTED_UPDATE   = 509,
+  CMD_CONDITIONAL_UPDATE  = 510,
+  CMD_SET                 = 511,
 };
 
 struct cmd_t {
@@ -169,7 +193,7 @@ struct cmd_t {
 
     struct {
       reg_t         dst_reg;
-      constant_id_t constant_id;
+      constant_t    constant;
     } cmd_set;
 
   };
@@ -181,7 +205,7 @@ struct abstract_program_t {
 
   std::vector<cmd_t>              cmd;
   std::vector<range_t>            block;
-  std::vector<std::set<int32_t>>  constant_set;
+  std::vector<std::set<int32_t>>  intset;
 };
 
 
@@ -201,7 +225,7 @@ struct cmd_t {
   cmds ...
   block count     i32
   blocks (ranges) ...
-  constant count  i32
+  intset count    i32
     set size      i32
     set elems ... [i32]
 */
@@ -232,7 +256,7 @@ void read_predicate(ctx_t &ctx, predicate_t &predicate) {
   switch (predicate.type) {
     case PRE_TAG_IN:
     case PRE_TAG_NOT_IN:
-      predicate.constant_id = *ctx.ptr++;
+      predicate.tag_set_id = *ctx.ptr++;
       break;
     case PRE_VALUE_IN:
     case PRE_VALUE_NOT_IN:
@@ -255,7 +279,7 @@ void read_condition(ctx_t &ctx, condition_t &condition) {
       condition.simple_type = *ctx.ptr++;
       break;
     case CON_NOT_IN:
-      condition.constant_id = *ctx.ptr++;
+      condition.tag_set_id = *ctx.ptr++;
     case CON_ANY:
       read_predicate(ctx, condition.predicate);
       break;
@@ -280,6 +304,28 @@ void read_selector(ctx_t &ctx, selector_t &selector) {
       break;
     default:
       read_error(ctx);
+  }
+}
+
+void read_constant(ctx_t &ctx, constant_t &constant) {
+  if (ctx.error) return;
+
+  constant.type = (constant_type) (*ctx.ptr++);
+  switch (constant.type) {
+    case CONST_SIMPLE_TYPE:
+      constant.simple_type = *ctx.ptr++;
+    case CONST_HEAP_LOCATION:
+      constant.mem = *ctx.ptr++;
+    case CONST_NODE_TYPE:
+      constant.node_tag = *ctx.ptr++;
+      constant.item_index = *ctx.ptr++;
+    case CONST_NODE_ITEM:
+      constant.node_tag = *ctx.ptr++;
+      constant.item_index = *ctx.ptr++;
+      constant.item_value = *ctx.ptr++;
+    default:
+      read_error(ctx);
+      break;
   }
 }
 
@@ -339,7 +385,7 @@ void read_cmd(ctx_t &ctx, cmd_t &c) {
       break;
     case CMD_SET:
       c.cmd_set.dst_reg = *ctx.ptr++;
-      c.cmd_set.constant_id = *ctx.ptr++;
+      read_constant(ctx, c.cmd_set.constant);
       break;
     default:
       read_error(ctx);
@@ -370,13 +416,13 @@ abstract_program_t* read_abstract_program(ctx_t &ctx) {
     read_range(ctx, prg->block[i]);
   }
 
-  // constant sets
+  // int sets
   count = *ctx.ptr++;
-  prg->constant_set.resize(count);
+  prg->intset.resize(count);
   for (i = 0; i < count; i++) {
     size = *ctx.ptr++;
     for (j = 0; j < size; j++) {
-      prg->constant_set[i].insert(*ctx.ptr++);
+      prg->intset[i].insert(*ctx.ptr++);
     }
   }
 
