@@ -1,3 +1,7 @@
+#include <fstream>
+#include <iterator>
+#include <vector>
+
 #include "IR.h"
 
 /*
@@ -23,8 +27,6 @@ struct cmd_t {
 
 
 struct ctx_t {
-  int32_t buffer[];
-  int32_t buffer_size;
   int32_t *ptr;
   bool error;
 };
@@ -214,4 +216,29 @@ void read_abstract_program(ctx_t &ctx, abstract_program_t &prg) {
       prg.intset[i].insert(*ctx.ptr++);
     }
   }
+}
+
+abstract_program_t *load_abstract_program(char *name) {
+
+  // load file
+  std::ifstream input(name, std::ios::binary);
+  std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
+
+  // setup context
+  ctx_t ctx;
+  ctx.error = false;
+  ctx.ptr = (int32_t*) buffer.data();
+
+  // read program
+  abstract_program_t *prg = new abstract_program_t();
+
+  read_abstract_program(ctx, *prg);
+
+  // return result
+  if (ctx.error) {
+    delete prg;
+    return 0;
+  }
+
+  return prg;
 }

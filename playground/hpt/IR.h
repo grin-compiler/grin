@@ -207,3 +207,5 @@ struct abstract_program_t {
   std::vector<range_t>            block;
   std::vector<std::set<int32_t>>  intset;
 };
+
+abstract_program_t *load_abstract_program(char *name);
