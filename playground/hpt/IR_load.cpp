@@ -1,3 +1,4 @@
+#include <iostream>
 #include <fstream>
 #include <iterator>
 #include <vector>
@@ -31,12 +32,14 @@ struct ctx_t {
   bool error;
 };
 
-void read_error(ctx_t &ctx) {
+void read_error(ctx_t &ctx, int code) {
   ctx.error = true;
+  std::cout << "error code " << code << "\n";
 }
 
 void read_range(ctx_t &ctx, range_t &range) {
   if (ctx.error) return;
+  //std::cout << "read_range" << "\n";
 
   range.from = *ctx.ptr++;
   range.to = *ctx.ptr++;
@@ -46,6 +49,7 @@ void read_predicate(ctx_t &ctx, predicate_t &predicate) {
   if (ctx.error) return;
 
   predicate.type = (predicate_type) (*ctx.ptr++);
+  //std::cout << "read_predicate " << predicate.type << "\n";
   switch (predicate.type) {
     case PRE_TAG_IN:
     case PRE_TAG_NOT_IN:
@@ -56,7 +60,7 @@ void read_predicate(ctx_t &ctx, predicate_t &predicate) {
       read_range(ctx, predicate.range);
       break;
     default:
-      read_error(ctx);
+      read_error(ctx,1);
   }
 }
 
@@ -64,6 +68,7 @@ void read_condition(ctx_t &ctx, condition_t &condition) {
   if (ctx.error) return;
 
   condition.type = (condition_type) (*ctx.ptr++);
+  //std::cout << "read_condition " << condition.type << "\n";
   switch (condition.type) {
     case CON_NODE_TYPE_EXISTS:
       condition.tag = *ctx.ptr++;
@@ -71,13 +76,14 @@ void read_condition(ctx_t &ctx, condition_t &condition) {
     case CON_SIMLE_TYPE_EXISTS:
       condition.simple_type = *ctx.ptr++;
       break;
-    case CON_NOT_IN:
+    case CON_ANY_NOT_IN:
       condition.tag_set_id = *ctx.ptr++;
+      break;
     case CON_ANY:
       read_predicate(ctx, condition.predicate);
       break;
     default:
-      read_error(ctx);
+      read_error(ctx,2);
   }
 }
 
@@ -85,6 +91,8 @@ void read_selector(ctx_t &ctx, selector_t &selector) {
   if (ctx.error) return;
 
   selector.type = (selector_type) (*ctx.ptr++);
+  //std::cout << "read_selector " << selector.type << "\n";
+
   switch (selector.type) {
     case SEL_NODE_ITEM:
       selector.node_tag = *ctx.ptr++;
@@ -96,7 +104,7 @@ void read_selector(ctx_t &ctx, selector_t &selector) {
     case SEL_ALL_FIELDS:
       break;
     default:
-      read_error(ctx);
+      read_error(ctx,3);
   }
 }
 
@@ -104,21 +112,26 @@ void read_constant(ctx_t &ctx, constant_t &constant) {
   if (ctx.error) return;
 
   constant.type = (constant_type) (*ctx.ptr++);
+  //std::cout << "read_constant " << constant.type << "\n";
+
   switch (constant.type) {
     case CONST_SIMPLE_TYPE:
       constant.simple_type = *ctx.ptr++;
+      break;
     case CONST_HEAP_LOCATION:
       constant.mem = *ctx.ptr++;
+      break;
     case CONST_NODE_TYPE:
       constant.node_tag = *ctx.ptr++;
       constant.item_index = *ctx.ptr++;
+      break;
     case CONST_NODE_ITEM:
       constant.node_tag = *ctx.ptr++;
       constant.item_index = *ctx.ptr++;
       constant.item_value = *ctx.ptr++;
-    default:
-      read_error(ctx);
       break;
+    default:
+      read_error(ctx,4);
   }
 }
 
@@ -126,6 +139,9 @@ void read_cmd(ctx_t &ctx, cmd_t &c) {
   if (ctx.error) return;
 
   c.type = (cmd_type) (*ctx.ptr++);
+
+  //std::cout << "read_cmd " << c.type << "\n";
+
   switch (c.type) {
     case CMD_IF:
       read_condition(ctx, c.cmd_if.condition);
@@ -181,7 +197,7 @@ void read_cmd(ctx_t &ctx, cmd_t &c) {
       read_constant(ctx, c.cmd_set.constant);
       break;
     default:
-      read_error(ctx);
+      read_error(ctx,5);
   }
 }
 
@@ -192,8 +208,17 @@ void read_abstract_program(ctx_t &ctx, abstract_program_t &prg) {
   prg.memory_count = *ctx.ptr++;
   prg.register_count = *ctx.ptr++;
 
+  // start block id
+  prg.start_block_id = *ctx.ptr++;
+
+  // debug
+  std::cout << "prg.memory_count " << prg.memory_count << "\n";
+  std::cout << "prg.register_count " << prg.register_count << "\n";
+  std::cout << "prg.start_block_id " << prg.start_block_id << "\n";
+
   // commands
   count = *ctx.ptr++;
+  std::cout << "command count " << count << "\n";
   prg.cmd.resize(count);
   for (i = 0; i < count; i++) {
     read_cmd(ctx, prg.cmd[i]);

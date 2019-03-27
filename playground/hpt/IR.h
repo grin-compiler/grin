@@ -49,7 +49,7 @@ struct predicate_t {
 enum condition_type {
   CON_NODE_TYPE_EXISTS  = 200,
   CON_SIMLE_TYPE_EXISTS = 201,
-  CON_NOT_IN            = 202,
+  CON_ANY_NOT_IN        = 202,
   CON_ANY               = 203,
 };
 
@@ -200,8 +200,9 @@ struct cmd_t {
 };
 
 struct abstract_program_t {
-  int32_t   memory_count;
-  int32_t   register_count;
+  int32_t     memory_count;
+  int32_t     register_count;
+  block_id_t  start_block_id;
 
   std::vector<cmd_t>              cmd;
   std::vector<range_t>            block;
