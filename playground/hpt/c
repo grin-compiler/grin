@@ -1,3 +1,5 @@
 set -x -e
-g++ -O3 -c -std=c++11 hpt.cpp
-g++ -O3 -c -std=c++11 IR.h
+
+#g++ -O3 -c -std=c++11 hpt.cpp
+
+g++ -O3 -c -std=c++11 IR_load.cpp
