@@ -57,6 +57,7 @@ import qualified AbstractInterpretation.CreatedBy.Readback as CBy
 import qualified AbstractInterpretation.CreatedBy.Result as CBy
 import qualified AbstractInterpretation.LiveVariable.Result as LVA
 import qualified AbstractInterpretation.Sharing.Result as Sharing
+import AbstractInterpretation.BinaryIR
 import AbstractInterpretation.OptimiseAbstractProgram
 import AbstractInterpretation.CreatedBy.Pretty
 import AbstractInterpretation.HeapPointsTo.Pretty
@@ -107,6 +108,7 @@ import Data.Maybe (isNothing)
 import System.IO (BufferMode(..), hSetBuffering, stdout)
 import Data.Binary as Binary
 import Grin.Nametable as Nametable
+import qualified Data.ByteString.Lazy as LBS
 
 
 data Transformation
@@ -162,6 +164,7 @@ data AbstractComputationStep
   = Compile
   | Optimise
   | PrintProgram
+  | SaveProgram String
   | RunPure
   | PrintResult
   deriving (Eq, Show)
@@ -384,6 +387,7 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram HPT.codeGen psHPTProgram
       Optimise      -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psHPTProgram
+      SaveProgram p -> saveAbstractProgram p psHPTProgram
       RunPure       -> runHPTPure
       PrintResult   -> printAnalysisResult psHPTResult
 
@@ -391,6 +395,7 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram CBy.codeGen psCByProgram
       Optimise      -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psCByProgram
+      SaveProgram p -> saveAbstractProgram p psCByProgram
       RunPure       -> runCByPure
       PrintResult   -> printAnalysisResult psCByResult
 
@@ -398,6 +403,7 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram LVA.codeGen psLVAProgram
       Optimise      -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psLVAProgram
+      SaveProgram p -> saveAbstractProgram p psLVAProgram
       RunPure       -> runLVAPure
       PrintResult   -> printAnalysisResult psLVAResult
 
@@ -407,6 +413,7 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram Sharing.codeGen psSharingProgram
       Optimise      -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psSharingProgram
+      SaveProgram p -> saveAbstractProgram p psSharingProgram
       RunPure       -> runSharingPure
       PrintResult   -> printAnalysisResult psSharingResult
 
@@ -485,6 +492,17 @@ printAbstractProgram :: (Lens' PState (Maybe (IR.AbstractProgram, a))) -> Pipeli
 printAbstractProgram accessProg = do
   progM <- use accessProg
   mapM_ (printAbsProg . fst) progM
+
+saveAbstractProgram :: String -> (Lens' PState (Maybe (IR.AbstractProgram, a))) -> PipelineM ()
+saveAbstractProgram name accessProg = do
+  progM <- use accessProg
+  n <- use psSaveIdx
+  case progM of
+    Nothing   -> pure ()
+    Just (prog, mapping) -> do
+      outputDir <- view poOutputDir
+      let fname = printf "%03d.%s.dfbin" n name
+      liftIO $ LBS.writeFile (outputDir </> fname) $ encodeAbstractProgram prog
 
 printAnalysisResult :: Pretty res => (Lens' PState (Maybe res)) -> PipelineM ()
 printAnalysisResult accessRes = use accessRes >>= \case

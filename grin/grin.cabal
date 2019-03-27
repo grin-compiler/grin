@@ -35,6 +35,7 @@ library
     AbstractInterpretation.LiveVariable.Result
     AbstractInterpretation.LiveVariable.Pretty
     AbstractInterpretation.IR
+    AbstractInterpretation.BinaryIR
     AbstractInterpretation.PrettyIR
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util

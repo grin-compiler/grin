@@ -9,6 +9,7 @@ import qualified Text.Megaparsec as M
 import qualified Data.Binary as Binary
 
 import Options.Applicative
+import System.IO
 
 import Grin.Grin
 import Grin.PrimOpsPrelude
@@ -71,6 +72,7 @@ pipelineOpts =
   <|> flg (HPT Compile) "compile-hpt" "Compiles heap-points-to analysis machine"
   <|> flg (HPT Optimise) "optimize-hpt" "Optimizes heap-points-to analysis abstract program"
   <|> flg (HPT PrintProgram) "print-hpt-code" "Prints the heap-points-to analysis machine"
+  <|> (HPT . SaveProgram <$> (strOption (mconcat [long "save-hpt-code", help "Saves the heap-points-to analysis machine"])))
   <|> flg (HPT RunPure) "run-hpt-pure" "Runs the heap-points-to analysis machine via pure interpreter"
   <|> flg (HPT PrintResult) "print-hpt-result" "Prints the heap-points-to analysis result"
   <|> flg (CBy Compile) "compile-cby" "Compiles created-by analysis machine"
@@ -152,6 +154,7 @@ options = execParser $ info
 
 main :: IO ()
 main = do
+  hSetBuffering stdout NoBuffering
   Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
