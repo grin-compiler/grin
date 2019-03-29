@@ -260,3 +260,22 @@ spec = do
       let tyEnv   = inferTypeEnv before
           effMap  = effectMap (tyEnv, before)
       commonSubExpressionElimination tyEnv effMap before `sameAs` after
+
+    xit "do not remove effectful function from the rhs position of a bind" $ do
+      let before = [prog|
+          primop effectful
+            _prim_int_print :: T_Int64 -> T_Unit
+          grinMain =
+            _prim_int_print 1
+            _prim_int_print 1
+        |]
+      let after = [prog|
+          primop effectful
+            _prim_int_print :: T_Int64 -> T_Unit
+          grinMain =
+            _prim_int_print 1
+            _prim_int_print 1
+        |]
+      let tyEnv   = inferTypeEnv before
+          effMap  = effectMap (tyEnv, before)
+      commonSubExpressionElimination tyEnv effMap before `sameAs` after
