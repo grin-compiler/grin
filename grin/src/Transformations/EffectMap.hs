@@ -23,7 +23,15 @@ import Transformations.Util
 
 
 effectMap :: (TypeEnv, Exp) -> EffectMap
-effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ para buildEffectMap e where
+effectMap (te, e) = EffectMap $
+                    extendWithEffectfulPrimops $
+                    Map.map Eff $
+                    effectfulFunctions $
+                    unMMap $ snd $ para buildEffectMap e
+  where
+
+  extendWithEffectfulPrimops :: Map Name EffectOrPrimOp -> Map Name EffectOrPrimOp
+  extendWithEffectfulPrimops = Map.union (Map.fromSet (const Grin.EffectMap.PrimOp) effectfulExternals)
 
   effectfulExternals :: Set Name
   effectfulExternals = case e of

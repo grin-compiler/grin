@@ -29,7 +29,7 @@ import Pipeline.Eval
 import Grin.Grin
 import Grin.TypeEnv
 import Grin.TypeCheck
-import Grin.EffectMap
+import Grin.EffectMap hiding (Eff)
 import Pipeline.Optimizations
 import qualified Grin.Statistics as Statistics
 import Grin.Parse
