@@ -14,6 +14,7 @@ import Foreign.C.String
 
 import Reducer.Base
 
+import Data.Bits (shift)
 import Data.Char (chr, ord)
 import Grin.Grin
 import Data.Map.Strict as Map
@@ -65,6 +66,7 @@ evalPrimOp name params args = case name of
   "_prim_int_sub"   -> int_bin_op int (-)
   "_prim_int_mul"   -> int_bin_op int (*)
   "_prim_int_div"   -> int_bin_op int div
+  "_prim_int_ashr"  -> int_bin_op int (\v h -> shift v ((-1) * fromIntegral h))
   "_prim_int_eq"    -> int_bin_op bool (==)
   "_prim_int_ne"    -> int_bin_op bool (/=)
   "_prim_int_gt"    -> int_bin_op bool (>)

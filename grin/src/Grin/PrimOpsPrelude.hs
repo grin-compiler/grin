@@ -43,11 +43,12 @@ primPrelude = [progConst|
 
   primop pure
     -- Int
-    _prim_int_shr   :: T_Int64 -> T_Int64
+    _prim_int_shr   :: T_Int64 -> T_Int64 -- TODO: Remove?
     _prim_int_add   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_sub   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_mul   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_div   :: T_Int64 -> T_Int64 -> T_Int64
+    _prim_int_ashr  :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_eq    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_ne    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_gt    :: T_Int64 -> T_Int64 -> T_Bool
