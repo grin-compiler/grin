@@ -26,7 +26,7 @@ spec = do
           undefinedParam p1 p2 =
             _prim_int_print p3 p2
         |]
-      let (_, errors) = lint Nothing program
+      let (_, errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["undefined variable: p3"]
 
   describe "Function call lint" $ do
@@ -40,7 +40,7 @@ spec = do
             b0 <- p11 p01 p02
             pure b0
         |]
-      let (_, errors) = lint Nothing program
+      let (_, errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["non-function in function call: p11"]
 
     it "finds non-saturated function calls" $ do
@@ -52,7 +52,7 @@ spec = do
             p3 <- fun1 3
             pure p3
         |]
-      let (_, errors) = lint Nothing program
+      let (_, errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["non-saturated function call: fun1"]
 
   describe "Case lint" $ do
@@ -65,7 +65,7 @@ spec = do
               3 -> pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["case variable l has non-supported pattern match type: {0}"]
 
     it "finds string used as matched value" $ do
@@ -76,7 +76,7 @@ spec = do
               #"string" -> pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["case variable s has non-supported pattern match type: T_String"]
 
     it "finds string used as matched value" $ do
@@ -87,7 +87,7 @@ spec = do
               1.0 -> pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["case variable f has non-supported pattern match type: T_Float"]
 
     it "finds overlapping node alternatives" $ do
@@ -99,7 +99,7 @@ spec = do
               (CFloat b) -> pure ()
               (CInt c)   -> pure ()
         |]
-      let (_,errors) = lint Nothing program
+      let (_,errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["case has overlapping node alternatives CInt"]
 
     it "finds overlapping literal alternatives" $ do
@@ -111,7 +111,7 @@ spec = do
               2 -> pure ()
               1 -> pure ()
         |]
-      let (_,errors) = lint Nothing program
+      let (_,errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["case has overlapping literal alternatives 1"]
 
     it "finds non-covered node alternatives" $ do
@@ -129,7 +129,7 @@ spec = do
               (CFloat b) -> pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["case has non-covered alternative CBool"]
 
     it "does not report non-covered nodes with default branch" $ do
@@ -148,7 +148,7 @@ spec = do
               #default -> pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` []
 
     it "finds duplicate default alternatives" $ do
@@ -159,7 +159,7 @@ spec = do
                 3 -> pure ()
                 #default -> pure ()
           |]
-      let (_,errors) = lint Nothing program
+      let (_,errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["case has more than one default alternatives"]
 
   describe "Store lint" $ do
@@ -171,7 +171,7 @@ spec = do
             pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["store has given a primitive value: v :: T_Int64"]
 
   describe "Fetch lint" $ do
@@ -183,7 +183,7 @@ spec = do
             pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["the parameter of fetch is a primitive type: l :: T_Int64"]
 
   describe "Update lint" $ do
@@ -196,7 +196,7 @@ spec = do
             pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["the parameter of update is a primitive type: l :: T_Int64"]
 
     it "finds primitive value as argument." $ do
@@ -209,7 +209,7 @@ spec = do
             pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_,errors) = lint (Just typeEnv) program
+      let (_,errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["update has given a primitive value: v :: T_Int64"]
 
   describe "Bind lint" $ do
@@ -221,7 +221,7 @@ spec = do
             pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Invalid pattern match for (CInt x). Expected pattern of type: {CInt[T_Dead]}, but got: {CFloat[T_Float]}"]
 
     it "disregards variable patterns" $ do
@@ -236,7 +236,7 @@ spec = do
             pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` []
 
     -- NOTE: Bottom-up typing can only approximate the result of HPT.
@@ -258,7 +258,7 @@ spec = do
             pure ()
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Invalid pattern match for (CInt x). Expected pattern of type: {CInt[T_Int64]}, but got: {CFloat[T_Float],CInt[T_Int64]}"]
 
   describe "Producer lint" $ do
@@ -268,7 +268,7 @@ spec = do
             pure (CInt 5)
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "finds nodes in last return statment" $ do
@@ -278,7 +278,7 @@ spec = do
             pure (CInt 5)
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "finds nodes in single return statment in case alternative" $ do
@@ -288,7 +288,7 @@ spec = do
               0 -> pure (CInt 5)
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "finds nodes in last return statment in case alternative" $ do
@@ -300,7 +300,7 @@ spec = do
                 pure (CInt 5)
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
     it "allows nodes as patterns for bindings" $ do
@@ -311,7 +311,7 @@ spec = do
             pure 0
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` []
 
     it "finds expressions with nodes bound to non-variable patterns" $ do
@@ -321,7 +321,7 @@ spec = do
             pure 0
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Syntax error - expected SimpleExp without nodes"]
 
     it "finds nodes in Stores" $ do
@@ -331,7 +331,7 @@ spec = do
             pure 0
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
 
     it "finds nodes in updates" $ do
@@ -342,7 +342,7 @@ spec = do
             update p (CInt 0)
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Syntax error - expected SimpleVal"]
 
     -- this is optional, but makes DDE simpler
@@ -355,5 +355,5 @@ spec = do
             pure 0
         |]
       let typeEnv = inferTypeEnv program
-      let (_, errors) = lint (Just typeEnv) program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["The result of Fetch can only be bound to a variable: (CInt 5)"]

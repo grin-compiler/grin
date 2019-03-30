@@ -709,7 +709,10 @@ lintGrin mPhaseName = do
     pipelineStep $ HPT RunPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
-  let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
+  -- By default we don't run the DDE related warnings. They should be enabled
+  -- when we do refactor on transformations to not to create non-DDE conforming
+  -- nodes, and they should be removed when we refactor the possible syntax.
+  let lintExp@(_, errorMap) = Lint.lint Lint.noDDEWarnings mTypeEnv exp
   psErrors .= (fmap Lint.message $ concat $ Map.elems errorMap)
 
   -- print errors
