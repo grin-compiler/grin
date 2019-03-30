@@ -66,7 +66,29 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint (Just typeEnv) program
-      lintErrors errors `shouldBe` ["case variable l has a location type"]
+      lintErrors errors `shouldBe` ["case variable l has non-supported pattern match type: {0}"]
+
+    it "finds string used as matched value" $ do
+      let program = [prog|
+          main =
+            s <- pure #"string"
+            case s of
+              #"string" -> pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["case variable s has non-supported pattern match type: T_String"]
+
+    it "finds string used as matched value" $ do
+      let program = [prog|
+          main =
+            f <- pure 1.0
+            case f of
+              1.0 -> pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_,errors) = lint (Just typeEnv) program
+      lintErrors errors `shouldBe` ["case variable f has non-supported pattern match type: T_Float"]
 
     it "finds overlapping node alternatives" $ do
       let program = [prog|

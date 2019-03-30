@@ -324,8 +324,10 @@ lint mTypeEnv exp@(Program exts _) = fmap envErrors $ flip runState emptyEnv $ d
       forM_ mTypeEnv $ \typeEnv -> do
         -- Case variable has a location type
         case val of
-          (Var name) | Just _ <- typeEnv ^? variable . at name . _Just . _T_SimpleType . _T_Location ->
-            tell [beforeMsg $ printf "case variable %s has a location type" name]
+          (Var name)
+            | Just st <- typeEnv ^? variable . at name . _Just . _T_SimpleType
+            , has _T_Location st || has _T_String st || has _T_Float st
+              -> tell [beforeMsg $ printf "case variable %s has non-supported pattern match type: %s" name (plainShow st)]
           _ -> pure () -- TODO
 
         -- Non-covered alternatives

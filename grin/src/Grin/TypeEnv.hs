@@ -66,6 +66,14 @@ _T_Location :: Traversal' SimpleType [Int]
 _T_Location f (T_Location ls) = T_Location <$> f ls
 _T_Location _ rest            = pure rest
 
+_T_String :: Traversal' SimpleType ()
+_T_String f T_String = const T_String <$> f ()
+_T_String _ rest     = pure rest
+
+_T_Float :: Traversal' SimpleType ()
+_T_Float f T_Float = const T_Float <$> f ()
+_T_Float _ rest    = pure rest
+
 _T_Unit :: Traversal' SimpleType ()
 _T_Unit f T_Unit = const T_Unit <$> f ()
 _T_Unit _ rest   = pure rest
