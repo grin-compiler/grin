@@ -16,7 +16,6 @@ NOTES:
 
 */
 
-
 struct string* create_string_len(int64_t l) {
     struct string* r = (struct string*)malloc(sizeof(struct string));
     r->data = (char*)calloc(sizeof(char), l * sizeof(char));
