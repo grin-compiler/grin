@@ -34,10 +34,20 @@
 	year = {2010}
 }
 
+@article
+{
+	hbc,
+	title={{Haskell B. user manual}},
+	author={{Augustsson, Lennart}},
+	journal={{Programming methodology group report, Dept. of Comp. Sci, Chalmers Univ. of Technology, G{\"o}teborg, Sweden}},
+	year={1992}
+}
+
+
 @inproceedings
 { 
 	uhc,
-	author = {Dijkstra, Atze and Fokker, Jeroen and Swierstra, S. Doaitse},
+	author = {{Dijkstra, Atze and Fokker, Jeroen and Swierstra, S. Doaitse}},
 	title = {{The Architecture of the Utrecht Haskell Compiler}},
 	booktitle = {{Proceedings of the 2Nd ACM SIGPLAN Symposium on Haskell}},
 	series = {Haskell '09},
@@ -55,8 +65,9 @@
 } 
 
 @article
-{	hrc,
-	author = {Liu, Hai and Glew, Neal and Petersen, Leaf and Anderson, Todd A.},
+{	
+	hrc,
+	author = {{Liu, Hai and Glew, Neal and Petersen, Leaf and Anderson, Todd A.}},
 	title = {{The Intel Labs Haskell Research Compiler}},
 	journal = {{SIGPLAN Not.}},
 	issue_date = {December 2013},
@@ -75,8 +86,31 @@
 	keywords = {compiler optimization, functional language compiler, haskell},
 }
 
+@article
+{	
+	hrc-simd,
+	author = {{Petersen, Leaf and Orchard, Dominic and Glew, Neal}},
+	title = {{Automatic SIMD Vectorization for Haskell}},
+	journal = {{SIGPLAN Not.}},
+	issue_date = {September 2013},
+	volume = {48},
+	number = {9},
+	month = sep,
+	year = {2013},
+	issn = {0362-1340},
+	pages = {25--36},
+	numpages = {12},
+	url = {http://doi.acm.org/10.1145/2544174.2500605},
+	doi = {10.1145/2544174.2500605},
+	acmid = {2500605},
+	publisher = {ACM},
+	address = {New York, NY, USA},
+	keywords = {compiler optimization, functional languages, haskell, simd, vectorization},
+} 
+
 @inproceedings
-{ haskell-gap,
+{ 
+	haskell-gap,
 	author = {Petersen, Leaf and Anderson, Todd A. and Liu, Hai and Glew, Neal},
 	title = {{Measuring the Haskell Gap}},
 	booktitle = {{Proceedings of the 25th Symposium on Implementation and Application of Functional Languages}},
@@ -94,10 +128,11 @@
 	address = {New York, NY, USA},
 } 
 
-@techreport{
+@techreport
+{
 	mlton-llvm,
 	author = {Brian Andrew Leibig},
-	title = {An LLVM Back-end for MLton},
+	title = {{An LLVM Back-end for MLton}},
 	year = {2013},
 	url = {https://www.cs.rit.edu/~mtf/student-resources/20124_leibig_msproject.pdf},
 	note = {A Project Report Submitted in Partial Fulfillment of the Requirements for the Degree of Master of Science in Computer Science},
@@ -166,7 +201,7 @@
 @inproceedings
 {
 	ghc,
-	author = {Hall, Cordelia V. and Hammond, Kevin and Partain, Will and Peyton Jones, Simon L. and Wadler, Philip},
+	author = {{Hall, Cordelia V. and Hammond, Kevin and Partain, Will and Peyton Jones, Simon L. and Wadler, Philip}},
 	title = {{The Glasgow Haskell Compiler: A Retrospective}},
 	booktitle = {{Proceedings of the 1992 Glasgow Workshop on Functional Programming}},
 	year = {1993},
@@ -182,7 +217,7 @@
 @article
 {
 	idris, 
-	title={Idris, a general-purpose dependently typed programming language: Design and implementation},
+	title={{Idris, a general-purpose dependently typed programming language: Design and implementation}},
 	volume={23}, 
 	DOI={10.1017/S095679681300018X}, 
 	number={5}, 
@@ -191,4 +226,70 @@
 	author={{Brady, Edwin}}, 
 	year={2013}, 
 	pages={552–593}
+}
+
+@phdthesis
+{
+	andersen-ptr,
+	title={{Program analysis and specialization for the C programming language}},
+	author={{Andersen, Lars Ole}},
+	year={1994},
+	school={University of Cophenhagen}
+}
+
+@article
+{	
+	ajhc,
+	author = {{Okabe, Kiwamu and Muranushi, Takayuki}},
+	title = {{Systems Demonstration: Writing NetBSD Sound Drivers in Haskell}},
+	journal = {{SIGPLAN Not.}},
+	issue_date = {December 2014},
+	volume = {49},
+	number = {12},
+	month = sep,
+	year = {2014},
+	issn = {0362-1340},
+	pages = {77--78},
+	numpages = {2},
+	url = {http://doi.acm.org/10.1145/2775050.2633370},
+	doi = {10.1145/2775050.2633370},
+	acmid = {2633370},
+	publisher = {ACM},
+	address = {New York, NY, USA},
+	keywords = {languages, performance},
+} 
+
+@misc 
+{
+	jhc,
+	title={{JHC}},
+	author={{John Meacham}},
+	url={http://repetae.net/computer/jhc/jhc.shtml}
+}
+
+@article
+{
+	lambda-cube,
+	title={{Lambda calculi with types}},
+	author={{Barendregt, Henk P}},
+	year={1992},
+	publisher={Oxford: Clarendon Press}
+}
+
+@article
+{
+	pts-berardi,
+	title={{Towards a mathematical analysis of the Coquand-Huet calculus of constructions and the other systems in Barendregt’s cube}},
+	author={{Berardi, Stefano}},
+	journal={Technica1 report, Carnegie-Me11on University (USA) and Universita di Torino (Ita1y)},
+	year={1988}
+}
+
+@article
+{
+	pts-terlouw,
+	title={{Een nadere bewijstheoretische analyse van GSTT’s}},
+	author={{Terlouw, Jan}},
+	journal={Manuscript (in Dutch)},
+	year={1989}
 }
