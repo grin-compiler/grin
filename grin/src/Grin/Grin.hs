@@ -9,6 +9,7 @@ import Debug.Trace (trace)
 import Lens.Micro.Platform
 import Data.Maybe
 import Data.Text (pack, unpack)
+import Data.List (nub)
 
 import Grin.Syntax
 import Grin.TypeEnvDefs
@@ -124,7 +125,7 @@ showTS :: Show a => a -> Name
 showTS = packName . show
 
 concatPrograms :: [Program] -> Program
-concatPrograms prgs = Program (concat exts) (concat defs) where
+concatPrograms prgs = Program (nub $ concat exts) (concat defs) where
   (exts, defs) = unzip [(e, d) | Program e d <- prgs]
 
 -- indetifier rules for parser and pretty printer
