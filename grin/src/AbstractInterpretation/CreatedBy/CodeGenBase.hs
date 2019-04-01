@@ -29,10 +29,14 @@ data CGState
 
   -- mapping
 
-  , _sRegisterMap     :: Map.Map Name Reg
-  , _sFunctionArgMap  :: Map.Map Name (Reg, [Reg])
+  , _sRegisterMap     :: Map Name Reg
+  , _sFunctionArgMap  :: Map Name (Reg, [Reg])
   , _sTagMap          :: Bimap.Bimap Tag IR.Tag
   , _sProducerMap     :: Map.Map Reg Name
+
+  -- internal
+
+  , _sExternalMap     :: Map Name External
   }
   deriving (Show)
 
@@ -50,6 +54,8 @@ emptyCGState = CGState
   , _sFunctionArgMap  = mempty
   , _sTagMap          = Bimap.empty
   , _sProducerMap     = mempty
+
+  , _sExternalMap     = mempty
   }
 
 type CG = State CGState
@@ -61,6 +67,12 @@ data Result
 
 emit :: IR.Instruction -> CG ()
 emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
+
+addExternal :: External -> CG ()
+addExternal e = modify' $ \s@CGState{..} -> s {_sExternalMap = Map.insert (eName e) e _sExternalMap}
+
+getExternal :: Name -> CG (Maybe External)
+getExternal name = Map.lookup name <$> gets _sExternalMap
 
 -- creates regsiters for function arguments and result
 getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])
