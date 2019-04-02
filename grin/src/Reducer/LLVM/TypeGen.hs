@@ -7,6 +7,7 @@ import Text.Printf
 import Data.Word
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Vector (Vector)
@@ -27,16 +28,24 @@ import Grin.Grin as Grin
 import Grin.TypeEnv
 import Grin.Pretty
 
--- QUESTION: T_Dead case?
+stringStructType :: LLVM.Type
+stringStructType = LLVM.StructureType False [ptr i8, i64]
+
+stringType :: LLVM.Type
+stringType = ptr stringStructType
+
 typeGenSimpleType :: SimpleType -> LLVM.Type
 typeGenSimpleType = \case
   T_Int64   -> i64
   T_Word64  -> i64
   T_Float   -> float
   T_Bool    -> i1
+  T_String  -> stringType
+  T_Char    -> i8
   T_Unit    -> LLVM.void
   T_Location _          -> locationLLVMType
   T_UnspecifiedLocation -> locationLLVMType
+  T_Dead -> error $ "Dead/unused type was given."
 
 locationCGType :: CGType
 locationCGType = toCGType $ T_SimpleType $ T_Location []
@@ -189,9 +198,8 @@ toCGType t = case t of
 getVarType :: Grin.Name -> CG CGType
 getVarType name = do
   TypeEnv{..} <- gets _envTypeEnv
-  case Map.lookup name _variable of
-    Nothing -> error ("unknown variable " ++ unpackName name)
-    Just ty -> pure $ toCGType ty
+  pure $ maybe (error ("unknown variable " ++ unpackName name)) toCGType
+       $ Map.lookup name _variable
 
 getFunctionType :: Grin.Name -> CG (CGType, [CGType])
 getFunctionType name = do

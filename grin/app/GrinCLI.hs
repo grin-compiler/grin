@@ -109,7 +109,9 @@ pipelineOpts =
   <|> flg PureEval "eval" "Evaluate the grin program (pure)"
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
-  <|> (SaveLLVM True  <$> (strOption (mconcat [long "save-llvm", help "Save the generated llvm"])))
+  <|> (SaveExecutable False . Abs <$> (strOption (mconcat [short 'o', long "save-elf", help "Save an executable ELF"])))
+  <|> (SaveExecutable True . Abs <$> (strOption (mconcat [short 'o', long "save-elf-dbg", help "Save an executable ELF with debug symbols"])))
+  <|> (SaveLLVM . Abs <$> (strOption (mconcat [long "save-llvm", help "Save the generated llvm"])))
   <|> (SaveGrin . Abs <$> (strOption (mconcat [long "save-grin", help "Save the generated grin"])))
   <|> (SaveBinary     <$> (strOption (mconcat [long "save-binary", help "Save the generated grin in binary format"])))
   <|> (T <$> transformOpts)
@@ -171,7 +173,7 @@ main = do
 
 postPipeline :: [PipelineStep]
 postPipeline =
-  [ SaveLLVM True "high-level-opt-code"
+  [ SaveLLVM $ Rel "high-level-opt-code"
   , JITLLVM -- TODO: Remove this.
   , PrintTypeEnv
   , PrintGrin ondullblack

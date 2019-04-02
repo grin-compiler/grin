@@ -75,7 +75,7 @@ import qualified AbstractInterpretation.Sharing.CodeGen      as Sharing
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
-import System.Process
+import qualified System.Process
 import Data.Bifunctor
 
 import qualified Data.Bimap as Bimap
@@ -188,7 +188,8 @@ data PipelineStep
   | PureEval
   | JITLLVM
   | PrintAST
-  | SaveLLVM Bool FilePath
+  | SaveLLVM Path
+  | SaveExecutable Bool Path -- Debug, Outputfile
   | SaveGrin Path
   | SaveBinary String
   | DebugTransformationH (Hidden (Exp -> Exp))
@@ -425,7 +426,8 @@ pipelineStep p = do
     PrintGrin d     -> printGrinM d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
-    SaveLLVM relPath path -> saveLLVM relPath path
+    SaveLLVM path   -> saveLLVM path
+    SaveExecutable dbg path -> saveExecutable dbg path
     SaveGrin path   -> saveGrin path
     SaveBinary name -> saveBinary name
     PrintAST        -> printAST
@@ -653,23 +655,46 @@ saveBinary name = do
   let fname = printf "%03d.%s.binary" n name
   liftIO $ Binary.encodeFile (outputDir </> fname) ent
 
-saveLLVM :: Bool -> FilePath -> PipelineM ()
-saveLLVM relPath fname' = do
-  e <- use psExp
+relPath :: Path -> PipelineM String
+relPath path = do
   n <- use psSaveIdx
-  Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
-  let fname = if relPath then o </> printf "%03d.%s" n fname' else fname'
-      code = CGLLVM.codeGen typeEnv e
-      llName = printf "%s.ll" fname
-      sName = printf "%s.s" fname
-  liftIO . void $ do
-    Text.putStrLn $ ppllvm code
-    putStrLn "* to LLVM *"
-    _ <- CGLLVM.toLLVM llName code
-    putStrLn "* LLVM X64 codegen *"
-    callCommand $ printf "opt-7 -O3 %s | llc-7 -o %s" llName sName
-    readFile sName >>= putStrLn
+  pure $ case path of
+    Abs fname -> fname
+    Rel fname -> o </> printf "%03d.%s" n fname
+
+callCommand :: String -> PipelineM ()
+callCommand cmd = do
+  pipelineLog $ "Call command:" ++ cmd
+  liftIO $ System.Process.callCommand cmd
+
+saveLLVM :: Path -> PipelineM ()
+saveLLVM path = do
+  e <- use psExp
+  Just typeEnv <- use psTypeEnv
+  fname <- relPath path
+  let code = CGLLVM.codeGen typeEnv e
+  let llName = printf "%s.ll" fname
+  let sName = printf "%s.s" fname
+  pipelineLog "* to LLVM *"
+  void $ liftIO $ CGLLVM.toLLVM llName code
+  pipelineLog"* LLVM X64 codegen *"
+  callCommand $ printf "opt-7 -O3 %s | llc-7 -o %s" llName (sName :: String)
+
+saveExecutable :: Bool -> Path -> PipelineM ()
+saveExecutable debugSymbols path = do
+  pipelineLog "* generate llvm x64 optcode *"
+  let grinOptCodePath = Rel "grin-opt-code"
+  pipelineStep $ SaveLLVM grinOptCodePath
+  grinOptCodeFile <- relPath grinOptCodePath
+  fname <- relPath path
+  pipelineLog "* generate executable *"
+  callCommand $ printf
+    ("llc-7 -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
+    grinOptCodeFile
+  callCommand $ printf
+    ("clang-7 -O3 prim_ops.c runtime.c %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
+    grinOptCodeFile fname
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do

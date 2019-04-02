@@ -108,13 +108,13 @@ satisfyM pred parser = do
 
 externalBlock = do
   L.indentGuard sc EQ pos1
-  kw "primop"
+  ext <- const PrimOp <$> kw "primop" <|> const FFI <$> kw "ffi"
   eff <- const False <$> kw "pure" <|> const True <$> kw "effectful"
   i <- L.indentGuard sc GT pos1
-  some $ try (external eff i)
+  some $ try (external ext eff i)
 
-external :: Bool -> Pos -> Parser External
-external eff i = do
+external :: ExternalKind -> Bool -> Pos -> Parser External
+external ext eff i = do
   L.indentGuard sc EQ i
   name <- var
   L.indentGuard sc GT i >> op "::"
@@ -125,6 +125,7 @@ external eff i = do
     , eRetType    = retTy
     , eArgsType   = reverse argTyRev
     , eEffectful  = eff
+    , eKind       = ext
     }
 
 tyP :: Parser Ty

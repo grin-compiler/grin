@@ -323,6 +323,8 @@ spec = do
 
         primop pure
           _prim_string_concat   :: T_String -> T_String -> T_String
+
+        ffi pure
           newArrayArray :: {Int} -> {State %s} -> {GHC.Prim.Unit {MutableArrayArray %s}}
 
         grinMain = pure ()
@@ -334,12 +336,14 @@ spec = do
                 , eRetType = TySimple T_Unit
                 , eArgsType = [ TySimple T_String ]
                 , eEffectful = True
+                , eKind = PrimOp
                 }
             , External
                 { eName = "_prim_read_string"
                 , eRetType = TySimple T_String
                 , eArgsType = []
                 , eEffectful = True
+                , eKind = PrimOp
                 }
             , External
                 { eName = "newArrayArray#"
@@ -350,6 +354,7 @@ spec = do
                     , TyCon "State#" [ TyVar "s" ]
                     ]
                 , eEffectful = True
+                , eKind = PrimOp
                 }
             , External
                 { eName = "_prim_string_concat"
@@ -359,6 +364,7 @@ spec = do
                     , TySimple T_String
                     ]
                 , eEffectful = False
+                , eKind = PrimOp
                 }
             , External
                 { eName = "newArrayArray"
@@ -369,6 +375,7 @@ spec = do
                     , TyCon "State" [ TyVar "s" ]
                     ]
                 , eEffectful = False
+                , eKind = FFI
                 }
             ]
             [ Def "grinMain" [] ( SReturn Unit ) ]
@@ -403,12 +410,14 @@ spec = do
                       , TySimple T_String
                       ]
                   , eEffectful = False
+                  , eKind = PrimOp
                   }
               , External
                   { eName = NM { unNM = "_primB" }
                   , eRetType = TySimple T_String
                   , eArgsType = [ TySimple T_String ]
                   , eEffectful = False
+                  , eKind = PrimOp
                   }
               ] []
 

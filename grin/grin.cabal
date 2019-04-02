@@ -215,6 +215,7 @@ test-suite grin-test
                      , mtl
                      , ansi-wl-pprint
                      , directory
+                     , inline-c
 
   other-modules:
                      Transformations.Simplifying.RegisterIntroductionSpec
@@ -253,6 +254,7 @@ test-suite grin-test
                      TestSpec
                      PipelineSpec
                      ParserSpec
+                     PrimOpsSpec
                      NametableSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
