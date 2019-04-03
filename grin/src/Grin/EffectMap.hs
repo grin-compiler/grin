@@ -2,6 +2,7 @@
 module Grin.EffectMap
   ( EffectMap(..)
   , Effects(..)
+  , EffectOrPrimOp(..)
   , hasPossibleSideEffect
   , storesEff
   , primopEff
@@ -18,10 +19,9 @@ import qualified Data.Set as Set
 
 import Lens.Micro.Platform
 
-import Grin.Grin
+import Grin.Grin hiding (PrimOp)
 
--- | Either the name of a function with return type of Unit,
--- or a list of heap locations updated by the function.
+-- | Represents the effects that a GRIN defined function could have.
 data Effects
   = Effects
   { _effectfulPrimops :: Set Name
@@ -38,9 +38,15 @@ instance Monoid Effects where
   mempty = Effects mempty mempty mempty
 
 
+data EffectOrPrimOp
+  = Eff Effects
+  | PrimOp
+  deriving (Eq, Ord, Show)
 
--- | Mapping of function names to their respective side effects.
-newtype EffectMap = EffectMap { _effects :: Map Name Effects }
+-- | Mapping of function names to their respective side effects, including effectful primitives.
+newtype EffectMap = EffectMap
+  { _effects :: Map Name EffectOrPrimOp
+  }
   deriving (Eq, Ord, Show, Semigroup, Monoid)
 
 concat <$> mapM makeLenses [''Effects, '' EffectMap]
@@ -58,7 +64,7 @@ storesEff locs = Effects mempty mempty (Set.fromList locs)
 
 hasSomeEffect :: (Effects -> Set a) -> Name -> EffectMap -> Bool
 hasSomeEffect selectEff f (EffectMap effMap)
-  | Just effects <- Map.lookup f effMap
+  | Just (Eff effects) <- Map.lookup f effMap
   = not . null . selectEff $ effects
   | otherwise = False
 
@@ -71,10 +77,14 @@ hasUpdates = hasSomeEffect _updateLocs
 hasStores :: Name -> EffectMap -> Bool
 hasStores = hasSomeEffect _storeLocs
 
+isSideEffectingPrimOp :: Name -> EffectMap -> Bool
+isSideEffectingPrimOp name em = maybe False (PrimOp==) $ Map.lookup name $ _effects em
+
 -- | Checks whether a function has a true side effect
--- , meaning it calls a side-effecting primop.
+-- , meaning it calls a side-effecting primop or
+-- a side effecting primop itself
 hasTrueSideEffect :: Name -> EffectMap -> Bool
-hasTrueSideEffect = hasSideEffectingPrimop
+hasTrueSideEffect n e = hasSideEffectingPrimop n e || isSideEffectingPrimOp n e
 
 -- | Checks whether a function has a possible side effect
 -- , meaning it either has a true side effect

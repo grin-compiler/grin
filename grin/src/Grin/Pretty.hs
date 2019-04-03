@@ -181,6 +181,11 @@ instance Pretty Effects where
     , green (text "stores")    <+> prettyLocSet storeLocs
     ]
 
+instance Pretty EffectOrPrimOp where
+  pretty = \case
+    Grin.EffectMap.PrimOp -> text "PrimOp"
+    Eff e  -> pretty e
+
 instance Pretty EffectMap where
   pretty (EffectMap effects) = yellow (text "EffectMap") <$$>
     indent 4 (prettyKeyValue $ Map.toList effects)
@@ -188,7 +193,7 @@ instance Pretty EffectMap where
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b) exts) where
   prettyExtGroup [] = mempty
-  prettyExtGroup l@(a : _) = (keyword $ case eKind a of { PrimOp -> "primop"; FFI -> "ffi" }) <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
+  prettyExtGroup l@(a : _) = (keyword $ case eKind a of { Grin.Grin.PrimOp -> "primop"; FFI -> "ffi" }) <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
     (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l] <> line)
 
 instance Pretty Ty where

@@ -37,6 +37,7 @@ codeGenPrimOp name [opA, opB] = pure $ case name of
   "_prim_int_sub"   -> I cgInt64 $ Sub  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_mul"   -> I cgInt64 $ Mul  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_div"   -> I cgInt64 $ SDiv {exact=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_ashr"  -> I cgInt64 $ AShr {exact=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_eq"    -> I cgBool  $ ICmp {iPredicate=I.EQ,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_ne"    -> I cgBool  $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_gt"    -> I cgBool  $ ICmp {iPredicate=I.SGT, operand0=opA, operand1=opB, metadata=[]}

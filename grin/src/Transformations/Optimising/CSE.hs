@@ -21,8 +21,6 @@ type Env = (Map SimpleExp SimpleExp)
 commonSubExpressionElimination :: TypeEnv -> EffectMap -> Exp -> Exp
 commonSubExpressionElimination typeEnv effMap e = hylo skipUnit builder (mempty, e) where
 
-  effectfulPrimOps = map eName $ filter eEffectful $ externals e
-
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, subst env -> exp) = case exp of
     EBind leftExp lpat rightExp -> EBindF (env, leftExp) lpat (newEnv, rightExp) where
@@ -33,7 +31,7 @@ commonSubExpressionElimination typeEnv effMap e = hylo skipUnit builder (mempty,
         -- HINT: location parameters might be updated in the called function, so forget their content
         SApp defName args -> foldr
           Map.delete
-          (if (hasTrueSideEffect defName effMap || defName `elem` effectfulPrimOps) then env else extEnvKeepOld)
+          (if (hasTrueSideEffect defName effMap) then env else extEnvKeepOld)
           [SFetch name | Var name <- args, isLocation name]
         SReturn val | isConstant val  -> extEnvKeepOld
         SFetch{}  -> extEnvKeepOld
