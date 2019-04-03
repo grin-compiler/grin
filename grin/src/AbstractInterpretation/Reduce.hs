@@ -198,10 +198,9 @@ evalInstruction = \case
           selectReg dstReg.simpleType %= (Set.insert ty)
 
       AnyNotIn tags -> do
-        value <- use $ selectReg srcReg
         tagMap <- use $ selectTagMap srcReg
         typeSet <- use $ selectReg srcReg.simpleType
-        let filteredTagMap = Data.Foldable.foldr Map.delete tagMap tags
+        let filteredTagMap = Map.withoutKeys tagMap tags
         when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
           selectReg dstReg.nodeSet %= (mappend $ NodeSet filteredTagMap)
           selectReg dstReg.simpleType %= (mappend typeSet)
