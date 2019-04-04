@@ -45,6 +45,7 @@ struct computer_state_t {
   void eval_block(block_id_t bid);
 
   // eval commands
+  void eval_conditional_update(cmd_t &c);
   void eval_conditional_move(cmd_t &c);
   void eval_restricted_move(cmd_t &c);
   void eval_restricted_update(cmd_t &c);
@@ -181,6 +182,14 @@ inline void computer_state_t::conditional_union_value(value_t& src, value_t& dst
 
 inline void computer_state_t::eval_conditional_move(cmd_t &c) {
   conditional_union_value(reg[c.cmd_conditional_move.src_reg], reg[c.cmd_conditional_move.dst_reg], c.cmd_conditional_move.predicate);
+}
+
+inline void computer_state_t::eval_conditional_update(cmd_t &c) {
+  for (auto& dst: reg[c.cmd_conditional_update.address_reg].simple_type) {
+    if (dst >= 0) {
+      conditional_union_node_set(reg[c.cmd_conditional_update.src_reg].node_set, mem[dst], c.cmd_conditional_update.predicate);
+    }
+  }
 }
 
 inline void computer_state_t::eval_restricted_move(cmd_t &c) {
@@ -325,8 +334,7 @@ inline void computer_state_t::eval_cmd(cmd_t &c) {
       break;
 
     case CMD_CONDITIONAL_UPDATE:
-      // TODO
-      //  predicate
+      eval_conditional_update(c);
       break;
 
     case CMD_SET:
