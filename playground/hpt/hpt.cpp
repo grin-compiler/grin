@@ -15,8 +15,8 @@
 */
 using namespace std;
 
-typedef unordered_set<int32_t> node_item_t ; // 0 or positive = location ; negative = simple type
-typedef vector<node_item_t> node_data_t;
+//typedef unordered_set<int32_t> node_item_t ; // 0 or positive = location ; negative = simple type
+//typedef vector<node_item_t> node_data_t;
 
 typedef unordered_map<uint32_t, vector<unordered_set<int32_t>>> node_set_t;
 
@@ -142,37 +142,4 @@ void cmd_set_node_item(reg_t dst, int32_t tag, int32_t index, int32_t value) {
     node deconstruct - ok if
       - have only node values
       - pattern arity not smaller then the biggest node
-*/
-
-/*
-
-data Selector
-  = NodeItem              Tag Int   -- node item index
-  | ConditionAsSelector   Condition
-  | Locations     -- Project the locations from an abstract value
-  | NodeLocations -- Project the locations from nodes stored in an abstract values
-  deriving Show
-
-data Condition
-  = NodeTypeExists    Tag
-  | SimpleTypeExists  SimpleType
-  | NotIn             (Set Tag)
-  deriving Show
-
-data Instruction
-  = If
-    { condition     :: Condition
-    , srcReg        :: Reg
-    , instructions  :: [Instruction]
-    }
-  | Project -- ^ projects from the tag specific SRC's node part to DST reg simple type and location set
-    { srcSelector   :: Selector -- ^ the seleced tag must exist
-    , srcReg        :: Reg
-    , dstReg        :: Reg
-    }
-  | Extend -- ^ extends DST's node part for a tag by SRC reg simple type and location set
-    { srcReg        :: Reg
-    , dstSelector   :: Selector -- ^ the seleced tag must exist
-    , dstReg        :: Reg
-    }
 */
