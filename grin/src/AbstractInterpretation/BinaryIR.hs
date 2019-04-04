@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, Strict #-}
 module AbstractInterpretation.BinaryIR (encodeAbstractProgram) where
 
 import Control.Monad.State
@@ -13,8 +13,7 @@ import AbstractInterpretation.IR
 
 data Env
   = Env
-  { envTagSets        :: ![Set Tag]
-  , envTagSetCount    :: !Int
+  { envTagMap         :: Map (Set Tag) Int32
   , envInstCount      :: !Int -- program / if has effect on this
   , envBlocks         :: ![(Int,Int)]
   , envBlockCount     :: !Int
@@ -23,8 +22,7 @@ data Env
   }
 
 emptyEnv = Env
-  { envTagSets        = []
-  , envTagSetCount    = 0
+  { envTagMap         = mempty
   , envInstCount      = 0
   , envBlocks         = []
   , envBlockCount     = 0
@@ -51,16 +49,20 @@ writeMem (Mem m) = writeW32 m
 
 writeTagSet :: Set Tag -> W ()
 writeTagSet s = do
-  idx <- gets envTagSetCount
-  modify' $ \env@Env{..} -> env {envTagSets = envTagSets ++ [s], envTagSetCount = succ idx}
-  writeI32 $ fromIntegral idx
+  tm <- gets envTagMap
+  let size = fromIntegral $ Map.size tm
+  case Map.lookup s tm of
+    Just idx -> writeI32 idx
+    Nothing -> do
+      modify' $ \env@Env{..} -> env {envTagMap = Map.insert s size envTagMap}
+      writeI32 size
 
 writeBlock :: [Instruction] -> W ()
 writeBlock il = do
   let size = length il
   iCount <- gets envInstCount
   bCount <- gets envBlockCount
-  modify' $ \env@Env{..} -> env {envInstCount = iCount + size, envBlockCount = succ bCount, envBlocks = envBlocks ++ [(iCount, size)]}
+  modify' $ \env@Env{..} -> env {envInstCount = iCount + size, envBlockCount = succ bCount, envBlocks = envBlocks ++ [(iCount, iCount + size)]}
   writeI32 $ fromIntegral bCount
   currentBuilder <- gets envBuilder
   modify' $ \env@Env{..} -> env {envBuilder = mempty}
@@ -234,9 +236,15 @@ encodeAbstractProgram AbstractProgram {..} = toLazyByteString (envBuilder env) w
       writeI32 $ fromIntegral b
 
     -- intsets
+    {-
     setCount <- gets envTagSetCount
     writeI32 $ fromIntegral setCount
     sets <- gets envTagSets
+    -}
+    tagMap <- gets envTagMap
+    writeI32 $ fromIntegral $ Map.size tagMap
+    let sets = Map.elems $ Map.fromList [(i, s) | (s, i) <- Map.toList tagMap]
+
     forM_ sets $ \s -> do
       writeI32 $ fromIntegral $ Set.size s
       forM_ (Set.toList s) (\(Tag t) -> writeI32 $ fromIntegral t)
