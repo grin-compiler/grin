@@ -18,17 +18,26 @@ struct computer_state_t {
   std::vector<value_t>    reg;
   bool                    changed;
   bool                    error;
+  abstract_program_t&     prg;
+
+  computer_state_t(abstract_program_t& p) : prg(p) {
+    mem.resize(p.memory_count);
+    reg.resize(p.register_count);
+  }
 
   // modification functions
   void insert_int_set(std::unordered_set<int32_t>& dst, int32_t value);
   void union_int_set(std::unordered_set<int32_t>& src, std::unordered_set<int32_t>& dst);
-  void union_node_set(node_set_t& src, node_set_t& dst);
+  void union_node_set(node_set_t& src, node_set_t& dst, bool merge_new_tags = true);
   void union_value(value_t& src, value_t& dst);
 
   // eval
   void eval_cmd(cmd_t &c);
+  void eval_block(block_id_t bid);
 
   // eval commands
+  void eval_restricted_move(cmd_t &c);
+  void eval_restricted_update(cmd_t &c);
   void eval_move(cmd_t &c);
   void eval_fetch(cmd_t &c);
   void eval_store(cmd_t &c);
@@ -57,13 +66,15 @@ inline void computer_state_t::union_int_set(std::unordered_set<int32_t>& src, st
   for (auto& src_i: src) insert_int_set(dst, src_i);
 }
 
-inline void computer_state_t::union_node_set(node_set_t& src, node_set_t& dst) {
+inline void computer_state_t::union_node_set(node_set_t& src, node_set_t& dst, bool merge_new_tags) {
   for (auto& src_t_v: src) {
     node_set_t::iterator dst_t_v = dst.find (src_t_v.first);
 
     if ( dst_t_v == dst.end() ) {
-      dst.insert(src_t_v);
-      changed = true;
+      if (merge_new_tags) {
+        dst.insert(src_t_v);
+        changed = true;
+      }
     } else if (src_t_v.second.size() != dst_t_v->second.size()) {
         std::cout << "error: union_node_set\n";
     } else {
@@ -81,11 +92,32 @@ inline void computer_state_t::union_value(value_t& src, value_t& dst) {
 
 // command evaluation
 
-void inline computer_state_t::eval_move(cmd_t &c) {
+inline void computer_state_t::eval_restricted_move(cmd_t &c) {
+  /*
+     NOTE: same as Move, but only considers tags already present in dstReg
+           (basically a Move but only for the common tags)
+  */
+  value_t& src = reg[c.cmd_restricted_move.src_reg];
+  value_t& dst = reg[c.cmd_restricted_move.dst_reg];
+
+  union_int_set(src.simple_type, dst.simple_type);
+  union_node_set(src.node_set, dst.node_set, false);
+}
+
+inline void computer_state_t::eval_restricted_update(cmd_t &c) {
+  for (auto& dst: reg[c.cmd_restricted_update.address_reg].simple_type) {
+    if (dst >= 0) {
+      union_node_set(reg[c.cmd_restricted_update.src_reg].node_set, mem[dst], false);
+    }
+  }
+}
+
+
+inline void computer_state_t::eval_move(cmd_t &c) {
   union_value(reg[c.cmd_move.src_reg], reg[c.cmd_move.dst_reg]);
 }
 
-void inline computer_state_t::eval_fetch(cmd_t &c) {
+inline void computer_state_t::eval_fetch(cmd_t &c) {
   for (auto& src: reg[c.cmd_fetch.address_reg].simple_type) {
     if (src >= 0) {
       union_node_set(mem[src], reg[c.cmd_fetch.dst_reg].node_set);
@@ -93,11 +125,11 @@ void inline computer_state_t::eval_fetch(cmd_t &c) {
   }
 }
 
-void inline computer_state_t::eval_store(cmd_t &c) {
+inline void computer_state_t::eval_store(cmd_t &c) {
   union_node_set(reg[c.cmd_store.src_reg].node_set, mem[c.cmd_store.address]);
 }
 
-void inline computer_state_t::eval_update(cmd_t &c) {
+inline void computer_state_t::eval_update(cmd_t &c) {
   for (auto& dst: reg[c.cmd_update.address_reg].simple_type) {
     if (dst >= 0) {
       union_node_set(reg[c.cmd_update.src_reg].node_set, mem[dst]);
@@ -105,7 +137,7 @@ void inline computer_state_t::eval_update(cmd_t &c) {
   }
 }
 
-void inline computer_state_t::eval_set(cmd_t &c) {
+inline void computer_state_t::eval_set(cmd_t &c) {
   reg_t dst = c.cmd_set.dst_reg;
 
   switch (c.cmd_set.constant.type) {
@@ -151,18 +183,26 @@ void inline computer_state_t::eval_set(cmd_t &c) {
   }
 }
 
-void computer_state_t::eval_cmd(cmd_t &c) {
+inline void computer_state_t::eval_cmd(cmd_t &c) {
   switch (c.type) {
     case CMD_IF:
       // TODO
+      //  condition
+      //  predicate
       break;
 
     case CMD_PROJECT:
       // TODO
+      //  selector
+      //  condition
+      //  predicate
       break;
 
     case CMD_EXTEND:
       // TODO
+      //  selector
+      //  condition
+      //  predicate
       break;
 
     case CMD_MOVE:
@@ -170,11 +210,12 @@ void computer_state_t::eval_cmd(cmd_t &c) {
       break;
 
     case CMD_RESTRICTED_MOVE:
-      // TODO
+      eval_restricted_move(c);
       break;
 
     case CMD_CONDITIONAL_MOVE:
       // TODO
+      //  predicate
       break;
 
     case CMD_FETCH:
@@ -190,11 +231,12 @@ void computer_state_t::eval_cmd(cmd_t &c) {
       break;
 
     case CMD_RESTRICTED_UPDATE:
-      // TODO
+      eval_restricted_update(c);
       break;
 
     case CMD_CONDITIONAL_UPDATE:
       // TODO
+      //  predicate
       break;
 
     case CMD_SET:
@@ -204,5 +246,12 @@ void computer_state_t::eval_cmd(cmd_t &c) {
     default:
       error = true;
       break;
+  }
+}
+
+inline void computer_state_t::eval_block(block_id_t bid) {
+  for (int pc = prg.block[bid].from; pc < prg.block[bid].to; pc++) {
+    eval_cmd(prg.cmd[pc]);
+    if (error) return;
   }
 }
