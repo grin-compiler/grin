@@ -227,6 +227,7 @@ void read_abstract_program(ctx_t &ctx, abstract_program_t &prg) {
 
   // blocks
   count = *ctx.ptr++;
+  std::cout << "block count " << count << "\n";
   prg.block.resize(count);
   for (i = 0; i < count; i++) {
     read_range(ctx, prg.block[i]);
@@ -234,9 +235,11 @@ void read_abstract_program(ctx_t &ctx, abstract_program_t &prg) {
 
   // int sets
   count = *ctx.ptr++;
+  std::cout << "intset count " << count << "\n";
   prg.intset.resize(count);
   for (i = 0; i < count; i++) {
     size = *ctx.ptr++;
+    std::cout << "intset size " << size << "\n";
     for (j = 0; j < size; j++) {
       prg.intset[i].insert(*ctx.ptr++);
     }
