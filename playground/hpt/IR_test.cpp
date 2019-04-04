@@ -9,5 +9,14 @@ int main() {
     printf("load error\n");
   }
 
+  abstract_program_t *prg2 = load_abstract_program("000.ghc_sum_simple2.dfbin");
+  if (prg2) {
+    printf("load OK\n");
+  } else {
+    printf("load error\n");
+  }
+
+
+
   return 0;
 }
