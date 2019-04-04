@@ -103,7 +103,6 @@ struct constant_t {
       int32_t   item_index; // index or arity
       int32_t   item_value;
     };
-    condition_t condition;
   };
 };
 
