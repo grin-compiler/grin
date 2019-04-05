@@ -43,7 +43,7 @@
 	
 	\subsubsection{LHC}
 	
-	The LLVM Haskell Compiler is Haskell compiler made from reusable libraries using GRIN as its intermediate representation. As its name suggests, it generates LLVM IR code from the intermediate GRIN.
+	The LLVM Haskell Compiler~\cite{lhc} is Haskell compiler made from reusable libraries using JHC-style GRIN as its intermediate representation. As its name suggests, it generates LLVM IR code from the intermediate GRIN.
 	
 	\subsection{Other Intermediate Representations}
 	
@@ -61,9 +61,11 @@
 	
 	MLton~\cite{mlton} is a widely used Standard ML compiler. It also uses whole program optimization, and focuses on efficiency.
 	
-	MLton has a wide array of distinct intermediate representations, each serving a different purpose. Each IR can express a certain aspect of the language more precisely than the others, allowing for more convenient implementation of the respective analyses and transformations. They use a technique similar to defunctionalization called 0CFA. This technique serves a very similar purpose to defunctionalization, but instead of following function tags, it tracks function closures. The main advantage of this technique is that it can be applied to higher-order languages as well. Also, MLton supports contification~\cite{contification}, a control-flow based transformation, which turns function calls into continuations. This can expose a lot of additional control-flow information, allowing for a broad range of optimizations such as tail recursive function call optimization.
+	MLton has a wide array of distinct intermediate representations, each serving a different purpose. Each IR can express a certain aspect of the language more precisely than the others, allowing for more convenient implementation of the respective analyses and transformations. They use a technique similar to defunctionalization called 0CFA. This method serves a very similar purpose to defunctionalization, but instead of following function tags, it tracks function closures. Also, 0CFA can be generalized to KCFA, where $K$ represents the number of different contexts the analysis keeps track of. The variant used by MLton tracks zero different contexts, meaning it is a \textit{context insensitive} analysis. The main advantage of this technique is that it can be applied to higher-order languages as well. 
 	
-	MLton has its own native code generator, but it can also generate LLVM~\cite{mlton-llvm}.
+	Furthermore, MLton supports contification~\cite{contification}, a control-flow based transformation, which turns function calls into continuations. This can expose a lot of additional control-flow information, allowing for a broad range of optimizations such as tail recursive function call optimization.
+	
+	As for its back end, MLton has its own native code generator, but it can also generate LLVM IR code~\cite{mlton-llvm}.
 	
 	% \subsection{Compilers with LLVM Back Ends}
 	

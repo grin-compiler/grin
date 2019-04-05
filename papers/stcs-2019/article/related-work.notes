@@ -61,9 +61,9 @@ Whole program opt:
       - sync exceptions
       - multi-threading
     - long running research project: optimizing compiler for functional languages (one of them FE is HRC)
-    
-  - MLton: 
-  	- goal: 
+
+  - MLton:
+  	- goal:
   		- compiler for standard ML
   		- efficiency
   		- own FE (why?)
@@ -88,8 +88,8 @@ Notes:
   - core vs STG:
     - core has some invariants (e.g.: [RealWorld] token chain)
     - STG is for codegen (ctors/primops are saturated)
-      - dentational semantics ~ lamcalc
-      - operation semantics ~ how to execute STG like an imperative language (funcalls to sequences)
+      - denotational semantics ~ execution of lambda calculus
+      - operationaé semantics ~ how to execute STG like an imperative language (funcalls to sequences)
   - C-- (like LLVM befor LLVM)
     - imperative
     - to their own machine code or LLVM

@@ -2,8 +2,11 @@
 \begin{document}
 	
 	% TODO: reference Remi Turk & HRC
+	% TODO: example for length
 	
 	Conventional dead code eliminating optimizations usually only remove statements or expressions from programs; however, \emph{dead data elimination} can transform the underlying data structures themselves. Essentially, it can specialize a certain data structure for a given use-site by removing or transforming unnecessary parts of it. It is a very powerful optimization technique that --- given the right circumstances --- can significantly decrease memory usage and reduce the number of heap operations.
+	
+	Within the framework of GRIN, it was Remi Turk, who presented the initial version of dead data elimination in his master's thesis~\cite{remi-masters}. His original implementation used intraprocedural analyses and an untyped representation of GRIN. We extended the algorithm with interprocedural analyses, and improved the ``dummification" process (see Sections~\ref{subsec:producers-and-consumers}~and~\ref{subsec:undefined}). In the followings we present a high level overview of the original dead data elimination algorithm, as well as detail some of our modifications.
 	
 	\subsection{Dead Data Elimination in GRIN}
 	
@@ -93,6 +96,7 @@
 	On a higher abstraction level, the result of the created-by analysis can be interpreted as a bipartite graph between producers and consumers. One group of nodes represents the producers and the other one represents the consumers. A producer is connected to a consumer if and only if the value created by the producer can be consumed by the consumer. Furthermore, each component of the graph corresponds to producer-consumer group. Each producer inside the group can only create values consumed by the consumers inside the same group, and a similar statement holds for the consumers as well.
 	
 	\subsection{Transforming Producers and Consumers}
+	\label{subsec:producers-and-consumers}
 	
 	As mentioned earlier, the transformation applied by dead data elimination can be specific for each producer-consumer group, and both the producers and the consumers have to be transformed. Also, the transformation can not always simply remove the dead field of a producer. Take a look at Figure~\ref{fig:producers-and-consumers}. 
 	
@@ -122,8 +126,11 @@
 
 	As we can see, producers $P_1$ and $P_2$ share a common consumer $C_2$. Let's assume, that the shared value is a \pilcode{CPair} node with two fields, and neither $C_1$, nor $C_2$ uses the first field of that node. This means, the first field of the \pilcode{CPair} node is locally dead for producer $P_1$. Also, suppose that $C_3$ does use the first field of that node, meaning it is live for $P_2$, hence it cannot be removed. In this situation, if the transformation were to remove the locally dead field from $P_1$, then it would lead to a type mismatch at $C_2$, since $C_2$ would receive two \pilcode{CPair} nodes with different number of arguments, with possibly different types for their first fields. In order to resolve this issue the transformation has to rename the tag at $P_1$ to \pilcode{CPair'}, and create new patterns for \pilcode{CPair'} at $C_1$ and $C_2$ by duplicating and renaming the existing ones for \pilcode{CPair}. This way, we can avoid potential memory operations at the cost of code duplication.
 	
-	\subsection{The \pilcode{undefined} value}
+	In fact, even the code duplication can be circumvented by introducing the notion of \emph{basic blocks} to the intermediate representation. This way, we still need to generate new alternatives (new patterns), but their right-hand sides will be simple jump instructions to the basic blocks of the original alternative's right-hand side.
 	
-	Another option would be to only \emph{dummify} the locally dead fields. In other words, instead of removing the field at the producer and restructuring the consumers, the transformation could simply introduce a dummy value for that field. The dummy value could be any placeholder with the same type as the locally dead field. For instance, it could be any literal of that type. A more sophisticated solution would be to introduce an undefined value. The \pilcode{undefined} value is a placeholder as well, but it carries much more information. By marking certain values undefined instead of just introducing placeholder literals, we can facilitate other optimizations down the pipeline. However, each \pilcode{undefined} value has to be explicitly type annotated for the heap points-to analysis to work correctly. Unlike the other approach mentioned earlier, this alternative avoids any code duplication.
+	\subsection{The \pilcode{undefined} value}
+	\label{subsec:undefined}
+	
+	Another option would be to only \emph{dummify} the locally dead fields. In other words, instead of removing the field at the producer and restructuring the consumers, the transformation could simply introduce a dummy value for that field. The dummy value could be any placeholder with the same type as the locally dead field. For instance, it could be any literal of that type. A more sophisticated solution would be to introduce an undefined value. The \pilcode{undefined} value is a placeholder as well, but it carries much more information. By marking certain values undefined instead of just introducing placeholder literals, we can facilitate other optimizations down the pipeline. However, each \pilcode{undefined} value has to be explicitly type annotated for the heap points-to analysis to work correctly. Just like the other approach mentioned earlier, this alternative also solves the problem of code duplication at the cost of some modifications to the intermediate representation.
 	
 \end{document}
