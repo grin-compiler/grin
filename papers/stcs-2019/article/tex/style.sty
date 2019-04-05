@@ -21,7 +21,10 @@
 \usepackage{caption}
 \usepackage{graphicx}
 \graphicspath{ {../img/} }
-\usepackage[bottom]{footmisc}
+\usepackage[bottom,perpage]{footmisc}
+\usepackage{chngcntr}
+\counterwithin{figure}{section}
+\counterwithin{table}{section}
 
 \usepackage{enumitem}
 \setlist{nosep}
