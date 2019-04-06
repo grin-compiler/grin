@@ -28,6 +28,12 @@ method: compiled abstract interpretation
 - [Points-to Analysis in Almost Linear Time](https://www.cs.cornell.edu/courses/cs711/2005fa/papers/steensgaard-popl96.pdf)
 - [Fast and accurate flow-insensitive points-to analysis](http://www.cs.utexas.edu/users/pingali/CS380C/2007fa/papers/popl97.pdf)
 
+### relation of dataflow analysis, abstract interpretation and type inference
+
+- [Equivalence of data-flow analysis, abstract interpretation and type inference?](https://cs.stackexchange.com/questions/30746/equivalence-of-data-flow-analysis-abstract-interpretation-and-type-inference)
+- [Types as Abstract Interpretations](https://www.irif.fr/~mellies/mpri/mpri-ens/articles/cousot-types-as-abstract-interpretations.pdf)
+- [Principles of Program Analysis](http://www.imm.dtu.dk/~hrni/PPA/ppa.html) book
+
 ### search for: abstract compilation
 -  http://www.iro.umontreal.ca/~feeley/papers/BoucherFeeleyCC96.pdf ; Abstract compilation: A new implementation paradigm for static analysis
 -  https://pdfs.semanticscholar.org/5ad8/cb6b477793ffb5ec29dde89df6b82dbb6dba.pdf ; A Graph–Free Approach to Data–Flow Analysis
