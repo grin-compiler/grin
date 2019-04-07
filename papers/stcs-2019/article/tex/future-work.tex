@@ -1,0 +1,10 @@
+\documentclass[main.tex]{subfiles}
+\begin{document}
+	
+	There are still many new ideas left to explore regarding the GRIN framework. Most of these ideas require both research and development efforts.
+	
+	Currently, the framework only supports the compilation of Idris programs through the Idris front end, but we are working on supporting Haskell by integrating the Glasgow Haskell Compiler as a new front end. As of right now, the framework \emph{can} generate GRIN IR code from GHC's STG representation, but the generated programs still contain unimplemented primitive operations. The main challenge is to somehow handle these primitive operations. In fact, there is only a small set of primitive operations that cannot be trivially incorporated into the framework, but these might even require extending the GRIN IR with additional built-in instructions.
+	
+	Besides the addition of built-in instructions, the GRIN intermediate representation can be improved further by introducing the notion of function pointers and basic blocks. Firstly, the original specification of GRIN does not support modular compilation. However, extending the IR with function pointers can help to achieve incremental compilation. Each module could be compiled separately with indirect calls to other modules through function pointers, then by using different data-flow analyses and program transformations, all modules could be optimized together incrementally. In theory, if the entire program is available for analysis at compile time, incremental compilation could produce the same result as whole program compilation. Secondly, the original GRIN IR has a monadic structure which can make it difficult to analyze and transform the control flow of the program. Fortunately, replacing the monadic structure with basic blocks can resolve this issue.
+	
+\end{document}

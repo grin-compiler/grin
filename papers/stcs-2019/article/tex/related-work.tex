@@ -15,7 +15,7 @@
 	
 	\subsubsection{Boquist}
 	
-	The original GRIN framework was developed by U. Boquist, and first described in the article~\cite{boquist-grin}, then in his PhD thesis~\cite{boquist-phd}. This version of GRIN used the Chalmers Haskell-B Compiler~\cite{hbc} as its front end and RISC as its back end. The main focus of entire framework is to produce highly efficient machine code from high-level lazy functional programs through a series of optimizing code transformations. At that time, Boquist's implementation of GRIN already compared favorably to the existing Glasgow Haskell Compiler of version 4.01.
+	The original GRIN framework was developed by U. Boquist, and first described in the article~\cite{boquist-grin}, then in his PhD thesis~\cite{boquist-phd}. This version of GRIN used the Chalmers Haskell-B Compiler~\cite{hbc} as its front end and RISC as its back end. The main focus of the entire framework is to produce highly efficient machine code from high-level lazy functional programs through a series of optimizing code transformations. At that time, Boquist's implementation of GRIN already compared favorably to the existing Glasgow Haskell Compiler of version 4.01.
 	
 	The language itself has very simple syntax and semantics, and is capable of explicitly expressing laziness. It only has very few built-in instructions (\pilcode{store}, \pilcode{fetch} and \pilcode{update}) which can be interpreted in two ways. Firstly, they can be seen as simple heap operations; secondly, they can represent graph reduction semantics~\cite{impl-fun-lang}. For example, we can imagine \pilcode{store} creating a new node, and \pilcode{update} reducing those nodes.
 	
@@ -43,7 +43,7 @@
 	
 	\subsubsection{LHC}
 	
-	The LLVM Haskell Compiler~\cite{lhc} is Haskell compiler made from reusable libraries using JHC-style GRIN as its intermediate representation. As its name suggests, it generates LLVM IR code from the intermediate GRIN.
+	The LLVM Haskell Compiler~\cite{lhc} is a Haskell compiler made from reusable libraries using JHC-style GRIN as its intermediate representation. As its name suggests, it generates LLVM IR code from the intermediate GRIN.
 	
 	\subsection{Other Intermediate Representations}
 	
@@ -51,7 +51,7 @@
 	
 	\subsubsection{Intel Research Compiler}
 	
-	The Intel Labs Haskell Research Compiler~\cite{hrc} was a result of a long running research project focusing on functional language compilation. The project's main goal was to generate very efficient code for numerical computations utilizing whole program optimization.
+	The Intel Labs Haskell Research Compiler~\cite{hrc} was a result of a long running research project of Intel focusing on functional language compilation. The project's main goal was to generate very efficient code for numerical computations utilizing whole program optimization.
 	
 	The compiler reused the front end part of GHC, and worked with the external Core representation provided by it. Its optimizer part was written in MLton and was a general purpose compiler back end for strict functional languages. Differently from GRIN, it used basic blocks which can open up a whole spectrum of new optimization opportunities. Furthermore, instead of whole program defunctionalization (the generation of global \pilcode{eval}), their compiler used function pointers and data-flow analysis techniques to globally analyze the program. They also supported synchronous exceptions and multi-threading.
 	
@@ -63,7 +63,7 @@
 	
 	MLton has a wide array of distinct intermediate representations, each serving a different purpose. Each IR can express a certain aspect of the language more precisely than the others, allowing for more convenient implementation of the respective analyses and transformations. They use a technique similar to defunctionalization called 0CFA, a higher-order control flow analysis. This method serves a very similar purpose to defunctionalization, but instead of following function tags, it tracks function closures. Also, 0CFA can be generalized to k-CFA, where $k$ represents the number of different contexts the analysis distinguishes. The variant used by MLton distinguishes zero different contexts, meaning it is a \textit{context insensitive} analysis. The main advantage of this technique is that it can be applied to higher-order languages as well. 
 	
-	Furthermore, MLton supports contification~\cite{contification}, a control-flow based transformation, which turns function calls into continuations. This can expose a lot of additional control-flow information, allowing for a broad range of optimizations such as tail recursive function call optimization.
+	Furthermore, MLton supports contification~\cite{contification}, a control flow based transformation, which turns function calls into continuations. This can expose a lot of additional control flow information, allowing for a broad range of optimizations such as tail recursive function call optimization.
 	
 	As for its back end, MLton has its own native code generator, but it can also generate LLVM IR code~\cite{mlton-llvm}.
 	
