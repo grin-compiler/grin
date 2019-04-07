@@ -51,6 +51,6 @@
 	
 	After the optimization process, the optimized GRIN code is passed onto the back end, which then generates an executable using the LLVM compiler framework. The input of the back end consists of the optimized GRIN code, the primitive operations of Idris and a minimal runtime (the latter two are both implemented in C). Currently, the runtime is only responsible for allocating heap memory for the program, and at this point it does not include a garbage collector.
 	
-	The first task of the back end is to compile the GRIN code into LLVM IR code which is then optimized further by the LLVM Modular Optimizer~\cite{opt}. After that, the optimized LLVM code is compiled into an object file by the LLVM Static Compiler~\cite{llc}. Finally, Clang links together the object file with the C-implemented primitive operations and the runtime, and generates an executable binary.
+	The first task of the back end is to compile the GRIN code into LLVM IR code which is then optimized further by the LLVM Modular Optimizer~\cite{opt}. Currently, the back end uses the default LLVM optimization pipeline. After that, the optimized LLVM code is compiled into an object file by the LLVM Static Compiler~\cite{llc}. Finally, Clang links together the object file with the C-implemented primitive operations and the runtime, and generates an executable binary.
 	
 \end{document}
