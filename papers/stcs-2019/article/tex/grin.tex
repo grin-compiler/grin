@@ -1,7 +1,7 @@
 \documentclass[main.tex]{subfiles}
 \begin{document}
 	
-	GRIN is short for \emph{Graph Reduction Intermediate Notation}. GRIN consists of an intermediate representation language (IR in the followings) as well as the entire compiler back end framework built around it. GRIN tries to resolve the issues highlighted in Section~\ref{sec-intro} by using interprocedural whole program optimization. 
+	GRIN is short for \emph{Graph Reduction Intermediate Notation}. GRIN consists of an intermediate representation language (IR in the followings) as well as the entire compiler back end framework built around it. GRIN tries to resolve the issues highlighted in Section~\ref{sec:intro} by using interprocedural whole program optimization. 
 	
 	Interprocedural program analysis is a type of data-flow analysis that propagates information about certain program elements through function calls. Using interprocedural analyses instead of intraprocedural ones, allows for optimizations across functions. This means the framework can handle the issue of large sets of small interconnecting functions presented by the composable programming style. 
 	

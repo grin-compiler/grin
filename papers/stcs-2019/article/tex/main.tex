@@ -1,20 +1,37 @@
+%\documentclass[runningheads]{llncs}
+%\documentclass{actacyb}
 \documentclass[10pt,a4paper,oneside]{article}
 
 \usepackage{style}
 \usepackage{subfiles}
 
-%TODO: remove vspace from title
-\title{\vspace{-2cm}A modern look at GRIN,\\ an optimizing functional language back end}
-%\title{Dead Code Elimination for GRIN with Interprocedural Whole-Program Analysis}
-\date{\today}
-\author{Péter Dávid Podlovics, Csaba Hruska, Andor Pénzes}
-
 \begin{document}
+	
+	%TODO: remove vspace from title
+	\title{A modern look at GRIN,\\ an optimizing functional language back end}
+	%\titlerunning{A modern look at GRIN}
+	
+	%\institute
+	%{
+	%	Eötvös Loránd University, Budapest, Hungary\\
+	%	\email{peter.d.podlovics@gmail.com}\\
+	%	\and
+	%	\email{\{csaba.hruska, andor.penzes\}@gmail.com}
+	%}
+
+	\date{\today}
+	\author
+	{ 
+		Péter Dávid Podlovics \and%\inst{1} \and 
+		Csaba Hruska \and %\inst{2} \and 
+		Andor Pénzes%\inst{2}
+	}
+	%\authorrunning{P. Podlovics \and Cs. Hruska \and A. Pénzes}
 	
 	\maketitle
 	\subfile{abstract}
 	
-	\section{Introduction} \label{sec-intro}
+	\section{Introduction} \label{sec:intro}
 	\subfile{introduction}
 	
 	\section{Graph Reduction Intermediate Notation}
@@ -43,7 +60,6 @@
 	% \subfile{dde-app}
 	% \section{Compiled Abstract Interpretation}
 	% \section{Results}
-	% \section{Conclusion}
 	
 	\section*{Acknowledgements}
 	\subfile{acknowledgements}
