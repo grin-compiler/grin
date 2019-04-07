@@ -14,7 +14,7 @@
 	
 	\begin{codeFloat}[h]
 		\begin{center}
-			\begin{minipage}{0.35\textwidth}
+			\begin{minipage}{0.42\textwidth}
 				\begin{haskell}
 					main = 
 					  x <- pure (CPair 0 1)
@@ -28,7 +28,7 @@
 				\subcaption{Before the transformation}
 			\end{minipage}
 			$\xRightarrow{\text{\emph{a} is dead}}$
-			\begin{minipage}{0.35\textwidth}
+			\begin{minipage}{0.4\textwidth}
 				\begin{haskell}
 					main = 
 					  x <- pure (CPair' 1)
@@ -56,7 +56,7 @@
 	
 	\begin{analysisFloat}[h]
 		\begin{center}
-			\begin{minipage}{0.35\textwidth}
+			\begin{minipage}{0.43\textwidth}
 				\begin{haskell}
 					null xs = 
 					  y <- case xs of
@@ -71,9 +71,9 @@
 				\subcaption{Input program}
 			\end{minipage}
 			\hspace{1cm}
-			\begin{minipage}{0.40\textwidth}
+			\begin{minipage}{0.44\textwidth}
 				\begin{tcolorbox}[tab2,tabularx={l|r}]
-					Variable        & Producers \\
+					Var             & Producers \\
 					\hline\hline
 					\pilcode{xs}    & $\set{CNil[\dots], CCons[\dots]}$\footnotemark[2] \\\hline
 					\pilcode{a}     & $\set{CTrue[\pilcode{a}]}$	\\\hline
