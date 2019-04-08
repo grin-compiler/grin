@@ -8,7 +8,7 @@
 	%TODO: include code of Length
 	The measurements were taken using the Idris front end and LLVM back end of the compiler. Each test program --- besides ``Length" --- was adopted from the book \textit{Type-driven development with Idris}~\cite{tdd-idris} by Edwin Brady. These are small Idris programs demonstrating a certain aspect of the language.
 	
-	``Length" is an Idris program, measuring the length of a list containing the natural numbers from 1 to 100. This example was mainly constructed to test how the dead data elimination pass can transform the inner structure of a list into a simple natural number (see Section~\ref{sec:dde}).
+	``Length" is an Idris program, calculating the length of a list containing the natural numbers from 1 to 100. This example was mainly constructed to test how the dead data elimination pass can transform the inner structure of a list into a simple natural number (see Section~\ref{sec:dde}).
 	
 	\subsection{Measured metrics}
 	
@@ -34,7 +34,8 @@
 	
 	The actual commands for the binary generation are detailed in Program~code~\ref{code:binary-gen}. That script has two parameters: \pilcode{N} and \pilcode{llvm-in}. \pilcode{N} is the optimization level for the LLVM Optimizer, and \pilcode{llvm-in} is the LLVM program generated from the optimized GRIN code.
 	
-	\begin{codeFloat}[H]
+	\vspace{-0.5cm}
+	\begin{codeFloat}[h]
 		\begin{bash}
 			opt-7 -ON <llvm-in> -o <llvm-out> 
 			llc-7 -O3 -relocation-model=pic -filetype=obj -o <object-file>
@@ -43,16 +44,19 @@
 		\caption{Commands for binary generation}
 		\label{code:binary-gen}
 	\end{codeFloat}
+	\vspace{-0.5cm}
 	
 	As for the runtime measurements of the binary, we used the \pilcode{perf} tool. The used command can be seen in Program~code~\ref{code:binary-measurements}.
 
-	\begin{codeFloat}[H]
+	\vspace{-0.5cm}
+	\begin{codeFloat}[h]
 		\begin{bash}
 			perf stat -e cpu/mem-stores/u -e "r81d0:u" -e instructions:u <executable>
 		\end{bash}
 		\caption{Command for runtime measurements of the binary}
 		\label{code:binary-measurements}
 	\end{codeFloat}
+	\vspace{-0.5cm}
 	
 	
 	\subsection{Length}
@@ -81,8 +85,6 @@
 
 	The runtime statistics for the executed binary are particularly interesting. First, observing the \pilcode{O0} statistics, we can see that the regular optimizations substantially reduced the number of executed instructions and memory operations, just as we saw with the interpreted GRIN code. However, on the one hand the DDE optimized binary did not perform any better than the regularly optimized one, but on the other hand its size decreased by more than 20\%. 
 	
-	Also, it is interesting to see that the aggressively optimized DDE binary performed much worse than the \pilcode{O0} version. This is because the default optimization pipeline of LLVM is designed for the C and C++ languages. As a consequence, in certain scenarios it may perform poorly for other languages. In the future, we plan to construct a better LLVM optimization pipeline for GRIN.
-
 	\begin{center}
 		\begin{minipage}{0.74\linewidth}
 			\captionof{table}{Length - CPU binary statistics}
@@ -98,12 +100,12 @@
 			\end{tcolorbox}	
 		\end{minipage}
 	\end{center}
+	
+	Also, it is interesting to see that the aggressively optimized DDE binary performed much worse than the \pilcode{O0} version. This is because the default optimization pipeline of LLVM is designed for the C and C++ languages. As a consequence, in certain scenarios it may perform poorly for other languages. In the future, we plan to construct a better LLVM optimization pipeline for GRIN.
 
 	\subsection{Exact length}
 	
 	For the GRIN statistics of ``Exact length", we can draw very similar conclusions as for ``Length``. However, closely observing the statistics, we can see, that the DDE pass completely eliminated \emph{all} heap operations from the program. In principle, this means, that all the variables can be put into registers during the execution of the program. In practice, some variables will be spilled onto stack, but the heap will never be used.
-	
-	As for the binary statistics, we do not see any major improvements besides the significant reduction in the size of the binary. Although, it is worth pointing out, that the cost of memory operations can be considerably higher when accessing heap memory, and that the statistics presented here do not account for that.
 
 	\begin{figure}[h]
 		\hspace{-0.5cm}
@@ -123,6 +125,8 @@
 		\end{minipage}
 	\end{figure}
 
+	As for the binary statistics, we do not see any major improvements besides the significant reduction in the size of the binary. Although, it is worth pointing out, that the cost of memory operations can be considerably higher when accessing heap memory, and that the statistics presented here do not account for that.
+
 	\begin{center}
 		\begin{minipage}{0.72\linewidth}
 			\captionof{table}{Exact length - CPU binary statistics}
@@ -139,11 +143,10 @@
 		\end{minipage}
 	\end{center}
 
+	\newpage
 	\subsection{Type level functions}
 	
 	The GRIN statistics for this program may not be particularly interesting, but they demonstrate that the GRIN optimizations work for programs with many type level computations as well.
-	
-	The binary statistics look promising for ``Type level functions". Each measured performance metric is strictly decreasing, which suggests that even the default LLVM optimization pipeline can work for GRIN.
 	
 	\begin{figure}[h]
 		\hspace{-0.5cm}
@@ -162,6 +165,8 @@
 			\includegraphics[scale=0.43]{tyfuns-compile-time.png}
 		\end{minipage}
 	\end{figure}
+
+	The binary statistics look promising for ``Type level functions". Each measured performance metric is strictly decreasing, which suggests that even the default LLVM optimization pipeline can work for GRIN.
 
 	\begin{center}
 		\begin{minipage}{0.72\linewidth}

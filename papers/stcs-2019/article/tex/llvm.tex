@@ -50,7 +50,7 @@
 	
 	%TODO: example, referece
 	
-	The original version of the analysis presented in \cite{boquist-phd} and further detailed in \cite{boquist-grin} only supports node level granularity. This means, that the types of literals are not differentiated, they are unified under a common "basic value" type. Therefore, the analysis cannot be used for type inference as it is. In order to facilitate type inference, HPT has to be extended, so that it propagates type information about literals as well. This can be easily achieved by slightly adjusting the original version. Using the result of the modified algorithm, we can generate LLVM IR code from GRIN.
+	The original version of the analysis presented in \cite{boquist-phd} and further detailed in \cite{boquist-grin} only supports node level granularity. This means, that the types of literals are not differentiated, they are unified under a common "basic value" type. Therefore, the analysis cannot be used for type inference as it is. In order to facilitate type inference, HPT has to be extended, so that it propagates type information about literals as well. This can be easily achieved by defining primitive types for the literal values. Using the result of the modified algorithm, we can generate LLVM IR code from GRIN.
 	
 	%TODO: reference UHC paper
 	

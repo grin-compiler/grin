@@ -11,4 +11,19 @@
 	
 	In order to resolve these problems, we need a compiler back end that can optimize across functions as well as allow the optimization of laziness in some way. Also, it would be beneficial if the back end could theoretically handle any front end language.
 	
+	In this paper we present a modern look at the GRIN framework. We explain some of its core concepts, and also provide a number of improvements to it. The main contributions presented in the paper are the following.
+	
+	\hspace{0.5cm}
+	\begin{enumerate}
+		\item Extension of the heap points-to analysis with more accurate basic value tracking
+
+		\item Specification of a type inference algorithm for GRIN using the extended heap points-to analysis
+		
+		\item Implementation of an LLVM back end for the GRIN framework
+		
+		\item Extension of the dead data elimination transformation with typed dummification and an overview of an alternative transformation for producer-consumer groups
+		
+		\item Implementation of an Idris front end for the GRIN framework
+	\end{enumerate}
+	
 \end{document}
