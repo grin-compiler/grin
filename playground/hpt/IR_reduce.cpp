@@ -25,9 +25,11 @@ struct computer_state_t {
     reg.resize(p.register_count);
   }
 
-  // predicate functions
+  // predicate and condition functions
+  bool eval_predicate_int_set(std::unordered_set<int32_t>& s, predicate_t& p);
   bool eval_predicate_int(int32_t i, predicate_t& p);
   bool eval_predicate_tag(int32_t i, predicate_t& p);
+  bool eval_condition(value_t& v, condition_t& c);
 
   // modification functions
   void insert_int_set(std::unordered_set<int32_t>& dst, int32_t value);
@@ -45,6 +47,7 @@ struct computer_state_t {
   void eval_block(block_id_t bid);
 
   // eval commands
+  void eval_if(cmd_t &c);
   void eval_conditional_update(cmd_t &c);
   void eval_conditional_move(cmd_t &c);
   void eval_restricted_move(cmd_t &c);
@@ -100,6 +103,15 @@ inline void computer_state_t::union_node_set(node_set_t& src, node_set_t& dst, b
 inline void computer_state_t::union_value(value_t& src, value_t& dst) {
   union_int_set(src.simple_type, dst.simple_type);
   union_node_set(src.node_set, dst.node_set);
+}
+
+inline bool computer_state_t::eval_predicate_int_set(std::unordered_set<int32_t>& s, predicate_t& p) {
+  for (auto& i: s) {
+    if (eval_predicate_int(i, p)) {
+      return true;
+    }
+  };
+  return false;
 }
 
 inline bool computer_state_t::eval_predicate_int(int32_t i, predicate_t& p) {
@@ -178,7 +190,68 @@ inline void computer_state_t::conditional_union_value(value_t& src, value_t& dst
   conditional_union_node_set(src.node_set, dst.node_set, p);
 }
 
+inline bool computer_state_t::eval_condition(value_t& v, condition_t& c) {
+  switch (c.type) {
+    case CON_NODE_TYPE_EXISTS:
+      return v.node_set.count(c.tag) > 0;
+      break;
+    case CON_SIMLE_TYPE_EXISTS:
+      return v.simple_type.count(c.simple_type) > 0;
+      break;
+    case CON_ANY_NOT_IN:
+      if (v.simple_type.size() > 0) {
+        return true;
+      }
+      for (auto& t_v: v.node_set) {
+        if (prg.intset[c.tag_set_id].find(t_v.first) == prg.intset[c.tag_set_id].end()) {
+          return true;
+        }
+      }
+      break;
+    case CON_ANY:
+      switch (c.predicate.type) {
+        case PRE_TAG_IN:
+        case PRE_TAG_NOT_IN:
+          for (auto& t_v: v.node_set) {
+            if (eval_predicate_tag(t_v.first, c.predicate)) {
+              return true;
+            }
+          }
+          break;
+        case PRE_VALUE_IN:
+        case PRE_VALUE_NOT_IN:
+          if (eval_predicate_int_set(v.simple_type, c.predicate)) {
+            return true;
+          }
+          // iterate node sets
+          for (auto& t_v: v.node_set) {
+            // iterate node items
+            for (auto& s: t_v.second) {
+              if (eval_predicate_int_set(s, c.predicate)) {
+                return true;
+              }
+            }
+          }
+          break;
+        default:
+          error = true;
+          break;
+      }
+      break;
+    default:
+      error = true;
+      break;
+  }
+  return false;
+}
+
 // command evaluation
+
+inline void computer_state_t::eval_if(cmd_t &c) {
+  if (eval_condition(reg[c.cmd_if.src_reg], c.cmd_if.condition)) {
+    eval_block(c.cmd_if.block_id);
+  }
+}
 
 inline void computer_state_t::eval_conditional_move(cmd_t &c) {
   conditional_union_value(reg[c.cmd_conditional_move.src_reg], reg[c.cmd_conditional_move.dst_reg], c.cmd_conditional_move.predicate);
@@ -286,9 +359,7 @@ inline void computer_state_t::eval_set(cmd_t &c) {
 inline void computer_state_t::eval_cmd(cmd_t &c) {
   switch (c.type) {
     case CMD_IF:
-      // TODO
-      //  condition
-      //  predicate
+      eval_if(c);
       break;
 
     case CMD_PROJECT:
