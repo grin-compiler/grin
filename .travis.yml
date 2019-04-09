@@ -6,7 +6,7 @@ env:
   global:
     - GCC=gcc-5
     - GXX=g++-5
-    - LLVM_VER=7.0.0
+    - LLVM_VER=7.1.0
 
 cache:
   directories:
