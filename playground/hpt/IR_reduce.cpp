@@ -50,6 +50,7 @@ struct computer_state_t {
   // eval commands
   void eval_if(cmd_t &c);
   void eval_project(cmd_t &c);
+  void eval_extend(cmd_t &c);
   void eval_conditional_update(cmd_t &c);
   void eval_conditional_move(cmd_t &c);
   void eval_restricted_move(cmd_t &c);
@@ -329,6 +330,43 @@ inline void computer_state_t::eval_project(cmd_t &c) {
   }
 }
 
+
+inline void computer_state_t::eval_extend(cmd_t &c) {
+  value_t& src = reg[c.cmd_extend.src_reg];
+  value_t& dst = reg[c.cmd_extend.dst_reg];
+
+  switch (c.cmd_extend.dst_selector.type) {
+    case SEL_NODE_ITEM: {
+        int32_t idx = c.cmd_extend.dst_selector.item_index;
+        tag_t   tag = c.cmd_extend.dst_selector.node_tag;
+
+        node_set_t::iterator dst_t_v = src.node_set.find(tag);
+
+        if ( dst_t_v == dst.node_set.end() ) {
+          // ignore if the tag does not exist
+          return;
+        }
+        if (idx >= dst_t_v->second.size()) {
+          std::cout << "error: extend - item index is out of range\n";
+          error = true;
+        } else {
+          union_int_set(src.simple_type, dst_t_v->second.at(idx));
+        }
+      }
+      break;
+    case SEL_ALL_FIELDS:
+      for (auto& t_v: dst.node_set) {
+        for (auto& s: t_v.second) {
+          union_int_set(src.simple_type, s);
+        }
+      }
+      break;
+    default:
+      error = true;
+      break;
+  }
+}
+
 inline void computer_state_t::eval_if(cmd_t &c) {
   if (eval_condition(reg[c.cmd_if.src_reg], c.cmd_if.condition)) {
     eval_block(c.cmd_if.block_id);
@@ -449,10 +487,7 @@ inline void computer_state_t::eval_cmd(cmd_t &c) {
       break;
 
     case CMD_EXTEND:
-      // TODO
-      //  selector
-      //  condition
-      //  predicate
+      eval_extend(c);
       break;
 
     case CMD_MOVE:
