@@ -7,9 +7,10 @@ packages:
   - 'grin'
   - location:
       git: https://github.com/csabahruska/llvm-hs.git
-      commit: 37aaa694d2f7907634f7af602d9aae125101db8d
+      commit: 5e5feb5d125df3c789ef85ca344bced283b2fbaa
     subdirs:
       - llvm-hs
+      - llvm-hs-pure
     extra-dep: true
 
 extra-deps:
