@@ -39,6 +39,7 @@ struct computer_state_t {
   void conditional_union_value(value_t& src, value_t& dst, predicate_t& p);
 
   void union_int_set(std::unordered_set<int32_t>& src, std::unordered_set<int32_t>& dst);
+  void union_node_set_item(tag_t src_tag, std::vector<std::unordered_set<int32_t>>& src_node_items, node_set_t& dst, bool merge_new_tags = true);
   void union_node_set(node_set_t& src, node_set_t& dst, bool merge_new_tags = true);
   void union_value(value_t& src, value_t& dst);
 
@@ -48,6 +49,7 @@ struct computer_state_t {
 
   // eval commands
   void eval_if(cmd_t &c);
+  void eval_project(cmd_t &c);
   void eval_conditional_update(cmd_t &c);
   void eval_conditional_move(cmd_t &c);
   void eval_restricted_move(cmd_t &c);
@@ -80,23 +82,27 @@ inline void computer_state_t::union_int_set(std::unordered_set<int32_t>& src, st
   for (auto& src_i: src) insert_int_set(dst, src_i);
 }
 
+inline void computer_state_t::union_node_set_item(tag_t src_tag, std::vector<std::unordered_set<int32_t>>& src_node_items, node_set_t& dst, bool merge_new_tags) {
+  node_set_t::iterator dst_t_v = dst.find(src_tag);
+
+  if ( dst_t_v == dst.end() ) {
+    if (merge_new_tags) {
+      dst.insert({src_tag, src_node_items});
+      changed = true;
+    }
+  } else if (src_node_items.size() != dst_t_v->second.size()) {
+      std::cout << "error: union_node_set_item\n";
+      error = true;
+  } else {
+    for (unsigned i=0; i<src_node_items.size(); i++) {
+      union_int_set(src_node_items.at(i), dst_t_v->second.at(i));
+    }
+  }
+}
+
 inline void computer_state_t::union_node_set(node_set_t& src, node_set_t& dst, bool merge_new_tags) {
   for (auto& src_t_v: src) {
-    node_set_t::iterator dst_t_v = dst.find (src_t_v.first);
-
-    if ( dst_t_v == dst.end() ) {
-      if (merge_new_tags) {
-        dst.insert(src_t_v);
-        changed = true;
-      }
-    } else if (src_t_v.second.size() != dst_t_v->second.size()) {
-        std::cout << "error: union_node_set\n";
-        error = true;
-    } else {
-      for (unsigned i=0; i<src_t_v.second.size(); i++) {
-        union_int_set(src_t_v.second.at(i), dst_t_v->second.at(i));
-      }
-    }
+    union_node_set_item(src_t_v.first, src_t_v.second, dst, merge_new_tags);
   }
 }
 
@@ -247,6 +253,82 @@ inline bool computer_state_t::eval_condition(value_t& v, condition_t& c) {
 
 // command evaluation
 
+inline void computer_state_t::eval_project(cmd_t &c) {
+  value_t& src = reg[c.cmd_project.src_reg];
+  value_t& dst = reg[c.cmd_project.dst_reg];
+
+  switch (c.cmd_project.src_selector.type) {
+    case SEL_NODE_ITEM: {
+        int32_t idx = c.cmd_project.src_selector.item_index;
+        tag_t   tag = c.cmd_project.src_selector.node_tag;
+
+        node_set_t::iterator src_t_v = src.node_set.find(tag);
+
+        if ( src_t_v == src.node_set.end() ) {
+          // ignore if the tag does not exist
+          return;
+        }
+        if (idx >= src_t_v->second.size()) {
+          std::cout << "error: project - item index is out of range\n";
+          error = true;
+        } else {
+          union_int_set(src_t_v->second.at(idx), dst.simple_type);
+        }
+      }
+      break;
+    case SEL_CONDITION_AS_SELECTOR: {
+        condition_t& cond = c.cmd_project.src_selector.condition;
+        switch (cond.type) {
+          case CON_NODE_TYPE_EXISTS: {
+              node_set_t::iterator src_t_v = src.node_set.find(cond.tag);
+
+              if ( src_t_v == src.node_set.end() ) {
+                // ignore if the tag does not exist
+                return;
+              }
+              union_node_set_item(cond.tag, src_t_v->second, dst.node_set);
+            }
+            break;
+
+          case CON_SIMLE_TYPE_EXISTS:
+            if (src.simple_type.count(cond.simple_type) > 0) {
+              insert_int_set(dst.simple_type, cond.simple_type);
+            }
+            break;
+
+          case CON_ANY_NOT_IN:
+            if (eval_condition(src, cond)) {
+              union_int_set(src.simple_type, dst.simple_type);
+              for (auto& t_v: src.node_set) {
+                if (prg.intset[cond.tag_set_id].find(t_v.first) == prg.intset[cond.tag_set_id].end()) {
+                  // union if not in the given tags
+                  union_node_set_item(t_v.first, t_v.second, dst.node_set);
+                }
+              }
+            }
+            break;
+
+          default:
+            error = true;
+            break;
+        }
+      }
+      break;
+    case SEL_ALL_FIELDS:
+      // iterate node sets
+      for (auto& t_v: src.node_set) {
+        // iterate node items
+        for (auto& s: t_v.second) {
+          union_int_set(s, dst.simple_type);
+        }
+      }
+      break;
+    default:
+      error = true;
+      break;
+  }
+}
+
 inline void computer_state_t::eval_if(cmd_t &c) {
   if (eval_condition(reg[c.cmd_if.src_reg], c.cmd_if.condition)) {
     eval_block(c.cmd_if.block_id);
@@ -363,10 +445,7 @@ inline void computer_state_t::eval_cmd(cmd_t &c) {
       break;
 
     case CMD_PROJECT:
-      // TODO
-      //  selector
-      //  condition
-      //  predicate
+      eval_project(c);
       break;
 
     case CMD_EXTEND:
