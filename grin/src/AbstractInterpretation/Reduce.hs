@@ -126,15 +126,6 @@ conditionalMoveNodeSet (NodeSet srcTagMap) predicate dstNS@(NodeSet dstTagMap) =
       let filteredSrcNS = NodeSet $ Map.map (V.map (Set.filter (`notInRange` rng))) srcTagMap
       in mappend filteredSrcNS dstNS
 
--- NOTE: a ~ Tag
-tagPredicateCondition :: ((a          -> Bool) -> Set a -> Bool)
-                      -> (a -> Set a -> Bool)
-                      -> Map a b
-                      -> Bool
-tagPredicateCondition quantifier predicate tagMap =
-  let tags = Map.keysSet tagMap
-  in quantifier (`predicate` tags) tags
-
 -- Note the existential quantifier for the simpleTypes.
 -- A field only satisfies the predicate
 -- if it actually has a value inside it that satisfies the predicate.
@@ -168,10 +159,12 @@ evalInstruction = \case
         pure $ not (Set.null typeSet) || Data.Foldable.any (`Set.notMember` tags) (Map.keysSet tagMap)
       Any (TagIn tagSet) -> do
         tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition any Set.member tagMap
+        let tags = Map.keysSet tagMap
+        pure $ any (`Set.member` tagSet) tags
       Any (TagNotIn tagSet) -> do
         tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition any Set.notMember tagMap
+        let tags = Map.keysSet tagMap
+        pure $ any (`Set.notMember` tagSet) tags
       Any (ValueIn rng) -> do
         val <- use $ selectReg srcReg
         pure $ valPredicateCondition any (`inRange` rng) val
