@@ -3,5 +3,6 @@ set -x -e
 #g++ -O3 -c -std=c++11 hpt.cpp
 
 g++ -O3 -c -std=c++11 IR_load.cpp
+g++ -O3 -c -std=c++11 IR_reduce.cpp
 
-g++ -O3 -std=c++11 IR_load.cpp IR_test.cpp -o df_test
+g++ -O3 -std=c++11 IR_load.cpp IR_reduce.cpp IR_test.cpp -o df_test

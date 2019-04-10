@@ -1,22 +1,11 @@
 #include "IR.h"
 #include <stdio.h>
 
-int main() {
-  abstract_program_t *prg = load_abstract_program("000.ghc_sumsimple.dfbin");
-  if (prg) {
-    printf("load OK\n");
-  } else {
-    printf("load error\n");
+int main(int argc, char **argv) {
+  for (int i = 1 ; i < argc ; i++) {
+    printf("loading: %s\n", argv[i]);
+    eval_abstract_program(argv[i]);
   }
-
-  abstract_program_t *prg2 = load_abstract_program("000.ghc_sum_simple2.dfbin");
-  if (prg2) {
-    printf("load OK\n");
-  } else {
-    printf("load error\n");
-  }
-
-
 
   return 0;
 }

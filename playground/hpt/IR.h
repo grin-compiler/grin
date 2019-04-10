@@ -209,3 +209,4 @@ struct abstract_program_t {
 };
 
 abstract_program_t *load_abstract_program(char *name);
+void eval_abstract_program(char *name);

@@ -19,10 +19,16 @@ struct computer_state_t {
   bool                    changed;
   bool                    error;
   abstract_program_t&     prg;
+  int                     executed_commands;
+  int                     change_count;
 
   computer_state_t(abstract_program_t& p) : prg(p) {
     mem.resize(p.memory_count);
     reg.resize(p.register_count);
+    changed = false;
+    error = false;
+    executed_commands = 0;
+    change_count = 0;
   }
 
   // predicate and condition functions
@@ -60,6 +66,10 @@ struct computer_state_t {
   void eval_store(cmd_t &c);
   void eval_update(cmd_t &c);
   void eval_set(cmd_t &c);
+
+  // debug
+  void print_int_set(std::unordered_set<int32_t>& s);
+  void print();
 };
 
 // value modification
@@ -70,6 +80,7 @@ inline void computer_state_t::insert_int_set(std::unordered_set<int32_t>& dst, i
     if ( got == dst.end() ) {
       dst.insert(value);
       changed = true;
+      change_count++;
     }
 }
 
@@ -90,6 +101,7 @@ inline void computer_state_t::union_node_set_item(tag_t src_tag, std::vector<std
     if (merge_new_tags) {
       dst.insert({src_tag, src_node_items});
       changed = true;
+      change_count++;
     }
   } else if (src_node_items.size() != dst_t_v->second.size()) {
       std::cout << "error: union_node_set_item\n";
@@ -177,6 +189,7 @@ inline void computer_state_t::conditional_union_node_set(node_set_t& src, node_s
       // add to dst
       dst.insert({src_t_v.first, dst_vector});
       changed = true;
+      change_count++;
 
     } else if (src_t_v.second.size() != dst_t_v->second.size()) {
         std::cout << "error: conditonal_union_node_set\n";
@@ -451,9 +464,11 @@ inline void computer_state_t::eval_set(cmd_t &c) {
         if ( got == reg[dst].node_set.end() ) {
           reg[dst].node_set[tag] = std::vector<std::unordered_set<int32_t>>(arity);
           changed = true;
+          change_count++;
         } else if (got->second.size() < arity) {
           got->second.resize(arity);
           changed = true;
+          change_count++;
         }
       }
       break;
@@ -477,6 +492,7 @@ inline void computer_state_t::eval_set(cmd_t &c) {
 }
 
 inline void computer_state_t::eval_cmd(cmd_t &c) {
+  executed_commands++;
   switch (c.type) {
     case CMD_IF:
       eval_if(c);
@@ -537,4 +553,51 @@ inline void computer_state_t::eval_block(block_id_t bid) {
     eval_cmd(prg.cmd[pc]);
     if (error) return;
   }
+}
+
+void computer_state_t::print_int_set(std::unordered_set<int32_t>& s) {
+  std::cout << "{";
+  for (auto& i: s) {
+    std::cout << i << ",";
+  }
+  std::cout << "}";
+}
+
+void computer_state_t::print() {
+  for (auto& r: reg) {
+    if (r.simple_type.size() > 0) {
+      print_int_set(r.simple_type);
+    } else {
+      std::cout << "node_set_size: " << r.node_set.size();
+    }
+    std::cout << "\n";
+  }
+}
+
+void eval_abstract_program(char *name) {
+  abstract_program_t *prg = load_abstract_program(name);
+  if (!prg) {
+    printf("load error\n");
+    return;
+  }
+  computer_state_t s(*prg);
+
+  int cnt = 0;
+  do {
+    cnt++;
+    s.changed = false;
+    s.eval_block(prg->start_block_id);
+  } while (s.changed && !s.error);
+
+
+  if (s.error) {
+    printf("dataflow ERROR!\n");
+  } else {
+    //s.print();
+    printf("OK\n");
+  }
+
+  printf("iterations: %d\n", cnt);
+  printf("executed_commands: %d\n", s.executed_commands);
+  printf("change_count: %d\n", s.change_count);
 }
