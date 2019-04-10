@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <vector>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 typedef int32_t simple_type_t;
 typedef int32_t tag_t;
@@ -208,5 +210,24 @@ struct abstract_program_t {
   std::vector<std::set<int32_t>>  intset;
 };
 
+// abstract values for evaluation and result serialization
+
+enum result_type {
+  RES_INT_SET   = 1000,
+  RES_NODE_SET  = 1001,
+  RES_NODE_ITEM = 1002,
+  RES_VALUE     = 1003,
+};
+
+typedef std::unordered_map<int32_t, std::vector<std::unordered_set<int32_t>>> node_set_t;
+
+// NOTE: GRIN is a typed language, a register can have only one type from the following options: simple_type, location, node
+struct value_t {
+  std::unordered_set<int32_t> simple_type;
+  node_set_t                  node_set;
+};
+
 abstract_program_t *load_abstract_program(char *name);
 void eval_abstract_program(char *name);
+
+void save_result(std::vector<int32_t>& buf, std::vector<node_set_t>& mem, std::vector<value_t>& reg);

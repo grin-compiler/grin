@@ -1,17 +1,7 @@
 #include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
+#include <fstream>
 
 #include "IR.h"
-
-typedef std::unordered_map<int32_t, std::vector<std::unordered_set<int32_t>>> node_set_t;
-
-// NOTE: GRIN is a typed language, a register can have only one type from the following options: simple_type, location, node
-struct value_t {
-  std::unordered_set<int32_t> simple_type;
-  node_set_t                  node_set;
-};
 
 struct computer_state_t {
   std::vector<node_set_t> mem;
@@ -600,4 +590,20 @@ void eval_abstract_program(char *name) {
   printf("iterations: %d\n", cnt);
   printf("executed_commands: %d\n", s.executed_commands);
   printf("change_count: %d\n", s.change_count);
+
+  // save the result
+  std::string res_name(name);
+  res_name += ".dat";
+
+  std::cout << "save result to: " << res_name << "\n";
+
+  std::ofstream fout(res_name, std::ios::out | std::ios::binary);
+  std::vector<int32_t> buf;
+
+  save_result(buf, s.mem, s.reg);
+
+  fout.write((char*)buf.data(), buf.size() * sizeof(int32_t));
+  fout.close();
+
+  delete prg;
 }
