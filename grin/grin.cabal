@@ -37,6 +37,8 @@ library
     AbstractInterpretation.IR
     AbstractInterpretation.BinaryIR
     AbstractInterpretation.PrettyIR
+    AbstractInterpretation.BinaryResult
+    AbstractInterpretation.ReduceCpp
     AbstractInterpretation.Reduce
     AbstractInterpretation.Util
     AbstractInterpretation.OptimiseAbstractProgram
