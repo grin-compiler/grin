@@ -214,8 +214,8 @@ struct abstract_program_t {
 
 enum result_type {
   RES_INT_SET   = 1000,
-  RES_NODE_SET  = 1001,
-  RES_NODE_ITEM = 1002,
+  RES_NODE_ITEM = 1001,
+  RES_NODE_SET  = 1002,
   RES_VALUE     = 1003,
 };
 
@@ -230,4 +230,4 @@ struct value_t {
 abstract_program_t *load_abstract_program(char *name);
 void eval_abstract_program(char *name);
 
-void save_result(std::vector<int32_t>& buf, std::vector<node_set_t>& mem, std::vector<value_t>& reg);
+void save_result(std::vector<int32_t>& buf, int32_t iter_count, std::vector<node_set_t>& mem, std::vector<value_t>& reg);

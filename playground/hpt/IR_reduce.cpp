@@ -56,10 +56,6 @@ struct computer_state_t {
   void eval_store(cmd_t &c);
   void eval_update(cmd_t &c);
   void eval_set(cmd_t &c);
-
-  // debug
-  void print_int_set(std::unordered_set<int32_t>& s);
-  void print();
 };
 
 // value modification
@@ -468,7 +464,7 @@ inline void computer_state_t::eval_set(cmd_t &c) {
         int32_t index = c.cmd_set.constant.item_index;
         int32_t value = c.cmd_set.constant.item_value;
 
-        node_set_t::iterator got = reg[dst].node_set.find (tag);
+        node_set_t::iterator got = reg[dst].node_set.find(tag);
         if ( got != reg[dst].node_set.end() && got->second.size() >= index) {
           insert_int_set(got->second[index], value);
         }
@@ -545,25 +541,6 @@ inline void computer_state_t::eval_block(block_id_t bid) {
   }
 }
 
-void computer_state_t::print_int_set(std::unordered_set<int32_t>& s) {
-  std::cout << "{";
-  for (auto& i: s) {
-    std::cout << i << ",";
-  }
-  std::cout << "}";
-}
-
-void computer_state_t::print() {
-  for (auto& r: reg) {
-    if (r.simple_type.size() > 0) {
-      print_int_set(r.simple_type);
-    } else {
-      std::cout << "node_set_size: " << r.node_set.size();
-    }
-    std::cout << "\n";
-  }
-}
-
 void eval_abstract_program(char *name) {
   abstract_program_t *prg = load_abstract_program(name);
   if (!prg) {
@@ -583,7 +560,6 @@ void eval_abstract_program(char *name) {
   if (s.error) {
     printf("dataflow ERROR!\n");
   } else {
-    //s.print();
     printf("OK\n");
   }
 
@@ -600,7 +576,7 @@ void eval_abstract_program(char *name) {
   std::ofstream fout(res_name, std::ios::out | std::ios::binary);
   std::vector<int32_t> buf;
 
-  save_result(buf, s.mem, s.reg);
+  save_result(buf, cnt, s.mem, s.reg);
 
   fout.write((char*)buf.data(), buf.size() * sizeof(int32_t));
   fout.close();

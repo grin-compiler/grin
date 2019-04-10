@@ -43,7 +43,8 @@ void emit_value(std::vector<int32_t>& b, value_t& v) {
   emit_node_set(b, v.node_set);
 }
 
-void save_result(std::vector<int32_t>& b, std::vector<node_set_t>& mem, std::vector<value_t>& reg) {
+void save_result(std::vector<int32_t>& b, int32_t iter_count, std::vector<node_set_t>& mem, std::vector<value_t>& reg) {
+  b.push_back(iter_count);
   b.push_back(mem.size());
   b.push_back(reg.size());
   for (auto& i: mem) {
