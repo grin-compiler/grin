@@ -14,20 +14,18 @@ import AbstractInterpretation.IR
 data Env
   = Env
   { envTagMap         :: Map (Set Tag) Int32
-  , envInstCount      :: !Int -- program / if has effect on this
-  , envBlocks         :: ![(Int,Int)]
   , envBlockCount     :: !Int
   , envBuilder        :: !Builder
-  , envBuilderSuffix  :: !Builder
+  , envBuilderMap     :: Map Int (Int, Builder) -- block size, data
+  , envInstCount      :: !Int
   }
 
 emptyEnv = Env
   { envTagMap         = mempty
-  , envInstCount      = 0
-  , envBlocks         = []
   , envBlockCount     = 0
   , envBuilder        = mempty
-  , envBuilderSuffix  = mempty
+  , envBuilderMap     = mempty
+  , envInstCount      = 0
   }
 
 type W = State Env
@@ -60,15 +58,14 @@ writeTagSet s = do
 writeBlock :: [Instruction] -> W ()
 writeBlock il = do
   let size = length il
-  iCount <- gets envInstCount
-  bCount <- gets envBlockCount
-  modify' $ \env@Env{..} -> env {envInstCount = iCount + size, envBlockCount = succ bCount, envBlocks = envBlocks ++ [(iCount, iCount + size)]}
-  writeI32 $ fromIntegral bCount
-  currentBuilder <- gets envBuilder
+  blockIndex <- gets envBlockCount
+  modify' $ \env@Env{..} -> env {envInstCount = envInstCount + size, envBlockCount = succ blockIndex}
+  writeI32 $ fromIntegral blockIndex
+  savedBuilder <- gets envBuilder
   modify' $ \env@Env{..} -> env {envBuilder = mempty}
   mapM_ writeInstruction il
   blockBuilder <- gets envBuilder
-  modify' $ \env@Env{..} -> env {envBuilder = currentBuilder, envBuilderSuffix = envBuilderSuffix <> blockBuilder}
+  modify' $ \env@Env{..} -> env {envBuilder = savedBuilder, envBuilderMap = Map.insert blockIndex (size, blockBuilder) envBuilderMap}
 
 -----------------------------------
 
@@ -212,6 +209,13 @@ writeInstruction = \case
     set elems ... [i32]
 -}
 
+writeBlockItem :: Int32 -> Int -> W Int32
+writeBlockItem offset size = do
+  let nextOffset = offset + fromIntegral size
+  writeI32 $ offset
+  writeI32 $ nextOffset
+  pure nextOffset
+
 encodeAbstractProgram :: AbstractProgram -> LBS.ByteString
 encodeAbstractProgram AbstractProgram {..} = toLazyByteString (envBuilder env) where
   env = flip execState emptyEnv $ do
@@ -224,16 +228,13 @@ encodeAbstractProgram AbstractProgram {..} = toLazyByteString (envBuilder env) w
     -- commands
     cmdCount <- gets envInstCount
     writeI32 $ fromIntegral cmdCount
-    cmdsBin <- gets envBuilderSuffix
-    emit cmdsBin
+    (blockSizes, blocks) <- gets $ unzip . Map.elems . envBuilderMap
+    mapM emit blocks
 
     -- bocks
     blkCount <- gets envBlockCount
     writeI32 $ fromIntegral blkCount
-    blocks <- gets envBlocks
-    forM_ blocks $ \(a,b) -> do
-      writeI32 $ fromIntegral a
-      writeI32 $ fromIntegral b
+    foldM_ writeBlockItem 0 blockSizes
 
     -- intsets
     {-
