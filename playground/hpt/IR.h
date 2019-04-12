@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <vector>
 #include <set>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -99,7 +100,7 @@ struct constant_t {
   enum constant_type type;
   union {
     simple_type_t simple_type;
-    mem_t mem;
+    mem_t         mem;
     struct {
       tag_t     node_tag;
       int32_t   item_index; // index or arity
@@ -219,11 +220,12 @@ enum result_type {
   RES_VALUE     = 1003,
 };
 
-typedef std::unordered_map<int32_t, std::vector<std::unordered_set<int32_t>>> node_set_t;
+typedef std::set<int32_t> int_set_t;
+typedef std::unordered_map<int32_t, std::vector<int_set_t>> node_set_t;
 
 // NOTE: GRIN is a typed language, a register can have only one type from the following options: simple_type, location, node
 struct value_t {
-  std::unordered_set<int32_t> simple_type;
+  int_set_t simple_type;
   node_set_t                  node_set;
 };
 
@@ -231,3 +233,4 @@ abstract_program_t *load_abstract_program(char *name);
 void eval_abstract_program(char *name);
 
 void save_result(std::vector<int32_t>& buf, int32_t iter_count, std::vector<node_set_t>& mem, std::vector<value_t>& reg);
+void save_result_file(const char* name, int32_t iter_count, std::vector<node_set_t>& mem, std::vector<value_t>& reg);

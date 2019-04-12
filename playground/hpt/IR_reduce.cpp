@@ -11,6 +11,7 @@ struct computer_state_t {
   abstract_program_t&     prg;
   int                     executed_commands;
   int                     change_count;
+  std::ofstream outfile;
 
   computer_state_t(abstract_program_t& p) : prg(p) {
     mem.resize(p.memory_count);
@@ -19,23 +20,24 @@ struct computer_state_t {
     error = false;
     executed_commands = 0;
     change_count = 0;
+    outfile.open("/home/csaba/df_debug/insts_cpp.dat", std::ios_base::app);
   }
 
   // predicate and condition functions
-  bool eval_predicate_int_set(std::unordered_set<int32_t>& s, predicate_t& p);
+  bool eval_predicate_int_set(int_set_t& s, predicate_t& p);
   bool eval_predicate_int(int32_t i, predicate_t& p);
   bool eval_predicate_tag(int32_t i, predicate_t& p);
   bool eval_condition(value_t& v, condition_t& c);
 
   // modification functions
-  void insert_int_set(std::unordered_set<int32_t>& dst, int32_t value);
+  void insert_int_set(int_set_t& dst, int32_t value);
 
-  void conditional_union_int_set(std::unordered_set<int32_t>& src, std::unordered_set<int32_t>& dst, predicate_t& p);
+  void conditional_union_int_set(int_set_t& src, int_set_t& dst, predicate_t& p);
   void conditional_union_node_set(node_set_t& src, node_set_t& dst, predicate_t& p);
   void conditional_union_value(value_t& src, value_t& dst, predicate_t& p);
 
-  void union_int_set(std::unordered_set<int32_t>& src, std::unordered_set<int32_t>& dst);
-  void union_node_set_item(tag_t src_tag, std::vector<std::unordered_set<int32_t>>& src_node_items, node_set_t& dst, bool merge_new_tags = true);
+  void union_int_set(int_set_t& src, int_set_t& dst);
+  void union_node_set_item(tag_t src_tag, std::vector<int_set_t>& src_node_items, node_set_t& dst, bool merge_new_tags = true);
   void union_node_set(node_set_t& src, node_set_t& dst, bool merge_new_tags = true);
   void union_value(value_t& src, value_t& dst);
 
@@ -60,8 +62,8 @@ struct computer_state_t {
 
 // value modification
 
-inline void computer_state_t::insert_int_set(std::unordered_set<int32_t>& dst, int32_t value) {
-    std::unordered_set<int32_t>::iterator got = dst.find (value);
+inline void computer_state_t::insert_int_set(int_set_t& dst, int32_t value) {
+    int_set_t::iterator got = dst.find (value);
 
     if ( got == dst.end() ) {
       dst.insert(value);
@@ -70,7 +72,7 @@ inline void computer_state_t::insert_int_set(std::unordered_set<int32_t>& dst, i
     }
 }
 
-inline void computer_state_t::union_int_set(std::unordered_set<int32_t>& src, std::unordered_set<int32_t>& dst) {
+inline void computer_state_t::union_int_set(int_set_t& src, int_set_t& dst) {
   /* TODO: use more efficient operations
       https://lemire.me/blog/2017/01/27/how-expensive-are-the-union-and-intersection-of-two-unordered_set-in-c/
       https://en.cppreference.com/w/cpp/algorithm/set_union
@@ -80,7 +82,7 @@ inline void computer_state_t::union_int_set(std::unordered_set<int32_t>& src, st
   for (auto& src_i: src) insert_int_set(dst, src_i);
 }
 
-inline void computer_state_t::union_node_set_item(tag_t src_tag, std::vector<std::unordered_set<int32_t>>& src_node_items, node_set_t& dst, bool merge_new_tags) {
+inline void computer_state_t::union_node_set_item(tag_t src_tag, std::vector<int_set_t>& src_node_items, node_set_t& dst, bool merge_new_tags) {
   node_set_t::iterator dst_t_v = dst.find(src_tag);
 
   if ( dst_t_v == dst.end() ) {
@@ -110,7 +112,7 @@ inline void computer_state_t::union_value(value_t& src, value_t& dst) {
   union_node_set(src.node_set, dst.node_set);
 }
 
-inline bool computer_state_t::eval_predicate_int_set(std::unordered_set<int32_t>& s, predicate_t& p) {
+inline bool computer_state_t::eval_predicate_int_set(int_set_t& s, predicate_t& p) {
   for (auto& i: s) {
     if (eval_predicate_int(i, p)) {
       return true;
@@ -147,7 +149,7 @@ inline bool computer_state_t::eval_predicate_tag(int32_t t, predicate_t& p) {
   return true;
 }
 
-inline void computer_state_t::conditional_union_int_set(std::unordered_set<int32_t>& src, std::unordered_set<int32_t>& dst, predicate_t& p) {
+inline void computer_state_t::conditional_union_int_set(int_set_t& src, int_set_t& dst, predicate_t& p) {
   for (auto& src_i: src) {
     if (eval_predicate_int(src_i, p)) {
       insert_int_set(dst, src_i);
@@ -339,10 +341,11 @@ inline void computer_state_t::eval_extend(cmd_t &c) {
         int32_t idx = c.cmd_extend.dst_selector.item_index;
         tag_t   tag = c.cmd_extend.dst_selector.node_tag;
 
-        node_set_t::iterator dst_t_v = src.node_set.find(tag);
+        node_set_t::iterator dst_t_v = dst.node_set.find(tag);
 
         if ( dst_t_v == dst.node_set.end() ) {
           // ignore if the tag does not exist
+          //error = true;
           return;
         }
         if (idx >= dst_t_v->second.size()) {
@@ -430,43 +433,47 @@ inline void computer_state_t::eval_update(cmd_t &c) {
 }
 
 inline void computer_state_t::eval_set(cmd_t &c) {
-  reg_t dst = c.cmd_set.dst_reg;
+  value_t& dst = reg[c.cmd_set.dst_reg];
 
   switch (c.cmd_set.constant.type) {
     case CONST_SIMPLE_TYPE:
-      insert_int_set(reg[dst].simple_type, c.cmd_set.constant.simple_type);
+      outfile << "CONST_SIMPLE_TYPE ";
+      insert_int_set(dst.simple_type, c.cmd_set.constant.simple_type);
       break;
 
     case CONST_HEAP_LOCATION:
-      insert_int_set(reg[dst].simple_type, c.cmd_set.constant.mem);
+      outfile << "CONST_HEAP_LOCATION ";
+      insert_int_set(dst.simple_type, c.cmd_set.constant.mem);
       break;
 
     case CONST_NODE_TYPE: {
+        outfile << "CONST_NODE_TYPE ";
         tag_t   tag   = c.cmd_set.constant.node_tag;
         int32_t arity = c.cmd_set.constant.item_index;
 
-        node_set_t::iterator got = reg[dst].node_set.find (tag);
+        node_set_t::iterator dst_t_v = dst.node_set.find(tag);
 
-        if ( got == reg[dst].node_set.end() ) {
-          reg[dst].node_set[tag] = std::vector<std::unordered_set<int32_t>>(arity);
+        if ( dst_t_v == dst.node_set.end() ) {
+          dst.node_set.insert({tag, std::vector<int_set_t>(arity)});
           changed = true;
           change_count++;
-        } else if (got->second.size() < arity) {
-          got->second.resize(arity);
-          changed = true;
-          change_count++;
+        } else if (dst_t_v->second.size() != arity) {
+          error = true;
         }
       }
       break;
 
     case CONST_NODE_ITEM: {
+        outfile << "CONST_NODE_ITEM ";
         tag_t   tag   = c.cmd_set.constant.node_tag;
         int32_t index = c.cmd_set.constant.item_index;
         int32_t value = c.cmd_set.constant.item_value;
 
-        node_set_t::iterator got = reg[dst].node_set.find(tag);
-        if ( got != reg[dst].node_set.end() && got->second.size() >= index) {
-          insert_int_set(got->second[index], value);
+        node_set_t::iterator dst_t_v = dst.node_set.find(tag);
+        if ( dst_t_v != dst.node_set.end() && index < dst_t_v->second.size()) {
+          insert_int_set(dst_t_v->second.at(index), value);
+        } else {
+          //error = true;
         }
       }
       break;
@@ -478,53 +485,78 @@ inline void computer_state_t::eval_set(cmd_t &c) {
 }
 
 inline void computer_state_t::eval_cmd(cmd_t &c) {
+  // debug
+  char name[2048];
+  sprintf(name, "/home/csaba/df_debug/prg_cpp_inst_%04d.dat", executed_commands);
+  //save_result_file(name, 0, mem, reg);
+
+  if (executed_commands % 1000 == 0) {
+    printf(" * changes: %d\t commands: %d \n", change_count, executed_commands);
+  }
+
   executed_commands++;
+
+  outfile << executed_commands << " ";
+  outfile.flush();
+
   switch (c.type) {
     case CMD_IF:
+      outfile << "CMD_IF " << std::flush;
       eval_if(c);
       break;
 
     case CMD_PROJECT:
+      outfile << "CMD_PROJECT " << std::flush;
       eval_project(c);
       break;
 
     case CMD_EXTEND:
+      outfile << "CMD_EXTEND " << std::flush;
       eval_extend(c);
       break;
 
     case CMD_MOVE:
+      outfile << "CMD_MOVE " << std::flush;
       eval_move(c);
       break;
 
     case CMD_RESTRICTED_MOVE:
+      outfile << "CMD_RESTRICTED_MOVE " << std::flush;
       eval_restricted_move(c);
       break;
 
     case CMD_CONDITIONAL_MOVE:
+      outfile << "CMD_CONDITIONAL_MOVE " << std::flush;
       eval_conditional_move(c);
       break;
 
     case CMD_FETCH:
+      outfile << "CMD_FETCH " << std::flush;
       eval_fetch(c);
       break;
 
     case CMD_STORE:
+      outfile << "CMD_STORE " << std::flush;
       eval_store(c);
       break;
 
     case CMD_UPDATE:
+      outfile << "CMD_UPDATE " << std::flush;
       eval_update(c);
       break;
 
     case CMD_RESTRICTED_UPDATE:
+      outfile << "CMD_RESTRICTED_UPDATE " << std::flush;
       eval_restricted_update(c);
       break;
 
     case CMD_CONDITIONAL_UPDATE:
+      outfile << "CMD_CONDITIONAL_UPDATE " << std::flush;
       eval_conditional_update(c);
       break;
 
     case CMD_SET:
+      outfile << "CMD_SET " << std::flush;
       eval_set(c);
       break;
 
@@ -532,9 +564,11 @@ inline void computer_state_t::eval_cmd(cmd_t &c) {
       error = true;
       break;
   }
+  outfile << "\n";
 }
 
 inline void computer_state_t::eval_block(block_id_t bid) {
+  outfile << "\n";
   for (int pc = prg.block[bid].from; pc < prg.block[bid].to; pc++) {
     eval_cmd(prg.cmd[pc]);
     if (error) return;
@@ -554,6 +588,14 @@ void eval_abstract_program(char *name) {
     cnt++;
     s.changed = false;
     s.eval_block(prg->start_block_id);
+    printf("iter: %d\tchanges: %d\t commands: %d \n", cnt, s.change_count, s.executed_commands);
+
+    // debug
+    // save result after each iteration
+    char iname[2048];
+    sprintf(iname, "/home/csaba/df_debug/prg_cpp_iter_%04d.dat", cnt);
+    save_result_file(iname, 0, s.mem, s.reg);
+
   } while (s.changed && !s.error);
 
 
@@ -570,16 +612,7 @@ void eval_abstract_program(char *name) {
   // save the result
   std::string res_name(name);
   res_name += ".dat";
-
-  std::cout << "save result to: " << res_name << "\n";
-
-  std::ofstream fout(res_name, std::ios::out | std::ios::binary);
-  std::vector<int32_t> buf;
-
-  save_result(buf, cnt, s.mem, s.reg);
-
-  fout.write((char*)buf.data(), buf.size() * sizeof(int32_t));
-  fout.close();
+  save_result_file(res_name.c_str(), cnt, s.mem, s.reg);
 
   delete prg;
 }

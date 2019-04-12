@@ -12,7 +12,7 @@
   reg values
 */
 
-void emit_int_set(std::vector<int32_t>& b, std::unordered_set<int32_t>& s) {
+void emit_int_set(std::vector<int32_t>& b, int_set_t& s) {
   b.push_back(RES_INT_SET);
   b.push_back(s.size());
   for (auto& i: s) {
@@ -20,7 +20,7 @@ void emit_int_set(std::vector<int32_t>& b, std::unordered_set<int32_t>& s) {
   }
 }
 
-void emit_node_item(std::vector<int32_t>& b, std::vector<std::unordered_set<int32_t>>& ni) {
+void emit_node_item(std::vector<int32_t>& b, std::vector<int_set_t>& ni) {
   b.push_back(RES_NODE_ITEM);
   b.push_back(ni.size());
   for (auto& i: ni) {
@@ -53,4 +53,16 @@ void save_result(std::vector<int32_t>& b, int32_t iter_count, std::vector<node_s
   for (auto& i: reg) {
     emit_value(b, i);
   }
+}
+
+void save_result_file(const char* name, int32_t iter_count, std::vector<node_set_t>& mem, std::vector<value_t>& reg) {
+  //std::cout << "save result to: " << name << "\n";
+
+  std::ofstream fout(name, std::ios::out | std::ios::binary);
+  std::vector<int32_t> buf;
+
+  save_result(buf, iter_count, mem, reg);
+
+  fout.write((char*)buf.data(), buf.size() * sizeof(int32_t));
+  fout.close();
 }
