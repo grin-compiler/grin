@@ -108,6 +108,8 @@ void read_selector(ctx_t &ctx, selector_t &selector) {
   }
 }
 
+std::set<int32_t> const_bucket;
+
 void read_constant(ctx_t &ctx, constant_t &constant) {
   if (ctx.error) return;
 
@@ -117,18 +119,23 @@ void read_constant(ctx_t &ctx, constant_t &constant) {
   switch (constant.type) {
     case CONST_SIMPLE_TYPE:
       constant.simple_type = *ctx.ptr++;
+      const_bucket.insert(constant.simple_type);
       break;
     case CONST_HEAP_LOCATION:
       constant.mem = *ctx.ptr++;
+      const_bucket.insert(constant.mem);
       break;
     case CONST_NODE_TYPE:
       constant.node_tag = *ctx.ptr++;
       constant.item_index = *ctx.ptr++;
+      const_bucket.insert(constant.node_tag);
       break;
     case CONST_NODE_ITEM:
       constant.node_tag = *ctx.ptr++;
       constant.item_index = *ctx.ptr++;
       constant.item_value = *ctx.ptr++;
+      const_bucket.insert(constant.node_tag);
+      const_bucket.insert(constant.item_value);
       break;
     default:
       read_error(ctx,4);
@@ -261,6 +268,17 @@ abstract_program_t *load_abstract_program(char *name) {
   abstract_program_t *prg = new abstract_program_t();
 
   read_abstract_program(ctx, *prg);
+
+  std::cout << "const_bucket size " << const_bucket.size() << "\n";
+  int32_t const_min = INT16_MAX;
+  int32_t const_max = INT16_MIN;
+  for (auto& c : const_bucket) {
+    const_min = std::min(const_min,c);
+    const_max = std::max(const_max,c);
+  }
+  std::cout << "const_min " << const_min << "\n";
+  std::cout << "const_max " << const_max << "\n";
+  std::cout << "sizeof(int32_t) " << sizeof(int32_t) << "\n";
 
   // return result
   if (ctx.error) {
