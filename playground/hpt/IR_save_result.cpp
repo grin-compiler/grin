@@ -37,18 +37,9 @@ void emit_node_set(std::ofstream& f, node_set_t& ns) {
   emit_int32_t(f, RES_NODE_SET);
   emit_int32_t(f, ns.size());
 
-  // get sorted key vector
-  std::vector<int32_t> keys;
-  keys.reserve (ns.size());
-  for (auto& it : ns) {
-    keys.push_back(it.first);
-  }
-  std::sort (keys.begin(), keys.end());
-
-  // save items in sorted key order
-  for (auto& i: keys) {
-    emit_int32_t(f, i);
-    emit_node_item(f, ns[i]);
+  for (auto& i: ns) {
+    emit_int32_t(f, i.first);
+    emit_node_item(f, i.second);
   }
 }
 
