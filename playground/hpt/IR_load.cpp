@@ -73,7 +73,7 @@ void read_condition(ctx_t &ctx, condition_t &condition) {
     case CON_NODE_TYPE_EXISTS:
       condition.tag = *ctx.ptr++;
       break;
-    case CON_SIMLE_TYPE_EXISTS:
+    case CON_SIMPLE_TYPE_EXISTS:
       condition.simple_type = *ctx.ptr++;
       break;
     case CON_ANY_NOT_IN:

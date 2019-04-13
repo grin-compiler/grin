@@ -21,6 +21,7 @@ struct computer_state_t {
     executed_commands = 0;
     change_count = 0;
     outfile.open("/home/csaba/df_debug/insts_cpp.dat", std::ios_base::app);
+    //outfile.open("/dev/null", std::ios_base::app);
   }
 
   // predicate and condition functions
@@ -93,6 +94,7 @@ inline void computer_state_t::union_node_set_item(tag_t src_tag, std::vector<int
     }
   } else if (src_node_items.size() != dst_t_v->second.size()) {
       std::cout << "error: union_node_set_item\n";
+      outfile << "error: union_node_set_item\n";
       error = true;
   } else {
     for (unsigned i=0; i<src_node_items.size(); i++) {
@@ -181,6 +183,7 @@ inline void computer_state_t::conditional_union_node_set(node_set_t& src, node_s
 
     } else if (src_t_v.second.size() != dst_t_v->second.size()) {
         std::cout << "error: conditonal_union_node_set\n";
+        outfile << "error: conditonal_union_node_set\n";
         error = true;
 
     } else {
@@ -203,7 +206,7 @@ inline bool computer_state_t::eval_condition(value_t& v, condition_t& c) {
     case CON_NODE_TYPE_EXISTS:
       return v.node_set.count(c.tag) > 0;
       break;
-    case CON_SIMLE_TYPE_EXISTS:
+    case CON_SIMPLE_TYPE_EXISTS:
       return v.simple_type.count(c.simple_type) > 0;
       break;
     case CON_ANY_NOT_IN:
@@ -261,6 +264,7 @@ inline void computer_state_t::eval_project(cmd_t &c) {
 
   switch (c.cmd_project.src_selector.type) {
     case SEL_NODE_ITEM: {
+        outfile << "SEL_NODE_ITEM ";
         int32_t idx = c.cmd_project.src_selector.item_index;
         tag_t   tag = c.cmd_project.src_selector.node_tag;
 
@@ -272,6 +276,12 @@ inline void computer_state_t::eval_project(cmd_t &c) {
         }
         if (idx >= src_t_v->second.size()) {
           std::cout << "error: project - item index is out of range\n";
+          outfile << "error: project - item index is out of range\n";
+          outfile << " idx: " << idx;
+          outfile << " node size: " << src_t_v->second.size();
+          outfile << " tag: " << tag;
+          outfile << " src_reg: " << c.cmd_project.src_reg;
+          outfile << "\n";
           error = true;
         } else {
           union_int_set(src_t_v->second.at(idx), dst.simple_type);
@@ -279,9 +289,11 @@ inline void computer_state_t::eval_project(cmd_t &c) {
       }
       break;
     case SEL_CONDITION_AS_SELECTOR: {
+        outfile << "SEL_CONDITION_AS_SELECTOR ";
         condition_t& cond = c.cmd_project.src_selector.condition;
         switch (cond.type) {
           case CON_NODE_TYPE_EXISTS: {
+              outfile << "CON_NODE_TYPE_EXISTS ";
               node_set_t::iterator src_t_v = src.node_set.find(cond.tag);
 
               if ( src_t_v == src.node_set.end() ) {
@@ -292,13 +304,15 @@ inline void computer_state_t::eval_project(cmd_t &c) {
             }
             break;
 
-          case CON_SIMLE_TYPE_EXISTS:
+          case CON_SIMPLE_TYPE_EXISTS:
+            outfile << "CON_SIMPLE_TYPE_EXISTS ";
             if (src.simple_type.count(cond.simple_type) > 0) {
               insert_int_set(dst.simple_type, cond.simple_type);
             }
             break;
 
           case CON_ANY_NOT_IN:
+            outfile << "CON_ANY_NOT_IN ";
             if (eval_condition(src, cond)) {
               union_int_set(src.simple_type, dst.simple_type);
               for (auto& t_v: src.node_set) {
@@ -317,6 +331,7 @@ inline void computer_state_t::eval_project(cmd_t &c) {
       }
       break;
     case SEL_ALL_FIELDS:
+      outfile << "SEL_ALL_FIELDS ";
       // iterate node sets
       for (auto& t_v: src.node_set) {
         // iterate node items
@@ -338,6 +353,7 @@ inline void computer_state_t::eval_extend(cmd_t &c) {
 
   switch (c.cmd_extend.dst_selector.type) {
     case SEL_NODE_ITEM: {
+        outfile << "SEL_NODE_ITEM ";
         int32_t idx = c.cmd_extend.dst_selector.item_index;
         tag_t   tag = c.cmd_extend.dst_selector.node_tag;
 
@@ -350,6 +366,12 @@ inline void computer_state_t::eval_extend(cmd_t &c) {
         }
         if (idx >= dst_t_v->second.size()) {
           std::cout << "error: extend - item index is out of range\n";
+          outfile << "error: extend - item index is out of range\n";
+          outfile << " idx: " << idx;
+          outfile << " node size: " << dst_t_v->second.size();
+          outfile << " tag: " << tag;
+          outfile << " dst_reg: " << c.cmd_extend.dst_reg;
+          outfile << "\n";
           error = true;
         } else {
           union_int_set(src.simple_type, dst_t_v->second.at(idx));
@@ -357,6 +379,7 @@ inline void computer_state_t::eval_extend(cmd_t &c) {
       }
       break;
     case SEL_ALL_FIELDS:
+      outfile << "SEL_ALL_FIELDS ";
       for (auto& t_v: dst.node_set) {
         for (auto& s: t_v.second) {
           union_int_set(src.simple_type, s);
@@ -488,7 +511,7 @@ inline void computer_state_t::eval_cmd(cmd_t &c) {
   // debug
   char name[2048];
   sprintf(name, "/home/csaba/df_debug/prg_cpp_inst_%04d.dat", executed_commands);
-  //save_result_file(name, 0, mem, reg);
+  save_result_file(name, 0, mem, reg);
 
   if (executed_commands % 1000 == 0) {
     printf(" * changes: %d\t commands: %d \n", change_count, executed_commands);
@@ -601,8 +624,10 @@ void eval_abstract_program(char *name) {
 
   if (s.error) {
     printf("dataflow ERROR!\n");
+    s.outfile << "dataflow ERROR!\n";
   } else {
     printf("OK\n");
+    s.outfile << "OK\n";
   }
 
   printf("iterations: %d\n", cnt);

@@ -51,10 +51,10 @@ struct predicate_t {
 
 // condition
 enum condition_type {
-  CON_NODE_TYPE_EXISTS  = 200,
-  CON_SIMLE_TYPE_EXISTS = 201,
-  CON_ANY_NOT_IN        = 202,
-  CON_ANY               = 203,
+  CON_NODE_TYPE_EXISTS    = 200,
+  CON_SIMPLE_TYPE_EXISTS  = 201,
+  CON_ANY_NOT_IN          = 202,
+  CON_ANY                 = 203,
 };
 
 struct condition_t {
