@@ -711,6 +711,7 @@ spec = describe "Live Variable Analysis" $ do
     (calcLiveness exp) `sameAs` nodesSimpleExpected
 
   it "nodes_tricky" $ do
+    pendingWith "illegal grin code: every node tag must have a single arity for the whole program"
     let exp = [prog|
           grinMain =
             n0 <- f 0
