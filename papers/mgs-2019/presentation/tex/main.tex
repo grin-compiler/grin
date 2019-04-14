@@ -3,14 +3,15 @@
 \documentclass[bigger]{beamer}
 
 \usepackage{style}
+\usepackage{subfiles}
 
 
 \title[GRIN] %optional
-{GRIN: Dead data elimination}
+{A modern look at GRIN}
 
-\subtitle{in the context of dependently typed languages}
+\subtitle{an optimizing functional language back end}
 
-\author[P. Podlovics, Cs. Hruska ] % (optional, for multiple authors)
+\author[P. Podlovics, Cs. Hruska, Andor Pénzes ] % (optional, for multiple authors)
 {Péter Podlovics, Csaba Hruska, Andor Pénzes}
 
 \institute[ELTE] % (optional)
@@ -18,7 +19,7 @@
 	Eötvös Loránd University (ELTE), \\ Budapest, Hungary
 }
 
-\date{EUTypes-2019} % (optional)
+\date{MGS-2019} % (optional)
 
 
 
@@ -531,37 +532,16 @@
 	\begin{vfitemize}
 		\item Small Idris code snippets from: \\
 		\textit{Type-driven Development with Idris} by Edwin Brady
-		\item Only interpreted code
+		\item Both interpreted GRIN code and executed binaries
 		\item Compile- \& runtime measurements
-		\item Pipeline setup:	
 	\end{vfitemize}
 
-	\begin{figure}
-		\begin{adjustbox}{scale = 1}
-			\tikzset{every loop/.style={-{Stealth[scale=1.5]}}}
-			
-			%\hspace{-1cm}
-			\begin{tikzpicture}[ node distance = 1.5cm and 3cm
-			, on grid 
-			, loop/.append style={-triangle 60}
-			]
-			
-			\node [draw=black] (cg)    									{Code gen.};
-			\node [draw=black] (ro1) [right =of cg]  {Regular Opts.};
-			\node [draw=black] (dde) [right =2.5cm of ro1]  {DDE};
-			\node [draw=black] (ro2) [right =2.5cm of dde]  {Regular Opts.};
-			
-			\path[-{Stealth[scale=1.5]}] 
-			(cg) edge [] (ro1)
-			(ro1) edge [loop] (ro1)
-			(ro1) edge [] (dde)
-			(dde) edge [] (ro2)
-			(ro2) edge [loop] (ro2);
-			
-			
-			\end{tikzpicture}
+	\vspace{-0.5cm}
+	\begin{figure}[H] 
+		\centering
+		\begin{adjustbox}{scale = 0.75}
+			\subfile{idris-compilation-pipeline}
 		\end{adjustbox}
-		\label{fig:-measurement-pipeline}
 	\end{figure}
 
 \end{frame}
@@ -569,7 +549,7 @@
 
 
 \begin{frame}[fragile]
-\frametitle{Length}
+\frametitle{Length - GRIN statistics}
 	% real example
 	
 	\begin{figure}
@@ -586,7 +566,27 @@
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Exact length}
+\frametitle{Length - CPU binary statistics}
+
+	\begin{center}
+		\begin{minipage}{0.95\linewidth}
+			\label{table:length-binary-results}
+			\begin{tcolorbox}[tab2,tabularx={l||r|r|r|r}]
+				Stage                 & Size  & Instructions & Stores & Loads      \\
+				\hline\hline
+				\pilcode{normal-O0}   & 23928 & 769588 & 212567 & 233305 \\\hline
+				\pilcode{normal-O3}   & 23928 & 550065 & 160252 & 170202 \\\hline
+				\pilcode{regular-opt} & 19832 & 257397 & 14848  & 45499  \\\hline
+				\pilcode{dde-O0}      & 15736 & 256062 & 14243  & 45083  \\\hline
+				\pilcode{dde-O3}      & 15736 & 284970 & 33929  & 54555  \\
+			\end{tcolorbox}	
+		\end{minipage}
+	\end{center}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Exact length - GRIN statistics}
 	% no stores & no fetches! (Maybe transformed)
 	\begin{figure}
 		\hspace{-1cm}
@@ -601,22 +601,27 @@
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Reverse}
-  % interesting example, but no DDE
-  \begin{figure}
-  	\hspace{-1cm}
-  	\begin{minipage}{0.45\textwidth}
-  		\resizebox{\width}{5.5cm}{\includegraphics[scale=0.40]{reverse_rt.png}}
-  	\end{minipage}
-  	\hspace{1cm}
-  	\begin{minipage}{0.45\textwidth}
-  		\resizebox{\width}{5.5cm}{\includegraphics[scale=0.40]{reverse_ct.png}}
-  	\end{minipage}
-  \end{figure}
+\frametitle{Exact length - CPU binary statistics}
+
+	\begin{center}
+		\begin{minipage}{0.9\linewidth}
+			\label{table:exact-length-binary-results}
+			\begin{tcolorbox}[tab2,tabularx={l||r|r|r|r}]
+				Stage                 & Size  & Instructions & Stores & Loads      \\
+				\hline\hline
+				\pilcode{normal-O0}   & 18800 & 188469 & 14852 & 46566 \\\hline
+				\pilcode{normal-O3}   & 14704 & 187380 & 14621 & 46233 \\\hline
+				\pilcode{regular-opt} & 10608 & 183560 & 13462 & 45214 \\\hline
+				\pilcode{dde-O0}      & 10608 & 183413 & 13431 & 45189 \\\hline
+				\pilcode{dde-O3}      & 10608 & 183322 & 13430 & 44226 \\
+			\end{tcolorbox}	
+		\end{minipage}
+	\end{center}
+
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Type level functions}
+\frametitle{Type level functions - GRIN statistics}
   % caveat
   \begin{figure}
   	\hspace{-1cm}
@@ -630,22 +635,77 @@
   \end{figure}
 \end{frame}
 
+\begin{frame}[fragile]
+\frametitle{Type level functions - CPU binary statistics}
+
+	\begin{center}
+		\begin{minipage}{0.9\linewidth}
+			\label{table:tyfuns-binary-results}
+			\begin{tcolorbox}[tab2,tabularx={l||r|r|r|r}]
+				Stage                 & Size  & Instructions & Stores & Loads      \\
+				\hline\hline
+				\pilcode{normal-O0}   & 65128 & 383012 & 49191 & 86754 \\\hline
+				\pilcode{normal-O3}   & 69224 & 377165 & 47556 & 84156 \\\hline
+				\pilcode{regular-opt} & 36456 & 312122 & 34340 & 71162 \\\hline
+				\pilcode{dde-O0}      & 32360 & 312075 & 34331 & 70530 \\\hline
+				\pilcode{dde-O3}      & 28264 & 309822 & 33943 & 70386 \\
+			\end{tcolorbox}	
+		\end{minipage}
+	\end{center}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Reverse - GRIN statistics}
+% interesting example, but no DDE
+\begin{figure}
+	\hspace{-1cm}
+	\begin{minipage}{0.45\textwidth}
+		\resizebox{\width}{5.5cm}{\includegraphics[scale=0.40]{reverse_rt.png}}
+	\end{minipage}
+	\hspace{1cm}
+	\begin{minipage}{0.45\textwidth}
+		\resizebox{\width}{5.5cm}{\includegraphics[scale=0.40]{reverse_ct.png}}
+	\end{minipage}
+\end{figure}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Reverse - CPU binary statistics}
+
+\begin{center}
+\begin{minipage}{0.96\linewidth}
+	\label{table:reverse-binary-results}
+	\begin{tcolorbox}[tab2,tabularx={l||r|r|r|r}]
+		Stage                 & Size  & Instructions & Stores & Loads      \\
+		\hline\hline
+		\pilcode{normal-O0}      & 27112 & 240983 & 25018 & 58253 \\\hline
+		\pilcode{normal-O3}      & 31208 & 236570 & 23808 & 56617 \\\hline
+		\pilcode{regular-opt-O0} & 14824 & 222085 & 19757 & 53125 \\\hline
+		\pilcode{regular-opt-O3} & 14824 & 220837 & 19599 & 52827 \\
+	\end{tcolorbox}	
+\end{minipage}
+\end{center}
+
+\end{frame}
+
 
 \begin{frame}[fragile]
 \frametitle{Conclusions}
 	\begin{vfitemize}
-		\item The optimizer works well:
-			\begin{itemize}
-				\item the number of stores, fetches, function calls and pattern matches significantly decreased
-				\item the structure of the code resembles that of an imperative language
-			\end{itemize}
 		\item Dead Data Elimination:
 			\begin{itemize}
-				\item is a bit costly 
-				\item is a specific optimization
+				\item is demanding on resources
 				\item can completely transform data structures
 				\item can trigger further transformations
+				\item can considerably reduce binary size
 			\end{itemize}
+		\item Regular optimizations:
+		\begin{itemize}
+			\item GRIN works well for dependently-typed languages as well
+			\item the optimized GRIN code is significantly more efficient
+			\item the GRIN optimizations are orthogonal to the LLVM optimizations
+		\end{itemize}
 	\end{vfitemize}
 \end{frame}
 
@@ -680,8 +740,8 @@
 			<m0>
 			v <- eval l
 			case v of
-			CNil       -> <m1>
-			CCons x xs -> <m2>
+			 CNil       -> <m1>
+			 CCons x xs -> <m2>
 		\end{haskellcode}
 	\end{minipage}
 	$\xRightarrow{v \in \{ \text{CCons}\}}$
@@ -691,7 +751,7 @@
 			<m0>
 			v <- eval l
 			case v of
-			CCons x xs -> <m2>
+			 CCons x xs -> <m2>
 		\end{haskellcode}
 	\end{minipage}
 \end{center}

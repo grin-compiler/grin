@@ -11,3 +11,5 @@
 *.snm
 *.nav
 **/_minted-main/
+*.pygtex
+*.pygstyle
