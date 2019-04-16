@@ -9,7 +9,7 @@ duration: 2 weeks
 deadline: May 6
 
 ### new additions
-- [ ] module system
+- ~~module system~~
 - [x] name handling
   - [x] SSA name conversion pass to allow local name scopes
   - ~~locally new names (in block + pass to flatten out and maintain uniqueness)~~
@@ -24,8 +24,8 @@ deadline: May 6
 - ~~hpt result based dead code elimination pass~~
 
 ### finish
-- [ ] lambda frontend
-- [ ] type system
+- [x] lambda frontend
+- [x] type system
 - [ ] simplification transformations (answer if vectorisation equals with a mapping to tagged unions)
 - [ ] missing optimisations
   - [x] case hoisting
