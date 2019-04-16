@@ -17,21 +17,21 @@ TODO/Experiments:
   - keep closures in lambda
   - lambda type inference (unification)
   - experiment: stg/lambda level whole program analysis
-      with explicit stg-style closure representaion in lambda track closures and it's saturation ; this could subsume grin's eval/apply tracking/approximation  
-      implement andersen style: with souffle
-        - closure tacker ; generate specialised eval and Pnode constructions during lambda -> grin compilation
-        - accurate live variable/datafield analysis
-        - inaccurate live variable/datafield analysis
-      implement steensgaard as typeinference: with unification-fd
+    - with explicit stg-style closure representaion in lambda track closures and it's saturation status ; this could subsume grin's eval/apply tracking/approximation
+    - implement andersen style: with souffle
+      - closure tacker ; generate specialised eval and Pnode constructions during lambda -> grin compilation
+      - accurate live variable/datafield analysis
+      - inaccurate live variable/datafield analysis
+    - implement steensgaard as typeinference: with unification-fd
         - lambda
         - grin
-      material:
+    - material:
         - https://github.com/wrengr/unification-fd
         - https://fineshambles.com/2017/07/26/a-type-inference-implementation-adventure/
         - https://winterkoninkje.dreamwidth.org/tag/unification
         - https://ro-che.info/articles/2017-06-17-generic-unification
         - http://nochair.net/posts/2012/03-29-unification-fd.html
         - https://bl.ocks.org/nponeccop/631dfba9180f8fa3020dff82df3290a3
-      other:
+    - other:
         - https://github.com/willtim/Expresso
         - https://github.com/willtim/row-polymorphism
