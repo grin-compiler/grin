@@ -71,7 +71,7 @@ spec = do
                 sum p14_2 p13_2
   |]
 
-  it "Random pipeline" $ do
+  xit "Random pipeline" $ do
     -- NOTE: This is a random test. This could make fail the build non-related to code changes.
     let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
     forAll arbitrary $ \(seed1, seed2) -> monadicIO $ run $ do

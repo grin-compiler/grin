@@ -9,19 +9,24 @@ struct computer_state_t {
   bool                    changed;
   bool                    error;
   abstract_program_t&     prg;
+  std::ofstream           outfile;
   int                     executed_commands;
-  int                     change_count;
-  std::ofstream outfile;
+  std::vector<int>        executed_block_commands;
+  std::vector<int>        change_count;
+  int64_t                 unchange_count;
+  int                     cur_bid;
 
   computer_state_t(abstract_program_t& p) : prg(p) {
     mem.resize(p.memory_count);
     reg.resize(p.register_count);
     changed = false;
     error = false;
-    executed_commands = 0;
-    change_count = 0;
     outfile.open("/home/csaba/df_debug/insts_cpp.dat", std::ios_base::app);
     //outfile.open("/dev/null", std::ios_base::app);
+    executed_commands = 0;
+    unchange_count = 0;
+    executed_block_commands.resize(p.block.size());
+    change_count.resize(p.block.size());
   }
 
   // predicate and condition functions
@@ -59,6 +64,10 @@ struct computer_state_t {
   void eval_store(cmd_t &c);
   void eval_update(cmd_t &c);
   void eval_set(cmd_t &c);
+
+  // debug
+  void begin_iter();
+  void end_iter();
 };
 
 // value modification
@@ -69,7 +78,9 @@ inline void computer_state_t::insert_int_set(int_set_t& dst, int32_t value) {
     if ( got == dst.end() ) {
       dst.insert(value);
       changed = true;
-      change_count++;
+      change_count[cur_bid]++;
+    } else {
+      unchange_count++;
     }
 }
 
@@ -90,7 +101,7 @@ inline void computer_state_t::union_node_set_item(tag_t src_tag, std::vector<int
     if (merge_new_tags) {
       dst.insert({src_tag, src_node_items});
       changed = true;
-      change_count++;
+      change_count[cur_bid]++;
     }
   } else if (src_node_items.size() != dst_t_v->second.size()) {
       std::cout << "error: union_node_set_item\n";
@@ -179,7 +190,7 @@ inline void computer_state_t::conditional_union_node_set(node_set_t& src, node_s
       // add to dst
       dst.insert({src_t_v.first, dst_vector});
       changed = true;
-      change_count++;
+      change_count[cur_bid]++;
 
     } else if (src_t_v.second.size() != dst_t_v->second.size()) {
         std::cout << "error: conditonal_union_node_set\n";
@@ -479,7 +490,7 @@ inline void computer_state_t::eval_set(cmd_t &c) {
         if ( dst_t_v == dst.node_set.end() ) {
           dst.node_set.insert({tag, std::vector<int_set_t>(arity)});
           changed = true;
-          change_count++;
+          change_count[cur_bid]++;
         } else if (dst_t_v->second.size() != arity) {
           error = true;
         }
@@ -514,9 +525,10 @@ inline void computer_state_t::eval_cmd(cmd_t &c) {
   save_result_file(name, 0, mem, reg);
 
   if (executed_commands % 1000 == 0) {
-    printf(" * changes: %d\t commands: %d \n", change_count, executed_commands);
+    printf(" * changes: %d\t commands: %d\t unchange_count: %ld\n", change_count[cur_bid], executed_commands, unchange_count);
   }
 
+  executed_block_commands[cur_bid]++;
   executed_commands++;
 
   outfile << executed_commands << " ";
@@ -592,10 +604,35 @@ inline void computer_state_t::eval_cmd(cmd_t &c) {
 
 inline void computer_state_t::eval_block(block_id_t bid) {
   outfile << "\n";
+  int prev_bid = cur_bid;
+  cur_bid = bid;
   for (int pc = prg.block[bid].from; pc < prg.block[bid].to; pc++) {
     eval_cmd(prg.cmd[pc]);
     if (error) return;
   }
+  cur_bid = prev_bid;
+}
+
+void computer_state_t::begin_iter() {
+  // clear stats
+  for (int i = 0 ; i < prg.block.size() ; i++) {
+    executed_block_commands[i] = 0;
+    change_count[i] = 0;
+  }
+}
+
+void computer_state_t::end_iter() {
+  // log stats
+  int unchanged_block_count = 0;
+  int wasted_command_count = 0;
+
+  for (int i = 0 ; i < prg.block.size() ; i++) {
+    if (change_count[i] > 0) continue;
+    unchanged_block_count++;
+    wasted_command_count += executed_block_commands[i];
+  }
+  outfile << "unchanged_block_count: " << unchanged_block_count << ", wasted_command_count: " << wasted_command_count << "\n";
+  std::cout << "unchanged_block_count: " << unchanged_block_count << ", wasted_command_count: " << wasted_command_count << "\n";
 }
 
 void eval_abstract_program(char *name) {
@@ -608,16 +645,20 @@ void eval_abstract_program(char *name) {
 
   int cnt = 0;
   do {
-    cnt++;
+    s.outfile << "iter: " << cnt <<"\n";
+    std::cout << "iter: " << cnt <<"\n";
+    s.begin_iter();
     s.changed = false;
     s.eval_block(prg->start_block_id);
-    printf("iter: %d\tchanges: %d\t commands: %d \n", cnt, s.change_count, s.executed_commands);
+    s.end_iter();
+    printf("iter: %d\t commands: %d \n", cnt, s.executed_commands);
 
     // debug
     // save result after each iteration
     char iname[2048];
     sprintf(iname, "/home/csaba/df_debug/prg_cpp_iter_%04d.dat", cnt);
     save_result_file(iname, 0, s.mem, s.reg);
+    cnt++;
 
   } while (s.changed && !s.error);
 
@@ -632,7 +673,7 @@ void eval_abstract_program(char *name) {
 
   printf("iterations: %d\n", cnt);
   printf("executed_commands: %d\n", s.executed_commands);
-  printf("change_count: %d\n", s.change_count);
+  //printf("change_count: %d\n", s.change_count);
 
   // save the result
   std::string res_name(name);

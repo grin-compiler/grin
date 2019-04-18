@@ -1,6 +1,9 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, ViewPatterns #-}
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module AbstractInterpretation.Reduce where
+module AbstractInterpretation.Reduce
+ ( module AbstractInterpretation.Reduce
+ , module AbstractInterpretation.BinaryResult
+ )  where
 
 import Control.DeepSeq
 import Data.Int
@@ -15,6 +18,19 @@ import qualified Data.Foldable
 import Data.Function (on)
 import GHC.Generics (Generic)
 import System.IO.Unsafe
+import Data.IORef
+import qualified Data.Binary
+import Text.Printf
+
+-- C++ reducer related
+import Text.Show.Pretty (ppShow)
+import Control.Monad
+import qualified Data.ByteString.Lazy as LBS
+import qualified System.Process
+import System.Directory
+import System.FilePath
+import AbstractInterpretation.BinaryIR
+--
 
 import Control.Monad.State.Strict
 import Lens.Micro.Platform
@@ -22,29 +38,11 @@ import Lens.Micro.Platform
 import AbstractInterpretation.IR
 import AbstractInterpretation.Util
 
-newtype NodeSet = NodeSet {_nodeTagMap :: Map Tag (Vector (Set Int32))}
-  deriving (Eq, Show, Generic, NFData)
+import AbstractInterpretation.BinaryResult
 
-data Value
-  = Value
-  { _simpleType :: !(Set Int32)
-  , _nodeSet    :: !(NodeSet)
-  }
-  deriving (Eq, Show, Generic, NFData)
-
-data ComputerState
-  = ComputerState
-  { _memory    :: !(Vector NodeSet)
-  , _register  :: !(Vector Value)
-  }
-  deriving (Eq, Show, Generic, NFData)
-
-data AbstractInterpretationResult
-  = AbsIntResult
-  { _airComp :: !ComputerState
-  , _airIter :: !Int
-  }
-  deriving (Eq, Show, Generic, NFData)
+prgCounter :: IORef Int
+{-# NOINLINE prgCounter #-}
+prgCounter = unsafePerformIO $ newIORef 0
 
 concat <$> mapM makeLenses [''NodeSet, ''Value, ''ComputerState, ''AbstractInterpretationResult]
 
@@ -143,8 +141,16 @@ mappendIf predicate lhs rhs
   | predicate rhs = mappend lhs rhs
   | otherwise     = rhs
 
+debugInstr :: AbstractComputation ()
+debugInstr = do
+  s <- get
+  liftIO $ do
+    i <- readIORef prgCounter
+    modifyIORef prgCounter (1+)
+    Data.Binary.encodeFile (printf "/home/csaba/df_debug/prg_hs_inst_%04d.dat" i) $ AbsIntResult s 0
+
 evalInstruction :: Instruction -> AbstractComputation ()
-evalInstruction = \case
+evalInstruction instr = debugInstr >> case instr of
   If {..} -> do
     satisfy <- case condition of
       NodeTypeExists tag -> do
@@ -277,14 +283,76 @@ continueAbstractProgramWithIO comp AbstractProgram{..} = loop (AbsIntResult comp
   step AbsIntResult{..} = AbsIntResult <$> (nextComputer _airComp) <*> (pure $ succ _airIter)
 
 evalAbstractProgramIO :: AbstractProgram -> IO AbstractInterpretationResult
-evalAbstractProgramIO p@AbstractProgram{..} = continueAbstractProgramWithIO emptyComputer p where
+evalAbstractProgramIO p@AbstractProgram{..} = writeIORef prgCounter 0 >> continueAbstractProgramWithIO emptyComputer p where
   emptyComputer = ComputerState
     { _memory   = V.replicate (fromIntegral _absMemoryCounter) mempty
     , _register = V.replicate (fromIntegral _absRegisterCounter) mempty
     }
 
-evalAbstractProgram :: AbstractProgram -> AbstractInterpretationResult
-evalAbstractProgram a = unsafePerformIO $ evalAbstractProgramIO a
+evalAbstractProgramPure :: AbstractProgram -> AbstractInterpretationResult
+evalAbstractProgramPure a = unsafePerformIO $ evalAbstractProgramIO a
 
 continueAbstractProgramWith :: ComputerState -> AbstractProgram -> AbstractInterpretationResult
 continueAbstractProgramWith s p = unsafePerformIO $ continueAbstractProgramWithIO s p
+
+------------------------------
+-- C++ reducer related
+------------------------------
+
+evalAbstractProgramCpp :: AbstractProgram -> IO AbstractInterpretationResult
+evalAbstractProgramCpp prg = do
+  -- save abstract program to temp file
+  LBS.writeFile "dataflow_program.dfbin" $ encodeAbstractProgram prg
+
+  -- run external reducer
+  System.Process.callCommand "df_eval dataflow_program.dfbin"
+
+  -- read back result
+  loadAbstractInterpretationResult "dataflow_program.dfbin.dat"
+
+evalAbstractProgramDebug :: AbstractProgram -> IO AbstractInterpretationResult
+evalAbstractProgramDebug prg = do
+  System.Process.callCommand "rm -f /home/csaba/df_debug/*.dat"
+  evalAbstractProgramCpp prg
+  s <- evalAbstractProgramIO prg
+  writeFile "/home/csaba/df_debug/instructions.dat" $ ppShow $ _absInstructions prg
+  checkSteps 0
+  pure s
+
+evalAbstractProgram :: AbstractProgram -> AbstractInterpretationResult
+evalAbstractProgram a = unsafePerformIO $ evalAbstractProgramDebug a
+
+checkSteps :: Int -> IO ()
+checkSteps i = do
+  let nameHs  = printf "/home/csaba/df_debug/prg_hs_inst_%04d.dat" i
+      nameCpp = printf "/home/csaba/df_debug/prg_cpp_inst_%04d.dat" i
+  hsExists <- doesFileExist nameHs
+  cppExists <- doesFileExist nameCpp
+  when (any (==True) [hsExists, cppExists] && any (==False) [hsExists, cppExists]) $ do
+    err $ "diverged at: " ++ show i
+  when (hsExists && cppExists) $ do
+    --ppRes nameHs
+    --ppRes nameCpp
+    -- binary comparison
+    --hsDat <- LBS.readFile nameHs
+    --cppDat <- LBS.readFile nameCpp
+    -- value comparison
+    hsDat <- Data.Binary.decodeFile nameHs :: IO AbstractInterpretationResult
+    cppDat <- Data.Binary.decodeFile nameCpp :: IO AbstractInterpretationResult
+    when (hsDat /= cppDat) $ do
+      ppRes nameHs
+      ppRes nameCpp
+      err $ "diverged at: " ++ show i
+    appendFile "/home/csaba/df_debug/err.dat" $ printf "step %d OK\n" i
+    checkSteps (succ i)
+
+err :: String -> IO ()
+err msg = do
+  appendFile "/home/csaba/df_debug/err.dat" msg
+  fail msg
+
+ppRes :: String -> IO ()
+ppRes n = do
+  r <- Data.Binary.decodeFile n :: IO AbstractInterpretationResult
+  let (d,f) = splitFileName n
+  writeFile (d </> "_show_" ++ f) $ ppShow r
