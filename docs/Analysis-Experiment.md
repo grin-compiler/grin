@@ -35,3 +35,9 @@ TODO/Experiments:
     - other:
         - https://github.com/willtim/Expresso
         - https://github.com/willtim/row-polymorphism
+
+### Context Sensitivity
+
+It seem extremely beneficial to use Context Sensitive Analysis:
+ - [Alternate Control-Flow Analyses for Defunctionalization in the MLton Compiler](https://www.cs.rit.edu/~mtf/student-resources/20155_shea_mscourse.pdf)
+ - [Pushdown Control-Flow Analysis for Free](https://arxiv.org/abs/1507.03137)
