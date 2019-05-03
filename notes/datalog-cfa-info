@@ -1,0 +1,135 @@
+Toward Parallel CFA with Datalog, MPI, and CUDA
+http://scheme2017.namin.org/Scheme17_gilray_kumar.pdf
+
+https://dodisturb.me/posts/2018-12-25-The-Essence-of-Datalog.html
+
+Datafun: A Functional Datalog
+http://www.rntz.net/datafun/
+
+An in-memory incremental Datalog engine based on Differential Dataflow
+https://github.com/ryzhyk/differential-datalog
+
+Precise Complexity Guarantees for Pointer Analysis via Datalog with Extensions
+https://arxiv.org/pdf/1608.01594.pdf
+
+Porting Doop to Souffle: A Tale of Inter-Engine Portability for Datalog-Based Analyses
+https://yanniss.github.io/doop2souffle-soap17.pdf
+
+* CClyzer *
+
+Performance optimization on Declarative Points-to Analysis using the Souffle Datalog Engine
+https://pergamos.lib.uoa.gr/uoa/dl/frontend/file/lib/default/data/2866399/theFile
+
+Recovering Structural Information for Better StaticAnalysis
+http://gbalats.github.io/assets/thesis.pdf
+
+http://yanniss.github.io/
+
+----
+
+Scaling-Up In-Memory Datalog Processing: Observationsand Techniques
+http://pages.cs.wisc.edu/~aws/papers/vldb19.pdf
+
+Context-sensitive points-to analysis: is it worth it?
+https://www.researchgate.net/publication/221302898_Context-Sensitive_Points-to_Analysis_Is_It_Worth_It
+
+TUTORIALS
+
+Lecture 7: Introduction to Datalog
+http://pages.cs.wisc.edu/~paris/cs784-s17/lectures/lecture7.pdf
+
+Pointer Analysis in datalog
+https://yanniss.github.io/points-to-tutorial15.pdf
+
+Pointer Analysis (slides)
+https://suif.stanford.edu/~courses/cs243/lectures/L12-handout.pdf
+
+Datalog pointer analysis (slides)
+https://www.doc.ic.ac.uk/~livshits/classes/CO444H/slides/LEC5.pdf
+
+Program Analysis with Datalog seminar
+http://plast-lab.github.io/feb16-seminar/
+https://www.youtube.com/playlist?list=PLRUJ115QHa0WMyGyP2j_1KRFJjaT0kFOu
+
+Datalog points-to examples:
+  https://github.com/kuhar/TyDsa/tree/master/small-languages
+
+-----
+
+POINTS TO ANALYSIS
+
+Fast Algorithms for Dyck-CFL-Reachabilitywith Applications to Alias Analysis
+
+Demand-Driven Points-to Analysis for Java
+https://manu.sridharan.net/files/oopsla05.pdf
+
+Efficient Points-To Analysis based on CFL-Reachability Summarisation
+http://unsworks.unsw.edu.au/fapi/datastream/unsworks:11016/SOURCE01?view=true
+
+On the Practice and Application of Context-Free Language Reachability
+https://ses.library.usyd.edu.au/bitstream/2123/17866/4/thesis.pdf
+
+Cauliflower: A Solver-Generator for Context-Free Language Reachability
+https://pdfs.semanticscholar.org/2aab/4007445837ec89f4d3ded639bb586fd5c8ed.pdf
+https://cauliflower-cflr.github.io/
+
+Compositional Shape Analysis by means of Bi-Abduction
+http://www0.cs.ucl.ac.uk/staff/p.ohearn/papers/popl09.pdf
+
+Pointer Analysis: International Seminar 2013 [good status report]
+http://drops.dagstuhl.de/opus/volltexte/2013/4169/pdf/dagrep_v003_i004_p091_s13162.pdf
+
+Unification-based Pointer Analysis with Directional Assignments [Best Algorithm, fast as Steensgaard accurate as Andersen ; it's unification based]
+http://web.cs.ucla.edu/~palsberg/course/purdue/cs661/F01/papers/das-pldi00.pdf
+
+-----
+
+CFA
+
+CFA2: A CONTEXT-FREE APPROACH TO CONTROL-FLOW  ANALYSIS
+https://arxiv.org/pdf/1102.3676.pdf
+
+CFA2: Pushdown Flow Analysis for Higher-Order Languages
+https://dimvar.github.io/papers/diss.pdf
+http://www.ccs.neu.edu/home/dimvar/papers/cfa2-esop-slides.pdf
+
+Alternate Control-Flow Analyses for Defunctionalization in the MLton Compiler
+https://www.cs.rit.edu/~mtf/student-resources/20155_shea_mscourse.pdf
+
+Pushdown Control-Flow Analysis for Free
+https://arxiv.org/abs/1507.03137
+
+Introspective Pushdown Analysis of Higher-Order Programs
+https://ilyasergey.net/papers/introspective-icfp12.pdf
+
+H-CFA: a Simplified Approach for PushdownControl Flow Analysis
+https://pdfs.semanticscholar.org/b0b2/e40ef798714a6cfb9ad32fc75783a198a142.pdf
+
+Pushdown Control-flow Analysis for Free
+https://www.youtube.com/watch?v=ZEIDVjvYL3w
+
+ICFP 2012. Matthew Might: Introspective Pushdown Analysis of Higher-Order Programs.
+https://www.youtube.com/watch?v=HaPsYmOmgcI
+
+CFA2: Pushdown Flow Analysis for Higher-Order Languages
+https://www.youtube.com/watch?v=n0Cn9duDyuE
+
+A Posteriori Environment Analysis with Pushdown Delta CFA
+http://matt.might.net/papers/might2017environment.pdf
+
+m-CFA:  Resolving and Exploiting k-CFA Paradox
+        Illuminating Functional vs. Object-Oriented Program Analysis
+http://matt.might.net/papers/might2010mcfa.pdf
+
+Survey: Control-flow analysis of functional programs
+http://janmidtgaard.dk/Midtgaard%3ACSur12.html
+
+-----
+
+INLINING
+
+Environment Analysis via Delta-CFA
+http://www.ccs.neu.edu/home/shivers/papers/dcfa.pdf
+
+A Posteriori Environment Analysis with Pushdown Delta CFA
+http://matt.might.net/papers/might2017environment.pdf
