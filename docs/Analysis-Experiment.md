@@ -41,3 +41,4 @@ TODO/Experiments:
 It seem extremely beneficial to use Context Sensitive Analysis:
  - [Alternate Control-Flow Analyses for Defunctionalization in the MLton Compiler](https://www.cs.rit.edu/~mtf/student-resources/20155_shea_mscourse.pdf)
  - [Pushdown Control-Flow Analysis for Free](https://arxiv.org/abs/1507.03137)
+ - [A model of context-sensitive pointer analysis](https://www.youtube.com/watch?v=vcj9uvRkCnc&list=PLRUJ115QHa0WMyGyP2j_1KRFJjaT0kFOu&index=3&t=0s) (video)
