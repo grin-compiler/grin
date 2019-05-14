@@ -14,6 +14,8 @@ Code Optimisation Techniques for Lazy Functional Languages
 
 We presented the core ideas of GRIN at Haskell Exchange 2018. [slides](https://docs.google.com/presentation/d/1QsZ3Kyy3XIco-qba1biRmzuMzz8o2uCBqA9DMtnqP2c/edit?usp=sharing) [video](https://skillsmatter.com/skillscasts/12390-grin-an-alternative-haskell-compiler-backend)
 
+Read our paper [A modern look at GRIN, an optimizing functional language back end](http://nbviewer.jupyter.org/github/Anabra/grin/blob/fd9de6d3b9c7ec5f4aa7d6be41285359a73494e3/papers/stcs-2019/article/tex/main.pdf) (2019) to get an overview of GRIN related projects and other whole program compilers i.e. *Boquist GRIN, UHC, JHC, LHC, HRC, MLton*
+
 Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=317) and an [example from our imlementation](https://github.com/grin-tech/grin/tree/master/grin/grin/sum-simple-output).
 
 <a href="http://nbviewer.jupyter.org/github/grin-tech/grin/blob/master/papers/boquist.pdf#page=41">
