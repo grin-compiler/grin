@@ -29,7 +29,7 @@ newtype Effects = Effects { _effectSet :: Set Name }
 data ETResult = ETResult
   { _register :: Map Name Effects
   , _function :: Map Name Effects
-  }
+  } deriving (Eq, Ord, Show)
 
 toETResult :: ETMapping -> R.ComputerState -> ETResult
 toETResult e@ETMapping{..} c@R.ComputerState{..} = ETResult
