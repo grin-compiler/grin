@@ -21,7 +21,7 @@ import Grin.Pretty as Grin
 import qualified AbstractInterpretation.EffectTracking.Result as R
 
 instance Pretty R.Effects where
-  pretty (R.Effects es) = prettyBracedList . map Grin.pretty . Set.toList $ es
+  pretty (R.Effects es) = prettyBracedList . map dullyellow . map Grin.pretty . Set.toList $ es
 
 instance Pretty R.ETResult where
   pretty R.ETResult{..} = vsep

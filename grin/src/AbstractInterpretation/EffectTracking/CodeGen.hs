@@ -65,41 +65,18 @@ codeGenM = cata folder where
       pure Z
 
     EBindF leftExp lpat rightExp -> do
-      leftExp >>= \case
-      {-
-        Z -> case lpat of
-          Unit -> pure ()
-          Var name -> do
-            r <- newReg
-            emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
-            addReg name r
-          _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
-      -}
-        R r -> case lpat of
-          -- Unit  -> pure ()
-          -- Lit{} -> pure ()
-          Var name -> addReg name r
-          {-
-          ConstTagNode tag args -> do
-            irTag <- getTag tag
-            bindInstructions <- forM (zip [0..] args) $ \(idx, arg) -> case arg of
-              Var name -> do
-                argReg <- newReg
-                addReg name argReg
-                pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
-              Lit {} -> pure []
-              _ -> error $ "illegal node pattern component " ++ show arg
-            -- QUESTION: In HPTProgram the instructions are in reverse order, here they are in regular order, isn't this inconsistent?
-            -- A: each cpat argument has zero or one instruction
-            --    the order of cpat binding evaluation does not matter because they does not depend on each other
-            emit IR.If
-              { condition     = IR.NodeTypeExists irTag
-              , srcReg        = r
-              , instructions  = concat bindInstructions
-              }
-          -}
-          _ -> error $ "unsupported lpat " ++ show lpat
-      rightExp
+      lhs <- leftExp
+      rhs <- rightExp
+      let R lhsReg = lhs
+      let R rhsReg = rhs
+
+      case lpat of
+        Unit     -> pure ()
+        Var name -> addReg name lhsReg
+        _ -> error $ "Effect tracking: unsupported lpat " ++ show lpat
+
+      emit IR.Move { srcReg = lhsReg, dstReg = rhsReg }
+      pure $ R rhsReg
 
     ECaseF val alts_ -> do
       caseResultReg <- newReg
@@ -108,7 +85,7 @@ codeGenM = cata folder where
         emit IR.Move { srcReg = altReg, dstReg = caseResultReg }
       pure $ R caseResultReg
 
-    AltF cpat exp -> pure $ A cpat exp
+    AltF _ exp -> exp
 
     SAppF name args -> getExternal name >>= \case
       Just ext  -> do
