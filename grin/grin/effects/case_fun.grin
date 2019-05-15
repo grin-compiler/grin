@@ -1,0 +1,11 @@
+grinMain =
+  n <- pure 0
+  z <- case n of
+    0 -> f 0
+    1 -> _prim_string_print "asd"
+    2 -> pure ()
+  pure 0
+
+f x =
+  y <- _prim_int_print 0
+  pure x

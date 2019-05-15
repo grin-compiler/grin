@@ -1,0 +1,10 @@
+grinMain =
+  n <- pure 0
+  y <- f 0
+  g 0
+
+f x =
+  _prim_int_print 0
+  pure x
+
+g x0 = pure x0

@@ -1,0 +1,6 @@
+grinMain =
+  n <- pure 0
+  x <- _prim_int_print 0
+  y <- _prim_string_print "asd"
+  m <- pure 0
+  pure 0
