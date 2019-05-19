@@ -8,8 +8,8 @@ module Pipeline.Pipeline
   , EffectStep(..)
   , Path(..)
   , pattern HPTPass
+  , pattern SimplePrintGrin
   , pattern PrintGrin
-  , pattern FullPrintGrin
   , pattern DeadCodeElimination
   , pipeline
   , optimize
@@ -187,8 +187,8 @@ data PipelineStep
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
+  | SimplePrintGrinH (Hidden (Doc -> Doc))
   | PrintGrinH (Hidden (Doc -> Doc))
-  | FullPrintGrinH (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
   | PrintAST
@@ -226,13 +226,13 @@ data Path
   | Rel FilePath
   deriving (Eq, Show)
 
+pattern SimplePrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern SimplePrintGrin c <- SimplePrintGrinH (H c)
+  where SimplePrintGrin c =  SimplePrintGrinH (H c)
+
 pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
 pattern PrintGrin c <- PrintGrinH (H c)
   where PrintGrin c =  PrintGrinH (H c)
-
-pattern FullPrintGrin :: (Doc -> Doc) -> PipelineStep
-pattern FullPrintGrin c <- FullPrintGrinH (H c)
-  where FullPrintGrin c =  FullPrintGrinH (H c)
 
 pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
@@ -432,8 +432,8 @@ pipelineStep p = do
       PrintEffectMap  -> printEffectMap
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
-    PrintGrin d     -> printGrinM d
-    FullPrintGrin d -> fullPrintGrinM d
+    SimplePrintGrin d     -> printGrinM d
+    PrintGrin d -> fullPrintGrinM d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
     SaveLLVM path   -> saveLLVM path
@@ -1133,7 +1133,7 @@ defaultOptimizations =
   ]
 
 debugPipeline :: [PipelineStep] -> [PipelineStep]
-debugPipeline ps = [PrintGrin id] ++ ps ++ [PrintGrin id]
+debugPipeline ps = [SimplePrintGrin id] ++ ps ++ [SimplePrintGrin id]
 
 debugPipelineState :: PipelineM ()
 debugPipelineState = do
@@ -1156,7 +1156,7 @@ printingSteps =
   , PrintErrors
   , PrintTypeAnnots
   , DebugPipelineState
-  , PrintGrin id
+  , SimplePrintGrin id
   ]
 
 isPrintingStep :: PipelineStep -> Bool
