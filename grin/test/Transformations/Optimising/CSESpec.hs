@@ -4,9 +4,12 @@ module Transformations.Optimising.CSESpec where
 import Transformations.Optimising.CSE
 
 import Test.Hspec
+import Test.Hspec.PipelineExample
+import Pipeline.Pipeline hiding (pipeline)
 import Grin.TH
 import Test.Test hiding (newVar)
 import Test.Assertions
+import Grin.Syntax (Exp)
 import Grin.TypeEnv
 import Grin.TypeCheck
 import Transformations.EffectMap
@@ -15,10 +18,16 @@ import Transformations.EffectMap
 runTests :: IO ()
 runTests = hspec spec
 
-cseOptNoEff (tyEnv, exp) = commonSubExpressionElimination tyEnv mempty exp
+pipelineSrcWithCtx :: ((TypeEnv, Exp) -> (TypeEnv, Exp)) ->
+                      TypeEnv -> Exp -> Exp ->
+                      [PipelineStep] -> Pipeline
+pipelineSrcWithCtx ctx tyEnv before after =
+  pipelineSrc (snd $ ctx (tyEnv, before)) (snd $ ctx (tyEnv, after))
 
 spec :: Spec
 spec = do
+  let csePipeline = [ T CommonSubExpressionElimination ]
+
   testExprContext $ \ctx -> do
     it "Figure 4.34" $ do
       let teBefore = create $
@@ -50,7 +59,7 @@ spec = do
           (CInt b') <- pure (r' z')
           fun 3 4
         |]
-      cseOptNoEff (ctx (teBefore, before)) `sameAs` (snd $ ctx (teBefore, after))
+      pipelineSrcWithCtx ctx teBefore before after csePipeline
 
     let te = emptyTypeEnv
     it "store - fetch" $ do
@@ -64,7 +73,7 @@ spec = do
           (CInt a1) <- pure (CInt 0)
           pure ()
         |]
-      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      pipelineSrcWithCtx ctx te before after csePipeline
 
     it "store - fetch - update" $ do
       let before = [expr|
@@ -93,7 +102,7 @@ spec = do
           update p1 (CInt 1)
           pure (CInt 1)
         |]
-      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      pipelineSrcWithCtx ctx te before after csePipeline
 
     it "store - update" $ do
       let before = [expr|
@@ -111,7 +120,7 @@ spec = do
           p2 <- store v1
           pure ()
         |]
-      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      pipelineSrcWithCtx ctx te before after csePipeline
 
     let te = emptyTypeEnv
     it "fetch - update" $ do
@@ -124,7 +133,7 @@ spec = do
           v <- fetch p
           pure 1
         |]
-      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      pipelineSrcWithCtx ctx te before after csePipeline
 
     it "constant" $ do
       let before = [expr|
@@ -151,7 +160,7 @@ spec = do
           (CInt i7) <- pure (CInt i6)
           pure v2
         |]
-      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+      pipelineSrcWithCtx ctx te before after csePipeline
 
     it "application" $ do
       let te = create $ mconcat
@@ -177,7 +186,7 @@ spec = do
           v4 <- _prim_int_add v2 v3
           pure v4
         |]
-      (cseOptNoEff (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
+      pipelineSrcWithCtx ctx te before after csePipeline
 
     it "case alternative tracking" $ do
       let before = [expr|
@@ -204,7 +213,7 @@ spec = do
               n4 <- pure n1
               pure n4
         |]
-      (cseOptNoEff (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
+      pipelineSrcWithCtx ctx te before after csePipeline
 
   it "no copy propagation of def arguments" $ do
     let before = [prog|
@@ -221,9 +230,7 @@ spec = do
             d <- pure c
             pure d
       |]
-    let tyEnv   = inferTypeEnv before
-        effMap  = effectMap (tyEnv, before)
-    commonSubExpressionElimination tyEnv effMap before `sameAs` after
+    pipelineSrc before after csePipeline
 
   describe "bugfix" $ do
     it "do not memoize effectful functions" $ do
@@ -257,9 +264,7 @@ spec = do
               f <- funEff 2
               pure ()
         |]
-      let tyEnv   = inferTypeEnv before
-          effMap  = effectMap (tyEnv, before)
-      commonSubExpressionElimination tyEnv effMap before `sameAs` after
+      pipelineSrc before after csePipeline
 
     it "do not remove effectful function from the rhs position of a bind" $ do
       let before = [prog|
@@ -276,6 +281,4 @@ spec = do
             _prim_int_print 1
             _prim_int_print 1
         |]
-      let tyEnv   = inferTypeEnv before
-          effMap  = effectMap (tyEnv, before)
-      commonSubExpressionElimination tyEnv effMap before `sameAs` after
+      pipelineSrc before after csePipeline
