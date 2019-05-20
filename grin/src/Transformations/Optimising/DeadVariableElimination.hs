@@ -28,9 +28,9 @@ import Control.Monad.Trans.Except
 import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnv
-import Grin.EffectMap
 import Transformations.Util
-import AbstractInterpretation.LiveVariable.Result as LVA
+import AbstractInterpretation.LiveVariable.Result   as LVA
+import AbstractInterpretation.EffectTracking.Result as ET
 
 
 data DeletedEntities = DeletedEntities
@@ -53,10 +53,10 @@ runTrf :: Trf a -> Either String a
 runTrf = flip evalState mempty . runExceptT
 
 -- P and F nodes are handled by Dead Data Elimination
-deadVariableElimination :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp
-deadVariableElimination lvaResult effMap tyEnv exp =
-  let protected = analyzeCases effMap tyEnv exp in
-  runTrf . (deleteDeadBindings protected lvaResult effMap tyEnv >=> replaceDeletedVars tyEnv) $ exp
+deadVariableElimination :: LVAResult -> ETResult -> TypeEnv -> Exp -> Either String Exp
+deadVariableElimination lvaResult etResult tyEnv exp =
+  let protected = analyzeCases etResult tyEnv exp in
+  runTrf . (deleteDeadBindings protected lvaResult etResult tyEnv >=> replaceDeletedVars tyEnv) $ exp
 
 {- NOTE: Fetches do not have to be handled separately,
    since producer name introduction guarantees
@@ -67,8 +67,8 @@ deadVariableElimination lvaResult effMap tyEnv exp =
    cannot be eliminated because it might result in
    change of semantics. See `analyzeCases` for more info.
 -}
-deleteDeadBindings :: Set Name -> LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
-deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
+deleteDeadBindings :: Set Name -> LVAResult -> ETResult -> TypeEnv -> Exp -> Trf Exp
+deleteDeadBindings protected lvaResult etResult tyEnv = cataM alg where
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     e@(EBindF SStore{} (Var p) rhs)
@@ -78,7 +78,7 @@ deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
         rmWhen pointerDead e rhs (Set.singleton p) (Set.fromList locs)
     e@(EBindF (SApp f _) lpat rhs) -> do
       let names = foldNamesVal Set.singleton lpat
-          hasNoSideEffect = not $ hasTrueSideEffect f effMap
+          hasNoSideEffect = not $ hasSideEffectFun etResult f
       funDead <- isFunDeadM f
       rmWhen (funDead && hasNoSideEffect) e rhs names mempty
     e@(EBindF (SUpdate p v) Unit rhs) -> do
@@ -107,7 +107,7 @@ deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
   isVarDeadM :: Name -> Trf Bool
   isVarDeadM v = fmap (not . isLive)
                 . lookupExcept (varLvNotFound v) v
-                . _register
+                . LVA._register
                 $ lvaResult
 
   isFunDeadM :: Name -> Trf Bool
@@ -151,15 +151,15 @@ deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
    SCO only makes the transformation more precise (can be omitted),
    but BPS is essential and must be performed before DVE.
 -}
-analyzeCases :: EffectMap -> TypeEnv -> Exp -> Set Name
-analyzeCases effMap tyEnv = flip execState mempty . paraM alg where
+analyzeCases :: ETResult -> TypeEnv -> Exp -> Set Name
+analyzeCases etResult tyEnv = flip execState mempty . paraM alg where
 
   -- We store the names of the case expressions and scrutinees in the state.
   -- The result is a boolean represeneting the presence of side effects
   -- or filable patterns inside the expression (and its subexpressions).
   alg :: ExpF (Exp, Bool) -> State (Set Name) Bool
   alg = \case
-    SAppF f _ -> pure $ hasTrueSideEffect f effMap
+    SAppF f _ -> pure $ hasSideEffectFun etResult f
     AltF _ (_,s) -> pure s
     ECaseF scrut alts -> do
       let altPats = Set.fromList $ mapMaybe (^? _AltCPat) (fmap fst alts)

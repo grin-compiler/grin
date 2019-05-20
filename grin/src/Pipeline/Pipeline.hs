@@ -316,10 +316,11 @@ _ExpChanged _ rest       = pure rest
 data TransformationFunc
   = Plain          (Exp -> (Exp, ExpChanges))
   | WithTypeEnv    (TypeEnv -> Exp -> Either String (Exp, ExpChanges))
-  | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
+  | WithTypeEnvEff' (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
+  | WithTypeEnvEff (TypeEnv -> ET.ETResult -> Exp -> (Exp, ExpChanges))
   | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges))
   | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
-  | WithEffLVA     (LVA.LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
+  | WithEffLVA     (LVA.LVAResult -> ET.ETResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
   | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
 
 -- TODO: Add n paramter for the transformations that use NameM
@@ -346,7 +347,7 @@ transformationFunc n = \case
   ConstantPropagation             -> Plain (noNewNames . constantPropagation) -- TODO
   SimpleDeadFunctionElimination   -> Plain (noNewNames . simpleDeadFunctionElimination)
   SimpleDeadParameterElimination  -> Plain (noNewNames . simpleDeadParameterElimination)
-  SimpleDeadVariableElimination   -> WithTypeEnvEff (noNewNames <$$$> simpleDeadVariableElimination)
+  SimpleDeadVariableElimination   -> WithTypeEnvEff' (noNewNames <$$$> simpleDeadVariableElimination)
   InlineEval                      -> WithTypeEnv (Right <$$> inlineEval)
   InlineApply                     -> WithTypeEnv (Right <$$> inlineApply)
   InlineBuiltins                  -> WithTypeEnv (Right <$$> inlineBuiltins)
@@ -374,6 +375,7 @@ transformation t = do
   e <- use psExp
   te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
   em <- fromMaybe (traceShow "empty effect map is used" mempty) <$> use psEffectMap
+  et <- fromMaybe (traceShow "empty effect tracking result is used" mempty) <$> use psETResult
   cby <- fromMaybe (traceShow "empty created by result is used" CBy.emptyCByResult) <$> use psCByResult
   lva <- fromMaybe (traceShow "empty live variable result is used" LVA.emptyLVAResult) <$> use psLVAResult
   shr <- fromMaybe (traceShow "empty sharing result is used" Sharing.emptySharingResult) <$> use psSharingResult
@@ -381,9 +383,10 @@ transformation t = do
     case transformationFunc n t of
       Plain          f -> Right $ f e
       WithTypeEnv    f -> f te e
-      WithTypeEnvEff f -> Right $ f te em e
+      WithTypeEnvEff' f -> Right $ f te em e
+      WithTypeEnvEff f -> Right $ f te et e
       WithLVA        f -> f lva te e
-      WithEffLVA     f -> f lva em te e
+      WithEffLVA     f -> f lva et te e
       WithLVACBy     f -> f lva cby te e
       WithTypeEnvShr f -> Right $ f shr te e
   psTransStep %= (+1)
@@ -840,7 +843,8 @@ randomPipelineM seed = do
     runBasicAnalyses = mapM_ pipelineStep
       [ Sharing Compile
       , Sharing RunPure
-      , Eff CalcEffectMap
+      , ET Compile
+      , ET RunPure
       ]
 
     runCByLVA :: PipelineM ()
@@ -849,7 +853,8 @@ randomPipelineM seed = do
       , CBy RunPure
       , LVA Compile
       , LVA RunPure
-      , Eff CalcEffectMap
+      , ET Compile
+      , ET RunPure
       ]
 
     runNameIntro :: PipelineM ()
@@ -1089,10 +1094,11 @@ runAnalysisFor t = do
   sequence_ $ case transformationFunc n t of
     Plain          _ -> []
     WithTypeEnv    _ -> [hpt]
-    WithTypeEnvEff _ -> [hpt, eff]
+    WithTypeEnvEff' _ -> [hpt, eff]
+    WithTypeEnvEff _ -> [hpt, et]
     WithLVA        _ -> [hpt, lva]
-    WithEffLVA     _ -> [hpt, lva, cby, sharing, eff]
-    WithLVACBy     _ -> [hpt, lva, cby, sharing, eff]
+    WithEffLVA     _ -> [hpt, lva, cby, sharing, et]
+    WithLVACBy     _ -> [hpt, lva, cby, sharing, et]
     WithTypeEnvShr _ -> [hpt, sharing]
   where
     analysis getter ann = do
@@ -1105,6 +1111,7 @@ runAnalysisFor t = do
     hpt = analysis psHPTResult HPT
     lva = analysis psLVAResult LVA
     cby = analysis psCByResult CBy
+    et  = analysis psETResult ET
     sharing = analysis psSharingResult Sharing
 
     eff :: PipelineM ()

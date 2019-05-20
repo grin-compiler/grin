@@ -26,9 +26,9 @@ import Control.Monad.Trans.Except
 import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnv
-import Grin.EffectMap
 import Transformations.Util
 import AbstractInterpretation.LiveVariable.Result as LVA
+import AbstractInterpretation.EffectTracking.Result as ET
 
 
 type Trf = Except String
@@ -36,28 +36,28 @@ type Trf = Except String
 runTrf :: Trf a -> Either String a
 runTrf = runExcept
 
-deadFunctionElimination :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp
-deadFunctionElimination lvaResult effMap tyEnv = runTrf .
-  (deleteDeadFunctions lvaResult effMap >=> replaceDeadFunApps lvaResult effMap tyEnv)
+deadFunctionElimination :: LVAResult -> ETResult -> TypeEnv -> Exp -> Either String Exp
+deadFunctionElimination lvaResult etResult tyEnv = runTrf .
+  (deleteDeadFunctions lvaResult etResult >=> replaceDeadFunApps lvaResult etResult tyEnv)
 
-deleteDeadFunctions :: LVAResult -> EffectMap -> Exp -> Trf Exp
-deleteDeadFunctions lvaResult effMap (Program exts defs) =
+deleteDeadFunctions :: LVAResult -> ETResult -> Exp -> Trf Exp
+deleteDeadFunctions lvaResult etResult (Program exts defs) =
   fmap (Program exts) $ filterM isFunDefLiveM defs where
 
     isFunDefLiveM :: Exp -> Trf Bool
-    isFunDefLiveM (Def f _ _) = fmap not $ isFunDeadM lvaResult effMap f
+    isFunDefLiveM (Def f _ _) = fmap not $ isFunDeadM lvaResult etResult f
     isFunDefLiveM e = throwE $ "DFE: " ++ show (PP e) ++ " is not a function definition"
 
 
-replaceDeadFunApps :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
-replaceDeadFunApps lvaResult effMap tyEnv = cataM alg where
+replaceDeadFunApps :: LVAResult -> ETResult -> TypeEnv -> Exp -> Trf Exp
+replaceDeadFunApps lvaResult etResult tyEnv = cataM alg where
 
   alg :: ExpF Exp -> Trf Exp
-  alg = replaceAppWithUndefined lvaResult effMap tyEnv . embed
+  alg = replaceAppWithUndefined lvaResult etResult tyEnv . embed
 
-replaceAppWithUndefined :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
-replaceAppWithUndefined lvaResult effMap TypeEnv{..} app@(SApp f _) = do
-  funIsDead <- isFunDeadM lvaResult effMap f
+replaceAppWithUndefined :: LVAResult -> ETResult -> TypeEnv -> Exp -> Trf Exp
+replaceAppWithUndefined lvaResult etResult TypeEnv{..} app@(SApp f _) = do
+  funIsDead <- isFunDeadM lvaResult etResult f
   if funIsDead then do
     (retTy,_) <- lookupExcept (notFoundInTyEnv f) f _function
     pure $ SReturn $ Undefined (simplifyType retTy)
@@ -67,11 +67,11 @@ replaceAppWithUndefined lvaResult effMap TypeEnv{..} app@(SApp f _) = do
 replaceAppWithUndefined _ _ _ e = pure e
 
 
-isFunDeadM :: LVAResult -> EffectMap -> Name -> Trf Bool
-isFunDeadM LVAResult{..} effMap f = fmap andHasNoSideEffect
-                                  . fmap isFunDead
-                                  . lookupExcept (noLiveness f) f
-                                  $ _function
-  where andHasNoSideEffect = (&&) (not $ hasTrueSideEffect f effMap)
+isFunDeadM :: LVAResult -> ETResult -> Name -> Trf Bool
+isFunDeadM LVAResult{..} etResult f = fmap andHasNoSideEffect
+                                    . fmap isFunDead
+                                    . lookupExcept (noLiveness f) f
+                                    $ _function
+  where andHasNoSideEffect = (&&) (not $ hasSideEffectFun etResult f)
 
 noLiveness f = "DFE: Function " ++ show (PP f) ++ " not found in liveness map"
