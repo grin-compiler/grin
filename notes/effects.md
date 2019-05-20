@@ -149,5 +149,23 @@ Functions
                 ,_prim_string_print}
 ```
 
+Some questions
+--------------
+
+### Simple dead variable elimination
+
+Currently, `SDVE` uses the `EffectMap` to determine whether a function in an application node has any side effects or contains heap modifying operations. The new analysis does not track heap operations, but it would be easiy to incorporate that. However, the real question is whether `SDVE` really needs that information. Should `SDVE` use *any* interprocedural information?
+
+### Pattern bindings
+
+As mentioned earlier, each binding should have a name, the variable it binds. Currently, the syntax allows for pattern bindings, which do not bind a variable to the left-hand side computation. This problem could be fixed by introducing @patterns into the syntax, and requiring each binding to have a name even if it is a pattern binding. Another solution could be to give an ID to each binding internally, when builing the AST. This would introduce some challanges for ID generation, and some inconvenience for the transformations.
+
+#### @patterns
+
+
+```haskell
+v@(CInt n) <- pure n
+pure v
+```
 
 
