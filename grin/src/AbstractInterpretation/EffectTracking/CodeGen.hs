@@ -41,7 +41,8 @@ mkAbstractProgramM = do
         , _absRegisterCounter = _sRegisterCounter
         , _absInstructions    = _sInstructions
         }
-  let extIdMap = Map.fromList . map swap . Map.toList . Map.map extID $ _sExternalMap
+  let splitExt = (,) <$> extID <*> extExt
+      extIdMap = Map.fromList . map splitExt . Map.elems $ _sExternalMap
   let mpg = ETMapping
         { _etRegisterMap     = _sRegisterMap
         , _etFunctionRetMap  = _sFunctionRetMap

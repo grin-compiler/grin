@@ -34,7 +34,7 @@ data ETMapping
   = ETMapping
   { _etRegisterMap      :: Map Name Reg
   , _etFunctionRetMap   :: Map Name Reg
-  , _etExternalMap      :: Map ExternalID Name
+  , _etExternalMap      :: Map ExternalID External
   }
   deriving Show
 
@@ -82,7 +82,11 @@ emit :: IR.Instruction -> CG ()
 emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
 
 addExternal :: External -> CG ()
-addExternal e = modify' $ \s@CGState{..} -> s {_sExternalMap = Map.insert (eName e) (E (fromIntegral . Map.size $ _sExternalMap) e) _sExternalMap}
+addExternal e = modify' $ \s@CGState{..} ->
+  let curSize = fromIntegral . Map.size $ _sExternalMap in
+  s { _sExternalMap = Map.insert (eName e) (E curSize e) _sExternalMap
+    , _sFunctionRetMap = mempty
+    }
 
 getExternal :: Name -> CG (Maybe External)
 getExternal name = extExt <$$> Map.lookup name <$> gets _sExternalMap
