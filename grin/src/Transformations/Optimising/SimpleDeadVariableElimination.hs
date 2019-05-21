@@ -18,6 +18,8 @@ import Lens.Micro.Platform
 
 
 -- TODO: Write for dead code elimination.???
+-- TODO: Remove TypeEnv, consult EffectMap for side-effects, dont rely on unit return type
+-- QUESTION: should SDVE use any interprocedural information?
 simpleDeadVariableElimination :: TypeEnv -> EffectMap -> Exp -> Exp
 simpleDeadVariableElimination typeEnv effMap e = cata folder e ^. _1 where
 
