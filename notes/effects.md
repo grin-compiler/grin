@@ -156,16 +156,28 @@ Some questions
 
 Currently, `SDVE` uses the `EffectMap` to determine whether a function in an application node has any side effects or contains heap modifying operations. The new analysis does not track heap operations, but it would be easiy to incorporate that. However, the real question is whether `SDVE` really needs that information. Should `SDVE` use *any* interprocedural information?
 
+Modifying heap operations do not have to be tracked, since the `store` and `update` operations have *evaluation* semantics. If we delete an `update`, but the heap location it evaluates is used somewhere else, then at the use-site there must be a call to `eval`, which means, we only delayed the evaluation of the thunk. Note that this assumption is only true in the current framework, with the current optimizations. We could thin of a strictness based optimization, which elminate the second evaluations, in which case, `SDVE` could produce semantically incorrect programs.
+
+The question of whether `SDVE` should use any interprocedural information is postponed.
+
 ### Pattern bindings
 
 As mentioned earlier, each binding should have a name, the variable it binds. Currently, the syntax allows for pattern bindings, which do not bind a variable to the left-hand side computation. This problem could be fixed by introducing @patterns into the syntax, and requiring each binding to have a name even if it is a pattern binding. Another solution could be to give an ID to each binding internally, when builing the AST. This would introduce some challanges for ID generation, and some inconvenience for the transformations.
+
+In the future, we will define a new syntax for GRIN which will incorporate @patterns. For now, we will use a convention which can be assumed to hold for any GRIN program (can be guaranteed by applying a preliminary transformation). The convention states that any binding with a non-variable pattern must have a left-hand side of the form `pure <var>`. This ensures that every pattern has a name, but unfortunately the name and the pattern itself are not part of the same syntactic construct. As a consequence, some transformations will have to do some extra work (e.g.: Interprocedural Dead Variable Elimination).
 
 #### @patterns
 
 
 ```haskell
-v@(CInt n) <- pure n
-pure v
+v@(CInt k) <- pure n
+<both v and k can be referenced here>
 ```
 
+### Temporary solution
 
+```hakell
+v <- pure n
+(CInt k) <- pure v
+<both v and k can be referenced here>
+```
