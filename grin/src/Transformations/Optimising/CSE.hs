@@ -9,8 +9,8 @@ import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable as Foldable
 import Grin.Grin
 import Grin.TypeEnv
+import Grin.EffectMap
 import Transformations.Util
-import AbstractInterpretation.EffectTracking.Result
 
 import Debug.Trace
 
@@ -18,8 +18,8 @@ type Env = (Map SimpleExp SimpleExp)
 
 -- TODO: track if function parameters with location type can be updated in the called function to improve CSE
 
-commonSubExpressionElimination :: TypeEnv -> ETResult -> Exp -> Exp
-commonSubExpressionElimination typeEnv etResult e = hylo skipUnit builder (mempty, e) where
+commonSubExpressionElimination :: TypeEnv -> EffectMap -> Exp -> Exp
+commonSubExpressionElimination typeEnv effectMap e = hylo skipUnit builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, subst env -> exp) = case exp of
@@ -31,7 +31,7 @@ commonSubExpressionElimination typeEnv etResult e = hylo skipUnit builder (mempt
         -- HINT: location parameters might be updated in the called function, so forget their content
         SApp defName args -> foldr
           Map.delete
-          (if (hasSideEffectFun etResult defName) then env else extEnvKeepOld)
+          (if (hasTrueSideEffect defName effectMap) then env else extEnvKeepOld)
           [SFetch name | Var name <- args, isLocation name]
         SReturn val | isConstant val  -> extEnvKeepOld
         SFetch{}  -> extEnvKeepOld

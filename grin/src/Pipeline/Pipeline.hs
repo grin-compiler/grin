@@ -316,8 +316,7 @@ _ExpChanged _ rest       = pure rest
 data TransformationFunc
   = Plain          (Exp -> (Exp, ExpChanges))
   | WithTypeEnv    (TypeEnv -> Exp -> Either String (Exp, ExpChanges))
-  | WithTypeEnvEff' (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
-  | WithTypeEnvEff (TypeEnv -> ET.ETResult -> Exp -> (Exp, ExpChanges))
+  | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
   | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges))
   | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
   | WithEffLVA     (LVA.LVAResult -> ET.ETResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
@@ -347,7 +346,7 @@ transformationFunc n = \case
   ConstantPropagation             -> Plain (noNewNames . constantPropagation) -- TODO
   SimpleDeadFunctionElimination   -> Plain (noNewNames . simpleDeadFunctionElimination)
   SimpleDeadParameterElimination  -> Plain (noNewNames . simpleDeadParameterElimination)
-  SimpleDeadVariableElimination   -> WithTypeEnvEff' (noNewNames <$$$> simpleDeadVariableElimination)
+  SimpleDeadVariableElimination   -> WithTypeEnvEff (noNewNames <$$$> simpleDeadVariableElimination)
   InlineEval                      -> WithTypeEnv (Right <$$> inlineEval)
   InlineApply                     -> WithTypeEnv (Right <$$> inlineApply)
   InlineBuiltins                  -> WithTypeEnv (Right <$$> inlineBuiltins)
@@ -383,8 +382,7 @@ transformation t = do
     case transformationFunc n t of
       Plain          f -> Right $ f e
       WithTypeEnv    f -> f te e
-      WithTypeEnvEff' f -> Right $ f te em e
-      WithTypeEnvEff f -> Right $ f te et e
+      WithTypeEnvEff f -> Right $ f te em e
       WithLVA        f -> f lva te e
       WithEffLVA     f -> f lva et te e
       WithLVACBy     f -> f lva cby te e
@@ -1094,8 +1092,7 @@ runAnalysisFor t = do
   sequence_ $ case transformationFunc n t of
     Plain          _ -> []
     WithTypeEnv    _ -> [hpt]
-    WithTypeEnvEff' _ -> [hpt, eff]
-    WithTypeEnvEff _ -> [hpt, et]
+    WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
     WithEffLVA     _ -> [hpt, lva, cby, sharing, et]
     WithLVACBy     _ -> [hpt, lva, cby, sharing, et]
