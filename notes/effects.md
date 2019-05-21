@@ -174,7 +174,7 @@ v@(CInt k) <- pure n
 <both v and k can be referenced here>
 ```
 
-### Temporary solution
+#### Temporary solution
 
 ```hakell
 v <- pure n
