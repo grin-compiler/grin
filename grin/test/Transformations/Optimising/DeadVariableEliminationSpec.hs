@@ -515,6 +515,14 @@ spec = do
                   1 -> pure (CEQ)
                 -- If #default is changed to explicit alternatives the undefineds are not introduced.
                 -- Undefineds are introduced for missing alternatives too.
+
+                {- The real problem here is that liveness information
+                   is not correctly propagated back through the case scrutinee.
+
+                   Also, this scenario is even more complicated,
+                   because the result of the last case expression is really DEAD,
+                   but the alternatives have side effects. This requires further discussion.
+                -}
                 case v1 of
                   (CEQ) -> _prim_int_print 1
                   #default -> _prim_int_print 2
