@@ -319,7 +319,7 @@ transformationFunc n = \case
   SplitFetch                      -> Plain (noNewNames . splitFetch)
   RegisterIntroduction            -> Plain (newNames . registerIntroductionI n) -- TODO
   ProducerNameIntroduction        -> Plain producerNameIntroduction
-  BindingPatternSimplification         -> Plain bindingPatternSimplification
+  BindingPatternSimplification    -> Plain bindingPatternSimplification
   RightHoistFetch                 -> Plain (noNewNames . RHF.rightHoistFetch)
   -- misc
   MangleNames                     -> Plain (newNames . mangleNames) -- TODO

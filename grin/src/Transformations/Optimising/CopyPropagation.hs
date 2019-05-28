@@ -1,10 +1,13 @@
 {-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
 module Transformations.Optimising.CopyPropagation where
 
-import Text.Printf
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable as Foldable
+
+import Text.Printf
+import Lens.Micro.Extra
+
 import Grin.Grin
 import Transformations.Util
 
@@ -53,7 +56,7 @@ copyPropagation e = hylo folder builder (mempty, e) where
   folder :: ExpF Exp -> Exp
   folder = \case
     -- right unit law
-    EBindF leftExp lpat (SReturn val) | val == lpat, notVariable lpat -> leftExp
+    EBindF leftExp lpat (SReturn val) | val == lpat, isn't _ValVar lpat -> leftExp
 
     -- left unit law ; cleanup matching constants
     EBindF (SReturn val) lpat rightExp
