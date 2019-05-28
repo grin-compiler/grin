@@ -1,6 +1,6 @@
 # GRIN
 
-[![Build Status](https://travis-ci.org/grin-compiler/grin.svg?branch=master)](https://travis-ci.org/grin-compiler/grin) [![Coverage Status](https://coveralls.io/repos/github/grin-compiler/grin/badge.svg?branch=master)](https://coveralls.io/github/grin-compiler/grin?branch=master)
+[![Build Status](https://travis-ci.org/grin-compiler/grin.svg?branch=master)](https://travis-ci.org/grin-compiler/grin) [![Coverage Status](https://coveralls.io/repos/github/grin-tech/grin/badge.svg?branch=master)](https://coveralls.io/github/grin-tech/grin?branch=master)
 [![Gitter chat](https://badges.gitter.im/grin-compiler/grin.png)](https://gitter.im/Grin-Development/Lobby)
 
 The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction.
