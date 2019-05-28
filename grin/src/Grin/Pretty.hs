@@ -4,7 +4,9 @@ module Grin.Pretty
   , printGrin
   , PP(..)
   , WPP(..)
-  , prettyWithExternals
+  , RenderingOption(..)
+  , prettyProgram
+  , prettyHighlightExternals
   , prettyKeyValue
   , prettyBracedList
   , prettySimplePair
@@ -81,13 +83,23 @@ showName n = case unpackName n of
 instance Pretty Name where
   pretty = text . showName
 
+data RenderingOption
+  = Simple
+  | WithExternals
+  deriving (Eq, Ord, Show, Read)
+
+prettyProgram :: RenderingOption -> Exp -> Doc
+prettyProgram Simple          (Program exts e) = prettyHighlightExternals exts (Program [] e)
+prettyProgram WithExternals p@(Program exts _) = prettyHighlightExternals exts p
+prettyProgram _             p                  = prettyHighlightExternals [] p
+
 -- TODO
 --  nice colors for syntax highlight
 --  better node type syntax (C | F | P)
 
 -- | Print a given expression with highlighted external functions.
-prettyWithExternals :: [External] -> Exp -> Doc
-prettyWithExternals externals exp = cata folder exp where
+prettyHighlightExternals :: [External] -> Exp -> Doc
+prettyHighlightExternals externals exp = cata folder exp where
   folder = \case
     ProgramF exts defs  -> vcat (prettyExternals exts : map pretty defs)
     DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
@@ -108,8 +120,7 @@ prettyWithExternals externals exp = cata folder exp where
 
 
 instance Pretty Exp where
-  pretty exp@(Program exts _) = prettyWithExternals exts exp
-  pretty exp                  = prettyWithExternals [] exp
+  pretty = prettyProgram Simple
 
 instance Pretty Val where
   pretty = \case

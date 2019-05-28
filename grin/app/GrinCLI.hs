@@ -2,10 +2,14 @@
 module Main where
 
 import Control.Monad
-import Data.Map as Map
+import Data.Map (Map(..))
+import qualified Data.Map as Map
+import Data.Char
+import Data.Void
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Data.Text.IO as Text
 import qualified Text.Megaparsec as M
+import qualified Text.Megaparsec.Char as M
 import qualified Data.Binary as Binary
 
 import Options.Applicative
@@ -25,6 +29,7 @@ data Options = Options
   , optQuiet     :: Bool
   , optLoadBinary :: Bool
   , optSaveBinary :: Bool
+  , optRendering :: RenderingOption
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -94,8 +99,7 @@ pipelineOpts =
   <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
-  <|> flg' (SimplePrintGrin id) 'p' "simple-print-grin" "Prints the actual grin code without the externals"
-  <|> flg (PrintGrin id) "print-grin" "Prints the actual grin code including external functions"
+  <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code with the set rendering option"
   <|> flg PrintTypeAnnots "print-type-annots" "Prints the type env calculated from the annotations in the source"
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT Compile, HPT RunPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
@@ -119,6 +123,28 @@ pipelineOpts =
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
+
+maybeRenderingArg :: String -> Maybe RenderingOption
+maybeRenderingArg = M.parseMaybe renderingArg
+
+renderingArg :: M.Parsec Void String RenderingOption
+renderingArg = Simple        <$ M.string "simple"
+           <|> WithExternals <$ M.string "with-externals"
+
+renderingOption :: Parser RenderingOption
+renderingOption = option (maybeReader maybeRenderingArg)
+  ( long "render"
+  <> help "Set the rendering option for pretty printing the AST [simple | with-externals]"
+  <> showDefaultWith (camelToDashed . show)
+  <> value Simple
+  <> metavar "OPT" )
+
+camelToDashed :: String -> String
+camelToDashed "" = ""
+camelToDashed (c:cs) = toLower c : go cs where
+  go "" = ""
+  go (c:cs) | isUpper c = '-' : toLower c : go cs
+            | otherwise = c : go cs
 
 options :: IO Options
 options = execParser $ info
@@ -155,11 +181,12 @@ options = execParser $ info
             [ long "save-binary-intermed"
             , help "Save intermediate results in binary format"
             ])
+      <*> renderingOption
 
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options
+  Options files steps outputDir noPrelude quiet loadBinary saveBinary rendering <- options
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
       then do
@@ -168,7 +195,7 @@ main = do
         content <- Text.readFile fname
         let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
         pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
-    let opts     = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
+    let opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary, _poRendering = rendering }
     case steps of
       [] -> void $ optimize opts program [] postPipeline
       _  -> void $ pipeline opts mTypeEnv program steps
