@@ -10,6 +10,8 @@ module Pipeline.Pipeline
   , RenderingOption(..)
   , pattern HPTPass
   , pattern PrintGrin
+  , pattern SimplePrintGrin
+  , pattern FullPrintGrin
   , pattern DeadCodeElimination
   , pipeline
   , optimize
@@ -187,7 +189,7 @@ data PipelineStep
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
-  | PrintGrinH (Hidden (Doc -> Doc))
+  | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
   | PrintAST
@@ -225,9 +227,17 @@ data Path
   | Rel FilePath
   deriving (Eq, Show)
 
-pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
-pattern PrintGrin c <- PrintGrinH (H c)
-  where PrintGrin c =  PrintGrinH (H c)
+pattern PrintGrin :: RenderingOption -> (Doc -> Doc) -> PipelineStep
+pattern PrintGrin r c <- PrintGrinH r (H c)
+  where PrintGrin r c =  PrintGrinH r (H c)
+
+pattern SimplePrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern SimplePrintGrin c <- PrintGrinH Simple (H c)
+  where SimplePrintGrin c =  PrintGrinH Simple (H c)
+
+pattern FullPrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern FullPrintGrin c <- PrintGrinH WithExternals (H c)
+  where FullPrintGrin c =  PrintGrinH WithExternals (H c)
 
 pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
@@ -242,7 +252,6 @@ data PipelineOpts = PipelineOpts
   , _poLintOnChange :: Bool
   , _poTypedLint :: Bool -- Run HPT before every lint
   , _poSaveBinary :: Bool
-  , _poRendering :: RenderingOption
   }
 
 defaultOpts :: PipelineOpts
@@ -255,7 +264,6 @@ defaultOpts = PipelineOpts
   , _poLintOnChange = True
   , _poTypedLint    = False
   , _poSaveBinary   = False
-  , _poRendering    = Simple
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -429,7 +437,7 @@ pipelineStep p = do
       PrintEffectMap  -> printEffectMap
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
-    PrintGrin d     -> printGrinM d
+    PrintGrin r d   -> printGrinM r d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
     SaveLLVM path   -> saveLLVM path
@@ -627,10 +635,9 @@ pureEval = do
     evalProgram PureReducer e
   pipelineLog $ show $ pretty val
 
-printGrinM :: (Doc -> Doc) -> PipelineM ()
-printGrinM color = do
+printGrinM :: RenderingOption -> (Doc -> Doc) -> PipelineM ()
+printGrinM r color = do
   p <- use psExp
-  r <- reader _poRendering
   pipelineLog $ showWide $ color $ prettyProgram r p
 
 jitLLVM :: PipelineM ()
@@ -1125,7 +1132,7 @@ defaultOptimizations =
   ]
 
 debugPipeline :: [PipelineStep] -> [PipelineStep]
-debugPipeline ps = [PrintGrin id] ++ ps ++ [PrintGrin id]
+debugPipeline ps = [SimplePrintGrin id] ++ ps ++ [SimplePrintGrin id]
 
 debugPipelineState :: PipelineM ()
 debugPipelineState = do
@@ -1148,7 +1155,7 @@ printingSteps =
   , PrintErrors
   , PrintTypeAnnots
   , DebugPipelineState
-  , PrintGrin id
+  , SimplePrintGrin id
   ]
 
 isPrintingStep :: PipelineStep -> Bool

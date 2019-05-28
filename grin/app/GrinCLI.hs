@@ -29,7 +29,6 @@ data Options = Options
   , optQuiet     :: Bool
   , optLoadBinary :: Bool
   , optSaveBinary :: Bool
-  , optRendering :: RenderingOption
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -99,7 +98,7 @@ pipelineOpts =
   <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
-  <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code with the set rendering option"
+  <|> flg' (SimplePrintGrin id) 'p' "simple-print-grin" "Print the actual grin code without externals" <|> printGrinWithOpt
   <|> flg PrintTypeAnnots "print-type-annots" "Prints the type env calculated from the annotations in the source"
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT Compile, HPT RunPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
@@ -124,19 +123,25 @@ pipelineOpts =
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
 
-maybeRenderingArg :: String -> Maybe RenderingOption
-maybeRenderingArg = M.parseMaybe renderingArg
+maybeRenderingOpt :: String -> Maybe RenderingOption
+maybeRenderingOpt = M.parseMaybe renderingOpt
 
-renderingArg :: M.Parsec Void String RenderingOption
-renderingArg = Simple        <$ M.string "simple"
+renderingOpt :: M.Parsec Void String RenderingOption
+renderingOpt = Simple        <$ M.string "simple"
            <|> WithExternals <$ M.string "with-externals"
 
-renderingOption :: Parser RenderingOption
-renderingOption = option (maybeReader maybeRenderingArg)
-  ( long "render"
-  <> help "Set the rendering option for pretty printing the AST [simple | with-externals]"
-  <> showDefaultWith (camelToDashed . show)
-  <> value Simple
+{- NOTE: Cannot use default in some/many combinators.
+   The library considers default value as:
+     "nothing is given, then use default",
+   but we want it to behave like:
+    "if the flag is parsed, and no argument is given, then use default"
+-}
+printGrinWithOpt :: Parser PipelineStep
+printGrinWithOpt = flip PrintGrin id <$> option (maybeReader maybeRenderingOpt)
+  ( long "print-grin"
+  <> help "Print the actual grin code with a given rendering option [simple | with-externals]"
+  -- <> showDefaultWith (camelToDashed . show)
+  -- <> value Simple
   <> metavar "OPT" )
 
 camelToDashed :: String -> String
@@ -181,12 +186,11 @@ options = execParser $ info
             [ long "save-binary-intermed"
             , help "Save intermediate results in binary format"
             ])
-      <*> renderingOption
 
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  Options files steps outputDir noPrelude quiet loadBinary saveBinary rendering <- options
+  Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
       then do
@@ -195,7 +199,7 @@ main = do
         content <- Text.readFile fname
         let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
         pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
-    let opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary, _poRendering = rendering }
+    let opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
     case steps of
       [] -> void $ optimize opts program [] postPipeline
       _  -> void $ pipeline opts mTypeEnv program steps
@@ -205,5 +209,5 @@ postPipeline =
   [ SaveLLVM $ Rel "high-level-opt-code"
   , JITLLVM -- TODO: Remove this.
   , PrintTypeEnv
-  , PrintGrin ondullblack
+  , SimplePrintGrin ondullblack
   ]
