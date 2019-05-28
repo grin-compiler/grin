@@ -101,12 +101,12 @@ prettyProgram _             p                  = prettyHighlightExternals [] p
 prettyHighlightExternals :: [External] -> Exp -> Doc
 prettyHighlightExternals externals exp = cata folder exp where
   folder = \case
-    ProgramF exts defs  -> vcat (prettyExternals exts : map pretty defs)
-    DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
+    ProgramF exts defs  -> vcat (prettyExternals exts : defs)
+    DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 exp <> line
     -- Exp
-    EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
-    EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
-    ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
+    EBindF simpleexp Unit exp -> simpleexp <$$> exp
+    EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> simpleexp <$$> exp
+    ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep alts)
     -- Simple Expr
     SAppF name args         -> hsep (((if isExternalName externals name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
     SReturnF val            -> keyword "pure" <+> pretty val
@@ -114,9 +114,9 @@ prettyHighlightExternals externals exp = cata folder exp where
     SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
     SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
     SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
-    SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
+    SBlockF exp             -> text "do" <$$> indent 2 exp
     -- Alt
-    AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
+    AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 exp
 
 
 instance Pretty Exp where
