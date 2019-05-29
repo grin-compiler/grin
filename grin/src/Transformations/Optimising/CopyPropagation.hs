@@ -65,6 +65,3 @@ copyPropagation e = hylo folder builder (mempty, e) where
       -> rightExp
 
     exp -> embed exp
-
-    where notVariable Var{} = False
-          notVariable _     = True
