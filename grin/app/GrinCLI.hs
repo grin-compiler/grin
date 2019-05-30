@@ -140,16 +140,7 @@ printGrinWithOpt :: Parser PipelineStep
 printGrinWithOpt = flip PrintGrin id <$> option (maybeReader maybeRenderingOpt)
   ( long "print-grin"
   <> help "Print the actual grin code with a given rendering option [simple | with-externals]"
-  -- <> showDefaultWith (camelToDashed . show)
-  -- <> value Simple
   <> metavar "OPT" )
-
-camelToDashed :: String -> String
-camelToDashed "" = ""
-camelToDashed (c:cs) = toLower c : go cs where
-  go "" = ""
-  go (c:cs) | isUpper c = '-' : toLower c : go cs
-            | otherwise = c : go cs
 
 options :: IO Options
 options = execParser $ info
