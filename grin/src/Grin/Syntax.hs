@@ -149,6 +149,12 @@ deriving instance Ord a   => Ord  (ExpF a)
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
 
+pattern BoolPat b = LitPat (LBool b)
+
+_AltCPat :: Traversal' Exp CPat
+_AltCPat f (Alt p e) = (`Alt` e) <$> f p
+_AltCPat _ other     = pure other
+
 _AltFCPat :: Traversal' (ExpF a) CPat
 _AltFCPat f (AltF p e) = (`AltF` e) <$> f p
 _AltFCPat _ other      = pure other
@@ -164,6 +170,10 @@ _CPatLit _ other        = pure other
 _CPatDefault :: Traversal' CPat ()
 _CPatDefault f DefaultPat = const DefaultPat <$> f ()
 _CPatDefault _ other      = pure other
+
+_ValVar :: Traversal' Val Name
+_ValVar f (Var name) = Var <$> f name
+_ValVar _ other      = pure other
 
 _TyCon :: Traversal' Ty (Name, [Ty])
 _TyCon f (TyCon n ts) = uncurry TyCon <$> f (n, ts)

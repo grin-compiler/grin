@@ -4,6 +4,9 @@ module Grin.Pretty
   , printGrin
   , PP(..)
   , WPP(..)
+  , RenderingOption(..)
+  , prettyProgram
+  , prettyHighlightExternals
   , prettyKeyValue
   , prettyBracedList
   , prettySimplePair
@@ -80,32 +83,44 @@ showName n = case unpackName n of
 instance Pretty Name where
   pretty = text . showName
 
+data RenderingOption
+  = Simple
+  | WithExternals
+  deriving (Eq, Ord, Show, Read)
+
+prettyProgram :: RenderingOption -> Exp -> Doc
+prettyProgram Simple          (Program exts e) = prettyHighlightExternals exts (Program [] e)
+prettyProgram WithExternals p@(Program exts _) = prettyHighlightExternals exts p
+prettyProgram _             p                  = prettyHighlightExternals [] p
+
 -- TODO
 --  nice colors for syntax highlight
 --  better node type syntax (C | F | P)
 
+-- | Print a given expression with highlighted external functions.
+prettyHighlightExternals :: [External] -> Exp -> Doc
+prettyHighlightExternals externals exp = cata folder exp where
+  folder = \case
+    ProgramF exts defs  -> vcat (prettyExternals exts : defs)
+    DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 exp <> line
+    -- Exp
+    EBindF simpleexp Unit exp -> simpleexp <$$> exp
+    EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> simpleexp <$$> exp
+    ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep alts)
+    -- Simple Expr
+    SAppF name args         -> hsep (((if isExternalName externals name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
+    SReturnF val            -> keyword "pure" <+> pretty val
+    SStoreF val             -> keywordR "store" <+> pretty val
+    SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
+    SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
+    SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
+    SBlockF exp             -> text "do" <$$> indent 2 exp
+    -- Alt
+    AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 exp
+
+
 instance Pretty Exp where
-  pretty exp = cata folder exp where
-    externals = case exp of
-      (Program es _) -> es
-      _              -> []
-    folder = \case
-      ProgramF exts defs  -> vcat (prettyExternals exts : map pretty defs)
-      DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
-      -- Exp
-      EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
-      EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
-      ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
-      -- Simple Expr
-      SAppF name args         -> hsep (((if isExternalName externals name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
-      SReturnF val            -> keyword "pure" <+> pretty val
-      SStoreF val             -> keywordR "store" <+> pretty val
-      SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
-      SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
-      SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
-      SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
-      -- Alt
-      AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
+  pretty = prettyProgram Simple
 
 instance Pretty Val where
   pretty = \case
@@ -181,11 +196,6 @@ instance Pretty Effects where
     , green (text "stores")    <+> prettyLocSet storeLocs
     ]
 
-instance Pretty EffectOrPrimOp where
-  pretty = \case
-    Grin.EffectMap.PrimOp -> text "PrimOp"
-    Eff e  -> pretty e
-
 instance Pretty EffectMap where
   pretty (EffectMap effects) = yellow (text "EffectMap") <$$>
     indent 4 (prettyKeyValue $ Map.toList effects)
@@ -193,7 +203,7 @@ instance Pretty EffectMap where
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b) exts) where
   prettyExtGroup [] = mempty
-  prettyExtGroup l@(a : _) = (keyword $ case eKind a of { Grin.Grin.PrimOp -> "primop"; FFI -> "ffi" }) <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
+  prettyExtGroup l@(a : _) = keyword "primop" <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
     (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l] <> line)
 
 instance Pretty Ty where

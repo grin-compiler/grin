@@ -113,6 +113,7 @@ library
     Transformations.Optimising.NonSharedElimination
     Transformations.Simplifying.CaseSimplification
     Transformations.Simplifying.ProducerNameIntroduction
+    Transformations.Simplifying.BindingPatternSimplification
     Transformations.Simplifying.RegisterIntroduction
     Transformations.Simplifying.RightHoistFetch2
     Transformations.Simplifying.SplitFetch
@@ -226,6 +227,7 @@ test-suite grin-test
                      Transformations.Simplifying.RightHoistFetchSpec
                      Transformations.Simplifying.VectorisationSpec
                      Transformations.Simplifying.ProducerNameIntroductionSpec
+                     Transformations.Simplifying.BindingPatternSimplificationSpec
                      Transformations.Optimising.CaseCopyPropagationSpec
                      Transformations.Optimising.CopyPropagationSpec
                      Transformations.Optimising.ConstantFoldingSpec

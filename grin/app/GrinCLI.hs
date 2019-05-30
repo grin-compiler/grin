@@ -2,10 +2,14 @@
 module Main where
 
 import Control.Monad
-import Data.Map as Map
+import Data.Map (Map(..))
+import qualified Data.Map as Map
+import Data.Char
+import Data.Void
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Data.Text.IO as Text
 import qualified Text.Megaparsec as M
+import qualified Text.Megaparsec.Char as M
 import qualified Data.Binary as Binary
 
 import Options.Applicative
@@ -37,6 +41,7 @@ transformOpts =
   <|> flg Vectorisation "v" "Vectorisation"
   <|> flg RegisterIntroduction "ri" "Register Introduction"
   <|> flg ProducerNameIntroduction "pni" "Producer Name Introduction"
+  <|> flg BindingPatternSimplification "bps" "Binding Pattern Simplification"
   <|> flg InlineEval "ie" "Inline Eval"
   <|> flg InlineApply "ia" "Inline Apply"
   <|> flg BindNormalisation "bn" "Bind Normalisation"
@@ -93,7 +98,7 @@ pipelineOpts =
   <|> flg' (Eff CalcEffectMap) 'e' "em" "Calculate the effect for functions"
   <|> flg (Eff PrintEffectMap) "pe" "Print effect map"
   <|> flg' Lint 'l' "lint" "Checks the well-formedness of the actual grin code"
-  <|> flg' (PrintGrin id) 'p' "print-grin" "Prints the actual grin code"
+  <|> flg' (SimplePrintGrin id) 'p' "simple-print-grin" "Print the actual grin code without externals" <|> printGrinWithOpt
   <|> flg PrintTypeAnnots "print-type-annots" "Prints the type env calculated from the annotations in the source"
   <|> flg PrintTypeEnv "te" "Prints type env"
   <|> flg' (Pass [HPT Compile, HPT RunPure]) 't' "hpt" "Compiles and runs the heap-points-to analysis"
@@ -117,6 +122,25 @@ pipelineOpts =
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
+
+maybeRenderingOpt :: String -> Maybe RenderingOption
+maybeRenderingOpt = M.parseMaybe renderingOpt
+
+renderingOpt :: M.Parsec Void String RenderingOption
+renderingOpt = Simple        <$ M.string "simple"
+           <|> WithExternals <$ M.string "with-externals"
+
+{- NOTE: Cannot use default in some/many combinators.
+   The library considers default value as:
+     "nothing is given, then use default",
+   but we want it to behave like:
+    "if the flag is parsed, and no argument is given, then use default"
+-}
+printGrinWithOpt :: Parser PipelineStep
+printGrinWithOpt = flip PrintGrin id <$> option (maybeReader maybeRenderingOpt)
+  ( long "print-grin"
+  <> help "Print the actual grin code with a given rendering option [simple | with-externals]"
+  <> metavar "OPT" )
 
 options :: IO Options
 options = execParser $ info
@@ -166,7 +190,7 @@ main = do
         content <- Text.readFile fname
         let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
         pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
-    let opts     = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
+    let opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
     case steps of
       [] -> void $ optimize opts program [] postPipeline
       _  -> void $ pipeline opts mTypeEnv program steps
@@ -176,5 +200,5 @@ postPipeline =
   [ SaveLLVM $ Rel "high-level-opt-code"
   , JITLLVM -- TODO: Remove this.
   , PrintTypeEnv
-  , PrintGrin ondullblack
+  , SimplePrintGrin ondullblack
   ]

@@ -12,12 +12,17 @@ import qualified Data.Set as Set
 
 import Grin.Grin
 import Grin.TypeEnv
+import Transformations.Names (ExpChanges(..))
 import AbstractInterpretation.Sharing.Result
 
 
 
-nonSharedElimination :: SharingResult -> TypeEnv -> Exp -> Exp
-nonSharedElimination SharingResult{..} te = cata skipUpdate where
+nonSharedElimination :: SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges)
+nonSharedElimination SharingResult{..} te exp = (exp', change) where
+
+  exp' = cata skipUpdate exp
+
+  change = if exp' /= exp then DeletedHeapOperation else NoChange
 
   -- Remove bind when the parameter points to non-shared locations only.
   skipUpdate :: ExpF Exp -> Exp

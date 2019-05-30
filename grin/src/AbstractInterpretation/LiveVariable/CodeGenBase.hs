@@ -183,3 +183,14 @@ copyStructureWithPtrInfo srcReg dstReg = IR.ConditionalMove
   , predicate = isPointer
   , dstReg    = dstReg
   }
+
+-- For simple types, copies only non-pointer information.
+-- For nodes, copies the structure and the non-pointer information in the fields.
+-- In the case of LVA, no literal type info is propagated,
+-- so any non-pointer info is liveness info (the value of -1).
+copyStructureWithLivenessInfo :: IR.Reg -> IR.Reg -> IR.Instruction
+copyStructureWithLivenessInfo srcReg dstReg = IR.ConditionalMove
+  { srcReg    = srcReg
+  , predicate = isNotPointer
+  , dstReg    = dstReg
+  }

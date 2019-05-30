@@ -39,7 +39,12 @@ emptyReg = newReg
 
 -- Tests whether the given register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
-isLiveThen r i = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = i }
+isLiveThen r is = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = is }
+
+isLiveThenM :: IR.Reg -> CG () -> CG ()
+isLiveThenM r actionM = do
+  is <- codeGenBlock_ actionM
+  emit $ isLiveThen r is
 
 live :: LivenessId
 live = -1
@@ -78,9 +83,12 @@ setLive r = do
   setBasicValLive r
   emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
 
+-- Only structural information should flow forwards,
+-- and only liveness information should flow backwards.
 {- Data flow info propagation for node pattern:
    case nodeReg of
      (CNode argReg) -> ...
+   or
    (CNode argReg) <- pure nodeReg
 -}
 nodePatternDataFlow :: IR.Reg -> IR.Reg -> IR.Tag -> Int -> CG ()
@@ -100,6 +108,16 @@ nodePatternDataFlow argReg nodeReg irTag idx = do
                   }
 
   emit $ copyStructureWithPtrInfo tmp argReg
+
+-- Only structural information should flow forwards,
+-- and only liveness information should flow backwards.
+{- Data flow info propagation for variable patterns
+   v <- pure ...
+-}
+varPatternDataFlow :: IR.Reg -> IR.Reg -> CG ()
+varPatternDataFlow varReg lhsReg = do
+  emit $ copyStructureWithPtrInfo      lhsReg varReg
+  emit $ copyStructureWithLivenessInfo varReg lhsReg
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
@@ -203,7 +221,10 @@ codeGenM e = (cata folder >=> const setMainLive) e
         R r -> case lpat of
           Unit  -> setBasicValLive r
           Lit{} -> setBasicValLive r
-          Var name -> addReg name r
+          Var name -> do
+            varReg <- newReg
+            addReg name varReg
+            varPatternDataFlow varReg r
           ConstTagNode tag args -> do
             irTag <- getTag tag
             setTagLive irTag r
@@ -260,7 +281,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
           processAltResult = \case
             Z -> doNothing
             R altResultReg -> do
-              --NOTE: We propagate liveness information rom the case result register
+              --NOTE: We propagate liveness information from the case result register
               -- to the alt result register. But we also have to propagate
               -- structural and pointer information from the alt result register
               -- into the case result register.
@@ -293,14 +314,12 @@ codeGenM e = (cata folder >=> const setMainLive) e
                                                      processAltResult
                                                      restoreScrutReg
 
-            codeGenAltSimple actionM = codeGenBlock_ $
-              actionM >> (altM >>= processAltResult)
-
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
             altInstructions <- codeGenAltExists irTag $ \altScrutReg -> do
-              setTagLive irTag altScrutReg
+              -- NOTE: should be altResultRegister
+              caseResultReg `isLiveThenM` setTagLive irTag altScrutReg
               -- bind pattern variables
               forM_ (zip [1..] vars) $ \(idx, name) -> do
                 argReg <- newReg
@@ -315,8 +334,9 @@ codeGenM e = (cata folder >=> const setMainLive) e
           -- NOTE: if we stored type information for basic val,
           -- we could generate code conditionally here as well
           LitPat lit -> do
-            altInstructions <- codeGenAltSimple $ setBasicValLive valReg
-            mapM_ emit altInstructions
+            -- NOTE: should be altResultRegister
+            caseResultReg `isLiveThenM` setBasicValLive valReg
+            altM >>= processAltResult
 
           DefaultPat -> do
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]

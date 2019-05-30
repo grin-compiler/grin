@@ -7,8 +7,11 @@ module Pipeline.Pipeline
   , Transformation(..)
   , EffectStep(..)
   , Path(..)
+  , RenderingOption(..)
   , pattern HPTPass
   , pattern PrintGrin
+  , pattern SimplePrintGrin
+  , pattern FullPrintGrin
   , pattern DeadCodeElimination
   , pipeline
   , optimize
@@ -33,7 +36,7 @@ import Grin.EffectMap hiding (Eff)
 import Pipeline.Optimizations
 import qualified Grin.Statistics as Statistics
 import Grin.Parse
-import Grin.Pretty(showWide)
+import Grin.Pretty(showWide, prettyProgram, RenderingOption(..))
 import Transformations.CountVariableUse
 import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
@@ -42,6 +45,7 @@ import Transformations.BindNormalisation
 import qualified Grin.Lint as Lint
 import Grin.PrettyLint
 import Transformations.Simplifying.SplitFetch
+import Transformations.Simplifying.BindingPatternSimplification
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
 import Transformations.UnitPropagation
@@ -115,6 +119,7 @@ data Transformation
   -- Simplifying
   = RegisterIntroduction
   | ProducerNameIntroduction
+  | BindingPatternSimplification
   | Vectorisation
   | SplitFetch
   | CaseSimplification
@@ -184,7 +189,7 @@ data PipelineStep
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
-  | PrintGrinH (Hidden (Doc -> Doc))
+  | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
   | PrintAST
@@ -222,9 +227,17 @@ data Path
   | Rel FilePath
   deriving (Eq, Show)
 
-pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
-pattern PrintGrin c <- PrintGrinH (H c)
-  where PrintGrin c =  PrintGrinH (H c)
+pattern PrintGrin :: RenderingOption -> (Doc -> Doc) -> PipelineStep
+pattern PrintGrin r c <- PrintGrinH r (H c)
+  where PrintGrin r c =  PrintGrinH r (H c)
+
+pattern SimplePrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern SimplePrintGrin c <- PrintGrinH Simple (H c)
+  where SimplePrintGrin c =  PrintGrinH Simple (H c)
+
+pattern FullPrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern FullPrintGrin c <- PrintGrinH WithExternals (H c)
+  where FullPrintGrin c =  PrintGrinH WithExternals (H c)
 
 pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
@@ -311,6 +324,7 @@ transformationFunc n = \case
   SplitFetch                      -> Plain (noNewNames . splitFetch)
   RegisterIntroduction            -> Plain (newNames . registerIntroductionI n) -- TODO
   ProducerNameIntroduction        -> Plain producerNameIntroduction
+  BindingPatternSimplification    -> Plain bindingPatternSimplification
   RightHoistFetch                 -> Plain (noNewNames . RHF.rightHoistFetch)
   -- misc
   MangleNames                     -> Plain (newNames . mangleNames) -- TODO
@@ -336,15 +350,15 @@ transformationFunc n = \case
   ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
   UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
-  NonSharedElimination            -> WithTypeEnvShr (noNewNames <$$$> nonSharedElimination)
+  NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
   DeadFunctionElimination         -> WithEffLVA (noNewNames <$$$$$> deadFunctionElimination)
   DeadVariableElimination         -> WithEffLVA (noNewNames <$$$$$> deadVariableElimination)
   DeadParameterElimination        -> WithLVA (noNewNames <$$$$> deadParameterElimination)
   DeadDataElimination             -> WithLVACBy deadDataElimination
   SparseCaseOptimisation          -> WithTypeEnv (noNewNames <$$$> sparseCaseOptimisation)
   where
-    noNewNames = flip (,) NoChange
-    newNames = flip (,) NewNames
+    noNewNames    = flip (,) NoChange
+    newNames      = flip (,) NewNames
 
 transformation :: Transformation -> PipelineM ()
 transformation t = do
@@ -423,7 +437,7 @@ pipelineStep p = do
       PrintEffectMap  -> printEffectMap
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
-    PrintGrin d     -> printGrinM d
+    PrintGrin r d   -> printGrinM r d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
     SaveLLVM path   -> saveLLVM path
@@ -621,10 +635,10 @@ pureEval = do
     evalProgram PureReducer e
   pipelineLog $ show $ pretty val
 
-printGrinM :: (Doc -> Doc) -> PipelineM ()
-printGrinM color = do
-  e <- use psExp
-  pipelineLog $ showWide $ color $ pretty e
+printGrinM :: RenderingOption -> (Doc -> Doc) -> PipelineM ()
+printGrinM r color = do
+  p <- use psExp
+  pipelineLog $ showWide $ color $ prettyProgram r p
 
 jitLLVM :: PipelineM ()
 jitLLVM = do
@@ -819,6 +833,8 @@ randomPipelineM seed = do
     runNameIntro = void . pipelineStep $ Pass
       [ T ProducerNameIntroduction
       , T BindNormalisation
+      , T BindingPatternSimplification
+      , T BindNormalisation
       ]
 
     -- cleanup after producer name intro
@@ -1008,6 +1024,8 @@ optimizeWithM pre trans post = do
               , SimpleDeadVariableElimination
               , ProducerNameIntroduction
               , BindNormalisation
+              , BindingPatternSimplification
+              , BindNormalisation
               , UnitPropagation
               ]
           , map T $ trans `intersect`
@@ -1114,7 +1132,7 @@ defaultOptimizations =
   ]
 
 debugPipeline :: [PipelineStep] -> [PipelineStep]
-debugPipeline ps = [PrintGrin id] ++ ps ++ [PrintGrin id]
+debugPipeline ps = [SimplePrintGrin id] ++ ps ++ [SimplePrintGrin id]
 
 debugPipelineState :: PipelineM ()
 debugPipelineState = do
@@ -1137,7 +1155,7 @@ printingSteps =
   , PrintErrors
   , PrintTypeAnnots
   , DebugPipelineState
-  , PrintGrin id
+  , SimplePrintGrin id
   ]
 
 isPrintingStep :: PipelineStep -> Bool

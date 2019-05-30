@@ -12,11 +12,13 @@ import qualified Data.Vector as Vec
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Set.Extra as Set
 
 import qualified Data.Foldable
 import Data.Functor.Foldable as Foldable
 
 import Lens.Micro
+import Lens.Micro.Extra
 import Lens.Micro.Platform
 
 import Control.Monad.Extra
@@ -52,16 +54,21 @@ runTrf = flip evalState mempty . runExceptT
 
 -- P and F nodes are handled by Dead Data Elimination
 deadVariableElimination :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp
-deadVariableElimination lvaResult effMap tyEnv
-  = runTrf . (deleteDeadBindings lvaResult effMap tyEnv >=> replaceDeletedVars tyEnv)
+deadVariableElimination lvaResult effMap tyEnv exp =
+  let protected = analyzeCases effMap tyEnv exp in
+  runTrf . (deleteDeadBindings protected lvaResult effMap tyEnv >=> replaceDeletedVars tyEnv) $ exp
 
 {- NOTE: Fetches do not have to be handled separately,
    since producer name introduction guarantees
    that all bindings with a fetch LHS will have a Var PAT
    (handled by the last case in alg).
+
+   Also, protected case expressions bound to a variable
+   cannot be eliminated because it might result in
+   change of semantics. See `analyzeCases` for more info.
 -}
-deleteDeadBindings :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
-deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
+deleteDeadBindings :: Set Name -> LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
+deleteDeadBindings protected lvaResult effMap tyEnv = cataM alg where
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     e@(EBindF SStore{} (Var p) rhs)
@@ -77,9 +84,11 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
     e@(EBindF (SUpdate p v) Unit rhs) -> do
       varDead <- isVarDeadM p
       rmWhen varDead e rhs mempty mempty
-    e@(EBindF _ (Var v) rhs) -> do
-      varDead <- isVarDeadM v
-      rmWhen varDead e rhs (Set.singleton v) mempty
+    e@(EBindF _ (Var v) rhs)
+      | v `Set.member` protected -> pure . embed $ e
+      | otherwise -> do
+        varDead <- isVarDeadM v
+        rmWhen varDead e rhs (Set.singleton v) mempty
     e -> pure . embed $ e
 
   rmWhenAllDead :: ExpF Exp -> Exp -> Val -> Trf Exp
@@ -120,6 +129,99 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
 
+{- TODO: Pattern match failure checks should be moved to LVA.
+         New instructions to the abstarct machine IR are required.
+         (new Condition: NodeTypeDoesNotExist Tag)
+-}
+{- Collects the name of case expressions and scrutinees(*) that cannot be eliminated.
+   The name of a case expression is the variable it is bound to.
+   A case expression cannot be eliminated if the scrutinee
+   has at least one tag/literal not covered by any of the alternatives
+   (i.e. the pattern match can fail), or any of the alternatives
+   contain a side-effecting function or external.
+
+   (*) Sometimes, even if the scrutinee is dead,
+   its original binding cannot be removed.
+   This is becase there can be an execution path which can lead to
+   a pattern match failure or a side-effecting computation.
+
+   Also, it is assumed that all case alternatives are live (i.e.: after SCO),
+   and all pattern bindings and case scrutinees are simple (i.e.: after BPS).
+
+   SCO only makes the transformation more precise (can be omitted),
+   but BPS is essential and must be performed before DVE.
+-}
+analyzeCases :: EffectMap -> TypeEnv -> Exp -> Set Name
+analyzeCases effMap tyEnv = flip execState mempty . paraM alg where
+
+  -- We store the names of the case expressions and scrutinees in the state.
+  -- The result is a boolean represeneting the presence of side effects
+  -- or filable patterns inside the expression (and its subexpressions).
+  alg :: ExpF (Exp, Bool) -> State (Set Name) Bool
+  alg = \case
+    SAppF f _ -> pure $ hasTrueSideEffect f effMap
+    AltF _ (_,s) -> pure s
+    ECaseF scrut alts -> do
+      let altPats = Set.fromList $ mapMaybe (^? _AltCPat) (fmap fst alts)
+          altTags = Set.mapMaybe (^? _CPatNodeTag) altPats
+          alts'   = and . fmap snd $ alts
+
+          addScrutinee = case scrut of
+            Var x -> modify (Set.insert x)
+            _     -> pure ()
+
+      case mTypeOfValTE tyEnv scrut of
+        -- There is a case nested case expression
+        -- in the alternatives which cannot be removed.
+        _ | alts' -> addScrutinee >> pure True
+        -- The pattern match can fail on a node tag.
+        Just (T_NodeSet ns)
+          | DefaultPat `Set.notMember` altPats
+          , scrutTags <- Map.keysSet ns
+          , any (`Set.notMember` altTags) scrutTags
+          -> addScrutinee >> pure True
+        -- The pattern match can fail on a literal.
+        Just T_SimpleType{}
+          | hasDef   <- DefaultPat    `Set.member` altPats
+          , hasTrue  <- BoolPat True  `Set.member` altPats
+          , hasFalse <- BoolPat False `Set.member` altPats
+          , not (hasTrue && hasFalse || hasDef)
+          -> addScrutinee >> pure True
+        Nothing -> error $ "DVE: case analysis: scrutinee's type cannot be calculated (" ++ show (PP scrut) ++ ")"
+        _ -> pure alts'
+
+    EBindF (ECase{}, lhs) (Var v) (_,rhs) -> do
+      when lhs $ modify (Set.insert v)
+      pure $ lhs || rhs
+
+    -- SBP guarantees that a binding pattern will always have a
+    -- simple SReturn on the left-hand side.
+    EBindF (SReturn (Var v),lhs) pat (_,rhs)
+      -- This is the case when the lhs has only one possible tag,
+      -- the one being pattern matched on. Everything is fine here.
+      | ConstTagNode t _ <- pat
+      , T_NodeSet ns <- variableType tyEnv v
+      , [onlyTag] <- Map.keys ns
+      , onlyTag == t
+      -> pure $ lhs || rhs
+      -- Just in case SCO was not run beforehand
+      | T_SimpleType T_Dead <- variableType tyEnv v
+      -> pure $ lhs || rhs
+      -- Very primitive case of binding a unit to unit ...
+      | Unit <- pat
+      , T_SimpleType T_Unit <- variableType tyEnv v
+      -> pure $ lhs || rhs
+      -- In any other case, where the pattern is anything else than a variable,
+      -- the pattern match can fail.
+      | isn't _ValVar pat -> modify (Set.insert v) >> pure True
+
+    -- This binding can only have a variable pattern.
+    -- In this case we only have to propagate information.
+    EBindF (_,lhs) _ (_,rhs) -> pure $ lhs || rhs
+    SBlockF (_,s) -> pure s
+
+    -- The other cases are not important.
+    _ -> pure False
 
 -- This will not replace the occurences of a deleted pointer
 -- in fetches and in updates. But it does not matter,
