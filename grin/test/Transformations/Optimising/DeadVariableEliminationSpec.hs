@@ -165,7 +165,8 @@ spec = do
           |]
       pipelineSrc before after deadVariableEliminationPipeline
 
-    it "binding_pat_match_failure" $ do
+    -- TODO: reenable after semantics are defined
+    xit "binding_pat_match_failure" $ do
       let before = [prog|
             grinMain =
               n <- pure (CNode 0 0)
@@ -177,7 +178,8 @@ spec = do
 
       pipelineSrc before after deadVariableEliminationPipeline
 
-    it "case_node_pat_failure" $ do
+    -- TODO: reenable after semantics are defined
+    xit "case_node_pat_failure" $ do
       let before = [prog|
             grinMain =
               x <- pure (CInt 5)
@@ -191,7 +193,8 @@ spec = do
       pipelineSrc before after deadVariableEliminationPipeline
 
     -- NOTE: literals are not tracked
-    it "case_lit_pat_failure" $ do
+    -- TODO: reenable after semantics are defined
+    xit "case_lit_pat_failure" $ do
       let before = [prog|
             grinMain =
               x <- pure 5
@@ -267,7 +270,8 @@ spec = do
 
       pipelineSrc before after deadVariableEliminationPipeline
 
-    it "case_nested_pat_failure" $ do
+    -- TODO: reenable after semantics are defined
+    xit "case_nested_pat_failure" $ do
       let before = [prog|
             grinMain =
               x <- pure (CInt 5)
