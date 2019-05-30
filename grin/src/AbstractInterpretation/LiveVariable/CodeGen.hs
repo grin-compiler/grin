@@ -19,6 +19,8 @@ import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
 import AbstractInterpretation.LiveVariable.CodeGenBase
 
+import AbstractInterpretation.EffectTracking.Result
+
 -- NOTE: For a live variable, we could store its type information.
 
 -- Live variable analysis program.
@@ -119,6 +121,24 @@ varPatternDataFlow varReg lhsReg = do
   emit $ copyStructureWithPtrInfo      lhsReg varReg
   emit $ copyStructureWithLivenessInfo varReg lhsReg
 
+-- | Decides whether a given variable has a side-effecting computation bound to it.
+-- The function can only be given a variable name.
+-- It returns `False` if the effect analysis result is not present
+-- (calculates liveness based on only pure information).
+hasSideEffectVarM :: Name -> CG Bool
+hasSideEffectVarM v = do
+  mETResult <- use sETResult
+  case mETResult of
+    Just res -> return $ hasSideEffectVar res v
+    Nothing  -> return False
+
+-- | Generates code based on whether a given variable has any side effects bound to it.
+-- Contrary to `isLiveThenM`, this function only uses information available at compile time.
+hasSideEffectsThenM :: Name -> CG () -> CG ()
+hasSideEffectsThenM v actionM = do
+  b <- hasSideEffectVarM v
+  when b actionM
+
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
   ConstTagNode tag vals -> do
@@ -172,9 +192,9 @@ codeGenVal = \case
   val -> error $ "unsupported value " ++ show val
 
 
-codeGen :: Program -> (AbstractProgram, LVAMapping)
-codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
-codeGen _ = error "Program expected"
+codeGen :: Maybe ETResult -> Program -> (AbstractProgram, LVAMapping)
+codeGen mETResult prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) $ emptyCGState { _sETResult = mETResult }
+codeGen _ _ = error "Program expected"
 
 mkAbstractProgramM :: CG (AbstractProgram, LVAMapping)
 mkAbstractProgramM = do
@@ -214,16 +234,18 @@ codeGenM e = (cata folder >=> const setMainLive) e
       leftExp >>= \case
         Z -> case lpat of
           Unit -> pure ()
-          Var name -> do
+          Var v -> do
             r <- newReg
-            addReg name r
+            addReg v r
+            v `hasSideEffectsThenM` setLive r
           _ -> error $ "pattern mismatch at LVA bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of
           Unit  -> setBasicValLive r
           Lit{} -> setBasicValLive r
-          Var name -> do
+          Var v -> do
             varReg <- newReg
-            addReg name varReg
+            addReg v varReg
+            v `hasSideEffectsThenM` setLive varReg
             varPatternDataFlow varReg r
           ConstTagNode tag args -> do
             irTag <- getTag tag

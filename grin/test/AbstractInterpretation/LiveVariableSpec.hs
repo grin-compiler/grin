@@ -18,13 +18,14 @@ import AbstractInterpretation.Reduce (AbstractInterpretationResult(..),evalAbstr
 import AbstractInterpretation.LiveVariable.CodeGen hiding (live)
 import AbstractInterpretation.LiveVariable.Result
 
+-- TODO: Add tests includeing side effects
 
 runTests :: IO ()
 runTests = hspec spec
 
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
-  | (lvaProgram, lvaMapping) <- codeGen prog
+  | (lvaProgram, lvaMapping) <- codeGen Nothing prog
   , computer <- _airComp . evalAbstractProgram $ lvaProgram
   = toLVAResult lvaMapping computer
 

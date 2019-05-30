@@ -319,7 +319,7 @@ data TransformationFunc
   | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
   | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges))
   | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
-  | WithEffLVA     (LVA.LVAResult -> ET.ETResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
+  | WithEffLVA     (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
   | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
 
 -- TODO: Add n paramter for the transformations that use NameM
@@ -358,8 +358,8 @@ transformationFunc n = \case
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
   UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
   NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
-  DeadFunctionElimination         -> WithEffLVA (noNewNames <$$$$$> deadFunctionElimination)
-  DeadVariableElimination         -> WithEffLVA (noNewNames <$$$$$> deadVariableElimination)
+  DeadFunctionElimination         -> WithEffLVA (noNewNames <$$$$> deadFunctionElimination)
+  DeadVariableElimination         -> WithEffLVA (noNewNames <$$$$> deadVariableElimination)
   DeadParameterElimination        -> WithLVA (noNewNames <$$$$> deadParameterElimination)
   DeadDataElimination             -> WithLVACBy deadDataElimination
   SparseCaseOptimisation          -> WithTypeEnv (noNewNames <$$$> sparseCaseOptimisation)
@@ -384,7 +384,7 @@ transformation t = do
       WithTypeEnv    f -> f te e
       WithTypeEnvEff f -> Right $ f te em e
       WithLVA        f -> f lva te e
-      WithEffLVA     f -> f lva et te e
+      WithEffLVA     f -> f lva te e
       WithLVACBy     f -> f lva cby te e
       WithTypeEnvShr f -> Right $ f shr te e
   psTransStep %= (+1)
@@ -423,7 +423,9 @@ pipelineStep p = do
       PrintResult   -> printAnalysisResult psCByResult
 
     LVA step -> case step of
-      Compile       -> compileAbstractProgram LVA.codeGen psLVAProgram
+      Compile       -> do
+        mETResult <- use psETResult
+        compileAbstractProgram (LVA.codeGen mETResult) psLVAProgram
       Optimise      -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psLVAProgram
       SaveProgram p -> saveAbstractProgram p psLVAProgram
@@ -1094,8 +1096,8 @@ runAnalysisFor t = do
     WithTypeEnv    _ -> [hpt]
     WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
-    WithEffLVA     _ -> [hpt, lva, cby, sharing, et]
-    WithLVACBy     _ -> [hpt, lva, cby, sharing, et]
+    WithEffLVA     _ -> [hpt, et, cby, lva, sharing]
+    WithLVACBy     _ -> [hpt,     cby, lva, sharing]
     WithTypeEnvShr _ -> [hpt, sharing]
   where
     analysis getter ann = do

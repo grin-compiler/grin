@@ -21,6 +21,7 @@ spec = do
           [ T DeadVariableElimination
           ]
 
+
     it "simple" $ do
       let before = [prog|
             grinMain =
@@ -518,6 +519,141 @@ spec = do
 
             Main.main1 =
               _prim_int_print $ 1
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "true_side_effect_case" $ do
+      let before = [prog|
+            grinMain =
+              a <- pure 0
+              b <- pure 0
+              c <- pure b
+              d <- case c of
+                    0 ->
+                      e <- _prim_int_add a 0
+                      _prim_int_print 0
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              b <- pure 0
+              c <- pure b
+              d <- case c of
+                    0 ->
+                      _prim_int_print 0
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "true_side_effect_fun" $ do
+      let before = [prog|
+            grinMain =
+              a <- pure 0
+              b <- pure 0
+              c <- f a b
+              pure 0
+
+            f x y = _prim_int_print x
+          |]
+
+      let after = [prog|
+            grinMain =
+              a <- pure 0
+              c <- f a (#undefined :: T_Int64)
+              pure 0
+
+            f x y = _prim_int_print x
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "true_side_effect_case_fun" $ do
+      let before = [prog|
+            grinMain =
+              a <- pure 0
+              b <- pure 0
+              c <- pure b
+              d <- case c of
+                    0 ->
+                      e <- _prim_int_add a 0
+                      f 0 e
+              pure 0
+
+            f x y = _prim_int_print x
+          |]
+
+      let after = [prog|
+            grinMain =
+              b <- pure 0
+              c <- pure b
+              d <- case c of
+                    0 ->
+                      f 0 (#undefined :: T_Int64)
+              pure 0
+
+            f x y = _prim_int_print x
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "true_side_effect_case_nodes_1" $ do
+      let before = [prog|
+            grinMain =
+              a <- pure (COne 0)
+              b <- pure (COne)
+              c <- pure (CTwo)
+              d <- case a of
+                (COne n) -> pure b
+                (CTwo m) -> pure c
+              e <- case d of
+                (COne) -> _prim_int_print 0
+                (CTwo) -> _prim_int_print 0
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              a <- pure (COne 0)
+              b <- pure (COne)
+              d <- case a of
+                (COne n) -> pure b
+                (CTwo m) -> pure (#undefined :: {CTwo[]})
+              e <- case d of
+                (COne) -> _prim_int_print 0
+                (CTwo) -> _prim_int_print 0
+              pure 0
+          |]
+      pipelineSrc before after deadVariableEliminationPipeline
+
+    it "true_side_effect_case_nodes_2" $ do
+      let before = [prog|
+            grinMain =
+              a <- pure (COne 0)
+              d <- case a of
+                (COne n) ->
+                  b <- pure (COne)
+                  pure b
+                (CTwo m) ->
+                  c <- pure (CTwo)
+                  pure c
+              e <- case d of
+                (COne) -> _prim_int_print 0
+                (CTwo) -> _prim_int_print 0
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              a <- pure (COne 0)
+              d <- case a of
+                (COne n) ->
+                  b <- pure (COne)
+                  pure b
+                (CTwo m) ->
+                  pure (#undefined :: T_Dead)
+              e <- case d of
+                (COne) -> _prim_int_print 0
+                (CTwo) -> _prim_int_print 0
+              pure 0
           |]
       pipelineSrc before after deadVariableEliminationPipeline
 

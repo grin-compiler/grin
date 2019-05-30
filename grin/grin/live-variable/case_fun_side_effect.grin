@@ -1,0 +1,11 @@
+grinMain =
+  a <- pure 0
+  b <- pure 0
+  c <- pure b
+  d <- case c of
+        0 ->
+          e <- _prim_int_add a 0
+          f 0 e
+  pure 0
+
+f x y = _prim_int_print x

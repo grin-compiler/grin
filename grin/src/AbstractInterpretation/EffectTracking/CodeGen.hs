@@ -17,6 +17,7 @@ import Data.Maybe
 import Lens.Micro.Platform
 
 import Grin.Grin
+import Grin.Pretty
 import Grin.TypeEnv
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
@@ -72,9 +73,16 @@ codeGenM = cata folder where
       let R rhsReg = rhs
 
       case lpat of
-        Unit     -> pure ()
+        {- NOTE: By convention, all bindings should have a variable pattern
+           or a simple left-hand side of form `pure <var>`. This guarantees
+           that all relevant computations will have a name. Also, it means
+           the information has been already propagated to the variable.
+        -}
+        Unit           -> pure ()
+        Lit{}          -> pure ()
+        ConstTagNode{} -> pure ()
         Var name -> addReg name lhsReg
-        _ -> error $ "Effect tracking: unsupported lpat " ++ show lpat
+        _ -> error $ "Effect tracking: unsupported lpat " ++ show (PP lpat)
 
       emit IR.Move { srcReg = lhsReg, dstReg = rhsReg }
       pure $ R rhsReg

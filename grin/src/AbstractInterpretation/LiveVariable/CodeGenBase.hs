@@ -21,6 +21,8 @@ import Grin.TypeEnvDefs
 import AbstractInterpretation.IR (Instruction(..), Reg(..))
 import qualified AbstractInterpretation.IR as IR
 
+import AbstractInterpretation.EffectTracking.Result
+
 data CGState
   = CGState
   { _sMemoryCounter   :: Word32
@@ -32,6 +34,8 @@ data CGState
   , _sRegisterMap     :: Map.Map Name Reg
   , _sFunctionArgMap  :: Map.Map Name (Reg, [Reg])
   , _sTagMap          :: Bimap.Bimap Tag IR.Tag
+
+  , _sETResult        :: Maybe ETResult
   }
   deriving (Show)
 
@@ -48,6 +52,8 @@ emptyCGState = CGState
   , _sRegisterMap     = mempty
   , _sFunctionArgMap  = mempty
   , _sTagMap          = Bimap.empty
+
+  , _sETResult        = Nothing
   }
 
 type CG = State CGState

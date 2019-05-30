@@ -1,0 +1,7 @@
+grinMain =
+  a <- pure 0
+  b <- pure 0
+  c <- f a b
+  pure 0
+
+f x y = _prim_int_print x

@@ -16,6 +16,7 @@ import Lens.Micro.Platform
 import Lens.Micro.Extra
 
 import Grin.Grin (Name, Tag, External(..))
+import Grin.Pretty
 import AbstractInterpretation.IR hiding (Tag, SimpleType)
 import AbstractInterpretation.Reduce (ComputerState(..))
 import qualified Grin.TypeEnv as TypeEnv
@@ -39,13 +40,19 @@ instance Semigroup ETResult where
 instance Monoid ETResult where
   mempty = ETResult mempty mempty mempty
 
+hasSideEffectVar :: ETResult -> Name -> Bool
+hasSideEffectVar ETResult{..} v
+  | Just (Effects effs) <- Map.lookup v _register
+  = not . null $ effs
+  | otherwise = error $ "Variable " ++ show (PP v) ++ " is not present in the effect analysis result"
+
 hasSideEffectFun :: ETResult -> Name -> Bool
 hasSideEffectFun ETResult{..} f
   | Just ext <- Map.lookup f _external
   = eEffectful ext
   | Just (Effects effs) <- Map.lookup f _function
   = not . null $ effs
-  | otherwise = error $ "Function " ++ show f ++ " is not present in the effect analysis result"
+  | otherwise = error $ "Function " ++ show (PP f) ++ " is not present in the effect analysis result"
 
 toETResult :: ETMapping -> R.ComputerState -> ETResult
 toETResult e@ETMapping{..} c@R.ComputerState{..} = ETResult
