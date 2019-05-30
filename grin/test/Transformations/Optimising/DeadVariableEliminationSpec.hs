@@ -8,6 +8,7 @@ import qualified Pipeline.Pipeline as P
 import Grin.TH
 import Test.Assertions
 
+-- TODO: Also refactor the last expressions based on the convention (they should of the form: `pure <var>`)
 
 runTests :: IO ()
 runTests = hspec spec
@@ -39,9 +40,10 @@ spec = do
     it "heap" $ do
       let before = [prog|
             grinMain =
-              p0 <- store (CInt 0)
-              n0 <- fetch p0
-              p1 <- store n0
+              n0 <- store (CInt 0)
+              p0 <- pure n0
+              n1 <- fetch p0
+              p1 <- store n1
               y0 <- pure (CPtr p1)
               update p1 y0
               pure 0
@@ -57,7 +59,8 @@ spec = do
       let before = [prog|
             grinMain =
               p0 <- store (CInt 0)
-              update p0 (CInt 1)
+              n0 <- pure (CInt 1)
+              update p0 n0
               pure 0
           |]
 
@@ -87,25 +90,29 @@ spec = do
     it "app_side_effect_1" $ do
       let before = [prog|
             grinMain =
-              p0 <- store (CInt 0)
+              n0 <- store (CInt 0)
+              p0 <- pure n0
               y0 <- f p0
               y1 <- fetch p0
               pure y1
 
             f p =
-              update p (CInt 1)
+              n1 <- pure (CInt 1)
+              update p n1
               pure 0
           |]
 
       let after = [prog|
             grinMain =
-              p0 <- store (CInt 0)
+              n0 <- store (CInt 0)
+              p0 <- pure n0
               y0 <- f p0
               y1 <- fetch p0
               pure y1
 
             f p =
-              update p (CInt 1)
+              n1 <- pure (CInt 1)
+              update p n1
               pure 0
           |]
       pipelineSrc before after deadVariableEliminationPipeline
@@ -144,7 +151,8 @@ spec = do
               n <- pure (CNode 0 0)
               p <- store n
               (CNode y z) <- pure n
-              (CNode v w) <- fetch p
+              n0 <- fetch p
+              (CNode v w) <- pure n0
               0 <- pure x
               u <- pure ()
               () <- pure u
@@ -157,7 +165,8 @@ spec = do
               n <- pure (CNode 0 0)
               p <- store n
               (CNode y z) <- pure n
-              (CNode v w) <- fetch p
+              n0 <- fetch p
+              (CNode v w) <- pure n0
               0 <- pure x
               u <- pure ()
               () <- pure u
@@ -322,6 +331,7 @@ spec = do
 
       pipelineSrc before after deadVariableEliminationPipeline
 
+    -- NOTE: This test shows that the DVE can break the binding syntax convention
     it "store_fetch_in_dead_alt" $ do
       let before = [prog|
             grinMain =
@@ -330,7 +340,8 @@ spec = do
                 (CCons x xs) ->
                   p <- store (CInt 5)
                   n <- fetch p
-                  (CBad) <- pure n
+                  n0 <- pure n
+                  (CBad) <- pure n0
                   pure 0
           |]
 
@@ -389,8 +400,10 @@ spec = do
                   y0 <- f x0
 
                   (CPair c1 c2) <- pure n0
-                  (CPair x1 x2) <- fetch p1
-                  pure (CLive c2 x2 y0)
+                  n1 <- fetch p1
+                  (CPair x1 x2) <- pure n1
+                  n2 <- pure (CLive c2 x2 y0)
+                  pure n2
 
             f x = pure 0
           |]
@@ -405,8 +418,10 @@ spec = do
                   y0 <- f (#undefined :: T_Int64)
 
                   (CPair c1 c2) <- pure n0
-                  (CPair x1 x2) <- fetch p1
-                  pure (CLive c2 x2 y0)
+                  n1 <- fetch p1
+                  (CPair x1 x2) <- pure n1
+                  n2 <- pure (CLive c2 x2 y0)
+                  pure n2
 
             f x = pure 0
           |]
@@ -434,14 +449,16 @@ spec = do
             grinMain =
               x0 <- pure 5
               p0 <- store (CPair x0 5)
-              (CPair c0 c1) <- fetch p0
+              n0 <- fetch p0
+              (CPair c0 c1) <- pure n0
               pure c1
           |]
 
       let after = [prog|
             grinMain =
               p0 <- store (CPair (#undefined :: T_Int64) 5)
-              (CPair c0 c1) <- fetch p0
+              n0 <- fetch p0
+              (CPair c0 c1) <- pure n0
               pure c1
           |]
       pipelineSrc before after deadVariableEliminationPipeline
@@ -452,7 +469,8 @@ spec = do
               x0 <- pure 5
               p0 <- store (CPair 0 0)
               update p0 (CPair x0 5)
-              (CPair c0 c1) <- fetch p0
+              n0 <- fetch p0
+              (CPair c0 c1) <- pure n0
               pure c1
           |]
 
@@ -460,7 +478,8 @@ spec = do
             grinMain =
               p0 <- store (CPair 0 0)
               update p0 (CPair (#undefined :: T_Int64) 5)
-              (CPair c0 c1) <- fetch p0
+              n0 <- fetch p0
+              (CPair c0 c1) <- pure n0
               pure c1
           |]
       pipelineSrc before after deadVariableEliminationPipeline
