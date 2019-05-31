@@ -67,7 +67,7 @@ deadVariableElimination lvaResult tyEnv exp =
    Otherwise all computations are considered pure.
 -}
 deleteDeadBindings :: LVAResult -> TypeEnv -> Exp -> Trf Exp
-deleteDeadBindings lvaResult tyEnv = cataM alg where
+deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     e@(EBindF SStore{} (Var p) rhs)
@@ -75,7 +75,7 @@ deleteDeadBindings lvaResult tyEnv = cataM alg where
         unless (isSingleton locs) (throwE $ multipleLocs p locs)
         pointerDead <- isVarDeadM p
         rmWhen pointerDead e rhs (Set.singleton p) (Set.fromList locs)
-    e@(EBindF (SApp f _) lpat rhs) -> do
+    e@(EBindF (SApp f _) lpat rhs) | f `notElem` (map eName exts) -> do
       let names = foldNamesVal Set.singleton lpat
       funDead <- isFunDeadM f
       rmWhen funDead e rhs names mempty

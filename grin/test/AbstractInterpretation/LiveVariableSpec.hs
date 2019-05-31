@@ -818,9 +818,9 @@ spec = describe "Live Variable Analysis" $ do
           ]
         sumOptExpectedFunctions = mkFunctionLivenessMap
           [ ("sum", fun (liveVal, [liveVal, liveVal, liveVal]))
-          , ("_prim_int_add", fun (liveVal, [liveVal, liveVal]))
-          , ("_prim_int_gt",  fun (liveVal, [liveVal, liveVal]))
-          , ("_prim_int_print", fun (liveVal, [liveVal]))
+          -- , ("_prim_int_add", fun (liveVal, [liveVal, liveVal]))
+          -- , ("_prim_int_gt",  fun (liveVal, [liveVal, liveVal]))
+          -- , ("_prim_int_print", fun (liveVal, [liveVal]))
           ]
     (calcLiveness exp) `sameAs` sumOptExpected
 

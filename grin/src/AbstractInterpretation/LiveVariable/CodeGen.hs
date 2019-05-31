@@ -216,7 +216,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
   where
   folder :: ExpF (CG Result) -> CG Result
   folder = \case
-    ProgramF exts defs -> sequence_ defs >> pure Z
+    ProgramF exts defs -> mapM_ addExternal exts >> sequence_ defs >> pure Z
 
     DefF name args body -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
@@ -375,13 +375,23 @@ codeGenM e = (cata folder >=> const setMainLive) e
     AltF cpat exp -> pure $ A cpat exp
 
     SAppF name args -> do
-      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-      valRegs <- mapM codeGenVal args
-      zipWithM_ (\src dst -> emit IR.RestrictedMove {srcReg = src, dstReg = dst}) funArgRegs valRegs
-      zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) valRegs funArgRegs
-      -- HINT: handle primop here because it does not have definition
-      when (isExternalName (externals e) name) $ codeGenPrimOp name funResultReg funArgRegs
-      pure $ R funResultReg
+      appReg  <- newReg
+      argRegs <- mapM codeGenVal args
+
+      mExt <- getExternal name
+      case mExt of
+        Nothing -> do -- regular function
+          (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+          zipWithM_ (\src dst -> emit IR.RestrictedMove {srcReg = src, dstReg = dst}) funArgRegs argRegs
+          zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) argRegs funArgRegs
+
+          emit $ copyStructureWithPtrInfo funResultReg appReg
+          emit IR.RestrictedMove {srcReg = appReg, dstReg = funResultReg}
+        Just ext | eEffectful ext -> mapM_ setBasicValLive argRegs
+                 | otherwise      -> do allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive argRegs
+                                        emit $ appReg `isLiveThen` allArgsLive
+
+      pure $ R appReg
 
     SReturnF val -> R <$> codeGenVal val
 
@@ -453,13 +463,6 @@ codeGenM e = (cata folder >=> const setMainLive) e
       pure Z
 
     SBlockF exp -> exp
-
-codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> CG ()
-codeGenPrimOp name funResultReg funArgRegs
-  | name == "_prim_int_print" = mapM_ setBasicValLive funArgRegs
-  | otherwise = do
-    allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive funArgRegs
-    emit $ funResultReg `isLiveThen` allArgsLive
 
 codeGenAlt :: (Maybe Name, IR.Reg) ->
               (IR.Reg -> Name -> CG IR.Reg) ->
