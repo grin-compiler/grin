@@ -218,7 +218,7 @@ prettyBracedList = encloseSep lbrace rbrace comma
 prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
 prettySimplePair (x, y) = pretty x <> pretty y
 
-prettyFunction :: Pretty a => (Name, (a, Vector a)) -> Doc
+prettyFunction :: (Pretty a, Pretty name) => (name, (a, Vector a)) -> Doc
 prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 prettyLocSet :: Set Loc -> Doc

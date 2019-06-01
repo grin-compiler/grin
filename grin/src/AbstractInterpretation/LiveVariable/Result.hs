@@ -29,16 +29,21 @@ data Liveness
   | NodeSet (Map Tag Node)
   deriving (Eq, Ord, Show)
 
+newtype Effect = Effect { eEffect :: Bool }
+  deriving (Eq, Ord, Show)
+
 data LVAResult
   = LVAResult
-  { _memory   :: Vector Liveness
-  , _register :: Map Name Liveness
-  , _function :: Map Name (Liveness, Vector Liveness)
+  { _memory      :: Vector Liveness
+  , _registerLv  :: Map Name Liveness
+  , _functionLv  :: Map Name (Liveness, Vector Liveness)
+  , _registerEff :: Map Name Effect
+  , _functionEff :: Map Name Effect
   }
   deriving (Eq, Show)
 
 emptyLVAResult :: LVAResult
-emptyLVAResult = LVAResult mempty mempty mempty
+emptyLVAResult = LVAResult mempty mempty mempty mempty mempty
 
 concat <$> mapM makeLenses [''Node, ''Liveness, ''LVAResult]
 
@@ -65,19 +70,29 @@ hasLiveArgs (_, argsLv) = any isLive argsLv
 isFunDead :: (Liveness, Vector Liveness) -> Bool
 isFunDead (retLv, argsLv) = not (isLive retLv || any isLive argsLv)
 
-
 toLVAResult :: LVAMapping -> R.ComputerState -> LVAResult
 toLVAResult AbstractMapping{..} R.ComputerState{..} = LVAResult
-  { _memory   = V.map convertHeapNodeSet _memory
-  , _register = Map.map convertReg _absRegisterMap
-  , _function = Map.map convertFunctionRegs _absFunctionArgMap
+  { _memory      = V.map convertHeapNodeSet _memory
+  , _registerLv  = Map.map convertRegLv _absRegisterMap
+  , _functionLv  = Map.map convertFunctionRegs _absFunctionArgMap
+  , _registerEff = Map.map convertRegEff _absRegisterMap
+  , _functionEff = Map.map convertFunctionEffect _absFunctionArgMap
   }
   where
     isLive :: Set LivenessId -> Bool
-    isLive s = Set.member (-1) s || Set.member (-2) s
+    isLive = Set.member (-1)
 
-    convertReg :: Reg -> Liveness
-    convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
+    hasEffect :: Set LivenessId -> Bool
+    hasEffect = Set.member (-2)
+
+    convertReg :: (R.Value -> a) -> Reg -> a
+    convertReg convertValue (Reg i) = convertValue $ _register V.! (fromIntegral i)
+
+    convertRegLv :: Reg -> Liveness
+    convertRegLv = convertReg convertValueLv
+
+    convertRegEff :: Reg -> Effect
+    convertRegEff = convertReg convertValueEff
 
     -- we can encounter empty node sets on the heap
     convertHeapNodeSet :: R.NodeSet -> Liveness
@@ -94,10 +109,16 @@ toLVAResult AbstractMapping{..} R.ComputerState{..} = LVAResult
       where irTaggedMap = Map.map convertFields ns
             fromIR irTag = _absTagMap Bimap.!> irTag
 
-    convertValue :: R.Value -> Liveness
-    convertValue (R.Value vals ns)
+    convertValueLv :: R.Value -> Liveness
+    convertValueLv (R.Value vals ns)
       | Map.null . R._nodeTagMap $ ns = BasicVal (isLive vals)
       | otherwise = convertNodeSet ns
 
     convertFunctionRegs :: (Reg, [Reg]) -> (Liveness, Vector Liveness)
-    convertFunctionRegs (Reg retReg, argRegs) = (convertValue $ _register V.! (fromIntegral retReg), V.fromList [convertValue $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])
+    convertFunctionRegs (Reg retReg, argRegs) = (convertValueLv $ _register V.! (fromIntegral retReg), V.fromList [convertValueLv $ _register V.! (fromIntegral argReg) | Reg argReg <- argRegs])
+
+    convertValueEff :: R.Value -> Effect
+    convertValueEff (R.Value vals _) = Effect (hasEffect vals)
+
+    convertFunctionEffect :: (Reg, [Reg]) -> Effect
+    convertFunctionEffect (retReg, _) = convertRegEff retReg

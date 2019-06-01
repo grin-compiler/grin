@@ -107,13 +107,13 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
   isVarDeadM :: Name -> Trf Bool
   isVarDeadM v = fmap (not . isLive)
                 . lookupExcept (varLvNotFound v) v
-                . LVA._register
+                . LVA._registerLv
                 $ lvaResult
 
   noLiveArgsM :: Name -> Trf Bool
   noLiveArgsM f = fmap (not . hasLiveArgs)
                 . lookupExcept (funLvNotFound f) f
-                . LVA._function
+                . LVA._functionLv
                 $ lvaResult
 
   varLvNotFound v = "DVE: Variable " ++ show (PP v) ++ " was not found in liveness map"

@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module AbstractInterpretation.LiveVariable.Pretty where
 
+import Data.Tuple
 import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
@@ -9,6 +10,8 @@ import qualified Data.Map as Map
 
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+
+import Lens.Micro.Platform
 
 import Grin.Pretty
 import Grin.Grin (Tag, Name)
@@ -32,8 +35,20 @@ instance Pretty Liveness where
                       . Map.toList $ ns
 
 instance Pretty LVAResult where
-  pretty LVAResult{..} = vsep
-    [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ V.toList _memory)
-    , yellow (text "Env") <$$> indent 4 (prettyKeyValue $ Map.toList  _register)
-    , yellow (text "Function") <$$> indent 4 (vsep $ map prettyFunction $ Map.toList _function)
-    ]
+  pretty = prettyLVAResult
+
+prettyLVAResult :: LVAResult -> Doc
+prettyLVAResult LVAResult{..} = vsep
+  [ yellow (text "Heap") <$$> indent 4 (prettyKeyValue $ zip [(0 :: Int)..] $ V.toList _memory)
+  , yellow (text "Env (* is effectful)") <$$> indent 4 (prettyKeyValue . mapFst annotateEffectfulName . Map.toList $ _registerLv)
+  , yellow (text "Function (* is effectful)") <$$> indent 4 (vsep . map prettyFunction . mapFst annotateEffectfulName . Map.toList $ _functionLv)
+  ] where
+    annotateEffectfulName name
+      | Just (Effect True) <- Map.lookup name _registerEff
+      = text "*" <> pretty name
+      | Just (Effect True) <- Map.lookup name _functionEff
+      = text "*" <> pretty name
+      | otherwise = pretty name
+
+    mapFst f = map (over _1 f)
+

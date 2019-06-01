@@ -69,6 +69,6 @@ replaceAppWithUndefined _ _ e = pure e
 isFunDeadM :: LVAResult -> Name -> Trf Bool
 isFunDeadM LVAResult{..} f = fmap isFunDead
                            . lookupExcept (noLiveness f) f
-                           $ _function
+                           $ _functionLv
 
 noLiveness f = "DFE: Function " ++ show (PP f) ++ " not found in liveness map"

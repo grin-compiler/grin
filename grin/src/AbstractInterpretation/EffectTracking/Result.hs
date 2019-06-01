@@ -54,6 +54,16 @@ hasSideEffectFun ETResult{..} f
   = not . null $ effs
   | otherwise = error $ "Function " ++ show (PP f) ++ " is not present in the effect analysis result"
 
+hasSideEffect :: ETResult -> Name -> Bool
+hasSideEffect ETResult{..} name
+  | Just (Effects effs) <- Map.lookup name _register
+  = not . null $ effs
+  | Just ext <- Map.lookup name _external
+  = eEffectful ext
+  | Just (Effects effs) <- Map.lookup name _function
+  = not . null $ effs
+  | otherwise = error $ "Entity " ++ show (PP name) ++ " is not present in the effect analysis result"
+
 toETResult :: ETMapping -> R.ComputerState -> ETResult
 toETResult e@ETMapping{..} c@R.ComputerState{..} = ETResult
   { _register = Map.map (convertReg e c) _etRegisterMap

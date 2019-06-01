@@ -129,15 +129,15 @@ livenessDataFlow srcReg dstReg = do
   emit $ copyStructureWithLivenessInfo srcReg tmp
   emit $ IR.RestrictedMove { srcReg = tmp, dstReg = dstReg }
 
--- | Decides whether a given variable has a side-effecting computation bound to it.
--- The function can only be given a variable name.
+-- | Decides whether a given variable has a side-effecting computation bound to it,
+-- or whether a function has any side-effecting computations inside its body.
 -- It returns `False` if the effect analysis result is not present
 -- (calculates liveness based on only pure information).
-hasSideEffectVarM :: Name -> CG Bool
-hasSideEffectVarM v = do
+hasSideEffectM :: Name -> CG Bool
+hasSideEffectM name = do
   mETResult <- use sETResult
   case mETResult of
-    Just res -> return $ hasSideEffectVar res v
+    Just res -> return (hasSideEffect res name)
     Nothing  -> return False
 
 -- Tests whether the given register has any side effects.
@@ -153,7 +153,7 @@ hasSideEffectsThenM r actionM = do
 -- Contrary to `hasSideEffectsThenM`, this function only uses information available at compile time.
 isSideEffectingThenM :: Name -> CG () -> CG ()
 isSideEffectingThenM v actionM = do
-  b <- hasSideEffectVarM v
+  b <- hasSideEffectM v
   when b actionM
 
 sideEffecting :: LivenessId
@@ -249,8 +249,9 @@ codeGenM e = (cata folder >=> const setMainLive) e
   folder = \case
     ProgramF exts defs -> mapM_ addExternal exts >> sequence_ defs >> pure Z
 
-    DefF name args body -> do
-      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+    DefF f args body -> do
+      (funResultReg, funArgRegs) <- getOrAddFunRegs f $ length args
+      f `isSideEffectingThenM` setSideEffecting funResultReg
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> doNothing

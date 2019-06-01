@@ -98,7 +98,7 @@ selectActiveProducers lvaResult prods = Map.keysSet
   where
 
   producerLiveness :: LVAResult -> Map Name Liveness
-  producerLiveness = flip Map.restrictKeys prods . _register
+  producerLiveness = flip Map.restrictKeys prods . _registerLv
 
   isNodeLive' :: Liveness -> Bool
   isNodeLive' (NodeSet m) = any hasLiveField m
