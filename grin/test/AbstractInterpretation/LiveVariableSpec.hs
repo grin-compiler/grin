@@ -41,12 +41,13 @@ spec = describe "Live Variable Analysis" $ do
               (CWord c1) -> pure (CNode c1)
               #default   -> pure (CWord a0)
         |]
-    let caseAnonymousExpected = LVAResult
-          { _memory   = []
-          , _register = [ ("a0", deadVal), ("c0", liveVal), ("c1", deadVal) ]
-          , _function = [ ("grinMain", fun (nodeSet [ (cBool, [live]) ], [])) ]
+    let caseAnonymousExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("a0", deadVal), ("c0", liveVal), ("c1", deadVal) ]
+          , _functionLv = [ ("grinMain", fun (nodeSet [ (cBool, [live]) ], [])) ]
           }
-    (calcLiveness exp) `sameAs` caseAnonymousExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` caseAnonymousExpected
 
   it "case_min_lit" $ do
     let exp = [prog|
@@ -61,18 +62,19 @@ spec = describe "Live Variable Analysis" $ do
               1 -> pure c
               2 -> pure d
         |]
-    let caseMinLitExpected = LVAResult
-          { _memory   = []
-          , _register =
+    let caseMinLitExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv =
               [ ("a", liveVal)
               , ("b", liveVal)
               , ("c", liveVal)
               , ("d", liveVal)
               , ("e", deadVal)
               ]
-          , _function = mkFunctionLivenessMap []
+          , _functionLv = mkFunctionLivenessMap []
           }
-    (calcLiveness exp) `sameAs` caseMinLitExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` caseMinLitExpected
 
   it "case_min_nodes" $ do
     let exp = [prog|
@@ -85,20 +87,21 @@ spec = describe "Live Variable Analysis" $ do
             (CNode b0) <- pure n1
             pure b0
         |]
-    let caseMinNodesExpected = LVAResult
-          { _memory   = []
-          , _register =
+    let caseMinNodesExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv =
               [ ("n0", livenessN0)
               , ("n1", livenessN1)
               , ("c0", liveVal)
               , ("c1", deadVal)
               , ("b0", liveVal)
               ]
-          , _function = mkFunctionLivenessMap []
+          , _functionLv = mkFunctionLivenessMap []
           }
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cNode, [live]) ]
-    (calcLiveness exp) `sameAs` caseMinNodesExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` caseMinNodesExpected
 
   it "case_nested" $ do
     let exp = [prog|
@@ -120,10 +123,10 @@ spec = describe "Live Variable Analysis" $ do
               0 -> pure (CBool 0)
               1 -> pure (CWord 0)
         |]
-    let caseNestedExpected = LVAResult
-          { _memory   = []
-          , _register = caseNestedExpectedRegisters
-          , _function = caseNestedExpectedFunctions
+    let caseNestedExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = caseNestedExpectedRegisters
+          , _functionLv = caseNestedExpectedFunctions
           }
         livenessFRet = nodeSet [ (cBool, [live]), (cWord, [live]) ]
         livenessMainRet = nodeSet [ (cBool, [live]), (cWord, [live]) ]
@@ -145,7 +148,8 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", fun (livenessFRet, [liveVal]))
           , ("grinMain", fun (livenessMainRet,[]))
           ]
-    (calcLiveness exp) `sameAs` caseNestedExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` caseNestedExpected
 
   it "case_restricted" $ do
     let exp = [prog|
@@ -163,10 +167,10 @@ spec = describe "Live Variable Analysis" $ do
               0 -> pure (CInt  0)
               1 -> pure (CWord 0)
         |]
-        caseRestrictedExpected = LVAResult
-          { _memory   = []
-          , _register = caseRestrictedExpectedRegisters
-          , _function = caseRestrictedExpectedFunctions
+        caseRestrictedExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = caseRestrictedExpectedRegisters
+          , _functionLv = caseRestrictedExpectedFunctions
           }
         caseRestrictedExpectedRegisters =
           [ ("n0", livenessFRet)
@@ -179,7 +183,8 @@ spec = describe "Live Variable Analysis" $ do
         caseRestrictedExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessFRet, [liveVal])) ]
         livenessFRet = nodeSet [ (cInt,  [live]), (cWord, [live]) ]
-    (calcLiveness exp) `sameAs` caseRestrictedExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` caseRestrictedExpected
 
   it "case_restricted_nodes" $ do
     let exp = [prog|
@@ -202,10 +207,10 @@ spec = describe "Live Variable Analysis" $ do
               1 -> pure (CBool 0)
               2 -> pure (CWord 0)
         |]
-        caseRestrictedNodesExpected = LVAResult
-          { _memory   = []
-          , _register = caseRestrictedNodesExpectedRegisters
-          , _function = caseRestrictedNodesExpectedFunctions
+        caseRestrictedNodesExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = caseRestrictedNodesExpectedRegisters
+          , _functionLv = caseRestrictedNodesExpectedFunctions
           }
         caseRestrictedNodesExpectedRegisters =
           [ ("n0", livenessFRet)
@@ -224,7 +229,8 @@ spec = describe "Live Variable Analysis" $ do
           , ("grinMain", fun (livenessFRet, []))
           ]
         livenessFRet = nodeSet [ (cInt,  [live]), (cBool, [live]), (cWord, [live]) ]
-    (calcLiveness exp) `sameAs` caseRestrictedNodesExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` caseRestrictedNodesExpected
 
   it "dead_tags" $ do
     let exp = [prog|
@@ -249,10 +255,10 @@ spec = describe "Live Variable Analysis" $ do
               (CWord c0) -> pure 0
               #default   -> pure 1
         |]
-        deadTagsExpected = LVAResult
-          { _memory   = [ livenessN2, livenessN3 ]
-          , _register = deadTagsExpectedRegisters
-          , _function = mkFunctionLivenessMap []
+        deadTagsExpected = emptyLVAResult
+          { _memory     = [ livenessN2, livenessN3 ]
+          , _registerLv = deadTagsExpectedRegisters
+          , _functionLv = mkFunctionLivenessMap []
           }
         deadTagsExpectedRegisters =
           [ ("p0", deadVal)
@@ -269,7 +275,8 @@ spec = describe "Live Variable Analysis" $ do
         livenessN2 = deadNodeSet [ (cNil, 0),  (cInt, 1) ]
         livenessN3 = deadNodeSet [ (cCons, 2), (cInt, 1) ]
         livenessN4 = deadNodeSet [ (cNil, 0), (cCons, 2),  (cInt, 1) ]
-    (calcLiveness exp) `sameAs` deadTagsExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` deadTagsExpected
 
   it "fields" $ do
     let exp = [prog|
@@ -285,10 +292,10 @@ spec = describe "Live Variable Analysis" $ do
             case x of
               (CNode c2 c3) -> pure c3
         |]
-    let fieldsExpected = LVAResult
-          { _memory   = []
-          , _register = fieldsExpectedRegisters
-          , _function = fieldsExpectedFunctions
+    let fieldsExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = fieldsExpectedRegisters
+          , _functionLv = fieldsExpectedFunctions
           }
         fieldsExpectedRegisters =
           [ ("a0", deadVal)
@@ -304,7 +311,8 @@ spec = describe "Live Variable Analysis" $ do
         fieldsExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [livenessX])) ]
         livenessX = nodeSet [ (cNode, [dead, live]) ]
-    (calcLiveness exp) `sameAs` fieldsExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` fieldsExpected
 
   it "function_call_1" $ do
     let exp = [prog|
@@ -318,10 +326,10 @@ spec = describe "Live Variable Analysis" $ do
               (CFoo c0) -> pure c0
               (CBar c1) -> pure 5
         |]
-    let functionCall1Expected = LVAResult
-          { _memory   = []
-          , _register = functionCall1ExpectedRegisters
-          , _function = functionCall1ExpectedFunctions
+    let functionCall1Expected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = functionCall1ExpectedRegisters
+          , _functionLv = functionCall1ExpectedFunctions
           }
         functionCall1ExpectedRegisters =
           [ ("n",  livenessN)
@@ -334,7 +342,8 @@ spec = describe "Live Variable Analysis" $ do
         livenessX = nodeSet [ (cFoo, [live]) ]
         functionCall1ExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [livenessX])) ]
-    (calcLiveness exp) `sameAs` functionCall1Expected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` functionCall1Expected
 
   it "function_call_2" $ do
     let exp = [prog|
@@ -348,10 +357,10 @@ spec = describe "Live Variable Analysis" $ do
             b0 <- pure 0
             pure (CTwo a0 b0)
         |]
-    let functionCall2Expected = LVAResult
-          { _memory   = []
-          , _register = functionCall2ExpectedRegisters
-          , _function = functionCall2ExpectedFunctions
+    let functionCall2Expected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = functionCall2ExpectedRegisters
+          , _functionLv = functionCall2ExpectedFunctions
           }
         functionCall2ExpectedRegisters =
           [ ("a0", liveVal)
@@ -365,7 +374,8 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f",        fun (nodeSet [ (cTwo, [live, dead]) ], []))
           , ("grinMain", fun (nodeSet [ (cOne, [live]) ], []))
           ]
-    (calcLiveness exp) `sameAs` functionCall2Expected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` functionCall2Expected
 
   it "heap_case_min" $ do
     let exp = [prog|
@@ -375,13 +385,14 @@ spec = describe "Live Variable Analysis" $ do
             (CBool a1) <- fetch p0
             pure a1
         |]
-    let heapCaseMinExpected = LVAResult
-          { _memory   = [ livenessLoc1 ]
-          , _register = [ ("p0", liveVal), ("c1", liveVal), ("a1", liveVal) ]
-          , _function = mkFunctionLivenessMap []
+    let heapCaseMinExpected = emptyLVAResult
+          { _memory     = [ livenessLoc1 ]
+          , _registerLv = [ ("p0", liveVal), ("c1", liveVal), ("a1", liveVal) ]
+          , _functionLv = mkFunctionLivenessMap []
           }
         livenessLoc1 = nodeSet [ (cBool, [live]) ]
-    (calcLiveness exp) `sameAs` heapCaseMinExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapCaseMinExpected
 
   it "heap_case" $ do
     let exp = [prog|
@@ -402,10 +413,10 @@ spec = describe "Live Variable Analysis" $ do
               0 -> pure (CBool 0)
               1 -> pure (CWord 0)
         |]
-    let heapCaseExpected = LVAResult
-          { _memory   = heapCaseExpectedHeap
-          , _register = heapCaseExpectedRegisters
-          , _function = heapCaseExpectedFunctions
+    let heapCaseExpected = emptyLVAResult
+          { _memory     = heapCaseExpectedHeap
+          , _registerLv = heapCaseExpectedRegisters
+          , _functionLv = heapCaseExpectedFunctions
           }
         heapCaseExpectedHeap =
           [ nodeSet [ (cWordH, [dead]) ]
@@ -429,7 +440,8 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", fun (livenessFRet,[liveVal])) ]
         livenessLoc1 = nodeSet [ (cBoolH, [live]), (cWordH, [dead]) ]
         livenessFRet = nodeSet [ (cBool, [live]), (cWord, [dead]) ]
-    (calcLiveness exp) `sameAs` heapCaseExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapCaseExpected
 
   it "heap_indirect_simple" $ do
     let exp = [prog|
@@ -446,10 +458,10 @@ spec = describe "Live Variable Analysis" $ do
                 pure xs'
             pure r
         |]
-    let heapIndirectSimpleExpected = LVAResult
-          { _memory   = [ nodeSet [ (cNil, []) ] ]
-          , _register = heapIndirectSimpleExpectedRegisters
-          , _function = [ ("grinMain", fun (livenessMainRet,[])) ]
+    let heapIndirectSimpleExpected = emptyLVAResult
+          { _memory     = [ nodeSet [ (cNil, []) ] ]
+          , _registerLv = heapIndirectSimpleExpectedRegisters
+          , _functionLv = [ ("grinMain", fun (livenessMainRet,[])) ]
           }
         heapIndirectSimpleExpectedRegisters =
           [ ("a0", deadVal)
@@ -464,7 +476,8 @@ spec = describe "Live Variable Analysis" $ do
         livenessN0 = nodeSet [ (cNil, []) ]
         livenessN1 = nodeSet [ (cCons, [dead,live]) ]
         livenessMainRet = nodeSet [ (cNil, []) ]
-    (calcLiveness exp) `sameAs` heapIndirectSimpleExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapIndirectSimpleExpected
 
   it "heap_simple" $ do
     let exp = [prog|
@@ -475,10 +488,10 @@ spec = describe "Live Variable Analysis" $ do
             (CTwo a b) <- pure x
             pure a
         |]
-    let heapSimpleExpected = LVAResult
-          { _memory   = heapSimpleExpectedHeap
-          , _register = heapSimpleExpectedRegisters
-          , _function = mkFunctionLivenessMap []
+    let heapSimpleExpected = emptyLVAResult
+          { _memory     = heapSimpleExpectedHeap
+          , _registerLv = heapSimpleExpectedRegisters
+          , _functionLv = mkFunctionLivenessMap []
           }
         heapSimpleExpectedHeap = [ nodeSet $ [ (cTwo, [live, dead]) ] ]
         heapSimpleExpectedRegisters =
@@ -490,7 +503,8 @@ spec = describe "Live Variable Analysis" $ do
           ]
         livenessN = nodeSet $ [ (cTwo, [live, dead]) ]
         livenessX = livenessN
-    (calcLiveness exp) `sameAs` heapSimpleExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapSimpleExpected
 
   it "heap_update_complex" $ do
     let exp = [prog|
@@ -509,10 +523,10 @@ spec = describe "Live Variable Analysis" $ do
               (CNode c2) -> pure c2
               (CNope c3) -> pure c3
         |]
-    let heapUpdateComplexExpected = LVAResult
-          { _memory   = heapUpdateComplexExpectedHeap
-          , _register = heapUpdateComplexExpectedRegisters
-          , _function = mkFunctionLivenessMap []
+    let heapUpdateComplexExpected = emptyLVAResult
+          { _memory     = heapUpdateComplexExpectedHeap
+          , _registerLv = heapUpdateComplexExpectedRegisters
+          , _functionLv = mkFunctionLivenessMap []
           }
         heapUpdateComplexExpectedHeap =
           [ nodeSet [ (cBool, [live]), (cNode, [live]) ]
@@ -536,7 +550,8 @@ spec = describe "Live Variable Analysis" $ do
                              , (cWord, [dead])
                              , (cNode, [live])
                              ]
-    (calcLiveness exp) `sameAs` heapUpdateComplexExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapUpdateComplexExpected
 
   it "heap_update_fun_call" $ do
     let exp = [prog|
@@ -561,10 +576,10 @@ spec = describe "Live Variable Analysis" $ do
           g u v =
             update u v
         |]
-    let heapUpdateFunCallExpected = LVAResult
-          { _memory   = heapUpdateFunCallExpectedHeap
-          , _register = heapUpdateFunCallExpectedRegisters
-          , _function = heapUpdateFunCallExpectedFunctions
+    let heapUpdateFunCallExpected = emptyLVAResult
+          { _memory     = heapUpdateFunCallExpectedHeap
+          , _registerLv = heapUpdateFunCallExpectedRegisters
+          , _functionLv = heapUpdateFunCallExpectedFunctions
           }
         heapUpdateFunCallExpectedHeap =
           [ nodeSet [ (cBool, [live]), (cNode, [live]) ]
@@ -598,7 +613,8 @@ spec = describe "Live Variable Analysis" $ do
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cWord, [dead]) ]
         livenessN2 = nodeSet [ (cNode, [live]) ]
-    (calcLiveness exp) `sameAs` heapUpdateFunCallExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapUpdateFunCallExpected
 
   it "heap_update_local" $ do
     let exp = [prog|
@@ -613,10 +629,10 @@ spec = describe "Live Variable Analysis" $ do
               (CWord c1) -> pure 5
               (CNope c2) -> pure c2
         |]
-    let heapUpdateLocalExpected = LVAResult
-          { _memory   = heapUpdateLocalExpectedHeap
-          , _register = heapUpdateLocalExpectedRegisters
-          , _function = mkFunctionLivenessMap []
+    let heapUpdateLocalExpected = emptyLVAResult
+          { _memory     = heapUpdateLocalExpectedHeap
+          , _registerLv = heapUpdateLocalExpectedRegisters
+          , _functionLv = mkFunctionLivenessMap []
           }
         heapUpdateLocalExpectedHeap =
           [ nodeSet [ (cBool, [live]), (cWord, [dead]) ] ]
@@ -632,7 +648,8 @@ spec = describe "Live Variable Analysis" $ do
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cWord, [dead]) ]
         livenessN2 = nodeSet [ (cBool, [live]), (cWord, [dead]) ]
-    (calcLiveness exp) `sameAs` heapUpdateLocalExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapUpdateLocalExpected
 
   it "lit_pat" $ do
     let exp = [prog|
@@ -643,14 +660,15 @@ spec = describe "Live Variable Analysis" $ do
 
           f x = pure x
         |]
-    let litPatExpected = LVAResult
-          { _memory   = []
-          , _register = [ ("y", liveVal), ("x", liveVal) ]
-          , _function = litPatExpectedFunctions
+    let litPatExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("y", liveVal), ("x", liveVal) ]
+          , _functionLv = litPatExpectedFunctions
           }
         litPatExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [liveVal])) ]
-    (calcLiveness exp) `sameAs` litPatExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` litPatExpected
 
   it "var_pat" $ do
     let exp = [prog|
@@ -661,14 +679,15 @@ spec = describe "Live Variable Analysis" $ do
 
           f x = pure x
         |]
-    let varPatExpected = LVAResult
-          { _memory   = []
-          , _register = [ ("z", deadVal), ("y", liveVal), ("x", deadVal) ]
-          , _function = varPatExpectedFunctions
+    let varPatExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("z", deadVal), ("y", liveVal), ("x", deadVal) ]
+          , _functionLv = varPatExpectedFunctions
           }
         varPatExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (deadVal, [deadVal])) ]
-    (calcLiveness exp) `sameAs` varPatExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` varPatExpected
 
   it "node_pat" $ do
     let exp = [prog|
@@ -679,10 +698,10 @@ spec = describe "Live Variable Analysis" $ do
 
           f x = pure x
         |]
-    let nodePatExpected = LVAResult
-          { _memory   = []
-          , _register = [ ("n", deadVal), ("y", livenessY), ("x", livenessFRet) ]
-          , _function = nodePatExpectedFunctions
+    let nodePatExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("n", deadVal), ("y", livenessY), ("x", livenessFRet) ]
+          , _functionLv = nodePatExpectedFunctions
           }
         nodePatExpectedFunctions =
           [ ("f",        fun (livenessFRet, [livenessFArg]))
@@ -693,7 +712,8 @@ spec = describe "Live Variable Analysis" $ do
         livenessFRet = nodeSet [ (cInt, [dead]) ]
         livenessFArg = livenessFRet
 
-    (calcLiveness exp) `sameAs` nodePatExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` nodePatExpected
 
   it "main_node_ret" $ do
     let exp = [prog|
@@ -703,10 +723,10 @@ spec = describe "Live Variable Analysis" $ do
             n <- pure (CTwo a b)
             pure n
         |]
-    let mainNodeRetExpected = LVAResult
-          { _memory   = []
-          , _register = mainNodeRetExpectedRegisters
-          , _function = [ ("grinMain", fun (livenessN, [])) ]
+    let mainNodeRetExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = mainNodeRetExpectedRegisters
+          , _functionLv = [ ("grinMain", fun (livenessN, [])) ]
           }
         mainNodeRetExpectedRegisters =
           [ ("a", liveVal)
@@ -714,7 +734,8 @@ spec = describe "Live Variable Analysis" $ do
           , ("n", livenessN)
           ]
         livenessN = nodeSet [ (cTwo, [live, live]) ]
-    (calcLiveness exp) `sameAs` mainNodeRetExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` mainNodeRetExpected
 
   it "nodes_simple" $ do
     let exp = [prog|
@@ -732,10 +753,10 @@ spec = describe "Live Variable Analysis" $ do
               0 -> pure (CInt  y)
               1 -> pure (CBool z)
         |]
-    let nodesSimpleExpected = LVAResult
-          { _memory   = []
-          , _register = nodesSimpleExpectedRegisters
-          , _function = nodesSimpleExpectedFunctions
+    let nodesSimpleExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = nodesSimpleExpectedRegisters
+          , _functionLv = nodesSimpleExpectedFunctions
           }
         nodesSimpleExpectedRegisters =
           [ ("a0", liveVal)
@@ -752,7 +773,8 @@ spec = describe "Live Variable Analysis" $ do
         nodesSimpleExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessN0, [liveVal, liveVal, deadVal])) ]
         livenessN0 = nodeSet [ (cInt,  [live]), (cBool, [dead]) ]
-    (calcLiveness exp) `sameAs` nodesSimpleExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` nodesSimpleExpected
 
   it "nodes_tricky" $ do
     pendingWith "illegal grin code: every node tag must have a single arity for the whole program"
@@ -768,10 +790,10 @@ spec = describe "Live Variable Analysis" $ do
               0 -> pure (COne x)
               1 -> pure (CTwo 0 x)
         |]
-    let nodesTrickyExpected = LVAResult
-          { _memory   = []
-          , _register = nodesTrickyExpectedRegisters
-          , _function = nodesTrickyExpectedFunctions
+    let nodesTrickyExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = nodesTrickyExpectedRegisters
+          , _functionLv = nodesTrickyExpectedFunctions
           }
         nodesTrickyExpectedRegisters =
           [ ("n0", livenessN0)
@@ -784,7 +806,8 @@ spec = describe "Live Variable Analysis" $ do
         nodesTrickyExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessN0, [liveVal])) ]
         livenessN0 = nodeSet [ (cOne, [dead]), (cTwo, [live, dead]) ]
-    (calcLiveness exp) `sameAs` nodesTrickyExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` nodesTrickyExpected
 
   it "sum_opt" $ do
     let exp = withPrimPrelude [prog|
@@ -801,10 +824,10 @@ spec = describe "Live Variable Analysis" $ do
               n28 <- _prim_int_add n29 n30
               sum n28 n18 n31
         |]
-    let sumOptExpected = LVAResult
-          { _memory   = []
-          , _register = sumOptExpectedRegisters
-          , _function = sumOptExpectedFunctions
+    let sumOptExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = sumOptExpectedRegisters
+          , _functionLv = sumOptExpectedFunctions
           }
         sumOptExpectedRegisters =
           [ ("n13", liveVal)
@@ -822,7 +845,8 @@ spec = describe "Live Variable Analysis" $ do
           -- , ("_prim_int_gt",  fun (liveVal, [liveVal, liveVal]))
           -- , ("_prim_int_print", fun (liveVal, [liveVal]))
           ]
-    (calcLiveness exp) `sameAs` sumOptExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` sumOptExpected
 
   it "undefined" $ do
     let exp = [prog|
@@ -837,10 +861,10 @@ spec = describe "Live Variable Analysis" $ do
             x1 <- fetch c0
             pure x1
         |]
-    let undefinedExpected = LVAResult
-          { _memory   = undefinedExpectedHeap
-          , _register = undefinedExpectedRegisters
-          , _function = mkFunctionLivenessMap []
+    let undefinedExpected = emptyLVAResult
+          { _memory     = undefinedExpectedHeap
+          , _registerLv = undefinedExpectedRegisters
+          , _functionLv = mkFunctionLivenessMap []
           }
         undefinedExpectedHeap =
           [ deadNodeSet [ (cNil, 0) ]
@@ -861,7 +885,8 @@ spec = describe "Live Variable Analysis" $ do
         livenessN1 = cConsBothDead
         livenessN2 = nodeSet [ (cCons, [live, dead]) ]
         cConsBothDead = deadNodeSet [ (cCons, 2) ]
-    (calcLiveness exp) `sameAs` undefinedExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` undefinedExpected
 
   it "undefined_with_loc_info" $ do
     let exp = [prog|
@@ -872,10 +897,10 @@ spec = describe "Live Variable Analysis" $ do
             x0 <- fetch c0
             pure x0
         |]
-    let undefinedWithLocInfoExpected = LVAResult
-          { _memory   = [ cNilLiveness ]
-          , _register = undefinedWithLocInfoExpectedRegisters
-          , _function = undefinedWithLocInfoExpectedFunctions
+    let undefinedWithLocInfoExpected = emptyLVAResult
+          { _memory     = [ cNilLiveness ]
+          , _registerLv = undefinedWithLocInfoExpectedRegisters
+          , _functionLv = undefinedWithLocInfoExpectedFunctions
           }
         undefinedWithLocInfoExpectedRegisters =
           [ ("p0", deadVal)
@@ -888,7 +913,8 @@ spec = describe "Live Variable Analysis" $ do
           [ ("grinMain", fun (cNilLiveness, [])) ]
         livenessN0 = nodeSet [ (cCons, [live, dead]) ]
         cNilLiveness = nodeSet [ (cNil, []) ]
-    (calcLiveness exp) `sameAs` undefinedWithLocInfoExpected
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` undefinedWithLocInfoExpected
 
 live :: Bool
 live = True

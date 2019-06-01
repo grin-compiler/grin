@@ -82,13 +82,15 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
       -}
       noLiveArgs <- noLiveArgsM f
       varDead    <- isVarDeadM v
-      rmWhen (noLiveArgs && varDead) e rhs (Set.singleton v) mempty
+      bindingHasNoEffect <- varHasNoSideEffectsM v
+      rmWhen (noLiveArgs && varDead && bindingHasNoEffect) e rhs (Set.singleton v) mempty
     e@(EBindF (SUpdate p v) Unit rhs) -> do
       varDead <- isVarDeadM p
       rmWhen varDead e rhs mempty mempty
     e@(EBindF _ (Var v) rhs) -> do
       varDead <- isVarDeadM v
-      rmWhen varDead e rhs (Set.singleton v) mempty
+      bindingHasNoEffect <- varHasNoSideEffectsM v
+      rmWhen (varDead && bindingHasNoEffect) e rhs (Set.singleton v) mempty
     e -> pure . embed $ e
 
   rmWhenAllDead :: ExpF Exp -> Exp -> Val -> Trf Exp
@@ -104,11 +106,17 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
                         pure modified
     | otherwise = pure . embed $ orig
 
+  varHasNoSideEffectsM :: Name -> Trf Bool
+  varHasNoSideEffectsM v = fmap (not . _hasEffect)
+                         . lookupExcept (varEffNotFound v) v
+                         . LVA._registerEff
+                         $ lvaResult
+
   isVarDeadM :: Name -> Trf Bool
   isVarDeadM v = fmap (not . isLive)
-                . lookupExcept (varLvNotFound v) v
-                . LVA._registerLv
-                $ lvaResult
+               . lookupExcept (varLvNotFound v) v
+               . LVA._registerLv
+               $ lvaResult
 
   noLiveArgsM :: Name -> Trf Bool
   noLiveArgsM f = fmap (not . hasLiveArgs)
@@ -116,6 +124,7 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
                 . LVA._functionLv
                 $ lvaResult
 
+  varEffNotFound v = "DVE: Variable " ++ show (PP v) ++ " was not found in effect map"
   varLvNotFound v = "DVE: Variable " ++ show (PP v) ++ " was not found in liveness map"
   funLvNotFound f = "DVE: Function " ++ show (PP f) ++ " was not found in liveness map"
 

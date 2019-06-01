@@ -29,7 +29,7 @@ data Liveness
   | NodeSet (Map Tag Node)
   deriving (Eq, Ord, Show)
 
-newtype Effect = Effect { eEffect :: Bool }
+newtype Effect = Effect { _hasEffect :: Bool }
   deriving (Eq, Ord, Show)
 
 data LVAResult

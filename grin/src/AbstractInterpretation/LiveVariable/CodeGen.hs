@@ -21,8 +21,6 @@ import AbstractInterpretation.LiveVariable.CodeGenBase
 
 import AbstractInterpretation.EffectTracking.Result
 
--- TODO: use more general version of external code generation !! (like in HPT or in CBy)
-
 -- NOTE: For a live variable, we could store its type information.
 
 -- Live variable analysis program.

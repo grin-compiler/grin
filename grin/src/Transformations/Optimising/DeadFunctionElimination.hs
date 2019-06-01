@@ -44,7 +44,7 @@ deleteDeadFunctions lvaResult (Program exts defs) =
   fmap (Program exts) $ filterM isFunDefLiveM defs where
 
     isFunDefLiveM :: Exp -> Trf Bool
-    isFunDefLiveM (Def f _ _) = fmap not $ isFunDeadM lvaResult f
+    isFunDefLiveM (Def f _ _) = fmap not $ isRemovableM lvaResult f
     isFunDefLiveM e = throwE $ "DFE: " ++ show (PP e) ++ " is not a function definition"
 
 
@@ -56,8 +56,8 @@ replaceDeadFunApps lvaResult tyEnv = cataM alg where
 
 replaceAppWithUndefined :: LVAResult -> TypeEnv -> Exp -> Trf Exp
 replaceAppWithUndefined lvaResult TypeEnv{..} app@(SApp f _) = do
-  funIsDead <- isFunDeadM lvaResult f
-  if funIsDead then do
+  isRemovable <- isRemovableM lvaResult f
+  if isRemovable then do
     (retTy,_) <- lookupExcept (notFoundInTyEnv f) f _function
     pure $ SReturn $ Undefined (simplifyType retTy)
   else
@@ -65,10 +65,19 @@ replaceAppWithUndefined lvaResult TypeEnv{..} app@(SApp f _) = do
   where notFoundInTyEnv f = "DFE: Function " ++ show (PP f) ++ " not found in type env"
 replaceAppWithUndefined _ _ e = pure e
 
+isRemovableM :: LVAResult -> Name -> Trf Bool
+isRemovableM lvaResult f = (&&) <$> isFunDeadM lvaResult f
+                                <*> hasNoSideEffectsM lvaResult f
+
+hasNoSideEffectsM :: LVAResult -> Name -> Trf Bool
+hasNoSideEffectsM LVAResult{..} f = fmap (not . _hasEffect)
+                                  . lookupExcept (noLiveness f) f
+                                  $ _functionEff
 
 isFunDeadM :: LVAResult -> Name -> Trf Bool
 isFunDeadM LVAResult{..} f = fmap isFunDead
                            . lookupExcept (noLiveness f) f
                            $ _functionLv
 
+noEffect   f = "DFE: Function " ++ show (PP f) ++ " not found in effect map"
 noLiveness f = "DFE: Function " ++ show (PP f) ++ " not found in liveness map"
