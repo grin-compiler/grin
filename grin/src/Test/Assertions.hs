@@ -11,6 +11,8 @@ import AbstractInterpretation.CreatedBy.Result (ProducerMap,ProducerGraph(..))
 import AbstractInterpretation.LiveVariable.Pretty
 import AbstractInterpretation.LiveVariable.Result (LVAResult)
 import AbstractInterpretation.HeapPointsTo.Result (HPTResult)
+import AbstractInterpretation.EffectTracking.Pretty
+import AbstractInterpretation.EffectTracking.Result (ETResult)
 import Transformations.Names
 
 
@@ -27,6 +29,9 @@ instance SameAs HPTResult where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
 
 instance SameAs LVAResult where
+  sameAs found expected = (PP found) `shouldBe` (PP expected)
+
+instance SameAs ETResult where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
 
 instance SameAs ProducerGraph where

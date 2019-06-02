@@ -266,6 +266,7 @@ test-suite grin-test
                      NametableSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
+                     AbstractInterpretation.EffectTrackingSpec
                      AbstractInterpretation.IRSpec
                      AbstractInterpretation.OptimiseAbstractProgramSpec
                      AbstractInterpretation.SharingSpec
