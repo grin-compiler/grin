@@ -18,7 +18,7 @@ import AbstractInterpretation.Reduce (AbstractInterpretationResult(..),evalAbstr
 import AbstractInterpretation.LiveVariable.CodeGen hiding (live)
 import AbstractInterpretation.LiveVariable.Result
 
--- TODO: Add tests includeing side effects
+import AbstractInterpretation.EffectTrackingSpec (calcEffects)
 
 runTests :: IO ()
 runTests = hspec spec
@@ -26,6 +26,13 @@ runTests = hspec spec
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
   | (lvaProgram, lvaMapping) <- codeGen Nothing prog
+  , computer <- _airComp . evalAbstractProgram $ lvaProgram
+  = toLVAResult lvaMapping computer
+
+calcLivenessWithEffects :: Exp -> LVAResult
+calcLivenessWithEffects prog
+  | etResult <- calcEffects prog
+  , (lvaProgram, lvaMapping) <- codeGen (Just etResult) prog
   , computer <- _airComp . evalAbstractProgram $ lvaProgram
   = toLVAResult lvaMapping computer
 
@@ -879,6 +886,8 @@ spec = describe "Live Variable Analysis" $ do
           { _memory     = []
           , _registerLv = sumOptExpectedRegisters
           , _functionLv = sumOptExpectedFunctions
+          , _registerEff = sumOptExpectedRegisterEffects
+          , _functionEff = sumOptExpectedFunctionEffects
           }
         sumOptExpectedRegisters =
           [ ("n13", liveVal)
@@ -892,11 +901,25 @@ spec = describe "Live Variable Analysis" $ do
           ]
         sumOptExpectedFunctions = mkFunctionLivenessMap
           [ ("sum", fun (liveVal, [liveVal, liveVal, liveVal]))
-          -- , ("_prim_int_add", fun (liveVal, [liveVal, liveVal]))
-          -- , ("_prim_int_gt",  fun (liveVal, [liveVal, liveVal]))
-          -- , ("_prim_int_print", fun (liveVal, [liveVal]))
           ]
-        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+
+        sumOptExpectedRegisterEffects =
+          [ ("n13", noEffect)
+          , ("n29", noEffect)
+          , ("n29", noEffect)
+          , ("n30", noEffect)
+          , ("n31", noEffect)
+          , ("b2",  noEffect)
+          , ("n18", noEffect)
+          , ("n28", noEffect)
+          ]
+
+        sumOptExpectedFunctionEffects =
+          [ ("sum",      noEffect)
+          , ("grinMain", hasEffect)
+          ]
+
+        calculated = (calcLivenessWithEffects exp)
     calculated `sameAs` sumOptExpected
 
   it "undefined" $ do
@@ -967,6 +990,232 @@ spec = describe "Live Variable Analysis" $ do
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` undefinedWithLocInfoExpected
 
+  it "case_lit_pat_side_effect" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            n <- pure 0
+            y <- case n of
+              0 -> _prim_int_print 0
+              1 -> _prim_string_print #"asd"
+              2 -> pure ()
+            pure ()
+        |]
+    let expected = emptyLVAResult
+          { _memory      = []
+          , _registerLv  = expectedRegisterLiveness
+          , _functionLv  = expectedFunctionLiveness
+          , _registerEff = expectedRegisterEffects
+          , _functionEff = expectedFunctionEffects
+          }
+        expectedRegisterLiveness =
+          [ ("n",  liveVal)
+          , ("y",  deadVal)
+          ]
+        expectedFunctionLiveness = mkFunctionLivenessMap []
+
+        expectedRegisterEffects =
+          [ ("n",  noEffect)
+          , ("y",  hasEffect)
+          ]
+
+        expectedFunctionEffects =
+          [ ("grinMain", hasEffect)
+          ]
+
+        calculated = (calcLivenessWithEffects exp)
+    calculated `sameAs` expected
+
+  it "case_node_pat_side_effect" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            n <- pure (COne 1)
+            y <- case n of
+              (COne c1) -> _prim_int_print 0
+              (CTwo c2) -> _prim_string_print #"asd"
+              (CFoo c3) -> pure ()
+            pure ()
+        |]
+    let expected = emptyLVAResult
+          { _memory      = []
+          , _registerLv  = expectedRegisterLiveness
+          , _functionLv  = expectedFunctionLiveness
+          , _registerEff = expectedRegisterEffects
+          , _functionEff = expectedFunctionEffects
+          }
+        expectedRegisterLiveness =
+          [ ("n",  nodeSet [ (cOne, [dead]) ])
+          , ("y",  deadVal)
+          , ("c1", deadVal)
+          , ("c2", deadVal)
+          , ("c3", deadVal)
+          ]
+        expectedFunctionLiveness = mkFunctionLivenessMap []
+
+        expectedRegisterEffects =
+          [ ("n",  noEffect)
+          , ("y",  hasEffect)
+          , ("c1", noEffect)
+          , ("c2", noEffect)
+          , ("c3", noEffect)
+          ]
+
+        expectedFunctionEffects =
+          [ ("grinMain", hasEffect)
+          ]
+
+        calculated = (calcLivenessWithEffects exp)
+    calculated `sameAs` expected
+
+  it "case_default_alt_side_effect" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            n <- pure (COne 1)
+            y <- case n of
+              (CTwo c2) -> _prim_string_print #"asd"
+              (CFoo c3) -> pure ()
+              #default  -> _prim_int_print 0
+            pure ()
+        |]
+    let expected = emptyLVAResult
+          { _memory      = []
+          , _registerLv  = expectedRegisterLiveness
+          , _functionLv  = expectedFunctionLiveness
+          , _registerEff = expectedRegisterEffects
+          , _functionEff = expectedFunctionEffects
+          }
+        expectedRegisterLiveness =
+          [ ("n",  nodeSet' [ (cOne, [live, dead]) ])
+          , ("y",  deadVal)
+          , ("c2", deadVal)
+          , ("c3", deadVal)
+          ]
+        expectedFunctionLiveness = mkFunctionLivenessMap []
+
+        expectedRegisterEffects =
+          [ ("n",  noEffect)
+          , ("y",  hasEffect)
+          , ("c2", noEffect)
+          , ("c3", noEffect)
+          ]
+
+        expectedFunctionEffects =
+          [ ("grinMain", hasEffect)
+          ]
+
+        calculated = (calcLivenessWithEffects exp)
+    calculated `sameAs` expected
+
+  it "case_dead_tags_side_effect" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            n1 <- pure (COne 1)
+            p <- store n1
+            n2 <- pure (CTwo 2)
+            update p n2
+            n3 <- fetch p
+            y <- case n3 of
+              (CTwo c) -> _prim_string_print #"asd"
+            pure ()
+        |]
+    let expected = emptyLVAResult
+          { _memory      = expectedHeapLiveness
+          , _registerLv  = expectedRegisterLiveness
+          , _functionLv  = expectedFunctionLiveness
+          , _registerEff = expectedRegisterEffects
+          , _functionEff = expectedFunctionEffects
+          }
+
+        livenessN1 = nodeSet' [ (cOne, [dead, dead]) ]
+        livenessN2 = nodeSet' [ (cTwo, [live, dead]) ]
+        livenessN3 = nodeSet' [ (cOne, [dead, dead]), (cTwo, [live, dead]) ]
+
+        expectedHeapLiveness =
+          [ livenessN3
+          ]
+
+        expectedRegisterLiveness =
+          [ ("n1", livenessN1)
+          , ("n2", livenessN2)
+          , ("n3", livenessN3)
+          , ("p",  liveLoc)
+          , ("y",  deadVal)
+          , ("c",  deadVal)
+          ]
+
+        expectedFunctionLiveness = mkFunctionLivenessMap []
+
+        expectedRegisterEffects =
+          [ ("n1", noEffect)
+          , ("n2", noEffect)
+          , ("n3", noEffect)
+          , ("p",  noEffect)
+          , ("y",  hasEffect)
+          , ("c",  noEffect)
+          ]
+
+        expectedFunctionEffects =
+          [ ("grinMain", hasEffect)
+          ]
+
+        calculated = (calcLivenessWithEffects exp)
+    calculated `sameAs` expected
+
+  it "case_fun_side_effect" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            n <- pure (COne 1)
+            y <- case n of
+              (COne c1) -> f 0
+              (CTwo c2) -> g #"asd"
+              (CFoo c3) -> h
+            pure ()
+
+          f x1 = _prim_int_print x1
+          g x2 = _prim_int_print x2
+          h    = pure ()
+        |]
+    let expected = emptyLVAResult
+          { _memory      = []
+          , _registerLv  = expectedRegisterLiveness
+          , _functionLv  = expectedFunctionLiveness
+          , _registerEff = expectedRegisterEffects
+          , _functionEff = expectedFunctionEffects
+          }
+        expectedRegisterLiveness =
+          [ ("n",  nodeSet [ (cOne, [dead]) ])
+          , ("y",  deadVal)
+          , ("c1", deadVal)
+          , ("c2", deadVal)
+          , ("c3", deadVal)
+          , ("x1", liveVal)
+          , ("x2", liveVal)
+          ]
+        expectedFunctionLiveness = mkFunctionLivenessMap
+          [ ("f", fun (deadVal, [liveVal]))
+          , ("g", fun (deadVal, [liveVal]))
+          , ("h", fun (deadVal, []))
+          ]
+
+        expectedRegisterEffects =
+          [ ("n",  noEffect)
+          , ("y",  hasEffect)
+          , ("c1", noEffect)
+          , ("c2", noEffect)
+          , ("c3", noEffect)
+          , ("x1", noEffect)
+          , ("x2", noEffect)
+          ]
+
+        expectedFunctionEffects =
+          [ ("f", hasEffect)
+          , ("g", hasEffect)
+          , ("h", noEffect)
+          , ("grinMain", hasEffect)
+          ]
+
+        calculated = (calcLivenessWithEffects exp)
+    calculated `sameAs` expected
+
 live :: Bool
 live = True
 
@@ -1016,3 +1265,9 @@ fun = fmap V.fromList
 mkFunctionLivenessMap :: [(Name, (Liveness, Vector Liveness))]
                       -> Map Name (Liveness, Vector Liveness)
 mkFunctionLivenessMap = M.insert "grinMain" (fun (liveVal,[])) . M.fromList
+
+hasEffect :: Effect
+hasEffect = Effect True
+
+noEffect :: Effect
+noEffect = Effect False
