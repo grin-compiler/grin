@@ -371,7 +371,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
             altInstructions <- codeGenAltExists irTag $ \altScrutReg -> do
               -- NOTE: should be altResultRegister
               caseResultReg `isLiveThenM`         setTagLive irTag altScrutReg
-              caseResultReg `hasSideEffectsThenM` setLive altScrutReg
+              caseResultReg `hasSideEffectsThenM` setTagLive irTag altScrutReg
               -- bind pattern variables
               forM_ (zip [1..] vars) $ \(idx, name) -> do
                 argReg <- newReg
