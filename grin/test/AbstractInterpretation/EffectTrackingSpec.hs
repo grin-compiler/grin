@@ -111,7 +111,7 @@ spec = describe "Effect Tracking Analysis" $ do
             n <- pure (COne)
             y <- case n of
               (COne) -> _prim_int_print 0
-              (CTwo) -> _prim_string_print "asd"
+              (CTwo) -> _prim_string_print #"asd"
               (CFoo) -> pure ()
             pure y
         |]
@@ -130,7 +130,7 @@ spec = describe "Effect Tracking Analysis" $ do
             n <- pure (COne)
             y <- case n of
               (COne) -> f 0
-              (CTwo) -> g "asd"
+              (CTwo) -> g #"asd"
               (CFoo) -> h
             pure y
 
@@ -161,7 +161,7 @@ spec = describe "Effect Tracking Analysis" $ do
                   (COne) -> _prim_int_print 0
                   (CTwo) -> _prim_error "Never should have come here"
                 pure z
-              (CTwo) -> _prim_string_print "asd"
+              (CTwo) -> _prim_string_print #"asd"
               (CFoo) -> pure ()
             pure y
         |]
@@ -182,7 +182,7 @@ spec = describe "Effect Tracking Analysis" $ do
             x2 <- _prim_int_print 0
             x3 <- pure 0
             x4 <- _prim_int_add 0 0
-            x5 <- _prim_string_print "asd"
+            x5 <- _prim_string_print #"asd"
             pure ()
         |]
     let expected = mempty
@@ -211,7 +211,7 @@ spec = describe "Effect Tracking Analysis" $ do
             x2 <- _prim_int_print n
             x3 <- pure n
             x4 <- _prim_int_add n n
-            x5 <- _prim_string_print "asd"
+            x5 <- _prim_string_print #"asd"
             pure ()
 
           g m =
