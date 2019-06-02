@@ -1,0 +1,41 @@
+-- SCO in foo
+grinMain =
+  n0 <- pure (CInt 0)
+  p0 <- store n0
+  x0 <- pure (Ffoo p0)
+  t0 <- store x0
+  y0 <- bar t0
+  n3_1 <- fetch t0
+  z0 <- case n3_1 of
+          (Ffoo m3_1_1) ->
+            q3_1 <- foo m3_1_1
+            update t0 q3_1
+            pure q3_1
+          (CInt m3_2_1) ->
+            pure n3_1
+  pure z0
+
+foo p1 =
+  n3_3 <- fetch p1
+  n1 <- case n3_3 of
+          (CInt m3_2_3) ->
+            pure n3_3
+  case n1 of
+    (CInt m1) ->
+      m1' <- _prim_int_add m1 1
+      n1' <- pure (CInt m1')
+      pure n1'
+
+bar p2 =
+  n3_2 <- fetch p2
+  n2 <- case n3_2 of
+          (Ffoo m3_1_2) ->
+            q3_2 <- foo m3_1_2
+            update p2 q3_2
+            pure q3_2
+          (CInt m3_2_2) ->
+            pure n3_2
+  pure n2
+
+-- maybe with same type? foo returning Ffoo ?
+

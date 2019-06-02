@@ -1,0 +1,11 @@
+grinMain =
+  n0 <- store (CInt 0)
+  p0 <- pure n0
+  y0 <- f $ p0
+  y1 <- fetch p0
+  pure y1
+
+f p =
+  n1 <- pure (CInt 1)
+  update p n1
+  pure 0

@@ -1,0 +1,34 @@
+grinMain =
+  n0 <- pure (CInt 0)
+  p0 <- store n0
+  x0 <- pure (Ffoo p0)
+  t0 <- store x0
+  y0 <- bar t0
+  z0 <- bor t0
+  pure z0
+
+foo p1 =
+  n1 <- eval p1
+  case n1 of
+    (CInt m1) ->
+      m1' <- _prim_int_add m1 1
+      n1' <- pure (CInt m1')
+      pure n1'
+
+bar p2 =
+  n2 <- eval p2
+  pure n2
+
+bor p4 =
+  n4 <- eval p4
+  pure n4
+
+eval p3 =
+  n3 <- fetch p3
+  case n3 of
+    (Ffoo m3_1) ->
+      q3 <- foo m3_1
+      update p3 q3
+      pure q3
+    (CInt m3_2) ->
+      pure n3

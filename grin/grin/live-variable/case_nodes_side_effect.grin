@@ -1,0 +1,12 @@
+grinMain =
+  a <- pure 0
+  b <- pure (COne)
+  c <- pure (CTwo)
+  d <- case a of
+    1 ->
+      _prim_int_print 0
+      pure b
+    2 ->
+      _prim_int_print 0
+      pure c
+  pure 0
