@@ -12,6 +12,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 import qualified Data.Foldable
+import Data.Maybe
 import Data.Function (on)
 import GHC.Generics (Generic)
 import System.IO.Unsafe
@@ -204,12 +205,20 @@ evalInstruction = \case
       let mergedFields = mconcat . (map Data.Foldable.fold) . Map.elems $ tagMap
       selectReg dstReg.simpleType %= (mappend mergedFields)
 
+    -- TODO: review this
+    EveryNthField n -> do
+      tagMap <- use $ selectTagMap srcReg
+      let mergedNthFields = mconcat . mapMaybe (V.!? n) . Map.elems $ tagMap
+      selectReg dstReg.simpleType %= (mappend mergedNthFields)
+
   Extend {..} -> do
     -- TODO: support all selectors
     value <- use $ selectReg srcReg.simpleType
     case dstSelector of
       NodeItem tag itemIndex -> selectTagMap dstReg.at tag.non mempty.ix itemIndex %= (mappend value)
       AllFields -> selectTagMap dstReg %= (Map.map (V.map (mappend value)))
+      -- TODO: review this
+      EveryNthField n -> selectTagMap dstReg %= (Map.map (over (ix n) (mappend value)))
       ConditionAsSelector cond -> case cond of
         _ -> pure () -- TODO
 
