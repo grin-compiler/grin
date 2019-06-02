@@ -75,10 +75,14 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
         unless (isSingleton locs) (throwE $ multipleLocs p locs)
         pointerDead <- isVarDeadM p
         rmWhen pointerDead e rhs (Set.singleton p) (Set.fromList locs)
-    e@(EBindF (SApp f _) lpat rhs) | f `notElem` (map eName exts) -> do
-      let names = foldNamesVal Set.singleton lpat
-      funDead <- isFunDeadM f
-      rmWhen funDead e rhs names mempty
+    e@(EBindF (SApp f _) (Var v) rhs) | f `notElem` (map eName exts) -> do
+      {- NOTE: A live arg could mean there is an update inside the function.
+         Deleting this update usually has no effect on the code, but it is
+         not proven, that it will always keep the semantics.
+      -}
+      noLiveArgs <- noLiveArgsM f
+      varDead    <- isVarDeadM v
+      rmWhen (noLiveArgs && varDead) e rhs (Set.singleton v) mempty
     e@(EBindF (SUpdate p v) Unit rhs) -> do
       varDead <- isVarDeadM p
       rmWhen varDead e rhs mempty mempty
@@ -106,11 +110,11 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
                 . LVA._register
                 $ lvaResult
 
-  isFunDeadM :: Name -> Trf Bool
-  isFunDeadM f = fmap isFunDead
-               . lookupExcept (funLvNotFound f) f
-               . LVA._function
-               $ lvaResult
+  noLiveArgsM :: Name -> Trf Bool
+  noLiveArgsM f = fmap (not . hasLiveArgs)
+                . lookupExcept (funLvNotFound f) f
+                . LVA._function
+                $ lvaResult
 
   varLvNotFound v = "DVE: Variable " ++ show (PP v) ++ " was not found in liveness map"
   funLvNotFound f = "DVE: Function " ++ show (PP f) ++ " was not found in liveness map"

@@ -186,8 +186,11 @@ codeGenType cgSimpleTy cgNodeTy = \case
 isPointer :: IR.Predicate
 isPointer = IR.ValueIn (IR.Range 0 (maxBound :: Int32))
 
-isNotPointer :: IR.Predicate
-isNotPointer = IR.ValueIn (IR.Range (minBound :: Int32) 0)
+isLivenessInfo :: IR.Predicate
+isLivenessInfo = IR.ValueIn (IR.Range (-1) 0)
+
+isEffectInfo :: IR.Predicate
+isEffectInfo = IR.ValueIn (IR.Range (-2) (-1))
 
 -- For simple types, copies only pointer information
 -- For nodes, copies the structure and the pointer information in the fields
@@ -205,6 +208,6 @@ copyStructureWithPtrInfo srcReg dstReg = IR.ConditionalMove
 copyStructureWithLivenessInfo :: IR.Reg -> IR.Reg -> IR.Instruction
 copyStructureWithLivenessInfo srcReg dstReg = IR.ConditionalMove
   { srcReg    = srcReg
-  , predicate = isNotPointer
+  , predicate = isLivenessInfo
   , dstReg    = dstReg
   }

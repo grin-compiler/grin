@@ -21,6 +21,8 @@ import AbstractInterpretation.LiveVariable.CodeGenBase
 
 import AbstractInterpretation.EffectTracking.Result
 
+-- TODO: use more general version of external code generation !! (like in HPT or in CBy)
+
 -- NOTE: For a live variable, we could store its type information.
 
 -- Live variable analysis program.
@@ -41,7 +43,7 @@ emptyReg = newReg
 
 -- Tests whether the given register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
-isLiveThen r is = IR.If { condition = IR.Any isNotPointer, srcReg = r, instructions = is }
+isLiveThen r is = IR.If { condition = IR.Any isLivenessInfo, srcReg = r, instructions = is }
 
 isLiveThenM :: IR.Reg -> CG () -> CG ()
 isLiveThenM r actionM = do
@@ -121,6 +123,12 @@ varPatternDataFlow varReg lhsReg = do
   emit $ copyStructureWithPtrInfo      lhsReg varReg
   emit $ copyStructureWithLivenessInfo varReg lhsReg
 
+livenessDataFlow :: IR.Reg -> IR.Reg -> CG ()
+livenessDataFlow srcReg dstReg = do
+  tmp <- newReg
+  emit $ copyStructureWithLivenessInfo srcReg tmp
+  emit $ IR.RestrictedMove { srcReg = tmp, dstReg = dstReg }
+
 -- | Decides whether a given variable has a side-effecting computation bound to it.
 -- The function can only be given a variable name.
 -- It returns `False` if the effect analysis result is not present
@@ -132,12 +140,35 @@ hasSideEffectVarM v = do
     Just res -> return $ hasSideEffectVar res v
     Nothing  -> return False
 
+-- Tests whether the given register has any side effects.
+hasSideEffectsThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
+hasSideEffectsThen r is = IR.If { condition = IR.Any isEffectInfo, srcReg = r, instructions = is }
+
+hasSideEffectsThenM :: IR.Reg -> CG () -> CG ()
+hasSideEffectsThenM r actionM = do
+  is <- codeGenBlock_ actionM
+  emit $ hasSideEffectsThen r is
+
 -- | Generates code based on whether a given variable has any side effects bound to it.
--- Contrary to `isLiveThenM`, this function only uses information available at compile time.
-hasSideEffectsThenM :: Name -> CG () -> CG ()
-hasSideEffectsThenM v actionM = do
+-- Contrary to `hasSideEffectsThenM`, this function only uses information available at compile time.
+isSideEffectingThenM :: Name -> CG () -> CG ()
+isSideEffectingThenM v actionM = do
   b <- hasSideEffectVarM v
   when b actionM
+
+sideEffecting :: LivenessId
+sideEffecting = -2
+
+setBasicValSideEffectingInst :: IR.Reg -> IR.Instruction
+setBasicValSideEffectingInst r = IR.Set { dstReg = r, constant = IR.CSimpleType sideEffecting }
+
+setBasicValSideEffecting :: IR.Reg -> CG ()
+setBasicValSideEffecting = emit . setBasicValSideEffectingInst
+
+setSideEffecting :: IR.Reg -> CG ()
+setSideEffecting r = do
+  setBasicValSideEffecting r
+  emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
@@ -223,8 +254,9 @@ codeGenM e = (cata folder >=> const setMainLive) e
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> doNothing
-        R r -> do emit IR.Move { srcReg = funResultReg, dstReg = r }
-                  emit $ copyStructureWithPtrInfo r funResultReg
+        R r -> varPatternDataFlow funResultReg r
+              --  do emit IR.Move { srcReg = funResultReg, dstReg = r }
+                  -- emit $ copyStructureWithPtrInfo r funResultReg
       -- NOTE: A function might have side-effects,
       -- so we have to generate code for it even if its result register is dead.
       -- emit $ funResultReg `isLiveThen` bodyInstructions
@@ -233,11 +265,8 @@ codeGenM e = (cata folder >=> const setMainLive) e
     EBindF leftExp lpat rightExp -> do
       leftExp >>= \case
         Z -> case lpat of
-          Unit -> pure ()
-          Var v -> do
-            r <- newReg
-            addReg v r
-            v `hasSideEffectsThenM` setLive r
+          Unit  -> pure ()
+          Var v -> newReg >>= addReg v -- this is only for consistency, just so that all variables have some sort of liveness paired to them
           _ -> error $ "pattern mismatch at LVA bind codegen, expected Unit got " ++ show lpat
         R r -> case lpat of
           Unit  -> setBasicValLive r
@@ -245,7 +274,8 @@ codeGenM e = (cata folder >=> const setMainLive) e
           Var v -> do
             varReg <- newReg
             addReg v varReg
-            v `hasSideEffectsThenM` setLive varReg
+            v `isSideEffectingThenM` setSideEffecting varReg
+            v `isSideEffectingThenM` setSideEffecting r
             varPatternDataFlow varReg r
           ConstTagNode tag args -> do
             irTag <- getTag tag
@@ -307,7 +337,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
               -- to the alt result register. But we also have to propagate
               -- structural and pointer information from the alt result register
               -- into the case result register.
-              emit IR.RestrictedMove {srcReg = caseResultReg, dstReg = altResultReg}
+              livenessDataFlow caseResultReg altResultReg -- emit IR.RestrictedMove {srcReg = caseResultReg, dstReg = altResultReg}
               emit $ copyStructureWithPtrInfo altResultReg caseResultReg
 
           restoreScrutReg origScrutReg scrutName = do
@@ -341,7 +371,8 @@ codeGenM e = (cata folder >=> const setMainLive) e
             irTag <- getTag tag
             altInstructions <- codeGenAltExists irTag $ \altScrutReg -> do
               -- NOTE: should be altResultRegister
-              caseResultReg `isLiveThenM` setTagLive irTag altScrutReg
+              caseResultReg `isLiveThenM`         setTagLive irTag altScrutReg
+              caseResultReg `hasSideEffectsThenM` setLive altScrutReg
               -- bind pattern variables
               forM_ (zip [1..] vars) $ \(idx, name) -> do
                 argReg <- newReg
@@ -357,12 +388,14 @@ codeGenM e = (cata folder >=> const setMainLive) e
           -- we could generate code conditionally here as well
           LitPat lit -> do
             -- NOTE: should be altResultRegister
-            caseResultReg `isLiveThenM` setBasicValLive valReg
+            caseResultReg `isLiveThenM`         setBasicValLive valReg
+            caseResultReg `hasSideEffectsThenM` setBasicValLive valReg
             altM >>= processAltResult
 
           DefaultPat -> do
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
-            altInstructions <- codeGenAltNotIn tags (const doNothing)
+            altInstructions <- codeGenAltNotIn tags $ \altScrutReg -> do
+              caseResultReg `hasSideEffectsThenM` setLive altScrutReg
             emit IR.If
               { condition    = IR.AnyNotIn tags
               , srcReg       = valReg
@@ -382,11 +415,11 @@ codeGenM e = (cata folder >=> const setMainLive) e
       case mExt of
         Nothing -> do -- regular function
           (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-          zipWithM_ (\src dst -> emit IR.RestrictedMove {srcReg = src, dstReg = dst}) funArgRegs argRegs
+          zipWithM_ livenessDataFlow funArgRegs argRegs
           zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) argRegs funArgRegs
 
           emit $ copyStructureWithPtrInfo funResultReg appReg
-          emit IR.RestrictedMove {srcReg = appReg, dstReg = funResultReg}
+          livenessDataFlow appReg funResultReg
         Just ext | eEffectful ext -> mapM_ setBasicValLive argRegs
                  | otherwise      -> do allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive argRegs
                                         emit $ appReg `isLiveThen` allArgsLive

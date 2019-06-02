@@ -55,6 +55,9 @@ isLive :: Liveness -> Bool
 isLive (BasicVal b) = b
 isLive (NodeSet  m) = any isNodeLive m
 
+hasLiveArgs :: (Liveness, Vector Liveness) -> Bool
+hasLiveArgs (_, argsLv) = any isLive argsLv
+
 -- | A function is only dead if its return value is dead
 -- , and all of its parameters are dead as well. The case
 -- when the return value is dead, but there is a live parameter
@@ -71,7 +74,7 @@ toLVAResult AbstractMapping{..} R.ComputerState{..} = LVAResult
   }
   where
     isLive :: Set LivenessId -> Bool
-    isLive = Set.member (-1)
+    isLive s = Set.member (-1) s || Set.member (-2) s
 
     convertReg :: Reg -> Liveness
     convertReg (Reg i) = convertValue $ _register V.! (fromIntegral i)
