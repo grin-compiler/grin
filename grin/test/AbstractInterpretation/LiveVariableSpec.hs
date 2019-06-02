@@ -232,6 +232,22 @@ spec = describe "Live Variable Analysis" $ do
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` caseRestrictedNodesExpected
 
+  {- NOTE: Here, we  trusts code instead of relying on
+     the gathered static information about the possible
+     tags of a variable.
+
+     Here statically `n4` could be any of `CNil`, `CCons`
+     or `CInt` because LVA is flow-insensitive. However,
+     we know that during every possible execution of the
+     program `n4` could only be a `CInt`. So instead of
+     marking all tags live, we only mark those that appear
+     amongst the alternatives. Also, if there is a #default
+     alternative, we mark all tags lives.
+
+     Certain front ends could generate code like this, and
+     it is their responsibility to make sure the pattern
+     matches cannot fail.
+  -}
   it "dead_tags" $ do
     let exp = [prog|
           grinMain =
@@ -252,8 +268,7 @@ spec = describe "Live Variable Analysis" $ do
                 pure n3
 
             case n4 of
-              (CWord c0) -> pure 0
-              #default   -> pure 1
+              (CInt c0) -> pure 0
         |]
         deadTagsExpected = emptyLVAResult
           { _memory     = [ livenessN2, livenessN3 ]
@@ -261,8 +276,8 @@ spec = describe "Live Variable Analysis" $ do
           , _functionLv = mkFunctionLivenessMap []
           }
         deadTagsExpectedRegisters =
-          [ ("p0", deadVal)
-          , ("p1", deadVal)
+          [ ("p0", liveLoc)
+          , ("p1", liveLoc)
           , ("n0", livenessN0)
           , ("n1", livenessN1)
           , ("n2", livenessN2)
@@ -272,9 +287,9 @@ spec = describe "Live Variable Analysis" $ do
           ]
         livenessN0 = deadNodeSet [ (cNil, 0) ]
         livenessN1 = deadNodeSet [ (cCons, 2) ]
-        livenessN2 = deadNodeSet [ (cNil, 0),  (cInt, 1) ]
-        livenessN3 = deadNodeSet [ (cCons, 2), (cInt, 1) ]
-        livenessN4 = deadNodeSet [ (cNil, 0), (cCons, 2),  (cInt, 1) ]
+        livenessN2 = nodeSet' [ (cNil,  [dead])  ,            (cInt, [live, dead]) ]
+        livenessN3 = nodeSet' [ (cCons, [dead, dead, dead]),  (cInt, [live, dead]) ]
+        livenessN4 = nodeSet' [ (cNil, [dead]), (cCons, [dead, dead, dead]), (cInt, [live, dead]) ]
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` deadTagsExpected
 
@@ -442,6 +457,42 @@ spec = describe "Live Variable Analysis" $ do
         livenessFRet = nodeSet [ (cBool, [live]), (cWord, [dead]) ]
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` heapCaseExpected
+
+  it "heap_case_default_pat" $ do
+    let exp = [prog|
+          grinMain =
+            n0 <- pure (CNil 0)
+            n1 <- pure (COne 1)
+            n2 <- pure (CTwo 2)
+            p0 <- store  n0
+            update p0 n1
+            update p0 n2
+            n <- fetch p0
+            x <- case n of
+              (CNil c0) -> pure 0
+              (COne c1) -> pure 0
+              #default  -> pure 0
+            pure x
+        |]
+    let heapCaseMinExpected = emptyLVAResult
+          { _memory     = [ livenessLoc1 ]
+          , _registerLv = [ ("n0", nodeSet' [ cNilLiveness ])
+                          , ("n1", nodeSet' [ cOneLiveness ])
+                          , ("n2", nodeSet' [ cTwoLiveness ])
+                          , ("p0", liveLoc)
+                          , ("n",  nodeSet' [ cNilLiveness, cOneLiveness, cTwoLiveness ] )
+                          , ("c0", deadVal)
+                          , ("c1", deadVal)
+                          , ("x",  liveVal)
+                          ]
+          , _functionLv = mkFunctionLivenessMap []
+          }
+        cNilLiveness = (cNil, [live, dead])
+        cOneLiveness = (cOne, [live, dead])
+        cTwoLiveness = (cTwo, [live, dead])
+        livenessLoc1 = nodeSet' [ cNilLiveness, cOneLiveness, cTwoLiveness ]
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` heapCaseMinExpected
 
   it "heap_indirect_simple" $ do
     let exp = [prog|

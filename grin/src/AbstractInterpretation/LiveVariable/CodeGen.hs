@@ -67,6 +67,16 @@ setTagLive tag reg = do
     , dstReg      = reg
     }
 
+setAllTagsLive :: IR.Reg -> CG ()
+setAllTagsLive reg = do
+  tmp <- newReg
+  setBasicValLive tmp
+  emit IR.Extend
+    { srcReg      = tmp
+    , dstSelector = IR.EveryNthField 0
+    , dstReg      = reg
+    }
+
 -- In order to Extend a node field, or Project into it, we need that field to exist.
 -- This function initializes a node in the register with a given tag and arity.
 setNodeTypeInfo :: IR.Reg -> IR.Tag -> Int -> Instruction
@@ -365,6 +375,15 @@ codeGenM e = (cata folder >=> const setMainLive) e
                                                      processAltResult
                                                      restoreScrutReg
 
+        {- NOTE: In case of a pattern match, all tags should be marked live.
+           However, we allow for more aggressive optimizations if we only
+           set a tag live, when it actually appears amongst the alternatives.
+           This way we trust the program more than the analysis result, and
+           all "possible" tags not appearing amongst the alernatives will
+           stay dead.
+
+           Also, if there is a #default alternative, we mark all tags live.
+        -}
         case cpat of
           NodePat tag vars -> do
             irTag <- getTag tag
@@ -394,7 +413,8 @@ codeGenM e = (cata folder >=> const setMainLive) e
           DefaultPat -> do
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
             altInstructions <- codeGenAltNotIn tags $ \altScrutReg -> do
-              caseResultReg `hasSideEffectsThenM` setLive altScrutReg
+              caseResultReg `isLiveThenM`         (setBasicValLive altScrutReg >> setAllTagsLive altScrutReg)
+              caseResultReg `hasSideEffectsThenM` (setBasicValLive altScrutReg >> setAllTagsLive altScrutReg)
             emit IR.If
               { condition    = IR.AnyNotIn tags
               , srcReg       = valReg
