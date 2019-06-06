@@ -19,7 +19,7 @@ Read our paper [A modern look at GRIN, an optimizing functional language back en
 Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=317) and an [example from our imlementation](https://github.com/grin-compiler/grin/tree/master/grin/grin/sum-simple-output).
 
 ## Support
-If you like the project you can support it on [Patreon](https://www.patreon.com/csaba_hruska).  
+If you like the project, please consider become a backer or sponsor on [Patreon](https://www.patreon.com/csaba_hruska).
 
 
 <a href="https://www.patreon.com/csaba_hruska">
