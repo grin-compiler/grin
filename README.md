@@ -22,7 +22,7 @@ Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.ju
 If you like the project, please consider become a backer or sponsor on [Patreon](https://www.patreon.com/csaba_hruska).
 
 
-<a href="https://www.patreon.com/bePatron?u=13441722">
+<a href="https://www.patreon.com/csaba_hruska">
 <img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" width="150" >
 </a>
 
