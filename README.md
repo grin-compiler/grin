@@ -21,7 +21,7 @@ Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.ju
 
 ## Support
 
-The development is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md).   
+The project is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md).   
 If you'd like to join them, please consider become a backer or sponsor on [Patreon](https://www.patreon.com/csaba_hruska).
 
 
