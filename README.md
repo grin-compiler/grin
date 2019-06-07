@@ -3,11 +3,12 @@
 [![Build Status](https://travis-ci.org/grin-compiler/grin.svg?branch=master)](https://travis-ci.org/grin-compiler/grin) [![Coverage Status](https://coveralls.io/repos/github/grin-tech/grin/badge.svg?branch=master)](https://coveralls.io/github/grin-tech/grin?branch=master)
 [![Gitter chat](https://badges.gitter.im/grin-compiler/grin.png)](https://gitter.im/Grin-Development/Lobby)
 
-The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction.
-For an overview read
+The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction. GRIN is the whole program optimizer component of the GRIN Compiler project which includes language frontends for *Haskell*, *Idris* and *Agda*.
+To get the big picture of the project check the [project website](https://grin-compiler.github.io/).  
+For an overview of the optimizer read
 <a href="http://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/The GRIN Project.pdf">
 The GRIN Project
-</a> article. To grasp the details take your time and read Urban Boquist's PhD thesis on
+</a> paper. To grasp the details take your time and read Urban Boquist's PhD thesis on
 <a href="http://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf">
 Code Optimisation Techniques for Lazy Functional Languages
 </a>.
