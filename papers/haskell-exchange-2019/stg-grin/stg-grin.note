@@ -1,0 +1,25 @@
+- STG in GHC pipeline (rewrite rules, core plugins, core opts before STG, core has types, STG has none)
+- type systems of STG and GRIN
+- constructs of STG
+- constructs of GRIN
+- lazines
+- HOF
+- partial application
+- function pointers
+- defunctionalization
+- modular compliation vs whole program compilation (interpolation between the two)
+- available optimizations and analyses
+- future of GRIN: syntax, SSA, Soufflé
+
+NOTES:
+  - Past presentation of STG
+  - past presentaion of core?
+  - no optimizations on STG
+  - STG is stable
+  - type info of Haskell does not express low level invariant
+    - data-flow analyses can express those
+    - in core, we only think about types like in the surface language (can types match, type theory background)
+
+  - contrast GRIN to STG, what is GRIN's goal?
+  - STG's goal is to evaluate lambda calculus
+  - GRIN optimizes further

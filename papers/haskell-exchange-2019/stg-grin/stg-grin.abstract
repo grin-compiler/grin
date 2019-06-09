@@ -1,0 +1,5 @@
+A comparison between STG and GRIN
+
+In this talk, I am going to discuss the main differences between the Glasgow Haskell Compiler's STG language and the Graph Reduction Intermediate Notation.
+
+Both STG and GRIN are intermediate representations for non-strict higher-order functional languages. Both representations can express laziness, higher-order functions, partial function applications and many more features. The real question is how they express those features. What kind of design decisions were made during the construction of the intermediate language? During the talk, we will examine both languages by reviewing the constructs they use to express the most important features mentioned above. Furthermore, we will discuss how these design decisions impact the compiler as a whole: what kind of advantages they have and what limitations they impose. Finally, we will talk about how GRIN can be improved based on past experience, and contemporary research.
