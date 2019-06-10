@@ -7,7 +7,7 @@
 
 <h2 align="center">Bronze via Patreon</h2>
 
-- Stephen
+- Stephen Diehl
 
 <h2 align="center">Generous Backers via Patreon ($50+)</h2>
 
