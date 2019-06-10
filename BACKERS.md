@@ -3,10 +3,7 @@
 <h2 align="center">Silver via Patreon</h2>
 
 - Sam Griffin
-
-<h2 align="center">Bronze via Patreon</h2>
-
-- Timothy
+- Timothy Klim
 
 <h2 align="center">Generous Backers via Patreon ($50+)</h2>
 
