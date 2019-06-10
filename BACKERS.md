@@ -5,6 +5,10 @@
 - Sam Griffin
 - Timothy Klim
 
+<h2 align="center">Bronze via Patreon</h2>
+
+- Stephen
+
 <h2 align="center">Generous Backers via Patreon ($50+)</h2>
 
 <!--50 start-->
