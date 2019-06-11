@@ -33,4 +33,5 @@
 - Balaji
 - Alex Mason
 - Felix Schröter
+- Péter Diviánszky
 <!--10 end-->
