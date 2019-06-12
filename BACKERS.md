@@ -23,7 +23,6 @@
 <!--10 start-->
 - Hécate
 - Joe Vargas
-- glaebhoerl
 - Vilem Liepelt
 - Jonathan King
 - Sergey Homa
@@ -34,4 +33,7 @@
 - Alex Mason
 - Felix Schröter
 - Péter Diviánszky
+- glaebhoerl
+- David Curran
+- Alex B
 <!--10 end-->
