@@ -1,0 +1,73 @@
+- fast / efficient parser
+
+- graphless / work-set fixpoint calculation
+- c/c++ implementation of data-flow machine
+- selective context sensitive support (for eval/apply specialisation)
+- better data-flow IR with efficient represenation and function and context support
+
+better data-flow:
+  dynamic/runtime dependency analysis and recording then scheduling
+
+- generate graphviz dot file for function dependency graph ; clusterize the graph
+
+papers: Dataflow analysis on GPU
+
+  EigenCFA: Accelerating Flow Analysis with GPUs
+  http://matt.might.net/papers/prabhu2011eigencfa.pdf
+
+  A GPU Implementation of Inclusion-based Points-to Analysis
+  https://userweb.cs.txstate.edu/~mb92/papers/ppopp12.pdf
+
+  Parallel Inclusion-based Points-to Analysis
+  http://iss.ices.utexas.edu/Publications/Papers/oopsla10-mendezlojo.pdf
+
+  A Graph–Free Approach to Data–Flow Analysis
+  https://pdfs.semanticscholar.org/5ad8/cb6b477793ffb5ec29dde89df6b82dbb6dba.pdf
+
+  Cloning-Based Context-Sensitive Pointer Alias Analysis Using Binary Decision Diagrams
+  https://suif.stanford.edu/papers/pldi04.pdf
+
+  Program Analysis via Graph Reachability
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.61.8958&rep=rep1&type=pdf
+
+
+  Lecture Notes:Pointer Analysis ; new to learn: Steensgaard’s Points-To Analysis
+  https://www.cs.cmu.edu/~aldrich/courses/15-819O-13sp/resources/pointer.pdf
+
+  Points-to Analysis in Almost Linear Time
+  https://www.cs.cornell.edu/courses/cs711/2005fa/papers/steensgaard-popl96.pdf
+
+  Points-to analysis by type inference of programs with structures and unions
+  http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84BEB9072CCA00EF4B2C2232B4209BFE?doi=10.1.1.51.1358&rep=rep1&type=pdf
+
+  Fast and accurate flow-insensitive points-to analysis
+  http://www.cs.utexas.edu/users/pingali/CS380C/2007fa/papers/popl97.pdf
+
+  https://cs-people.bu.edu/soham1/docs/680_Final_Report.pdf
+
+  Storage Graph: Analysis of Pointers and Structures
+  https://www.cs.purdue.edu/homes/suresh/590s-Fall2002/papers/p296-chase.pdf
+
+  The ant and the grasshopper:fast and accurate pointer analysis for millions of lines of code
+  https://www.cs.utexas.edu/~lin/papers/pldi07.pdf
+
+  Pointer analysis: haven’t we solved this problem yet?
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.91.9469&rep=rep1&type=pdf
+
+to learn:
+  steensgaard algorithm
+  storage graph
+  parallel andersen cpu
+  parallel andersen gpu
+
+to check:
+  https://pdfs.semanticscholar.org/5ad8/cb6b477793ffb5ec29dde89df6b82dbb6dba.pdf
+  http://matt.might.net/papers/prabhu2011eigencfa.pdf
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.61.8958&rep=rep1&type=pdf
+  https://www.cs.colorado.edu/~bec/papers/sas11-ptaprecision.pdf
+  http://www.cs.colostate.edu/~mstrout/CS553Fall06/slides/lecture22-aliasFICI.pdf
+  https://yanniss.github.io/points-to-tutorial15.pdf
+  https://yanniss.github.io/typesens-popl11.pdf
+  https://pdfs.semanticscholar.org/4830/24cad106729ef036a5de7dbc1dfbd019a6fb.pdf
+  https://www.cs.cmu.edu/~aldrich/courses/15-819O-13sp/resources/pointer.pdf
+  https://www.cs.purdue.edu/homes/suresh/590s-Fall2002/papers/p296-chase.pdf
