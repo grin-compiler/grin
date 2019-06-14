@@ -61,6 +61,7 @@ data SimpleType
   | T_UnspecifiedLocation
   | T_Dead
   | T_String
+  | T_Double
   | T_Char
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 

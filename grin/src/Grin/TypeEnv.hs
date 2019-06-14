@@ -116,6 +116,7 @@ typeOfLitST lit = case lit of
   LInt64{}  -> T_Int64
   LWord64{} -> T_Word64
   LFloat{}  -> T_Float
+  LDouble{} -> T_Double
   LBool{}   -> T_Bool
   LString{} -> T_String
   LChar{}   -> T_Char

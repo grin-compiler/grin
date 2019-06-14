@@ -69,6 +69,7 @@ codeGenLit = \case
   LInt64 v  -> pure $ Int {integerBits=64, integerValue=fromIntegral v}
   LWord64 v -> pure $ Int {integerBits=64, integerValue=fromIntegral v}
   LFloat v  -> pure $ C.Float {floatValue=F.Single v}
+  LDouble v -> pure $ C.Float {floatValue=F.Double v}
   LBool v   -> pure $ Int {integerBits=1, integerValue=if v then 1 else 0}
   LChar v   -> pure $ Int {integerBits=8, integerValue=fromIntegral $ fromEnum v}
   LString v -> C.GlobalReference stringType <$> strName v
@@ -147,6 +148,7 @@ getCPatName = \case
     LChar v   -> "char_" <> showTS v
     LString v -> error "pattern match on string is not supported"
     LFloat v  -> error "pattern match on float is not supported"
+    LDouble v -> error "pattern match on double is not supported"
     other     -> error $ "pattern match not implemented: " ++ show other
   NodePat tag _ -> tagName tag
   DefaultPat  -> "default"

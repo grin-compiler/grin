@@ -151,6 +151,7 @@ calcSimpleTypesAlg = \case
       (Lit (LInt64  _)) -> pure $ IInfo T_Int64
       (Lit (LWord64 _)) -> pure $ IInfo T_Word64
       (Lit (LFloat  _)) -> pure $ IInfo T_Float
+      (Lit (LDouble _)) -> pure $ IInfo T_Double
       (Lit (LBool   _)) -> pure $ IInfo T_Bool
       (Lit (LString _)) -> pure $ IInfo T_String
       (Lit (LChar   _)) -> pure $ IInfo T_Char

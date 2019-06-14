@@ -526,6 +526,7 @@ typeOfLiteral = \case
   LInt64  _ -> T_Int64
   LWord64 _ -> T_Word64
   LFloat  _ -> T_Float
+  LDouble _ -> T_Double
   LBool   _ -> T_Bool
 
 litOrConstTagNodeToTypeSet :: Val -> TypeSet

@@ -31,6 +31,7 @@ data SimpleType
   | T_Unit
   | T_Location Loc
   | T_String
+  | T_Double
   | T_Char
   | T_UnspecifiedLocation
   {- NOTE: The local value can be used for any analysis-specific computation,

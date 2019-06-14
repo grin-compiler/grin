@@ -341,6 +341,7 @@ data Type
   | TTag Name [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
   | TString
+  | TDouble
   | TChar
   deriving (Eq, Generic, Ord, Show)
 
@@ -352,6 +353,7 @@ simpleType :: GoalM Type
 simpleType = melements
   [ TInt
   , TFloat
+  , TDouble
   , TWord
   , TUnit
   , TBool
@@ -387,6 +389,7 @@ instance TypeOf G.SimpleVal where
     G.Lit (LInt64 _)  -> TInt
     G.Lit (LWord64 _) -> TWord
     G.Lit (LFloat _)  -> TFloat
+    G.Lit (LDouble _) -> TDouble
     G.Lit (LBool _)   -> TBool
     G.Lit (LString _) -> TString
     G.Lit (LChar _)   -> TChar
@@ -559,6 +562,7 @@ gLiteral = fmap G.Lit . \case
   TFloat -> LFloat  <$> gen arbitrary
   TWord  -> LWord64 <$> gen arbitrary
   TBool  -> LBool   <$> gen arbitrary
+  TDouble -> LDouble <$> gen arbitrary
   TString -> LString . fromString <$> gen (listOf alphaNumChar)
   TChar   -> LChar <$> gen alphaNumChar
   _      -> mzero
@@ -575,6 +579,7 @@ gSimpleVal = \case
   TWord  -> varFromEnv TWord `mplus` gLiteral TWord
   TBool  -> varFromEnv TBool `mplus` gLiteral TBool
   TString  -> varFromEnv TString `mplus` gLiteral TString
+  TDouble -> varFromEnv TDouble `mplus` gLiteral TDouble
   TChar  -> varFromEnv TChar `mplus` gLiteral TChar
   (TLoc t) -> varFromEnv (TLoc t) -- Locations have no literals
   _      -> mzero

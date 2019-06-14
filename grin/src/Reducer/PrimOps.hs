@@ -107,6 +107,7 @@ evalPrimOp name params args = case name of
   word  x = pure . RT_Lit . LWord64 $ x
   float x = pure . RT_Lit . LFloat $ x
   bool  x = pure . RT_Lit . LBool $ x
+  double x = pure . RT_Lit . LDouble $ x
   string x = pure . RT_Lit . LString $ x
 --  char x = pure . RT_Lit . LChar $ x
 

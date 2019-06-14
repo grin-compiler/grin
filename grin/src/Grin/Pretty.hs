@@ -138,6 +138,7 @@ instance Pretty Lit where
     LInt64 a   -> integer $ fromIntegral a
     LWord64 a  -> integer (fromIntegral a) <> text "u"
     LFloat a   -> float a
+    LDouble a  -> double a
     LBool a    -> text "#" <> text (show a)
     LString a  -> text "#" <> text (show a)
     LChar a    -> text "#" <> text (show a)

@@ -91,6 +91,7 @@ value = Unit <$ op "()" <|>
 
 literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
+--          (try $ LDouble . realToFrac <$> signedDouble) <|>
           (try $ LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u')) <|>
           (try $ LInt64 . fromIntegral <$> signedInteger) <|>
           (try $ LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")) <|>
