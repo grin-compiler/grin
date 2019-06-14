@@ -4,7 +4,7 @@ resolver: nightly-2018-11-07
 allow-newer: true
 
 packages:
-  - 'grin'
+- 'grin'
 
 extra-deps:
   - monad-gen-0.3.0.1
@@ -14,11 +14,11 @@ extra-deps:
   - neat-interpolation-0.3.2.2
   - set-extra-1.4.1
   - llvm-hs-pretty-0.6.1.0
-  - github: csabahruska/llvm-hs
+  - git: https://github.com/csabahruska/llvm-hs.git
     commit: 868e23a13942703255979369defdb49ac57b6866
     subdirs:
-      - llvm-hs
-      - llvm-hs-pure
+    - llvm-hs
+    - llvm-hs-pure
 
 flags:
   llvm-hs:
