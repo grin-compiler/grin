@@ -69,6 +69,18 @@ codeGenPrimOp name [opA, opB] = pure $ case name of
   "_prim_float_lt"  -> I cgBool  $ FCmp {fpPredicate=F.OLT, operand0=opA, operand1=opB, metadata=[]}
   "_prim_float_le"  -> I cgBool  $ FCmp {fpPredicate=F.OLE, operand0=opA, operand1=opB, metadata=[]}
 
+  -- Double
+  "_prim_double_add" -> I cgFloat $ FAdd {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_sub" -> I cgFloat $ FSub {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_mul" -> I cgFloat $ FMul {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_div" -> I cgFloat $ FDiv {fastMathFlags=noFastMathFlags, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_eq"  -> I cgBool  $ FCmp {fpPredicate=F.OEQ, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_ne"  -> I cgBool  $ FCmp {fpPredicate=F.ONE, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_gt"  -> I cgBool  $ FCmp {fpPredicate=F.OGT, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_ge"  -> I cgBool  $ FCmp {fpPredicate=F.OGE, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_lt"  -> I cgBool  $ FCmp {fpPredicate=F.OLT, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_double_le"  -> I cgBool  $ FCmp {fpPredicate=F.OLE, operand0=opA, operand1=opB, metadata=[]}
+
   -- Bool
   "_prim_bool_eq"   -> I cgBool $ ICmp {iPredicate=I.EQ,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_bool_ne"   -> I cgBool $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}

@@ -32,7 +32,8 @@ keywords = Set.fromList
   ] `Set.union` simpleTypes
 
 simpleTypes = Set.fromList
-  [ "T_Int64", "T_Word64", "T_Float"
+  [ "T_Int64", "T_Word64"
+  , "T_Float", "T_Double"
   , "T_Bool",  "T_Unit"
   , "T_Location", "T_Dead"
   , "T_String", "T_Char"
@@ -146,6 +147,7 @@ simpleType =
   T_Int64 <$ kw "T_Int64" <|>
   T_Word64 <$ kw "T_Word64" <|>
   T_Float <$ kw "T_Float" <|>
+  T_Double <$ kw "T_Double" <|>
   T_Bool <$ kw "T_Bool" <|>
   T_Unit <$ kw "T_Unit" <|>
   T_UnspecifiedLocation <$ kw "#ptr" <|>

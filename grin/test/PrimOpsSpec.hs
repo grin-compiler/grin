@@ -188,7 +188,7 @@ spec = do
       run $ primIntStr i
 
   describe "_prim_float_string" $ do
-    let primIntStr f0 = do
+    let primFloatStr f0 = do
           let f = C.CFloat f0
           allocaBytes 256 $ \buffer -> do
             [C.block|void{
@@ -200,7 +200,23 @@ spec = do
           pure ()
     xit "works for random float" $ monadicIO $ do
       f <- pick arbitrary
-      run $ primIntStr f
+      run $ primFloatStr f
+
+  describe "_prim_double_string" $ do
+    let primDoubleStr f0 = do
+          let f = C.CDouble f0
+          allocaBytes 256 $ \buffer -> do
+            [C.block|void{
+              struct string* s1 = _prim_double_string($(double f));
+              cstring($(char* buffer), s1);
+            }|]
+            res <- peekCString buffer
+            res `shouldBe` (show f0)
+          pure ()
+    xit "works for random double" $ monadicIO $ do
+      f <- pick arbitrary
+      run $ primDoubleStr f
+
 
   describe "_prim_str_int" $ do
     let primStrInt i = do
@@ -224,6 +240,17 @@ spec = do
     it "works for random integers" $ monadicIO $ do
       i <- pick arbitrary
       run $ primIntFloat i
+
+  describe "_prim_int_double" $ do
+    let primIntDouble i0 = do
+          let i = C.CLong i0
+          r <- [C.block|double{
+                  return _prim_int_double($(long i));
+                }|]
+          r `shouldBe` (fromIntegral i)
+    it "works for random integers" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primIntDouble i
 
   describe "_prim_char_int" $ do
     let primCharInt c0 = do

@@ -235,6 +235,28 @@ struct string* _prim_float_string(float p1) {
     }
 }
 
+double _prim_int_double(int64_t p1) {
+#ifdef DEBUG
+    printf("_prim_int_double(%ld)\n", p1);
+#endif
+    return (double)p1;
+}
+
+struct string* _prim_double_string(double p1) {
+#ifdef DEBUG
+    printf("_prim_double_string(%f)\n", p1);
+#endif
+    char buffer[BUFFER_SIZE];
+    int len = snprintf(buffer, BUFFER_SIZE, "%.13g", p1);
+    if (len >= 0 && len < BUFFER_SIZE) {
+        return create_string_copy(buffer);
+    } else {
+        printf("_prim_double_string\n");
+        exit(-1);
+    }
+}
+
+
 int64_t _prim_char_int(char p1) {
 #ifdef DEBUG
     printf("_prim_char_int(%c)\n", p1);

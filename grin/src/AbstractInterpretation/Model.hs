@@ -587,6 +587,17 @@ primitive name = case name of
   "_prim_float_ge"  -> op [float, float] bool
   "_prim_float_lt"  -> op [float, float] bool
   "_prim_float_le"  -> op [float, float] bool
+  -- Double
+  "_prim_double_add" -> op [double, double] double
+  "_prim_double_sub" -> op [double, double] double
+  "_prim_double_mul" -> op [double, double] double
+  "_prim_double_div" -> op [double, double] double
+  "_prim_double_eq"  -> op [double, double] bool
+  "_prim_double_ne"  -> op [double, double] bool
+  "_prim_double_gt"  -> op [double, double] bool
+  "_prim_double_ge"  -> op [double, double] bool
+  "_prim_double_lt"  -> op [double, double] bool
+  "_prim_double_le"  -> op [double, double] bool
   -- Bool
   "_prim_bool_eq"   -> op [bool, bool] bool
   "_prim_bool_ne"   -> op [bool, bool] bool
@@ -597,6 +608,7 @@ primitive name = case name of
     word = T_Word64
     unit = T_Unit
     float = T_Float
+    double = T_Double
 
     op ::[SimpleType] -> SimpleType -> Maybe ([TypeSet], TypeSet)
     op ps r = Just (typeSet <$> ps, typeSet r)

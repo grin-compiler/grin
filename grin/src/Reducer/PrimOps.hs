@@ -49,6 +49,7 @@ evalPrimOp name params args = case name of
   "_prim_str_int"      -> str_int
   "_prim_int_float"    -> int_float
   "_prim_float_string" -> float_str
+  "_prim_double_string" -> double_str
   "_prim_char_int"     -> char_int
   -- String
   "_prim_string_reverse" -> string_un_op string Text.reverse
@@ -95,6 +96,17 @@ evalPrimOp name params args = case name of
   "_prim_float_ge"  -> float_bin_op bool (>=)
   "_prim_float_lt"  -> float_bin_op bool (<)
   "_prim_float_le"  -> float_bin_op bool (<=)
+  -- Double
+  "_prim_double_add" -> double_bin_op double (+)
+  "_prim_double_sub" -> double_bin_op double (-)
+  "_prim_double_mul" -> double_bin_op double (*)
+  "_prim_double_div" -> double_bin_op double (/)
+  "_prim_double_eq"  -> double_bin_op bool (==)
+  "_prim_double_ne"  -> double_bin_op bool (/=)
+  "_prim_double_gt"  -> double_bin_op bool (>)
+  "_prim_double_ge"  -> double_bin_op bool (>=)
+  "_prim_double_lt"  -> double_bin_op bool (<)
+  "_prim_double_le"  -> double_bin_op bool (<=)
   -- Bool
   "_prim_bool_eq"   -> bool_bin_op bool (==)
   "_prim_bool_ne"   -> bool_bin_op bool (/=)
@@ -125,6 +137,10 @@ evalPrimOp name params args = case name of
 
   float_bin_op retTy fn = case args of
     [RT_Lit (LFloat a), RT_Lit (LFloat b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  double_bin_op retTy fn = case args of
+    [RT_Lit (LDouble a), RT_Lit (LDouble b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   bool_bin_op retTy fn = case args of
@@ -164,8 +180,15 @@ evalPrimOp name params args = case name of
         let cf = CFloat a
         [C.exp| void { snprintf($(char* buf), 32, "%.16g", $(float cf)) } |]
         string . fromString =<< peekCString buf
-
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  double_str = case args of
+    [RT_Lit (LDouble a)] -> liftIO $ allocaBytes 64 $ \buf -> do
+        let cf = CDouble a
+        [C.exp| void { snprintf($(char* buf), 64, "%.16g", $(double cf)) } |]
+        string . fromString =<< peekCString buf
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
 
   file_eof = case args of
     [RT_Lit (LInt64 0)] -> (fmap (\case { False -> 0; _ -> 1}) (liftIO (hIsEOF stdin))) >>= int

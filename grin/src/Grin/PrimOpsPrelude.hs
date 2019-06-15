@@ -35,11 +35,13 @@ primPrelude = [progConst|
 
   ffi pure
     -- Conversion
-    _prim_int_str      :: T_Int64 -> T_String
-    _prim_str_int      :: T_String -> T_Int64
-    _prim_int_float    :: T_Int64 -> T_Float
-    _prim_float_string :: T_Float -> T_String
-    _prim_char_int     :: T_Char  -> T_Int64
+    _prim_int_str       :: T_Int64  -> T_String
+    _prim_str_int       :: T_String -> T_Int64
+    _prim_int_float     :: T_Int64  -> T_Float
+    _prim_float_string  :: T_Float  -> T_String
+    _prim_int_double    :: T_Int64  -> T_Double
+    _prim_double_string :: T_Double -> T_String
+    _prim_char_int      :: T_Char   -> T_Int64
 
   primop pure
     -- Int
@@ -79,6 +81,19 @@ primPrelude = [progConst|
     _prim_float_ge  :: T_Float -> T_Float -> T_Bool
     _prim_float_lt  :: T_Float -> T_Float -> T_Bool
     _prim_float_le  :: T_Float -> T_Float -> T_Bool
+
+    -- Double
+    _prim_double_add :: T_Double -> T_Double -> T_Double
+    _prim_double_sub :: T_Double -> T_Double -> T_Double
+    _prim_double_mul :: T_Double -> T_Double -> T_Double
+    _prim_double_div :: T_Double -> T_Double -> T_Double
+    _prim_double_eq  :: T_Double -> T_Double -> T_Bool
+    _prim_double_ne  :: T_Double -> T_Double -> T_Bool
+    _prim_double_gt  :: T_Double -> T_Double -> T_Bool
+    _prim_double_ge  :: T_Double -> T_Double -> T_Bool
+    _prim_double_lt  :: T_Double -> T_Double -> T_Bool
+    _prim_double_le  :: T_Double -> T_Double -> T_Bool
+
 
     -- Bool
     _prim_bool_eq   :: T_Bool -> T_Bool -> T_Bool

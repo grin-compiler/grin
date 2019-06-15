@@ -353,7 +353,7 @@ simpleType :: GoalM Type
 simpleType = melements
   [ TInt
   , TFloat
-  , TDouble
+--  , TDouble
   , TWord
   , TUnit
   , TBool
@@ -465,6 +465,7 @@ initContext expGen = Context (Env mempty primitives mempty) mempty expGen
         T_Int64  -> TInt
         T_Word64 -> TWord
         T_Float  -> TFloat
+        T_Double -> TDouble
         T_Bool   -> TBool
         T_Unit   -> TUnit
         T_String -> TString
@@ -600,6 +601,7 @@ gValue = \case
   TLoc t        -> G.SimpleVal <$> gSimpleVal (TLoc t)
   TBool           -> G.SimpleVal <$> gSimpleVal TBool
   TString         -> G.SimpleVal <$> gSimpleVal TString
+  TDouble         -> G.SimpleVal <$> gSimpleVal TDouble
   TChar           -> G.SimpleVal <$> gSimpleVal TChar
   TTag tag types  -> gNodeValue $ TTag tag types
   TUnion types    -> do
