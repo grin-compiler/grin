@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 module Reducer.PrimOps (evalPrimOp) where
 
 import           Foreign.C.Types
@@ -51,6 +52,7 @@ evalPrimOp name params args = case name of
   "_prim_float_string" -> float_str
   "_prim_double_string" -> double_str
   "_prim_char_int"     -> char_int
+  "_prim_int_double"   -> int_double
   -- String
   "_prim_string_reverse" -> string_un_op string Text.reverse
   "_prim_string_head"    -> string_un_op int (fromIntegral . ord . Text.head)
@@ -107,6 +109,20 @@ evalPrimOp name params args = case name of
   "_prim_double_ge"  -> double_bin_op bool (>=)
   "_prim_double_lt"  -> double_bin_op bool (<)
   "_prim_double_le"  -> double_bin_op bool (<=)
+  "_prim_double_exp" -> double_un_op double exp
+  "_prim_double_log" -> double_un_op double log
+  "_prim_double_sin" -> double_un_op double sin
+  "_prim_double_cos" -> double_un_op double cos
+  "_prim_double_tan" -> double_un_op double tan
+  "_prim_double_asin" -> double_un_op double asin
+  "_prim_double_acos" -> double_un_op double acos
+  "_prim_double_atan" -> double_un_op double atan
+  "_prim_double_atan2" -> double_bin_op double atan2
+  "_prim_double_sqrt" -> double_un_op double sqrt
+  "_prim_double_floor" -> double_un_op double floor'
+  "_prim_double_ceil" -> double_un_op double ceil'
+  "_prim_double_negate" -> double_un_op double negate
+
   -- Bool
   "_prim_bool_eq"   -> bool_bin_op bool (==)
   "_prim_bool_ne"   -> bool_bin_op bool (/=)
@@ -122,6 +138,11 @@ evalPrimOp name params args = case name of
   double x = pure . RT_Lit . LDouble $ x
   string x = pure . RT_Lit . LString $ x
 --  char x = pure . RT_Lit . LChar $ x
+  ceil' :: Double -> Double
+  ceil' = fromIntegral . ceiling @Double @Int
+
+  floor' :: Double -> Double
+  floor' = fromIntegral . floor @Double @Int
 
   int_un_op retTy fn = case args of
     [RT_Lit (LInt64 a)] -> retTy $ fn a
@@ -137,6 +158,10 @@ evalPrimOp name params args = case name of
 
   float_bin_op retTy fn = case args of
     [RT_Lit (LFloat a), RT_Lit (LFloat b)] -> retTy $ fn a b
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  double_un_op retTy fn = case args of
+    [RT_Lit (LDouble a)] -> retTy $ fn a
     _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   double_bin_op retTy fn = case args of
@@ -169,6 +194,10 @@ evalPrimOp name params args = case name of
 
   int_float = case args of
     [RT_Lit (LInt64 a)] -> float $ fromIntegral a
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  int_double = case args of
+    [RT_Lit (LInt64 a)] -> double $ fromIntegral a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   char_int = case args of

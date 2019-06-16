@@ -598,6 +598,20 @@ primitive name = case name of
   "_prim_double_ge"  -> op [double, double] bool
   "_prim_double_lt"  -> op [double, double] bool
   "_prim_double_le"  -> op [double, double] bool
+  "_prim_double_exp" -> op [double] double
+  "_prim_double_log" -> op [double] double
+  "_prim_double_sin" -> op [double] double
+  "_prim_double_cos" -> op [double] double
+  "_prim_double_tan" -> op [double] double
+  "_prim_double_asin" -> op [double] double
+  "_prim_double_acos" -> op [double] double
+  "_prim_double_atan" -> op [double] double
+  "_prim_double_atan2" -> op [double, double] double
+  "_prim_double_sqrt"  -> op [double] double
+  "_prim_double_floor" -> op [double] double
+  "_prim_double_ceil"  -> op [double] double
+  "_prim_double_negate" -> op [double] double
+
   -- Bool
   "_prim_bool_eq"   -> op [bool, bool] bool
   "_prim_bool_ne"   -> op [bool, bool] bool

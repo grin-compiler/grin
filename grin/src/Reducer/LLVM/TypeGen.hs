@@ -39,6 +39,7 @@ typeGenSimpleType = \case
   T_Int64   -> i64
   T_Word64  -> i64
   T_Float   -> float
+  T_Double  -> double
   T_Bool    -> i1
   T_String  -> stringType
   T_Char    -> i8

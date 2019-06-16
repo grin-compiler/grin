@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TypeApplications #-}
 module PrimOpsSpec where
 
 import Test.Hspec
@@ -252,6 +253,177 @@ spec = do
       i <- pick arbitrary
       run $ primIntDouble i
 
+  describe "_prim_double_log" $ do
+    let primDoubleLog i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_log($(double i));
+                }|]
+          if isNaN (log i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (log i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleLog i
+
+  describe "_prim_double_exp" $ do
+    let primDoubleExp i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_exp($(double i));
+                }|]
+          if isNaN (exp i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (exp i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleExp i
+
+  describe "_prim_double_sin" $ do
+    let primDoubleSin i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_sin($(double i));
+                }|]
+          if isNaN (sin i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (sin i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleSin i
+
+  describe "_prim_double_cos" $ do
+    let primDoubleCos i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_cos($(double i));
+                }|]
+          if isNaN (cos i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (cos i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleCos i
+
+  describe "_prim_double_tan" $ do
+    let primDoubleTan i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_tan($(double i));
+                }|]
+          if isNaN (tan i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (tan i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleTan i
+
+  describe "_prim_double_asin" $ do
+    let primDoubleASin i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_asin($(double i));
+                }|]
+          if isNaN (asin i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (asin i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleASin i
+
+  describe "_prim_double_acos" $ do
+    let primDoubleACos i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_acos($(double i));
+                }|]
+          if isNaN (acos i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (acos i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleACos i
+
+  describe "_prim_double_atan" $ do
+    let primDoubleATan i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_atan($(double i));
+                }|]
+          if isNaN (atan i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (atan i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleATan i
+
+  describe "_prim_double_sqrt" $ do
+    let primDoubleSqrt i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_sqrt($(double i));
+                }|]
+          if isNaN (sqrt i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (sqrt i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleSqrt i
+
+  describe "_prim_double_floor" $ do
+    let primDoubleFloor i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_floor($(double i));
+                }|]
+          if isNaN (floor' i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (floor' i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleFloor i
+
+  describe "_prim_double_ceil" $ do
+    let primDoubleCeil i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_ceil($(double i));
+                }|]
+          if isNaN (ceil' i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (ceil' i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleCeil i
+
+  describe "_prim_double_negate" $ do
+    let primDoubleNegate i0 = do
+          let i = C.CDouble i0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_negate($(double i));
+                }|]
+          if isNaN (negate i0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (negate i0)
+    it "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      run $ primDoubleNegate i
+
+  describe "_prim_double_atan2" $ do
+    let primDoubleATan2 i0 j0 = do
+          let i = C.CDouble i0
+              j = C.CDouble j0
+          (C.CDouble r) <- [C.block|double{
+                  return _prim_double_atan2($(double i), $(double j));
+                }|]
+          if isNaN (atan2 i0 j0)
+            then r `shouldSatisfy` isNaN
+            else r `shouldBe` (atan2 i0 j0)
+    xit "works for random double" $ monadicIO $ do
+      i <- pick arbitrary
+      j <- pick arbitrary
+      run $ primDoubleATan2 i j
+
   describe "_prim_char_int" $ do
     let primCharInt c0 = do
           let c = C.CChar $ fromIntegral $ fromEnum c0
@@ -262,3 +434,9 @@ spec = do
     it "works for random chars" $ monadicIO $ do
       c <- pick $ elements ['a' .. 'z']
       run $ primCharInt c
+
+ceil' :: Double -> Double
+ceil' = fromIntegral . ceiling @Double @Int
+
+floor' :: Double -> Double
+floor' = fromIntegral . floor @Double @Int

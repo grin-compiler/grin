@@ -58,6 +58,7 @@ codegenSimpleType = \case
   T_Bool    -> -5
   T_String  -> -6
   T_Char    -> -7
+  T_Double  -> -8
 
 litToSimpleType :: Lit -> IR.SimpleType
 litToSimpleType = codegenSimpleType . typeOfLitST

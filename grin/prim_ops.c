@@ -4,7 +4,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 #include "prim_ops.h"
+
 
 #define BUFFER_SIZE 256
 
@@ -242,6 +244,13 @@ double _prim_int_double(int64_t p1) {
     return (double)p1;
 }
 
+int64_t _prim_double_int(double p1){
+#ifdef DEBUG
+    printf("_prim_double_int(%ld)\n", p1);
+#endif
+    return (int64_t)p1;
+}
+
 struct string* _prim_double_string(double p1) {
 #ifdef DEBUG
     printf("_prim_double_string(%f)\n", p1);
@@ -256,6 +265,96 @@ struct string* _prim_double_string(double p1) {
     }
 }
 
+double _prim_double_exp(double p1){
+#ifdef DEBUG
+    printf("_prim_double_exp(%f)\n", p1);
+#endif
+    return exp(p1);
+}
+
+double _prim_double_log(double p1){
+#ifdef DEBUG
+    printf("_prim_double_log(%f)\n", p1);
+#endif
+    return log(p1);
+}
+
+double _prim_double_sin(double p1){
+#ifdef DEBUG
+    printf("_prim_double_sin(%f)\n", p1);
+#endif
+    return sin(p1);
+}
+
+double _prim_double_cos(double p1){
+#ifdef DEBUG
+    printf("_prim_double_cos(%f)\n", p1);
+#endif
+    return cos(p1);
+}
+
+double _prim_double_tan(double p1){
+#ifdef DEBUG
+    printf("_prim_double_tan(%f)\n", p1);
+#endif
+    return tan(p1);
+}
+
+double _prim_double_asin(double p1){
+#ifdef DEBUG
+    printf("_prim_double_asin(%f)\n", p1);
+#endif
+    return asin(p1);
+}
+
+double _prim_double_acos(double p1){
+#ifdef DEBUG
+    printf("_prim_double_acos(%f)\n", p1);
+#endif
+    return acos(p1);
+}
+
+double _prim_double_atan(double p1){
+#ifdef DEBUG
+    printf("_prim_double_atan(%f)\n", p1);
+#endif
+    return atan(p1);
+}
+
+double _prim_double_sqrt(double p1){
+#ifdef DEBUG
+    printf("_prim_double_sqrt(%f)\n", p1);
+#endif
+    return sqrt(p1);
+}
+
+double _prim_double_floor(double p1){
+#ifdef DEBUG
+    printf("_prim_double_floor(%f)\n", p1);
+#endif
+    return floor(p1);
+}
+
+double _prim_double_ceil(double p1){
+#ifdef DEBUG
+    printf("_prim_double_ceil(%f)\n", p1);
+#endif
+    return ceil(p1);
+}
+
+double _prim_double_negate(double p1){
+#ifdef DEBUG
+    printf("_prim_double_negate(%f)\n", p1);
+#endif
+    return ((-1.0) * p1);
+}
+
+double _prim_double_atan2(double p1, double p2){
+#ifdef DEBUG
+    printf("_prim_double_atan2(%f, %f)\n", p1, p2);
+#endif
+    return atan2(p1,p2);
+}
 
 int64_t _prim_char_int(char p1) {
 #ifdef DEBUG
