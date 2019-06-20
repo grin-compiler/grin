@@ -364,6 +364,7 @@ transformation :: Transformation -> PipelineM ()
 transformation t = do
   runAnalysisFor t
   n <- use psTransStep
+  when (n == 1000) $ error "1000. Possibly an infinite loop..."
   e <- use psExp
   te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
   em <- fromMaybe (traceShow "empty effect map is used" mempty) <$> use psEffectMap
@@ -707,7 +708,7 @@ saveExecutable debugSymbols path = do
     ("llc-7 -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
     grinOptCodeFile
   callCommand $ printf
-    ("clang-7 -O3 prim_ops.c runtime.c %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
+    ("clang-7 -O3 prim_ops.c runtime.c %s.o -s -o %s -lm" ++ if debugSymbols then " -g" else "")
     grinOptCodeFile fname
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
