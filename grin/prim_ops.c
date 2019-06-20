@@ -228,7 +228,7 @@ struct string* _prim_float_string(float p1) {
     printf("_prim_float_string(%f)\n", p1);
 #endif
     char buffer[BUFFER_SIZE];
-    int len = snprintf(buffer, BUFFER_SIZE, "%.13g", p1);
+    int len = snprintf(buffer, BUFFER_SIZE, "%.16g", p1);
     if (len >= 0 && len < BUFFER_SIZE) {
         return create_string_copy(buffer);
     } else {
@@ -256,7 +256,7 @@ struct string* _prim_double_string(double p1) {
     printf("_prim_double_string(%f)\n", p1);
 #endif
     char buffer[BUFFER_SIZE];
-    int len = snprintf(buffer, BUFFER_SIZE, "%.13g", p1);
+    int len = snprintf(buffer, BUFFER_SIZE, "%.16g", p1);
     if (len >= 0 && len < BUFFER_SIZE) {
         return create_string_copy(buffer);
     } else {
