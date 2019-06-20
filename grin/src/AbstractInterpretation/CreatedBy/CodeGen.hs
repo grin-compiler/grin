@@ -291,9 +291,6 @@ codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
 
       unit  = -1
       int   = litToSimpleType $ LInt64 0
-      int32 = litToSimpleType $ LInt32 0
-      int16 = litToSimpleType $ LInt16 0
-      int8  = litToSimpleType $ LInt8  0
       word  = litToSimpleType $ LWord64 0
       float = litToSimpleType $ LFloat 0
       double = litToSimpleType $ LDouble 0

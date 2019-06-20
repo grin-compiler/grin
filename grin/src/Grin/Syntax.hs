@@ -56,9 +56,6 @@ isExternalName es n = n `Prelude.elem` (eName <$> es)
 -- Should the linter warn about this?
 data Lit
   = LInt64  Int64
-  | LInt32  Int32
-  | LInt16  Int16
-  | LInt8   Int8
   | LWord64 Word64
   | LFloat  Float
   | LDouble Double

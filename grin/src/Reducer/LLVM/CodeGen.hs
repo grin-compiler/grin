@@ -67,9 +67,6 @@ toLLVM fname mod = withContext $ \ctx -> do
 codeGenLit :: Lit -> CG C.Constant
 codeGenLit = \case
   LInt64 v  -> pure $ Int {integerBits=64, integerValue=fromIntegral v}
-  LInt32 v  -> pure $ Int {integerBits=32, integerValue=fromIntegral v}
-  LInt16 v  -> pure $ Int {integerBits=16, integerValue=fromIntegral v}
-  LInt8 v  -> pure $ Int {integerBits=9, integerValue=fromIntegral v}
   LWord64 v -> pure $ Int {integerBits=64, integerValue=fromIntegral v}
   LFloat v  -> pure $ C.Float {floatValue=F.Single v}
   LDouble v -> pure $ C.Float {floatValue=F.Double v}

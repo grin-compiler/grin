@@ -34,9 +34,6 @@ C.include "<stdio.h>"
 
 -- primitive functions
 primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
-primLiteralPrint _ _ [RT_Lit (LInt32 a)] = liftIO (print a) >> pure RT_Unit
-primLiteralPrint _ _ [RT_Lit (LInt16 a)] = liftIO (print a) >> pure RT_Unit
-primLiteralPrint _ _ [RT_Lit (LInt8 a)] = liftIO (print a) >> pure RT_Unit
 primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (Text.unpack a)) >> pure RT_Unit
 primLiteralPrint ctx ps x = error $ Prelude.unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
 
@@ -136,9 +133,6 @@ evalPrimOp name params args = case name of
  where
   int   x = pure . RT_Lit . LInt64 $ x
   word  x = pure . RT_Lit . LWord64 $ x
-  int32 x = pure . RT_Lit . LInt32 $ x
-  int16 x = pure . RT_Lit . LInt16 $ x
-  int8  x = pure . RT_Lit . LInt8 $ x
   float x = pure . RT_Lit . LFloat $ x
   bool  x = pure . RT_Lit . LBool $ x
   double x = pure . RT_Lit . LDouble $ x

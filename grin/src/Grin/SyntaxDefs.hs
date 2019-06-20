@@ -54,9 +54,6 @@ type Loc = Int
 data SimpleType
   = T_Int64
   | T_Word64
-  | T_Int32
-  | T_Int16
-  | T_Int8
   | T_Float
   | T_Bool
   | T_Unit
