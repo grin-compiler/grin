@@ -59,6 +59,7 @@ codegenSimpleType = \case
   T_String  -> -6
   T_Char    -> -7
   T_Double  -> -8
+  other     -> error $ show other
 
 litToSimpleType :: Lit -> IR.SimpleType
 litToSimpleType = codegenSimpleType . typeOfLitST

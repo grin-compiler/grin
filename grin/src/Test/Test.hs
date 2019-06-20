@@ -334,6 +334,9 @@ instance Arbitrary Eff where arbitrary = genericArbitraryU
 data Type
   = TUnit -- TODO: Rename
   | TInt
+  | TInt32
+  | TInt16
+  | TInt8
   | TFloat
   | TBool
   | TWord
@@ -387,6 +390,9 @@ class TypeOf t where
 instance TypeOf G.SimpleVal where
   typeOf = \case
     G.Lit (LInt64 _)  -> TInt
+    G.Lit (LInt32 _)  -> TInt32
+    G.Lit (LInt16 _)  -> TInt16
+    G.Lit (LInt8  _)  -> TInt8
     G.Lit (LWord64 _) -> TWord
     G.Lit (LFloat _)  -> TFloat
     G.Lit (LDouble _) -> TDouble
@@ -560,6 +566,9 @@ gEnv t = do
 gLiteral :: Type -> GoalM G.SimpleVal
 gLiteral = fmap G.Lit . \case
   TInt   -> LInt64  <$> gen arbitrary
+  TInt32 -> LInt32  <$> gen arbitrary
+  TInt16 -> LInt16  <$> gen arbitrary
+  TInt8  -> LInt8   <$> gen arbitrary
   TFloat -> LFloat  <$> gen arbitrary
   TWord  -> LWord64 <$> gen arbitrary
   TBool  -> LBool   <$> gen arbitrary

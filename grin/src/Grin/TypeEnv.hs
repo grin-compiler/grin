@@ -114,6 +114,9 @@ typeOfLit = T_SimpleType . typeOfLitST
 typeOfLitST :: Lit -> SimpleType
 typeOfLitST lit = case lit of
   LInt64{}  -> T_Int64
+  LInt32{}  -> T_Int32
+  LInt16{}  -> T_Int16
+  LInt8{}   -> T_Int8
   LWord64{} -> T_Word64
   LFloat{}  -> T_Float
   LDouble{} -> T_Double

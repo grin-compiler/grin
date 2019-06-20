@@ -524,6 +524,9 @@ instance ToTypeSet Val where typeSet = litOrConstTagNodeToTypeSet
 typeOfLiteral :: Lit -> SimpleType
 typeOfLiteral = \case
   LInt64  _ -> T_Int64
+  LInt32  _ -> T_Int32
+  LInt16  _ -> T_Int16
+  LInt8   _ -> T_Int8
   LWord64 _ -> T_Word64
   LFloat  _ -> T_Float
   LDouble _ -> T_Double

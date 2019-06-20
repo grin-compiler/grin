@@ -149,6 +149,9 @@ calcSimpleTypesAlg = \case
   (_ CCTC.:< SReturnF v) ->
     case v of
       (Lit (LInt64  _)) -> pure $ IInfo T_Int64
+      (Lit (LInt32  _)) -> pure $ IInfo T_Int32
+      (Lit (LInt16  _)) -> pure $ IInfo T_Int16
+      (Lit (LInt8   _)) -> pure $ IInfo T_Int8
       (Lit (LWord64 _)) -> pure $ IInfo T_Word64
       (Lit (LFloat  _)) -> pure $ IInfo T_Float
       (Lit (LDouble _)) -> pure $ IInfo T_Double
