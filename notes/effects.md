@@ -52,7 +52,7 @@ x <- <lhs>
 f x =
   <body>
 ```
-- flow the result of <body> into `f`'s result register
+- flow the result of `<body>` into `f`'s result register
 - return nothing
 
 ### Case expression
@@ -63,9 +63,8 @@ case x of
   ...
   <alt n> -> <rhs n>
 ```
-- forall i in [1..n]. flow the result of `<rhs i>` into the case expression
-- result register
-- return result register of the case expression
+- forall i in [1..n]. flow the result of `<rhs i>` into the case expression's result register
+- return the result register of the case expression
 
 ### External application
 
@@ -82,7 +81,7 @@ p x -- p is an external function
 f x
 ```
 - create a new register `r`
-- flow f's result into `r`
+- flow `f`'s result into `r`
 - return `r`
 
 Some examples
