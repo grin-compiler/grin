@@ -39,6 +39,12 @@ doNothing = pure ()
 emptyReg :: CG IR.Reg
 emptyReg = newReg
 
+-- cannot return Z anywhere, any computation can contain side effects
+returnNewReg :: CG Result
+returnNewReg = do
+  r <- newReg
+  pure $ R r
+
 -- Tests whether the given register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
 isLiveThen r is = IR.If { condition = IR.Any isLivenessInfo, srcReg = r, instructions = is }
@@ -121,15 +127,16 @@ nodePatternDataFlow argReg nodeReg irTag idx = do
 
   emit $ copyStructureWithPtrInfo tmp argReg
 
--- Only structural information should flow forwards,
+-- Only structural and effect information should flow forwards,
 -- and only liveness information should flow backwards.
 {- Data flow info propagation for variable patterns
    v <- pure ...
 -}
 varPatternDataFlow :: IR.Reg -> IR.Reg -> CG ()
 varPatternDataFlow varReg lhsReg = do
-  emit $ copyStructureWithPtrInfo      lhsReg varReg
-  emit $ copyStructureWithLivenessInfo varReg lhsReg
+  emit $ copyStructureWithPtrInfo lhsReg varReg
+  effectDataFlow                  lhsReg varReg
+  livenessDataFlow                varReg lhsReg
 
 livenessDataFlow :: IR.Reg -> IR.Reg -> CG ()
 livenessDataFlow srcReg dstReg = do
@@ -137,16 +144,11 @@ livenessDataFlow srcReg dstReg = do
   emit $ copyStructureWithLivenessInfo srcReg tmp
   emit $ IR.RestrictedMove { srcReg = tmp, dstReg = dstReg }
 
--- | Decides whether a given variable has a side-effecting computation bound to it,
--- or whether a function has any side-effecting computations inside its body.
--- It returns `False` if the effect analysis result is not present
--- (calculates liveness based on only pure information).
-hasSideEffectM :: Name -> CG Bool
-hasSideEffectM name = do
-  mETResult <- use sETResult
-  case mETResult of
-    Just res -> return (hasSideEffect res name)
-    Nothing  -> return False
+effectDataFlow :: IR.Reg -> IR.Reg -> CG ()
+effectDataFlow srcReg dstReg = do
+  tmp <- newReg
+  emit $ copyStructureWithEffectInfo srcReg tmp
+  emit $ IR.RestrictedMove { srcReg = tmp, dstReg = dstReg }
 
 -- Tests whether the given register has any side effects.
 hasSideEffectsThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
@@ -157,13 +159,6 @@ hasSideEffectsThenM r actionM = do
   is <- codeGenBlock_ actionM
   emit $ hasSideEffectsThen r is
 
--- | Generates code based on whether a given variable has any side effects bound to it.
--- Contrary to `hasSideEffectsThenM`, this function only uses information available at compile time.
-isSideEffectingThenM :: Name -> CG () -> CG ()
-isSideEffectingThenM v actionM = do
-  b <- hasSideEffectM v
-  when b actionM
-
 sideEffecting :: LivenessId
 sideEffecting = -2
 
@@ -172,11 +167,6 @@ setBasicValSideEffectingInst r = IR.Set { dstReg = r, constant = IR.CSimpleType 
 
 setBasicValSideEffecting :: IR.Reg -> CG ()
 setBasicValSideEffecting = emit . setBasicValSideEffectingInst
-
-setSideEffecting :: IR.Reg -> CG ()
-setSideEffecting r = do
-  setBasicValSideEffecting r
-  emit IR.Extend { srcReg = r, dstSelector = IR.AllFields, dstReg = r }
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
@@ -231,9 +221,9 @@ codeGenVal = \case
   val -> error $ "unsupported value " ++ show val
 
 
-codeGen :: Maybe ETResult -> Program -> (AbstractProgram, LVAMapping)
-codeGen mETResult prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) $ emptyCGState { _sETResult = mETResult }
-codeGen _ _ = error "Program expected"
+codeGen :: Program -> (AbstractProgram, LVAMapping)
+codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
+codeGen _ = error "Program expected"
 
 mkAbstractProgramM :: CG (AbstractProgram, LVAMapping)
 mkAbstractProgramM = do
@@ -259,51 +249,51 @@ codeGenM e = (cata folder >=> const setMainLive) e
 
     DefF f args body -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs f $ length args
-      f `isSideEffectingThenM` setSideEffecting funResultReg
       zipWithM_ addReg args funArgRegs
       body >>= \case
         Z   -> doNothing
         R r -> varPatternDataFlow funResultReg r
-              --  do emit IR.Move { srcReg = funResultReg, dstReg = r }
-                  -- emit $ copyStructureWithPtrInfo r funResultReg
-      -- NOTE: A function might have side-effects,
-      -- so we have to generate code for it even if its result register is dead.
-      -- emit $ funResultReg `isLiveThen` bodyInstructions
       pure Z
 
     EBindF leftExp lpat rightExp -> do
-      leftExp >>= \case
-        Z -> case lpat of
-          Unit  -> pure ()
-          Var v -> newReg >>= addReg v -- this is only for consistency, just so that all variables have some sort of liveness paired to them
-          _ -> error $ "pattern mismatch at LVA bind codegen, expected Unit got " ++ show lpat
-        R r -> case lpat of
-          Unit  -> setBasicValLive r
-          Lit{} -> setBasicValLive r
-          Var v -> do
-            varReg <- newReg
-            addReg v varReg
-            v `isSideEffectingThenM` setSideEffecting varReg
-            v `isSideEffectingThenM` setSideEffecting r
-            varPatternDataFlow varReg r
-          ConstTagNode tag args -> do
-            irTag <- getTag tag
-            setTagLive irTag r
-            bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) ->
-              case arg of
-                Var name -> do
-                  argReg <- newReg
-                  addReg name argReg
-                  nodePatternDataFlow argReg r irTag idx
-                Lit {} -> emit IR.Set { dstReg = r, constant = IR.CNodeItem irTag idx live }
-                _ -> error $ "illegal node pattern component " ++ show arg
-            emit IR.If
-              { condition     = IR.NodeTypeExists irTag
-              , srcReg        = r
-              , instructions  = bindInstructions
-              }
-          _ -> error $ "unsupported lpat " ++ show lpat
-      rightExp
+      lhs <- leftExp
+      let R lhsReg = lhs
+
+      case lpat of
+      {- NOTE: By convention, all bindings should have a variable pattern
+          or a simple left-hand side of form `pure <var>`. This guarantees
+          that all relevant computations will have a name. Also, it means
+          the information has been already propagated to the variable.
+      -}
+        Unit  -> setBasicValLive lhsReg
+        Lit{} -> setBasicValLive lhsReg
+        Var v -> do
+          varReg <- newReg
+          addReg v varReg
+          varPatternDataFlow varReg lhsReg
+        ConstTagNode tag args -> do
+          irTag <- getTag tag
+          setTagLive irTag lhsReg
+          bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) ->
+            case arg of
+              Var name -> do
+                argReg <- newReg
+                addReg name argReg
+                nodePatternDataFlow argReg lhsReg irTag idx
+              Lit {} -> emit IR.Set { dstReg = lhsReg, constant = IR.CNodeItem irTag idx live }
+              _ -> error $ "illegal node pattern component " ++ show arg
+          emit IR.If
+            { condition     = IR.NodeTypeExists irTag
+            , srcReg        = lhsReg
+            , instructions  = bindInstructions
+            }
+        _ -> error $ "unsupported lpat " ++ show lpat
+
+      rhs <- rightExp
+      let R rhsReg = rhs
+      effectDataFlow lhsReg rhsReg
+
+      pure $ R rhsReg
 
     ECaseF val alts_ -> do
       valReg <- codeGenVal val
@@ -346,8 +336,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
               -- to the alt result register. But we also have to propagate
               -- structural and pointer information from the alt result register
               -- into the case result register.
-              livenessDataFlow caseResultReg altResultReg -- emit IR.RestrictedMove {srcReg = caseResultReg, dstReg = altResultReg}
-              emit $ copyStructureWithPtrInfo altResultReg caseResultReg
+              varPatternDataFlow caseResultReg altResultReg
 
           restoreScrutReg origScrutReg scrutName = do
             -- propagating info back to original scrutinee register
@@ -415,11 +404,25 @@ codeGenM e = (cata folder >=> const setMainLive) e
             altInstructions <- codeGenAltNotIn tags $ \altScrutReg -> do
               caseResultReg `isLiveThenM`         (setBasicValLive altScrutReg >> setAllTagsLive altScrutReg)
               caseResultReg `hasSideEffectsThenM` (setBasicValLive altScrutReg >> setAllTagsLive altScrutReg)
-            emit IR.If
-              { condition    = IR.AnyNotIn tags
-              , srcReg       = valReg
-              , instructions = altInstructions
-              }
+
+            let canBeLiteral = null tags
+            {- NOTE: Since, we are not tracking simple types (literals),
+               the "AnyNotIn" condition will always be false for simple typed
+               values. Hence, we need to check manually whether a scrutinee
+               can be a simple typed value or not. If we never pattern match
+               on a node tag, the scrutinee can be a simple typed value.
+
+               Alternatively, we could track simple types, even with only
+               some dummy values, but that would be unnecessary overhead.
+            -}
+            if canBeLiteral then
+              mapM_ emit altInstructions
+            else
+              emit IR.If
+                { condition    = IR.AnyNotIn tags
+                , srcReg       = valReg
+                , instructions = altInstructions
+                }
 
           _ -> error $ "LVA does not support the following case pattern: " ++ show cpat
       pure $ R caseResultReg
@@ -434,12 +437,13 @@ codeGenM e = (cata folder >=> const setMainLive) e
       case mExt of
         Nothing -> do -- regular function
           (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+          -- no effect data-flow between formal and actual arguments
           zipWithM_ livenessDataFlow funArgRegs argRegs
           zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) argRegs funArgRegs
 
-          emit $ copyStructureWithPtrInfo funResultReg appReg
-          livenessDataFlow appReg funResultReg
-        Just ext | eEffectful ext -> mapM_ setBasicValLive argRegs
+          varPatternDataFlow appReg funResultReg
+        Just ext | eEffectful ext -> do mapM_ setBasicValLive argRegs
+                                        setBasicValSideEffecting appReg
                  | otherwise      -> do allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive argRegs
                                         emit $ appReg `isLiveThen` allArgsLive
 
@@ -512,7 +516,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
       -- setting pointer liveness
       emit $ valReg `isLiveThen` [setBasicValLiveInst addressReg]
 
-      pure Z
+      returnNewReg
 
     SBlockF exp -> exp
 

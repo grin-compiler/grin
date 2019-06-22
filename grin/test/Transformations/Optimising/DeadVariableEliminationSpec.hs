@@ -271,8 +271,12 @@ spec = do
             grinMain =
               x <- pure (CInt 5)
               y <- case x of
-                (CInt n) -> case n of
-                              #default -> _prim_int_print 5
+                (CInt n) ->
+                  z <- case n of
+                    #default ->
+                      _prim_int_print 5
+                      pure ()
+                  pure z
               pure 0
           |]
 

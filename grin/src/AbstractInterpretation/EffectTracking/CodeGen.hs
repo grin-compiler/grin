@@ -24,7 +24,6 @@ import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), Abstract
 import AbstractInterpretation.EffectTracking.CodeGenBase
 
 -- cannot return Z anywhere, any computation can contain side effects
-
 returnNewReg :: CG Result
 returnNewReg = do
   r <- newReg

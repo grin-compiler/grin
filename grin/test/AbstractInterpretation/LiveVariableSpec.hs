@@ -25,14 +25,7 @@ runTests = hspec spec
 
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
-  | (lvaProgram, lvaMapping) <- codeGen Nothing prog
-  , computer <- _airComp . evalAbstractProgram $ lvaProgram
-  = toLVAResult lvaMapping computer
-
-calcLivenessWithEffects :: Exp -> LVAResult
-calcLivenessWithEffects prog
-  | etResult <- calcEffects prog
-  , (lvaProgram, lvaMapping) <- codeGen (Just etResult) prog
+  | (lvaProgram, lvaMapping) <- codeGen prog
   , computer <- _airComp . evalAbstractProgram $ lvaProgram
   = toLVAResult lvaMapping computer
 
@@ -919,7 +912,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("grinMain", hasEffect)
           ]
 
-        calculated = (calcLivenessWithEffects exp)
+        calculated = calcLiveness exp
     calculated `sameAs` sumOptExpected
 
   it "undefined" $ do
@@ -1022,7 +1015,7 @@ spec = describe "Live Variable Analysis" $ do
           [ ("grinMain", hasEffect)
           ]
 
-        calculated = (calcLivenessWithEffects exp)
+        calculated = calcLiveness exp
     calculated `sameAs` expected
 
   it "case_node_pat_side_effect" $ do
@@ -1063,7 +1056,7 @@ spec = describe "Live Variable Analysis" $ do
           [ ("grinMain", hasEffect)
           ]
 
-        calculated = (calcLivenessWithEffects exp)
+        calculated = calcLiveness exp
     calculated `sameAs` expected
 
   it "case_default_alt_side_effect" $ do
@@ -1071,8 +1064,7 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             n <- pure (COne 1)
             y <- case n of
-              (CTwo c2) -> _prim_string_print #"asd"
-              (CFoo c3) -> pure ()
+              (CFoo c2) -> pure ()
               #default  -> _prim_int_print 0
             pure ()
         |]
@@ -1087,7 +1079,6 @@ spec = describe "Live Variable Analysis" $ do
           [ ("n",  nodeSet' [ (cOne, [live, dead]) ])
           , ("y",  deadVal)
           , ("c2", deadVal)
-          , ("c3", deadVal)
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap []
 
@@ -1095,14 +1086,13 @@ spec = describe "Live Variable Analysis" $ do
           [ ("n",  noEffect)
           , ("y",  hasEffect)
           , ("c2", noEffect)
-          , ("c3", noEffect)
           ]
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
           ]
 
-        calculated = (calcLivenessWithEffects exp)
+        calculated = calcLiveness exp
     calculated `sameAs` expected
 
   it "case_dead_tags_side_effect" $ do
@@ -1157,7 +1147,7 @@ spec = describe "Live Variable Analysis" $ do
           [ ("grinMain", hasEffect)
           ]
 
-        calculated = (calcLivenessWithEffects exp)
+        calculated = calcLiveness exp
     calculated `sameAs` expected
 
   it "case_fun_side_effect" $ do
@@ -1213,7 +1203,49 @@ spec = describe "Live Variable Analysis" $ do
           , ("grinMain", hasEffect)
           ]
 
-        calculated = (calcLivenessWithEffects exp)
+        calculated = calcLiveness exp
+    calculated `sameAs` expected
+
+  it "case_nested_side_effect" $ do
+    let exp = withPrimPrelude [prog|
+                grinMain =
+                  x <- pure (CInt 5)
+                  y <- case x of
+                    (CInt n) ->
+                      z <- case n of
+                        #default ->
+                          _prim_int_print 5
+                          pure ()
+                      pure z
+                  pure 0
+              |]
+    let expected = emptyLVAResult
+          { _memory      = []
+          , _registerLv  = expectedRegisterLiveness
+          , _functionLv  = expectedFunctionLiveness
+          , _registerEff = expectedRegisterEffects
+          , _functionEff = expectedFunctionEffects
+          }
+        expectedRegisterLiveness =
+          [ ("x", nodeSet [ (cInt, [live]) ])
+          , ("y", deadVal)
+          , ("z", deadVal)
+          , ("n", liveVal)
+          ]
+        expectedFunctionLiveness = mkFunctionLivenessMap []
+
+        expectedRegisterEffects =
+          [ ("x", noEffect)
+          , ("y", hasEffect)
+          , ("z", hasEffect)
+          , ("n", noEffect)
+          ]
+
+        expectedFunctionEffects =
+          [ ("grinMain", hasEffect)
+          ]
+
+        calculated = calcLiveness exp
     calculated `sameAs` expected
 
 live :: Bool

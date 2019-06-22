@@ -536,7 +536,7 @@ mkGraph = toProducerGraph
 
 calcLiveness :: Exp -> LVAResult
 calcLiveness prog
-  | (lvaProgram, lvaMapping) <- LiveVariable.codeGen Nothing prog
+  | (lvaProgram, lvaMapping) <- LiveVariable.codeGen prog
   , computer <- _airComp . evalAbstractProgram $ lvaProgram
   = toLVAResult lvaMapping computer
 

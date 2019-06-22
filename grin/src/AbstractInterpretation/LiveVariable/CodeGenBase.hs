@@ -36,7 +36,6 @@ data CGState
   , _sTagMap          :: Bimap.Bimap Tag IR.Tag
 
   , _sExternalMap     :: Map.Map Name External
-  , _sETResult        :: Maybe ETResult
   }
   deriving (Show)
 
@@ -55,7 +54,6 @@ emptyCGState = CGState
   , _sTagMap          = Bimap.empty
 
   , _sExternalMap     = mempty
-  , _sETResult        = Nothing
   }
 
 type CG = State CGState
@@ -209,5 +207,12 @@ copyStructureWithLivenessInfo :: IR.Reg -> IR.Reg -> IR.Instruction
 copyStructureWithLivenessInfo srcReg dstReg = IR.ConditionalMove
   { srcReg    = srcReg
   , predicate = isLivenessInfo
+  , dstReg    = dstReg
+  }
+
+copyStructureWithEffectInfo :: IR.Reg -> IR.Reg -> IR.Instruction
+copyStructureWithEffectInfo srcReg dstReg = IR.ConditionalMove
+  { srcReg    = srcReg
+  , predicate = isEffectInfo
   , dstReg    = dstReg
   }
