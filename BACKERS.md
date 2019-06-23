@@ -17,6 +17,7 @@
 - Peter Kadlot
 - Michael Koloberdin
 - William Harvey
+- Steven Kane
 <!--50 end-->
 
 <h2 align="center">Backers via Patreon</h2>
