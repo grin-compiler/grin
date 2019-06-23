@@ -699,6 +699,8 @@ saveLLVM path = do
 saveExecutable :: Bool -> Path -> PipelineM ()
 saveExecutable debugSymbols path = do
   pipelineLog "* generate llvm x64 optcode *"
+  pipelineStep HPTPass
+  pipelineStep SaveTypeEnv
   let grinOptCodePath = Rel "grin-opt-code"
   pipelineStep $ SaveLLVM grinOptCodePath
   grinOptCodeFile <- relPath grinOptCodePath

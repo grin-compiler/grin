@@ -70,12 +70,15 @@ evalPrimOp name params args = case name of
   "_prim_int_mul"   -> int_bin_op int (*)
   "_prim_int_div"   -> int_bin_op int div
   "_prim_int_ashr"  -> int_bin_op int (\v h -> shift v ((-1) * fromIntegral h))
+  "_prim_int_lshr"  -> int_bin_op int (\v h -> shift v ((-1) * fromIntegral h))
+  "_prim_int_shl"   -> int_bin_op int (\v h -> shift v (fromIntegral h))
   "_prim_int_eq"    -> int_bin_op bool (==)
   "_prim_int_ne"    -> int_bin_op bool (/=)
   "_prim_int_gt"    -> int_bin_op bool (>)
   "_prim_int_ge"    -> int_bin_op bool (>=)
   "_prim_int_lt"    -> int_bin_op bool (<)
   "_prim_int_le"    -> int_bin_op bool (<=)
+  "_prim_int_and"   -> int_bin_op int (.&.)
   -- Word
   "_prim_word_add"  -> word_bin_op word (+)
   "_prim_word_sub"  -> word_bin_op word (-)

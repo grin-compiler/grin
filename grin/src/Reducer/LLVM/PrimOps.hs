@@ -38,12 +38,15 @@ codeGenPrimOp name [opA, opB] = pure $ case name of
   "_prim_int_mul"   -> I cgInt64 $ Mul  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_div"   -> I cgInt64 $ SDiv {exact=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_ashr"  -> I cgInt64 $ AShr {exact=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_lshr"  -> I cgInt64 $ LShr {exact=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_shl"   -> I cgInt64 $ Shl  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_eq"    -> I cgBool  $ ICmp {iPredicate=I.EQ,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_ne"    -> I cgBool  $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_gt"    -> I cgBool  $ ICmp {iPredicate=I.SGT, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_ge"    -> I cgBool  $ ICmp {iPredicate=I.SGE, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_lt"    -> I cgBool  $ ICmp {iPredicate=I.SLT, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_le"    -> I cgBool  $ ICmp {iPredicate=I.SLE, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_and"   -> I cgInt64 $ And  {operand0=opA, operand1=opB, metadata=[]}
 
   -- Word
   "_prim_word_add"  -> I cgWord64 $ Add  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}

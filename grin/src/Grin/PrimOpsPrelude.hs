@@ -53,12 +53,15 @@ primPrelude = [progConst|
     _prim_int_mul   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_div   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_ashr  :: T_Int64 -> T_Int64 -> T_Int64
+    _prim_int_lshr  :: T_Int64 -> T_Int64 -> T_Int64
+    _prim_int_shl   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_eq    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_ne    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_gt    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_ge    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_lt    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_le    :: T_Int64 -> T_Int64 -> T_Bool
+    _prim_int_and   :: T_Int64 -> T_Int64 -> T_Int64
 
     -- Word
     _prim_word_add  :: T_Word64 -> T_Word64 -> T_Word64
