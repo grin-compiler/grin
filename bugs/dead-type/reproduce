@@ -1,0 +1,17 @@
+Steps to reproduce:
+stack exec grin -- --load-binary bugs/dead-type/080.SimpleDeadVariableElimination.binary -t --te
+
+Insights:
+...
+  idr_Data.Bits.bitAt2_val <- idr_Data.Bits.nextPow2 $ idr_Data.Bits.bitAt2_10290
+...
+                  idr_Data.Bits.bitAt5_10320.33.125.arity.1 <- pure 1
+                  (CGrInt idris_int_sub0_1.82) <- pure idr_Data.Bits.bitAt2_val
+...
+              idr_Data.Bits.bitAt5_10412.33.137.arity.1 <- pure 1
+              (CGrInt idris_int_sub0_1.85) <- pure idr_Data.Bits.bitAt2_val
+...
+
+In the type env:
+    idris_int_sub0_1.82 -> T_Int64
+    idris_int_sub0_1.85 -> T_Dead
