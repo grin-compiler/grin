@@ -362,3 +362,10 @@ int64_t _prim_char_int(char p1) {
 #endif
     return (int64_t)p1;
 }
+
+uint64_t _prim_int_word(int64_t p1) {
+#ifdef DEBUG
+    printf("_prim_int_word(%d)\n", p1);
+#endif
+    return (uint64_t)p1;
+}

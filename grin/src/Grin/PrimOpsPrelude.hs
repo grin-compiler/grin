@@ -44,6 +44,7 @@ primPrelude = [progConst|
     _prim_char_int      :: T_Char   -> T_Int64
     _prim_double_int    :: T_Double -> T_Int64
     _prim_string_double :: T_String -> T_Double
+    _prim_int_word      :: T_Int64  -> T_Word64
 
   primop pure
     -- Int
@@ -99,7 +100,6 @@ primPrelude = [progConst|
     _prim_double_lt  :: T_Double -> T_Double -> T_Bool
     _prim_double_le  :: T_Double -> T_Double -> T_Bool
     _prim_double_log :: T_Double -> T_Double
-
 
     -- Bool
     _prim_bool_eq   :: T_Bool -> T_Bool -> T_Bool

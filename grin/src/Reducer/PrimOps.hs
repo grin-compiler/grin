@@ -53,6 +53,7 @@ evalPrimOp name params args = case name of
   "_prim_double_string" -> double_str
   "_prim_char_int"     -> char_int
   "_prim_int_double"   -> int_double
+  "_prim_int_word"     -> int_word
   -- String
   "_prim_string_reverse" -> string_un_op string Text.reverse
   "_prim_string_head"    -> string_un_op int (fromIntegral . ord . Text.head)
@@ -203,6 +204,10 @@ evalPrimOp name params args = case name of
     [RT_Lit (LInt64 a)] -> double $ fromIntegral a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
+  int_word = case args of
+    [RT_Lit (LInt64 a)] -> word $ fromIntegral a
+    _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
   char_int = case args of
     [RT_Lit (LChar a)] -> int . fromIntegral . ord $ a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
@@ -220,7 +225,6 @@ evalPrimOp name params args = case name of
         [C.exp| void { snprintf($(char* buf), 64, "%.16g", $(double cf)) } |]
         string . fromString =<< peekCString buf
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
-
 
   file_eof = case args of
     [RT_Lit (LInt64 0)] -> (fmap (\case { False -> 0; _ -> 1}) (liftIO (hIsEOF stdin))) >>= int

@@ -50,3 +50,4 @@ double _prim_double_floor(double p1);
 double _prim_double_ceil(double p1);
 double _prim_double_negate(double p1);
 double _prim_double_atan2(double p1, double p2);
+uint64_t _prim_int_word(int64_t p1);
