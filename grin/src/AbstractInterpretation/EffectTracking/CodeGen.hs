@@ -23,12 +23,6 @@ import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
 import AbstractInterpretation.EffectTracking.CodeGenBase
 
--- cannot return Z anywhere, any computation can contain side effects
-returnNewReg :: CG Result
-returnNewReg = do
-  r <- newReg
-  pure $ R r
-
 codeGen :: Program -> (AbstractProgram, ETMapping)
 codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
 codeGen _ = error "Program expected"
@@ -113,12 +107,12 @@ codeGenM = cata folder where
         emit IR.Move { srcReg = funResultReg, dstReg = appReg }
         pure $ R appReg
 
-    SReturnF{} -> returnNewReg
+    SReturnF{} -> R <$> newReg
 
-    SStoreF{} -> returnNewReg
+    SStoreF{} -> R <$> newReg
 
-    SFetchIF{}-> returnNewReg
+    SFetchIF{}-> R <$> newReg
 
-    SUpdateF{} -> returnNewReg
+    SUpdateF{} -> R <$> newReg
 
     SBlockF exp -> exp
