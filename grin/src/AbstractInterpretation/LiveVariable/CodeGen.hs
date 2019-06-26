@@ -39,12 +39,6 @@ doNothing = pure ()
 emptyReg :: CG IR.Reg
 emptyReg = newReg
 
--- cannot return Z anywhere, any computation can contain side effects
-returnNewReg :: CG Result
-returnNewReg = do
-  r <- newReg
-  pure $ R r
-
 -- Tests whether the given register is live.
 isLiveThen :: IR.Reg -> [IR.Instruction] -> IR.Instruction
 isLiveThen r is = IR.If { condition = IR.Any isLivenessInfo, srcReg = r, instructions = is }
@@ -516,7 +510,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
       -- setting pointer liveness
       emit $ valReg `isLiveThen` [setBasicValLiveInst addressReg]
 
-      returnNewReg
+      R <$> newReg
 
     SBlockF exp -> exp
 
