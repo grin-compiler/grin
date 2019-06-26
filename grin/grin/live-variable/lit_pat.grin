@@ -1,6 +1,0 @@
-grinMain =
-  y <- pure 0
-  5 <- f y
-  pure 0
-
-f x = pure x
