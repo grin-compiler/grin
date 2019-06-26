@@ -25,9 +25,9 @@ import Lens.Micro.Platform
 
 type ExternalID = Int32
 
-data External' = E { extID  :: ExternalID
-                   , extExt :: External
-                   }
+data ExternalWithID = E { extID  :: ExternalID
+                        , extExt :: External
+                        }
   deriving (Eq, Ord, Show)
 
 data ETMapping
@@ -50,7 +50,7 @@ data CGState
 
   -- internal
 
-  , _sExternalMap     :: Map Name External'
+  , _sExternalMap     :: Map Name ExternalWithID
   }
   deriving (Show)
 

@@ -24,6 +24,7 @@ import qualified AbstractInterpretation.IR as IR
 import qualified AbstractInterpretation.Reduce as R
 import AbstractInterpretation.EffectTracking.CodeGenBase (ETMapping(..))
 
+
 newtype Effects = Effects { _effectSet :: Set Name }
   deriving (Eq, Ord, Show, Semigroup, Monoid)
 

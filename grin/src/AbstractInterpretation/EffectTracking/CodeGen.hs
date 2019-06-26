@@ -93,10 +93,8 @@ codeGenM = cata folder where
       Just ext  -> do
         appReg <- newReg
         extID  <- fromJust <$> getExternalID name
-        if eEffectful ext then
+        when (eEffectful ext) $
           emit IR.Set  { dstReg = appReg, constant = IR.CSimpleType extID }
-        else
-          pure ()
         pure $ R appReg
 
         -----------

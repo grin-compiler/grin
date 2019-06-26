@@ -205,7 +205,6 @@ evalInstruction = \case
       let mergedFields = mconcat . (map Data.Foldable.fold) . Map.elems $ tagMap
       selectReg dstReg.simpleType %= (mappend mergedFields)
 
-    -- TODO: review this
     EveryNthField n -> do
       tagMap <- use $ selectTagMap srcReg
       let mergedNthFields = mconcat . mapMaybe (V.!? n) . Map.elems $ tagMap
@@ -217,7 +216,6 @@ evalInstruction = \case
     case dstSelector of
       NodeItem tag itemIndex -> selectTagMap dstReg.at tag.non mempty.ix itemIndex %= (mappend value)
       AllFields -> selectTagMap dstReg %= (Map.map (V.map (mappend value)))
-      -- TODO: review this
       EveryNthField n -> selectTagMap dstReg %= (Map.map (over (ix n) (mappend value)))
       ConditionAsSelector cond -> case cond of
         _ -> pure () -- TODO

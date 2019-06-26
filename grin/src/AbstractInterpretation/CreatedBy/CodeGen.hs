@@ -160,17 +160,15 @@ codeGenExternal :: External -> [Val] -> CG Result
 codeGenExternal External{..} args = do
   valRegs <- mapM codeGenVal args
   argMap <- concat <$> zipWithM projectType valRegs eArgsType
-  r <- constructType argMap eRetType
-  pure $ R r
+  R <$> constructType argMap eRetType
 
 codeGen :: Exp -> (AbstractProgram, CByMapping)
 codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
-    -- ProgramF exts defs -> (sequence_ . fmap snd $ defs) >> pure Z
     ProgramF exts defs -> do
       mapM_ addExternal exts
-      sequence_ . fmap snd $ defs
+      mapM_ snd defs
       pure Z
 
     DefF name args (_,body) -> do
@@ -360,84 +358,3 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       pure Z
 
     SBlockF (_,exp) -> exp
-
-codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> [Instruction]
-codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
-  let emit :: Instruction -> Writer [Instruction] ()
-      emit a = tell [a]
-      op argTypes resultTy = do
-        emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
-        zipWithM_ (\argReg argTy -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
-
-      unit  = -1
-      int   = litToSimpleType $ LInt64 0
-      word  = litToSimpleType $ LWord64 0
-      float = litToSimpleType $ LFloat 0
-      bool  = litToSimpleType $ LBool False
-      string = litToSimpleType $ LString ""
-      char  = litToSimpleType $ LChar ' '
-
-
-  case name of
-    "_prim_int_print" -> op [int] unit
-    "_prim_string_print" -> op [string] unit
-    "_prim_read_string" -> op [] string
-    "_prim_usleep" -> op [int] unit
-    "_prim_error" -> op [string] unit
-
-    -- String
-    "_prim_string_concat"  -> op [string, string] string
-    "_prim_string_reverse" -> op [string] string
-    "_prim_string_lt"      -> op [string, string] bool
-    "_prim_string_eq"      -> op [string, string] int
-    "_prim_string_head"    -> op [string] int
-    "_prim_string_tail"    -> op [string] string
-    "_prim_string_cons"    -> op [int, string] string
-    "_prim_string_len"     -> op [string] int
-
-    -- Conversion
-    "_prim_int_str"      -> op [int] string
-    "_prim_str_int"      -> op [string] int
-    "_prim_int_float"    -> op [int] float
-    "_prim_float_string" -> op [float] string
-    "_prim_char_int"     -> op [char] int
-    -- Int
-    "_prim_int_shr"   -> op [int] int
-    "_prim_int_add"   -> op [int, int] int
-    "_prim_int_sub"   -> op [int, int] int
-    "_prim_int_mul"   -> op [int, int] int
-    "_prim_int_div"   -> op [int, int] int
-    "_prim_int_eq"    -> op [int, int] bool
-    "_prim_int_ne"    -> op [int, int] bool
-    "_prim_int_gt"    -> op [int, int] bool
-    "_prim_int_ge"    -> op [int, int] bool
-    "_prim_int_lt"    -> op [int, int] bool
-    "_prim_int_le"    -> op [int, int] bool
-    -- Word
-    "_prim_word_add"  -> op [word, word] word
-    "_prim_word_sub"  -> op [word, word] word
-    "_prim_word_mul"  -> op [word, word] word
-    "_prim_word_div"  -> op [word, word] word
-    "_prim_word_eq"   -> op [word, word] bool
-    "_prim_word_ne"   -> op [word, word] bool
-    "_prim_word_gt"   -> op [word, word] bool
-    "_prim_word_ge"   -> op [word, word] bool
-    "_prim_word_lt"   -> op [word, word] bool
-    "_prim_word_le"   -> op [word, word] bool
-    -- Float
-    "_prim_float_add" -> op [float, float] float
-    "_prim_float_sub" -> op [float, float] float
-    "_prim_float_mul" -> op [float, float] float
-    "_prim_float_div" -> op [float, float] float
-    "_prim_float_eq"  -> op [float, float] bool
-    "_prim_float_ne"  -> op [float, float] bool
-    "_prim_float_gt"  -> op [float, float] bool
-    "_prim_float_ge"  -> op [float, float] bool
-    "_prim_float_lt"  -> op [float, float] bool
-    "_prim_float_le"  -> op [float, float] bool
-    -- Bool
-    "_prim_bool_eq"   -> op [bool, bool] bool
-    "_prim_bool_ne"   -> op [bool, bool] bool
-    -- FFI - TODO: Handle FFI appropiatey
-    "_prim_ffi_file_eof" -> op [int] int
-    missing           -> error $ show missing
