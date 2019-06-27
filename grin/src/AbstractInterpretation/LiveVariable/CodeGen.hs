@@ -1,5 +1,8 @@
 {-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings, RecordWildCards #-}
-module AbstractInterpretation.LiveVariable.CodeGen where
+module AbstractInterpretation.LiveVariable.CodeGen
+  ( module AbstractInterpretation.LiveVariable.CodeGen
+  , live, sideEffecting
+  ) where
 
 import Control.Monad.State
 
@@ -47,9 +50,6 @@ isLiveThenM :: IR.Reg -> CG () -> CG ()
 isLiveThenM r actionM = do
   is <- codeGenBlock_ actionM
   emit $ isLiveThen r is
-
-live :: LivenessId
-live = -1
 
 setBasicValLiveInst :: IR.Reg -> IR.Instruction
 setBasicValLiveInst r = IR.Set { dstReg = r, constant = IR.CSimpleType live }
@@ -152,9 +152,6 @@ hasSideEffectsThenM :: IR.Reg -> CG () -> CG ()
 hasSideEffectsThenM r actionM = do
   is <- codeGenBlock_ actionM
   emit $ hasSideEffectsThen r is
-
-sideEffecting :: LivenessId
-sideEffecting = -2
 
 setBasicValSideEffectingInst :: IR.Reg -> IR.Instruction
 setBasicValSideEffectingInst r = IR.Set { dstReg = r, constant = IR.CSimpleType sideEffecting }

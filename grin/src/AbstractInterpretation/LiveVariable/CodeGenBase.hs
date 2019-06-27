@@ -184,11 +184,22 @@ codeGenType cgSimpleTy cgNodeTy = \case
 isPointer :: IR.Predicate
 isPointer = IR.ValueIn (IR.Range 0 (maxBound :: Int32))
 
-isLivenessInfo :: IR.Predicate
-isLivenessInfo = IR.ValueIn (IR.Range (-1) 0)
+ptrLowerBound :: Int32
+ptrLowerBound = 0
 
+live :: Int32
+live = -1
+
+sideEffecting :: Int32
+sideEffecting = -2
+
+-- NOTE: Exclusive upper bound
+isLivenessInfo :: IR.Predicate
+isLivenessInfo = IR.ValueIn (IR.Range live ptrLowerBound)
+
+-- NOTE: Exclusive upper bound
 isEffectInfo :: IR.Predicate
-isEffectInfo = IR.ValueIn (IR.Range (-2) (-1))
+isEffectInfo = IR.ValueIn (IR.Range sideEffecting live)
 
 -- For simple types, copies only pointer information
 -- For nodes, copies the structure and the pointer information in the fields

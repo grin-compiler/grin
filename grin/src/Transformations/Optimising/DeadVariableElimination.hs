@@ -29,7 +29,7 @@ import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnv
 import Transformations.Util
-import AbstractInterpretation.LiveVariable.Result   as LVA
+import AbstractInterpretation.LiveVariable.Result as LVA
 
 -- TODO: clean up `analyzeCases` and the other remnants of the EffectMap
 
