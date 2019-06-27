@@ -41,10 +41,9 @@ spec = do
     it "heap" $ do
       let before = [prog|
             grinMain =
-              n0 <- store (CInt 0)
-              p0 <- pure n0
-              n1 <- fetch p0
-              p1 <- store n1
+              p0 <- store (CInt 0)
+              n0 <- fetch p0
+              p1 <- store n0
               y0 <- pure (CPtr p1)
               update p1 y0
               pure 0
