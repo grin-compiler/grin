@@ -44,4 +44,5 @@
 - Oleh Stolyar
 - Alberto Centelles
 - Tom Hunger
+- Mirzhan Irkegulov
 <!--10 end-->
