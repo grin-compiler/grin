@@ -13,6 +13,8 @@ import Control.Comonad
 import Control.Comonad.Cofree
 import Data.Functor.Foldable as Foldable
 
+import Lens.Micro.Platform
+
 import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnvDefs
@@ -35,20 +37,13 @@ import Grin.TypeEnvDefs
         function name in SApp
 -}
 
-foldNamesVal :: (Monoid m) => (Name -> m) -> Val -> m
-foldNamesVal f = \case
-  ConstTagNode tag vals -> mconcat $ map (foldNamesVal f) vals
-  VarTagNode name vals  -> mconcat $ f name : map (foldNamesVal f) vals
-  Var name              -> f name
-  _                     -> mempty
-
 foldNameUseExpF :: (Monoid m) => (Name -> m) -> ExpF a -> m
 foldNameUseExpF f = \case
-  ECaseF val _      -> foldNamesVal f val
-  SAppF name vals   -> mconcat $ map (foldNamesVal f) vals
-  SReturnF val      -> foldNamesVal f val
-  SStoreF val       -> foldNamesVal f val
-  SUpdateF name val -> mconcat [f name, foldNamesVal f val]
+  ECaseF v _        -> f v
+  SAppF fun args    -> f (_appName fun) <> foldMap f args
+  SReturnF val      -> foldNames f val
+  SStoreF v         -> f v
+  SUpdateF p v      -> f p <> f v
   SFetchIF name i   -> f name
   _                 -> mempty
 
@@ -58,15 +53,11 @@ data DefRole = FunName | FunParam | BindVar | AltVar
 
 foldNameDefExpF :: (Monoid m) => (DefRole -> Name -> m) -> ExpF a -> m
 foldNameDefExpF f = \case
-  DefF name args _  -> mconcat $ (f FunName name) : map (f FunParam) args
-  EBindF _ lpat _   -> foldNamesVal (f BindVar) lpat
-  AltF cpat _       -> foldNamesCPat (f AltVar) cpat
-  _                 -> mempty
-
-foldNamesCPat :: Monoid m => (Name -> m) -> CPat -> m
-foldNamesCPat f = \case
-  NodePat _ args  -> mconcat $ map f args
-  cpat            -> mempty
+  DefF name args _      -> mconcat $ (f FunName name) : map (f FunParam) args
+  EBindF _ WildCard _   -> mempty
+  EBindF _ bPat _       -> f BindVar (_bPatVar bPat)
+  AltF cpat _           -> foldNames (f AltVar) cpat
+  _                     -> mempty
 
 mapNamesCPat :: (Name -> Name) -> CPat -> CPat
 mapNamesCPat f = \case
@@ -75,48 +66,39 @@ mapNamesCPat f = \case
 
 mapNamesVal :: (Name -> Name) -> Val -> Val
 mapNamesVal f = \case
-  ConstTagNode tag vals -> ConstTagNode tag (map (mapNamesVal f) vals)
-  VarTagNode name vals  -> VarTagNode (f name) (map (mapNamesVal f) vals)
+  ConstTagNode tag args -> ConstTagNode tag (map f args)
+  VarTagNode name args  -> VarTagNode (f name) (map f args)
   Var name              -> Var $ f name
   val                   -> val
 
-mapValVal :: (Val -> Val) -> Val -> Val
-mapValVal f val = case f val of
-  ConstTagNode tag vals -> ConstTagNode tag (map (mapValVal f) vals)
-  VarTagNode name vals  -> VarTagNode name (map (mapValVal f) vals)
-  val                   -> val
+-- TODO: replace at use sites with
+-- mapValVal :: (Val -> Val) -> Val -> Val
+-- mapValVal f val = case f val of
+--   ConstTagNode tag vals -> ConstTagNode tag (map (mapValVal f) vals)
+--   VarTagNode name vals  -> VarTagNode name (map (mapValVal f) vals)
+--   val                   -> val
 
 mapValsExp :: (Val -> Val) -> Exp -> Exp
 mapValsExp f = \case
-  ECase val alts    -> ECase (f val) alts
-  SApp name vals    -> SApp name (map f vals)
-  SReturn val       -> SReturn $ f val
-  SStore val        -> SStore $ f val
-  SUpdate name val  -> SUpdate name $ f val
-  exp               -> exp
-
-mapValValM :: Monad m => (Val -> m Val) -> Val -> m Val
-mapValValM f val = do
-  val' <- f val
-  case val' of
-    ConstTagNode tag vals -> ConstTagNode tag <$> mapM (mapValValM f) vals
-    VarTagNode name vals  -> VarTagNode  name <$> mapM (mapValValM f) vals
-    v -> pure v
+  -- NOTE: does not recurse into alts
+  ECase scrut alts -> ECase scrut alts
+  SReturn val      -> SReturn $ f val
+  exp              -> exp
 
 mapValsExpM :: Monad m => (Val -> m Val) -> Exp -> m Exp
 mapValsExpM f = \case
-  ECase val alts   -> flip ECase alts <$> f val
-  SApp name vals   -> SApp name <$> mapM f vals
-  SReturn val      -> SReturn <$> f val
-  SStore val       -> SStore <$> f val
-  SUpdate name val -> SUpdate name <$> f val
-  exp              -> pure exp
+  SReturn val    -> SReturn <$> f val
+  exp            -> pure exp
 
 mapNameUseExp :: (Name -> Name) -> Exp -> Exp
 mapNameUseExp f = \case
-  SFetchI name i    -> SFetchI (f name) i
-  SUpdate name val  -> SUpdate (f name) $ mapNamesVal f val
-  exp               -> mapValsExp (mapNamesVal f) exp
+  SStore    v      -> SStore (f v)
+  SFetchI p i      -> SFetchI (f p) i
+  SUpdate p v      -> SUpdate (f p) (f v)
+  -- NOTE: does not recurse into alts
+  ECase scrut alts -> ECase (f scrut) alts
+  SApp fun args    -> SApp (fun & appName %~ f) (map f args)
+  exp              -> mapValsExp (mapNamesVal f) exp
 
 subst :: Ord a => Map a a -> a -> a
 subst env x = Map.findWithDefault x x env
@@ -131,15 +113,19 @@ substNamesVal env = mapNamesVal (subst env)
 
 -- val name substitution (non recursive)
 substValsVal :: Map Val Val -> Val -> Val
-substValsVal env = mapValVal (subst env)
+substValsVal env = subst env
 
 -- val substitution (non recursive)
 substVals :: Map Val Val -> Exp -> Exp
-substVals env = mapValsExp (mapValVal $ subst env)
+substVals env = mapValsExp (subst env)
 
-cpatToLPat :: CPat -> LPat
-cpatToLPat = \case
-  NodePat tag args  -> ConstTagNode tag (map Var args)
+cPatToBPat :: Maybe Name -> CPat -> BPat
+cPatToBPat Nothing _ = WildCard
+cPatToBPat (Just v) cpat = AsPat v (cpatToVal cpat)
+
+cpatToVal :: CPat -> Val
+cpatToVal = \case
+  NodePat tag args  -> ConstTagNode tag args
   LitPat  lit       -> Lit lit
   TagPat  tag       -> ValTag tag
   DefaultPat        -> Unit
@@ -190,7 +176,7 @@ histoM h = pure . extract <=< worker where
 
 skipUnit :: ExpF Exp -> Exp
 skipUnit = \case
-  EBindF (SReturn Unit) Unit rightExp -> rightExp
+  EBindF (SReturn Unit) WildCard rightExp -> rightExp
   exp -> embed exp
 
 newtype TagInfo = TagInfo { _tagArityMap :: Map.Map Tag Int }
@@ -208,11 +194,7 @@ collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
   where
     alg :: ExpF () -> State TagInfo ()
     alg = \case
-      ECaseF val _   -> goVal val
       SReturnF val   -> goVal val
-      SAppF _ vals   -> mapM_ goVal vals
-      SStoreF val    -> goVal val
-      SUpdateF _ val -> goVal val
       AltF cpat _    -> goCPat cpat
       _              -> pure ()
 
@@ -282,7 +264,7 @@ bindToUndefineds TypeEnv{..} = foldM bindToUndefined where
   bindToUndefined rhs v = do
     ty <- lookupExcept (notInTypeEnv v) v _variable
     let ty' = simplifyType ty
-    pure $ EBind (SReturn (Undefined ty')) (Var v) rhs
+    pure $ EBind (SReturn (Undefined ty')) (VarPat v) rhs
 
   notInTypeEnv v = "Variable " ++ show (PP v) ++ " was not found in the type environment."
 

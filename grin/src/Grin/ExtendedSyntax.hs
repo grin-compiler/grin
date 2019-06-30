@@ -91,17 +91,21 @@ data CPat
   deriving (Generic, Data, NFData, Eq, Show, Ord)
 
 data BPat
-  = VarPat { bPatVar :: Name }
-  | AsPat  { bPatVar :: Name
-           , bPatVal :: Val
+  = VarPat { _bPatVar :: Name }
+  | AsPat  { _bPatVar :: Name
+           , _bPatVal :: Val
            }
   | WildCard
   deriving (Generic, Data, NFData, Eq, Show, Ord)
 
+makeLenses ''BPat
+
 data AppName
-  = Fun { appName :: Name }
-  | Ext { appName :: Name }
+  = Fun { _appName :: Name }
+  | Ext { _appName :: Name }
   deriving (Generic, Data, NFData, Eq, Show, Ord)
+
+makeLenses ''AppName
 
 -- * GRIN Expression
 

@@ -138,6 +138,7 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
 
+-- TODO: introduce new bindings for variables to be replaced
 -- This will not replace the occurences of a deleted pointer
 -- in fetches and in updates. But it does not matter,
 -- since all of these fetches/updates are also dead, so they will be removed as well.

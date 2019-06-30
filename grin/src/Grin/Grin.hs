@@ -21,12 +21,8 @@ instance FoldNames Val where
   foldNames f = \case
     ConstTagNode  _tag vals -> foldMap f vals
     VarTagNode    name vals -> f name <> foldMap f vals
-    ValTag        _tag      -> mempty
-    Unit                    -> mempty
-    Undefined _             -> mempty
-    -- simple val
-    Lit lit                 -> mempty
     Var name                -> f name
+    _                       -> mempty
 
 instance FoldNames CPat where
   foldNames f = \case
