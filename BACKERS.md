@@ -45,4 +45,5 @@
 - Alberto Centelles
 - Tom Hunger
 - Mirzhan Irkegulov
+- James MacAulay
 <!--10 end-->
