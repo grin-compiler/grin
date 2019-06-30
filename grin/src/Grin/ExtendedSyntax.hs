@@ -92,9 +92,10 @@ data CPat
 
 data BPat
   = VarPat { bPatVar :: Name }
-  | AsPat  { bpatVar :: Name
+  | AsPat  { bPatVar :: Name
            , bPatVal :: Val
            }
+  | WildCard
   deriving (Generic, Data, NFData, Eq, Show, Ord)
 
 data AppName
