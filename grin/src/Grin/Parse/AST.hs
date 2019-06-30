@@ -19,7 +19,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
 
-import Grin.Grin
+import Grin.Grin hiding (appName)
 import Grin.Parse.Basic
 import Grin.Parse.TypeEnv
 
@@ -30,46 +30,55 @@ def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (
 
 expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
-  try ((\pat e b -> EBind e pat b) <$> (try (value <* op "<-") <|> pure Unit) <*> simpleExp i <*> expr i ) <|>
+  try ((\pat e b -> EBind e pat b) <$> (try (bindingPat <* op "<-") <|> pure WildCard) <*> simpleExp i <*> expr i ) <|>
   ifThenElse i <|>
   simpleExp i
 
 ifThenElse :: Pos -> Parser Exp
 ifThenElse i = do
   kw "if"
-  v <- value
+  b <- var
   kw "then"
   t <- (L.indentGuard sc GT i >>= expr)
   L.indentGuard sc EQ i
   kw "else"
   e <- (L.indentGuard sc GT i >>= expr)
-  return $ ECase v [ Alt (LitPat (LBool True))  t
+  return $ ECase b [ Alt (LitPat (LBool True))  t
                    , Alt (LitPat (LBool False)) e
                    ]
 
 simpleExp :: Pos -> Parser SimpleExp
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
-              ECase <$ kw "case" <*> value <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
-              SStore <$ kw "store" <*> satisfyM nodeOrVar value <|>
+              ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
+              SStore <$ kw "store" <*> var <|>
               SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
-              SUpdate <$ kw "update" <*> var <*> satisfyM nodeOrVar value <|>
+              SUpdate <$ kw "update" <*> var <*> var <|>
               SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
 
-              -- FIXME: remove '$' from app syntax, fix 'value' and 'simpleValue' parsers with using 'lineFold' instead
-              SApp <$> primNameOrDefName <* (optional $ op "$") <*> many simpleValue
-  where
-    nodeOrVar = \case
-      ConstTagNode{}  -> True
-      VarTagNode{}    -> True
-      Undefined{}     -> True
-      Var{}           -> True
-      _               -> False
+              -- FIXME: remove '$' from app syntax, fix 'value' parser with using 'lineFold' instead
+              SApp <$> appName <* (optional $ op "$") <*> many var
 
-primNameOrDefName :: Parser Name
-primNameOrDefName = nMap ("_"<>) <$ char '_' <*> var <|> var
+funName :: Parser Name
+funName = var
+
+extName :: Parser Name
+extName = nMap ("_" <>) <$ char '_' <*> var
+
+-- TODO: Revisit function application name parsing.
+--       Could use some sort of state for parsing (external list?).
+--       Naming convention for externals: always begins with underscore.
+appName :: Parser AppName
+appName = Ext <$> extName <|>
+          Fun <$> funName
 
 alternative :: Pos -> Parser Alt
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
+
+bindingPat :: Parser BPat
+bindingPat = AsPat  <$> (var <* char '@') <*> parens value <|>
+             VarPat <$> var <|>
+             WildCard <$ symbol "_"
+
 
 altPat :: Parser CPat
 altPat = parens (NodePat <$> tag <*> many var) <|>
@@ -77,17 +86,14 @@ altPat = parens (NodePat <$> tag <*> many var) <|>
          TagPat <$> tag <|>
          LitPat <$> literal
 
-simpleValue :: Parser SimpleVal
-simpleValue = Lit <$> literal <|>
-              Var <$> var <|>
-              Undefined <$> parens (kw "#undefined" *> op "::" *> typeAnnot)
-
 -- #undefined can hold simple types as well as node types
 value :: Parser Val
-value = Unit <$ op "()" <|>
-        try (parens (ConstTagNode <$> tag <*> many simpleValue <|> VarTagNode <$> var <*> many simpleValue)) <|>
+value = Lit <$> literal <|>
+        Var <$> var <|>
+        Unit <$ op "()" <|>
+        try (parens (ConstTagNode <$> tag <*> many var <|> VarTagNode <$> var <*> many var)) <|>
         ValTag <$> tag <|>
-        simpleValue
+        Undefined <$> parens (kw "#undefined" *> op "::" *> typeAnnot)
 
 literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
