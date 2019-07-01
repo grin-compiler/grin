@@ -160,19 +160,10 @@ syntaxVal ctx = \case
   Lit{} -> pure True
   Var{} -> pure True
 
-  ConstTagNode _ args
-    | ctx == ValCtx
-    -> and <$> mapM (syntaxVal SimpleValCtx) args
-
-  VarTagNode _ args
-    | ctx == ValCtx
-    -> and <$> mapM (syntaxVal SimpleValCtx) args
-
   Undefined (T_NodeSet{})
     | ctx == ValCtx -> pure True
 
-  _ | ctx == ValCtx
-    -> pure True
+  _ | ctx == ValCtx -> pure True
 
   _ -> warning Syntax [msg $ "Syntax error - expected " ++ showValCtx ctx] >> pure False
 
@@ -252,7 +243,7 @@ annotate te = cata builder where
           foldM unionType n ns
       )
       :< SFetchF var -- Fetch returns a value based on its arguments that is associated in its binded variable
-    SAppF name params -> (te ^? function . at name . _Just . _1) :< SAppF name params
+    SAppF f params -> (te ^? function . at (_appName f) . _Just . _1) :< SAppF f params
     AltF cpat body -> extract body :< AltF cpat body
     ECaseF var alts ->
       (do case catMaybes $ map extract alts of
@@ -303,24 +294,27 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
     -- Exp
     -- The result Fetch should be bound to a variable to make DDE simpler
-    (_ :< EBindF leftExp lpat rightExp) -> do
-      let lhsCtx = if notVariable lpat then SEWithoutNodesCtx else SimpleExpCtx
-      check (EBindF (lhsCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
+    (_ :< EBindF leftExp bPat rightExp) -> do
+      -- TODO: is this really needed?
+      let lhsCtx = if isn't _OnlyVarPat bPat then SEWithoutNodesCtx else SimpleExpCtx
+      check (EBindF (lhsCtx, leftExp) bPat (ExpCtx, rightExp)) $ do
         syntaxE ExpCtx
-        when (isFetchF leftExp && notVariable lpat) (warning DDE [msg $ "The result of Fetch can only be bound to a variable: " ++ plainShow lpat])
+        when (isFetchF leftExp && isn't _OnlyVarPat bPat) (warning DDE [msg $ "The result of Fetch can only be bound to a variable: " ++ plainShow bPat])
 
-        when (notVariable lpat) $ do
+        when (isn't _OnlyVarPat bPat) $ do
           forM_ mTypeEnv $ \typeEnv -> do
-            fromMaybe (pure ()) $ do -- Maybe
-              expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
-              lhsType         <- normalizeType <$> extract leftExp
-              pure $ do -- Lint
-                -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.
-                when (sameType expectedPatType lhsType == Just False) $ do
-                  warning Semantics $ [beforeMsg $ unwords
-                    ["Invalid pattern match for", plainShow lpat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
+            fromMaybe (pure ()) $ case bPat of
+              AsPat v val -> do -- Maybe
+                expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv val
+                lhsType         <- normalizeType <$> extract leftExp
+                pure $ do -- Lint
+                  -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.
+                  when (sameType expectedPatType lhsType == Just False) $ do
+                    warning Semantics $ [beforeMsg $ unwords
+                      ["Invalid pattern match for", plainShow bPat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
+              WildCard -> Nothing
 
-    (_ :< ECaseF val alts0) -> checkWithChild AltCtx $ do
+    (_ :< ECaseF scrut alts0) -> checkWithChild AltCtx $ do
       syntaxE SEWithoutNodesCtx
       let alts = getF <$> alts0
       -- Overlapping node alternatives
@@ -345,27 +339,29 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
       forM_ mTypeEnv $ \typeEnv -> do
         -- Case variable has a location type
-        case val of
-          (Var name)
-            | Just st <- typeEnv ^? variable . at name . _Just . _T_SimpleType
-            , has _T_Location st || has _T_String st || has _T_Float st
-              -> warning Semantics [beforeMsg $ printf "case variable %s has non-supported pattern match type: %s" name (plainShow st)]
-          _ -> pure () -- TODO
+        let mSt = typeEnv ^? variable . at scrut . _Just . _T_SimpleType
+        case mSt of
+          Just st
+            | has _T_Location st || has _T_String st || has _T_Float st
+            -> warning Semantics [beforeMsg $ printf "case variable %s has non-supported pattern match type: %s" scrut (plainShow st)]
+          Nothing -> pure ()
 
         -- Non-covered alternatives
         when (noOfDefaults == 0) $ do
-          case val of
-            (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> do
+          let mTags = typeEnv ^? variable . at scrut . _Just . _T_NodeSet . to Map.keys
+          case mTags of
+            Just tags -> do
               forM_ tags $ \tag -> when (Map.notMember tag tagOccurences) $ do
                 warning Semantics [beforeMsg $ printf "case has non-covered alternative %s" (plainShow tag)]
-            _ -> pure () -- TODO
+            Nothing -> pure ()
 
     -- Simple Exp
-    (_ :< SAppF name args) -> checkWithChild ctx $ do
+    (_ :< SAppF f args) -> checkWithChild ctx $ do
+      let name = _appName f
       syntaxE SEWithoutNodesCtx
       -- Test existence of the function.
       Env{..} <- get
-      when (not $ isExternalName exts name) $
+      when (isn't _ExternalName f) $
         case Map.lookup name envDefinedNames of
           (Just FunName) -> pure ()
           (Just _)       -> warning Syntax [msg $ printf "non-function in function call: %s" name]
@@ -373,7 +369,6 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
       -- Non saturated function call
       forM_ (Map.lookup name envFunArity) $ \n -> when (n /= length args) $ do
         warning Syntax [msg $ printf "non-saturated function call: %s" name]
-      mapM_ (syntaxVal_ SimpleValCtx) args
 
     -- Only simple values should be returned,
     -- unless the returned value is bound to a variable.
@@ -394,17 +389,16 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
         _ -> syntaxE SimpleExpCtx
 
-    (_ :< SStoreF val) -> checkWithChild ctx $ do
+    (_ :< SStoreF arg) -> checkWithChild ctx $ do
       syntaxE SEWithoutNodesCtx
-      syntaxVal_ SimpleValCtx val
       forM_ mTypeEnv $ \typeEnv -> do
         -- Store has given a primitive type
-        case val of
-          (Lit lit) -> warning Semantics [msg $ printf "store has given a primitive value: %s" (plainShow val)]
-          (ConstTagNode _ _) -> pure ()
-          (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
-                     | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
-                        when (st /= T_Dead) $ warning Semantics [msg $ printf "store has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
+        let mTags = typeEnv ^? variable . at arg . _Just . _T_NodeSet . to Map.keys
+            mSt   = typeEnv ^? variable . at arg . _Just . _T_SimpleType
+        case (mTags,mSt) of
+          (Just tags,_) -> pure ()
+          (_,  Just st) | st /= T_Dead ->
+             warning Semantics [msg $ printf "store has given a primitive value: %s :: %s" (plainShow arg) (plainShow st)]
           _ -> pure ()
 
     (_ :< SFetchIF name _) -> checkWithChild ctx $ do
@@ -419,9 +413,8 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
           -> warning Semantics [msg $ printf "the parameter of fetch is a node type: %s" (plainShow name)]
         | otherwise -> pure ()
 
-    (_ :< SUpdateF name val) -> checkWithChild ctx $ do
+    (_ :< SUpdateF name arg) -> checkWithChild ctx $ do
       syntaxE SEWithoutNodesCtx
-      syntaxVal_ SimpleValCtx val
 
       -- Non location parameter for update
       forM_ mTypeEnv $ \typeEnv -> if
@@ -435,12 +428,12 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
       forM_ mTypeEnv $ \typeEnv -> do
         -- Update has given a primitive type
-        case val of
-          (Lit lit) -> warning Semantics [msg $ printf "update has given a primitive value: %s" (plainShow val)]
-          (ConstTagNode _ _) -> pure ()
-          (Var name) | Just tags <- typeEnv ^? variable . at name . _Just . _T_NodeSet . to Map.keys -> pure ()
-                     | Just st   <- typeEnv ^? variable . at name . _Just . _T_SimpleType -> do
-                        when (st /= T_Dead) $ warning Semantics [msg $ printf "update has given a primitive value: %s :: %s" (plainShow val) (plainShow st)]
+        let mTags = typeEnv ^? variable . at arg . _Just . _T_NodeSet . to Map.keys
+            mSt   = typeEnv ^? variable . at arg . _Just . _T_SimpleType
+        case (mTags,mSt) of
+          (Just tags,_) -> pure ()
+          (_,  Just st) | st /= T_Dead ->
+            warning Semantics [msg $ printf "update has given a primitive value: %s :: %s" (plainShow arg) (plainShow st)]
           _ -> pure ()
 
     (_ :< SBlockF{}) -> checkWithChild ExpCtx $ do
@@ -457,9 +450,6 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
       isFetchF (getF -> SFetchF{}) = True
       isFetchF _ = False
-
-      notVariable Var{} = False
-      notVariable _     = True
 
       -- Collects the side-effects without appending it to the output.
       censorListen :: (Monoid w, Monad m) => WriterT w m a -> WriterT w m (a,w)

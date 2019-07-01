@@ -11,6 +11,7 @@ module Grin.Pretty
   , prettyBracedList
   , prettySimplePair
   , prettyFunction
+  , prettyExpAlgebra
   , Pretty
   , showName
   , showWidth
@@ -99,24 +100,27 @@ prettyProgram _             p                  = prettyHighlightExternals [] p
 
 -- | Print a given expression with highlighted external functions.
 prettyHighlightExternals :: [External] -> Exp -> Doc
-prettyHighlightExternals externals exp = cata folder exp where
-  folder = \case
-    ProgramF exts defs  -> vcat (prettyExternals exts : defs)
-    DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 exp <> line
-    -- Exp
-    EBindF simpleexp Unit exp -> simpleexp <$$> exp
-    EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> simpleexp <$$> exp
-    ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep alts)
-    -- Simple Expr
-    SAppF name args         -> hsep (((if isExternalName externals name then dullyellow else cyan) $ pretty name) : text "$" : map pretty args)
-    SReturnF val            -> keyword "pure" <+> pretty val
-    SStoreF val             -> keywordR "store" <+> pretty val
-    SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
-    SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
-    SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
-    SBlockF exp             -> text "do" <$$> indent 2 exp
-    -- Alt
-    AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 exp
+prettyHighlightExternals externals exp = cata prettyExpAlgebra exp
+
+prettyExpAlgebra :: ExpF Doc -> Doc
+prettyExpAlgebra = \case
+  ProgramF exts defs  -> vcat (prettyExternals exts : defs)
+  DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 exp <> line
+  -- Exp
+  EBindF lhs WildCard rhs -> lhs <$$> rhs
+  EBindF lhs bpat rhs     -> pretty bpat <+> text "<-" <+> lhs <$$> rhs
+  ECaseF scrutinee alts   -> keyword "case" <+> pretty scrutinee <+> keyword "of" <$$> indent 2 (vsep alts)
+  -- Simple Expr
+  SAppF (Fun f) args      -> hsep ((cyan       $ pretty f) : text "$" : map pretty args)
+  SAppF (Ext f) args      -> hsep ((dullyellow $ pretty f) : text "$" : map pretty args)
+  SReturnF val            -> keyword "pure" <+> pretty val
+  SStoreF v               -> keywordR "store" <+> pretty v
+  SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
+  SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
+  SUpdateF name v         -> keywordR "update" <+> pretty name <+> pretty v
+  SBlockF exp             -> text "do" <$$> indent 2 exp
+  -- Alt
+  AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 exp
 
 
 instance Pretty Exp where
@@ -141,6 +145,12 @@ instance Pretty Lit where
     LBool a    -> text "#" <> text (show a)
     LString a  -> text "#" <> text (show a)
     LChar a    -> text "#" <> text (show a)
+
+instance Pretty BPat where
+  pretty = \case
+    VarPat v    -> pretty v
+    AsPat v val -> pretty v <> pretty '@' <> pretty '(' <> pretty val <> pretty ')'
+    WildCard    -> pretty '_'
 
 instance Pretty CPat where
   pretty = \case

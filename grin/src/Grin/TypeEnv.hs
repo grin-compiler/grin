@@ -123,11 +123,10 @@ typeOfLitST lit = case lit of
 -- Type of literal like values
 typeOfVal :: Val -> Type
 typeOfVal = \case
-  ConstTagNode  tag simpleVals ->
+  ConstTagNode  tag [] ->
     T_NodeSet
       $ Map.singleton tag
-      $ Vector.fromList
-      $ map ((\(T_SimpleType t) -> t) . typeOfVal) simpleVals
+      $ mempty
 
   Unit    -> T_SimpleType T_Unit
   Lit lit -> typeOfLit lit
@@ -138,12 +137,13 @@ typeOfValTE :: TypeEnv -> Val -> Type
 typeOfValTE typeEnv val = fromMaybe (error $ show val) $ mTypeOfValTE typeEnv val
 
 mTypeOfValTE :: TypeEnv -> Val -> Maybe Type
-mTypeOfValTE typeEnv = \case
+mTypeOfValTE typeEnv@TypeEnv{..} = \case
   Undefined t -> Just t
 
-  ConstTagNode tag simpleVals ->
-    fmap (T_NodeSet . Map.singleton tag . Vector.fromList)
-      $ sequenceA $ map (fmap (\(T_SimpleType t) -> t) . mTypeOfValTE typeEnv) simpleVals
+  ConstTagNode tag args -> do
+    tys <- mapM (`Map.lookup` _variable) args
+    let sTys = map _simpleType $ tys
+    pure . T_NodeSet . Map.singleton tag . Vector.fromList $ sTys
 
   Unit      -> Just $ T_SimpleType T_Unit
   Lit lit   -> Just $ typeOfLit lit

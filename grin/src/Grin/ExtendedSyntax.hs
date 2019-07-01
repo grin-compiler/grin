@@ -198,6 +198,19 @@ _ValVar :: Traversal' Val Name
 _ValVar f (Var name) = Var <$> f name
 _ValVar _ other      = pure other
 
+_OnlyVarPat :: Traversal' BPat Name
+_OnlyVarPat f (VarPat v) = VarPat <$> f v
+_OnlyVarPat _ other      = pure other
+
+_BPatVar :: Traversal' BPat Name
+_BPatVar f (AsPat v val) = AsPat <$> f v <*> pure val
+_BPatVar f (VarPat v)    = VarPat <$> f v
+_BPatVar _ other         = pure other
+
+_ExternalName :: Traversal' AppName Name
+_ExternalName f (Ext name) = Ext <$> f name
+_ExternalName _ other     = pure other
+
 _TyCon :: Traversal' Ty (Name, [Ty])
 _TyCon f (TyCon n ts) = uncurry TyCon <$> f (n, ts)
 _TyCon _ other        = pure other
