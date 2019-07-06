@@ -174,6 +174,11 @@ pattern SFetchF name = SFetchIF name Nothing
 
 pattern BoolPat b = LitPat (LBool b)
 
+-- TODO: replace with Prism
+isWildCard :: BPat -> Bool
+isWildCard WildCard = True
+isWildCard _        = False
+
 _AltCPat :: Traversal' Exp CPat
 _AltCPat f (Alt p e) = (`Alt` e) <$> f p
 _AltCPat _ other     = pure other

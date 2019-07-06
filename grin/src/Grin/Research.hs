@@ -17,7 +17,7 @@
 module Grin.Research where
 
 import Data.Functor.Foldable
-import Grin.Syntax
+import Grin.ExtendedSyntax
 import Lens.Micro.Platform
 import Control.Monad.State
 import qualified Data.Map.Strict as Map
@@ -132,18 +132,21 @@ calcSimpleTypesAlg = \case
     equality v t
     pure t
 
-  (node CCTC.:< EBindF lhs (Var (NM n)) rhs) -> do
-    lt <- lhs
-    t  <- freshVarId
-    equality t lt
-    variable n t
-    rt <- rhs
-    nodeType node rt
-    pure rt
+  -- TODO: revisit this, we might not need AsPat here
+  (node CCTC.:< EBindF lhs bPat rhs)
+    | not (isWildCard bPat)
+    , NM n <- _bPatVar bPat -> do
+      lt <- lhs
+      t  <- freshVarId
+      equality t lt
+      variable n t
+      rt <- rhs
+      nodeType node rt
+      pure rt
 
   (_ CCTC.:< SAppF n ps) -> do
     v <- freshVarId
-    variable (unNM n) v
+    variable (unNM $ _appName n) v
     pure v
 
   (_ CCTC.:< SReturnF v) ->

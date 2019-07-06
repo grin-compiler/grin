@@ -24,6 +24,13 @@ instance FoldNames Val where
     Var name                -> f name
     _                       -> mempty
 
+instance FoldNames BPat where
+  foldNames f = \case
+    VarPat v    -> f v
+    AsPat v val -> f v <> foldNames f val
+    WildCard    -> mempty
+
+
 instance FoldNames CPat where
   foldNames f = \case
     NodePat _ names -> foldMap f names

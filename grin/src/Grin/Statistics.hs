@@ -8,6 +8,7 @@ import qualified Data.Foldable
 import Text.PrettyPrint.ANSI.Leijen
 import Grin.Grin
 import qualified Data.Set as Set
+import Lens.Micro.Platform
 
 
 data Statistics = Statistics
@@ -52,27 +53,27 @@ statistics :: Exp -> Statistics
 statistics = cata $ \case
   DefF fn ps   s -> s <> mempty { def = 1, vars = Set.singleton fn <> Set.fromList ps }
   -- Exp
-  EBindF l b r -> l <> r     <> mempty { eBind = 1, vars = foldNames Set.singleton b, tags = tagInVal b }
-  ECaseF v xs  -> mconcat xs <> mempty { eCase = 1, vars = foldNames Set.singleton v, tags = tagInVal v }
+  EBindF l b r -> l <> r     <> mempty { eBind = 1, vars = foldNames Set.singleton b, tags = maybe mempty tagsInVal (b ^? bPatVal) }
+  ECaseF v xs  -> mconcat xs <> mempty { eCase = 1, vars = Set.singleton v }
   -- Simple Expr
-  SAppF f ps   -> mempty { sApp    = 1, vars = Set.singleton f <> foldNames Set.singleton ps }
-  SReturnF v   -> mempty { sReturn = 1, vars = foldNames Set.singleton v, tags = tagInVal v }
-  SStoreF  v   -> mempty { sStore  = 1, vars = foldNames Set.singleton v, tags = tagInVal v }
-  SFetchIF v _ -> mempty { sFetchI = 1, vars = Set.singleton v }
-  SUpdateF v x -> mempty { sUpdate = 1, vars = Set.singleton v <> foldNames Set.singleton x, tags = tagInVal x }
+  SAppF f ps   -> mempty { sApp    = 1, vars = Set.singleton (_appName f) <> Set.fromList ps }
+  SReturnF val -> mempty { sReturn = 1, vars = foldNames Set.singleton val, tags = tagsInVal val }
+  SStoreF  v   -> mempty { sStore  = 1, vars = Set.singleton v }
+  SFetchIF p _ -> mempty { sFetchI = 1, vars = Set.singleton p }
+  SUpdateF p v -> mempty { sUpdate = 1, vars = Set.singleton p <> Set.singleton v }
   SBlockF  s   -> s <> mempty { sBlock  = 1 }
   -- Alt
-  AltF p s     -> s <> mempty { alt = 1, vars = foldNames Set.singleton p, tags = tagInCPat p }
+  AltF p s     -> s <> mempty { alt = 1, vars = foldNames Set.singleton p, tags = tagsInCPat p }
   -- general case
   e -> Data.Foldable.fold e
 
-tagInVal :: Val -> Set.Set Tag
-tagInVal = \case
+tagsInVal :: Val -> Set.Set Tag
+tagsInVal = \case
   ConstTagNode t _ -> Set.singleton t
   _                -> Set.empty
 
-tagInCPat :: CPat -> Set.Set Tag
-tagInCPat = \case
+tagsInCPat :: CPat -> Set.Set Tag
+tagsInCPat = \case
   NodePat t _ -> Set.singleton t
   TagPat  t   -> Set.singleton t
   _           -> Set.empty

@@ -6,7 +6,7 @@ module Grin.Nametable
   ) where
 
 import Data.Text (Text, unpack)
-import Grin.Syntax
+import Grin.ExtendedSyntax
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable
 import Control.Monad.State
@@ -51,8 +51,8 @@ lit = pure -- TODO: Handle string literals
 
 value :: Val -> NametableM Val
 value = \case
-  ConstTagNode t vs -> ConstTagNode <$> tag t <*> mapM value vs
-  VarTagNode   n vs -> VarTagNode <$> nameToIdx n <*> mapM value vs
+  ConstTagNode t vs -> ConstTagNode <$> tag t <*> mapM nameToIdx vs
+  VarTagNode   n vs -> VarTagNode <$> nameToIdx n <*> mapM nameToIdx vs
   ValTag       t    -> ValTag <$> tag t
   Unit              -> pure Unit
   Lit l             -> Lit <$> lit l
@@ -88,13 +88,23 @@ convert = second (view nametable) . flip runState emptyNS . cata build where
   build = \case
     ProgramF es defs  -> Program <$> mapM external es <*> sequence defs
     DefF fn ps body   -> Def <$> (nameToIdx fn) <*> (mapM nameToIdx ps) <*> body
-    EBindF l v r      -> EBind <$> l <*> value v <*> r
-    ECaseF v alts     -> ECase <$> value v <*> sequence alts
-    SAppF v ps        -> SApp <$> nameToIdx v <*> (mapM value ps)
+    EBindF l bPat r   -> do
+      p' <- case bPat of
+        VarPat v     -> VarPat <$> nameToIdx v
+        AsPat  v val -> AsPat  <$> nameToIdx v <*> value val
+        WildCard     -> pure WildCard
+      EBind <$> l <*> pure p' <*> r
+    ECaseF scrut alts -> ECase <$> nameToIdx scrut <*> sequence alts
+    SAppF f ps        -> do
+      -- QUESTION: monadic `over` lens for this?
+      f' <- case f of
+        Fun n -> Fun <$> nameToIdx n
+        Ext n -> Ext <$> nameToIdx n
+      SApp <$> pure f' <*> (mapM nameToIdx ps)
     SReturnF v        -> SReturn <$> value v
-    SStoreF v         -> SStore <$> value v
+    SStoreF v         -> SStore <$> nameToIdx v
     SFetchIF n p      -> SFetchI <$> nameToIdx n <*> (pure p)
-    SUpdateF n v      -> SUpdate <$> nameToIdx n <*> value v
+    SUpdateF n v      -> SUpdate <$> nameToIdx n <*> nameToIdx v
     SBlockF body      -> SBlock <$> body
     AltF cp e         -> Alt <$> cpat cp <*> e
 
@@ -108,13 +118,13 @@ restore (exp, nt) = cata build exp where
   build = \case
     ProgramF es defs  -> Program (map rexternal es) defs
     DefF fn ps body   -> Def (rname fn) (map rname ps) body
-    EBindF l v r      -> EBind l (rvalue v) r
-    ECaseF v alts     -> ECase (rvalue v) alts
-    SAppF v ps        -> SApp (rname v) (map rvalue ps)
+    EBindF l pat r    -> EBind l (rbpat pat) r
+    ECaseF v alts     -> ECase (rname v) alts
+    SAppF f ps        -> SApp (f & appName %~ rname) (map rname ps)
     SReturnF v        -> SReturn (rvalue v)
-    SStoreF v         -> SStore (rvalue v)
+    SStoreF v         -> SStore (rname v)
     SFetchIF n p      -> SFetchI (rname n) p
-    SUpdateF n v      -> SUpdate (rname n) (rvalue v)
+    SUpdateF n v      -> SUpdate (rname n) (rname v)
     SBlockF body      -> SBlock body
     AltF cp e         -> Alt (rcpat cp) e
 
@@ -123,8 +133,8 @@ restore (exp, nt) = cata build exp where
 
   rvalue :: Val -> Val
   rvalue = \case
-    ConstTagNode t vs -> ConstTagNode (rtag t) (map rvalue vs)
-    VarTagNode   n vs -> VarTagNode (rname n) (map rvalue vs)
+    ConstTagNode t vs -> ConstTagNode (rtag t) (map rname vs)
+    VarTagNode   n vs -> VarTagNode (rname n) (map rname vs)
     ValTag       t    -> ValTag (rtag t)
     Unit              -> Unit
     Lit l             -> Lit (rlit l)
@@ -143,6 +153,12 @@ restore (exp, nt) = cata build exp where
     LitPat  l    -> LitPat (rlit l)
     DefaultPat   -> DefaultPat
     TagPat  t    -> TagPat (rtag t)
+
+  rbpat :: BPat -> BPat
+  rbpat = \case
+    VarPat v     -> VarPat (rname v)
+    AsPat  v val -> AsPat (rname v) (rvalue val)
+    WildCard     -> WildCard
 
   rexternal :: External -> External
   rexternal External{..} =
