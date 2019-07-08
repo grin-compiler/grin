@@ -54,7 +54,6 @@ data DefRole = FunName | FunParam | BindVar | AltVar
 foldNameDefExpF :: (Monoid m) => (DefRole -> Name -> m) -> ExpF a -> m
 foldNameDefExpF f = \case
   DefF name args _      -> mconcat $ (f FunName name) : map (f FunParam) args
-  EBindF _ WildCard _   -> mempty
   EBindF _ bPat _       -> f BindVar (_bPatVar bPat)
   AltF cpat _           -> foldNames (f AltVar) cpat
   _                     -> mempty
@@ -119,10 +118,6 @@ substValsVal env = subst env
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (subst env)
 
-cPatToBPat :: Maybe Name -> CPat -> BPat
-cPatToBPat Nothing _ = WildCard
-cPatToBPat (Just v) cpat = AsPat v (cpatToVal cpat)
-
 cpatToVal :: CPat -> Val
 cpatToVal = \case
   NodePat tag args  -> ConstTagNode tag args
@@ -174,9 +169,10 @@ histoM h = pure . extract <=< worker where
 
 -- misc
 
+-- QUESTION: How should this be changed?
 skipUnit :: ExpF Exp -> Exp
 skipUnit = \case
-  EBindF (SReturn Unit) WildCard rightExp -> rightExp
+  -- EBindF (SReturn Unit) _ rightExp -> rightExp
   exp -> embed exp
 
 newtype TagInfo = TagInfo { _tagArityMap :: Map.Map Tag Int }

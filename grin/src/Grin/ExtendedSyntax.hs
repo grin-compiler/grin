@@ -95,7 +95,6 @@ data BPat
   | AsPat  { _bPatVar :: Name
            , _bPatVal :: Val
            }
-  | WildCard
   deriving (Generic, Data, NFData, Eq, Show, Ord)
 
 makeLenses ''BPat
@@ -174,11 +173,6 @@ pattern SFetchF name = SFetchIF name Nothing
 
 pattern BoolPat b = LitPat (LBool b)
 
--- TODO: replace with Prism
-isWildCard :: BPat -> Bool
-isWildCard WildCard = True
-isWildCard _        = False
-
 _AltCPat :: Traversal' Exp CPat
 _AltCPat f (Alt p e) = (`Alt` e) <$> f p
 _AltCPat _ other     = pure other
@@ -210,7 +204,6 @@ _OnlyVarPat _ other      = pure other
 _BPatVar :: Traversal' BPat Name
 _BPatVar f (AsPat v val) = AsPat <$> f v <*> pure val
 _BPatVar f (VarPat v)    = VarPat <$> f v
-_BPatVar _ other         = pure other
 
 _ExternalName :: Traversal' AppName Name
 _ExternalName f (Ext name) = Ext <$> f name

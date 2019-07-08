@@ -107,7 +107,6 @@ prettyExpAlgebra = \case
   ProgramF exts defs  -> vcat (prettyExternals exts : defs)
   DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 exp <> line
   -- Exp
-  EBindF lhs WildCard rhs -> lhs <$$> rhs
   EBindF lhs bpat rhs     -> pretty bpat <+> text "<-" <+> lhs <$$> rhs
   ECaseF scrutinee alts   -> keyword "case" <+> pretty scrutinee <+> keyword "of" <$$> indent 2 (vsep alts)
   -- Simple Expr
@@ -150,7 +149,6 @@ instance Pretty BPat where
   pretty = \case
     VarPat v    -> pretty v
     AsPat v val -> pretty v <> pretty '@' <> pretty '(' <> pretty val <> pretty ')'
-    WildCard    -> pretty '_'
 
 instance Pretty CPat where
   pretty = \case

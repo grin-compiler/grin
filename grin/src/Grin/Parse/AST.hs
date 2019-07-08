@@ -30,7 +30,7 @@ def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (
 
 expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
-  try ((\pat e b -> EBind e pat b) <$> (try (bindingPat <* op "<-") <|> pure WildCard) <*> simpleExp i <*> expr i ) <|>
+  try ((\pat e b -> EBind e pat b) <$> try (bindingPat <* op "<-") <*> simpleExp i <*> expr i ) <|>
   ifThenElse i <|>
   simpleExp i
 
@@ -76,9 +76,7 @@ alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.
 
 bindingPat :: Parser BPat
 bindingPat = AsPat  <$> (var <* char '@') <*> parens value <|>
-             VarPat <$> var <|>
-             WildCard <$ symbol "_"
-
+             VarPat <$> var
 
 altPat :: Parser CPat
 altPat = parens (NodePat <$> tag <*> many var) <|>

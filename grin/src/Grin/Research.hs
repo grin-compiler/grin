@@ -134,8 +134,7 @@ calcSimpleTypesAlg = \case
 
   -- TODO: revisit this, we might not need AsPat here
   (node CCTC.:< EBindF lhs bPat rhs)
-    | not (isWildCard bPat)
-    , NM n <- _bPatVar bPat -> do
+    | NM n <- _bPatVar bPat -> do
       lt <- lhs
       t  <- freshVarId
       equality t lt

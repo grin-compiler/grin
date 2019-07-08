@@ -92,7 +92,6 @@ convert = second (view nametable) . flip runState emptyNS . cata build where
       p' <- case bPat of
         VarPat v     -> VarPat <$> nameToIdx v
         AsPat  v val -> AsPat  <$> nameToIdx v <*> value val
-        WildCard     -> pure WildCard
       EBind <$> l <*> pure p' <*> r
     ECaseF scrut alts -> ECase <$> nameToIdx scrut <*> sequence alts
     SAppF f ps        -> do
@@ -158,7 +157,6 @@ restore (exp, nt) = cata build exp where
   rbpat = \case
     VarPat v     -> VarPat (rname v)
     AsPat  v val -> AsPat (rname v) (rvalue val)
-    WildCard     -> WildCard
 
   rexternal :: External -> External
   rexternal External{..} =

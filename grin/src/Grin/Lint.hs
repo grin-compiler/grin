@@ -312,7 +312,6 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
                   when (sameType expectedPatType lhsType == Just False) $ do
                     warning Semantics $ [beforeMsg $ unwords
                       ["Invalid pattern match for", plainShow bPat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
-              WildCard -> Nothing
 
     (_ :< ECaseF scrut alts0) -> checkWithChild AltCtx $ do
       syntaxE SEWithoutNodesCtx

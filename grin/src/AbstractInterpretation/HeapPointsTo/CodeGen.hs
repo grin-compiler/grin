@@ -177,7 +177,6 @@ codeGenM = cata folder where
     EBindF leftExp bPat rightExp -> do
       leftExp >>= \case
         Z -> case bPat of
-          WildCard -> pure ()
           VarPat name -> do
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
@@ -189,7 +188,6 @@ codeGenM = cata folder where
             addReg name r
           _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show bPat
         R r -> case bPat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
-          WildCard  -> pure ()
           AsPat name val -> do
             addReg name r
             case val of

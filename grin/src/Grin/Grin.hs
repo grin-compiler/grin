@@ -28,7 +28,6 @@ instance FoldNames BPat where
   foldNames f = \case
     VarPat v    -> f v
     AsPat v val -> f v <> foldNames f val
-    WildCard    -> mempty
 
 
 instance FoldNames CPat where
