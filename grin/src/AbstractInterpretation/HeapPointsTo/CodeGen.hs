@@ -15,6 +15,7 @@ import Data.Functor.Foldable as Foldable
 import Lens.Micro.Platform
 
 import Grin.Grin
+import Grin.Pretty
 import Grin.ExtendedSyntax
 import Grin.TypeEnv
 import qualified AbstractInterpretation.IR as IR
@@ -101,7 +102,7 @@ codeGenVal = \case
     pure r
   Var name -> getReg name
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
-  val -> error $ "unsupported value " ++ show val
+  val -> error $ "unsupported value " ++ show (PP val)
 
 typeTag :: Name -> Tag
 typeTag n = Tag F n -- FIXME: this is a hack
@@ -186,14 +187,15 @@ codeGenM = cata folder where
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
             addReg name r
-          _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show bPat
+          _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show (PP bPat)
         R r -> case bPat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
+          VarPat name -> addReg name r
           AsPat name val -> do
             addReg name r
             case val of
               Unit -> pure ()
               Lit{} -> pure ()
-              Var name -> addReg name r
+              Var name' -> addReg name' r
               ConstTagNode tag args -> do
                 irTag <- getTag tag
                 bindInstructions <- forM (zip [0..] args) $ \(idx, name) -> do
@@ -208,7 +210,7 @@ codeGenM = cata folder where
                   , srcReg        = r
                   , instructions  = concat bindInstructions
                   }
-          VarPat name -> addReg name r
+              _ -> error $ "HPT: unsupported value for as-pattern " ++ show (PP bPat)
       rightExp
 
     ECaseF scrut alts_ -> do
@@ -280,7 +282,7 @@ codeGenM = cata folder where
             -- QUESTION: Redundant IF. Just for consistency?
             emit IR.If {condition = IR.AnyNotIn tags, srcReg = scrutReg, instructions = altInstructions}
 
-          _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
+          _ -> error $ "HPT does not support the following case pattern: " ++ show (PP cpat)
 
       -- restore scrutinee register mapping
       addReg scrut scrutReg

@@ -59,23 +59,22 @@ codeGenM = cata folder where
       modify' $ \s@CGState{..} -> s {_sInstructions = reverse _sInstructions ++ instructions}
       pure Z
 
-    EBindF leftExp lpat rightExp -> do
+    EBindF leftExp bPat rightExp -> do
       lhs <- leftExp
       rhs <- rightExp
       let R lhsReg = lhs
       let R rhsReg = rhs
 
-      case lpat of
-        {- NOTE: By convention, all bindings should have a variable pattern
-           or a simple left-hand side of form `pure <var>`. This guarantees
-           that all relevant computations will have a name. Also, it means
-           the information has been already propagated to the variable.
-        -}
-        Unit           -> pure ()
-        Lit{}          -> pure ()
-        ConstTagNode{} -> pure ()
-        Var name -> addReg name lhsReg
-        _ -> error $ "Effect tracking: unsupported lpat " ++ show (PP lpat)
+      case bPat of
+        VarPat name -> addReg name lhsReg
+        AsPat v val -> do
+          addReg v lhsReg
+          case val of
+            Unit           -> pure ()
+            Lit{}          -> pure ()
+            ConstTagNode{} -> pure ()
+            Var name       -> addReg name lhsReg
+            _ -> error $ "Effect tracking: unsupported value for as-pattern " ++ show (PP bPat)
 
       emit IR.Move { srcReg = lhsReg, dstReg = rhsReg }
       pure $ R rhsReg
@@ -89,21 +88,20 @@ codeGenM = cata folder where
 
     AltF _ exp -> exp
 
-    SAppF name args -> getExternal name >>= \case
+    SAppF (Ext f) args -> getExternal f >>= \case
       Just ext  -> do
         appReg <- newReg
-        extID  <- fromJust <$> getExternalID name
+        extID  <- fromJust <$> getExternalID f
         when (eEffectful ext) $
           emit IR.Set  { dstReg = appReg, constant = IR.CSimpleType extID }
         pure $ R appReg
+      Nothing -> error $ "Effect tracking could not find external: " ++ show (PP f)
 
-        -----------
-
-      Nothing   -> do
-        appReg <- newReg
-        funResultReg <- getOrAddFunRetReg name
-        emit IR.Move { srcReg = funResultReg, dstReg = appReg }
-        pure $ R appReg
+    SAppF (Fun f) args -> do
+      appReg <- newReg
+      funResultReg <- getOrAddFunRetReg f
+      emit IR.Move { srcReg = funResultReg, dstReg = appReg }
+      pure $ R appReg
 
     SReturnF{} -> R <$> newReg
 
