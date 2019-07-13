@@ -32,6 +32,7 @@ data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
   | AllFields
+  | EveryNthField         Int
   deriving (Eq, Ord, Show)
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show, Generic, NFData)

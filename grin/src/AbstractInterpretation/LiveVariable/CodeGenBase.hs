@@ -21,6 +21,8 @@ import Grin.TypeEnvDefs
 import AbstractInterpretation.IR (Instruction(..), Reg(..))
 import qualified AbstractInterpretation.IR as IR
 
+import AbstractInterpretation.EffectTracking.Result
+
 data CGState
   = CGState
   { _sMemoryCounter   :: Word32
@@ -32,6 +34,8 @@ data CGState
   , _sRegisterMap     :: Map.Map Name Reg
   , _sFunctionArgMap  :: Map.Map Name (Reg, [Reg])
   , _sTagMap          :: Bimap.Bimap Tag IR.Tag
+
+  , _sExternalMap     :: Map.Map Name External
   }
   deriving (Show)
 
@@ -48,6 +52,8 @@ emptyCGState = CGState
   , _sRegisterMap     = mempty
   , _sFunctionArgMap  = mempty
   , _sTagMap          = Bimap.empty
+
+  , _sExternalMap     = mempty
   }
 
 type CG = State CGState
@@ -59,6 +65,12 @@ data Result
 
 emit :: IR.Instruction -> CG ()
 emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
+
+addExternal :: External -> CG ()
+addExternal e = modify' $ \s@CGState{..} -> s {_sExternalMap = Map.insert (eName e) e _sExternalMap}
+
+getExternal :: Name -> CG (Maybe External)
+getExternal name = Map.lookup name <$> gets _sExternalMap
 
 -- creates regsiters for function arguments and result
 getOrAddFunRegs :: Name -> Int -> CG (IR.Reg, [IR.Reg])
@@ -172,8 +184,22 @@ codeGenType cgSimpleTy cgNodeTy = \case
 isPointer :: IR.Predicate
 isPointer = IR.ValueIn (IR.Range 0 (maxBound :: Int32))
 
-isNotPointer :: IR.Predicate
-isNotPointer = IR.ValueIn (IR.Range (minBound :: Int32) 0)
+ptrLowerBound :: Int32
+ptrLowerBound = 0
+
+live :: Int32
+live = -1
+
+sideEffecting :: Int32
+sideEffecting = -2
+
+-- NOTE: Exclusive upper bound
+isLivenessInfo :: IR.Predicate
+isLivenessInfo = IR.ValueIn (IR.Range live ptrLowerBound)
+
+-- NOTE: Exclusive upper bound
+isEffectInfo :: IR.Predicate
+isEffectInfo = IR.ValueIn (IR.Range sideEffecting live)
 
 -- For simple types, copies only pointer information
 -- For nodes, copies the structure and the pointer information in the fields
@@ -191,6 +217,13 @@ copyStructureWithPtrInfo srcReg dstReg = IR.ConditionalMove
 copyStructureWithLivenessInfo :: IR.Reg -> IR.Reg -> IR.Instruction
 copyStructureWithLivenessInfo srcReg dstReg = IR.ConditionalMove
   { srcReg    = srcReg
-  , predicate = isNotPointer
+  , predicate = isLivenessInfo
+  , dstReg    = dstReg
+  }
+
+copyStructureWithEffectInfo :: IR.Reg -> IR.Reg -> IR.Instruction
+copyStructureWithEffectInfo srcReg dstReg = IR.ConditionalMove
+  { srcReg    = srcReg
+  , predicate = isEffectInfo
   , dstReg    = dstReg
   }

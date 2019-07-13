@@ -23,6 +23,10 @@ library
     AbstractInterpretation.CreatedBy.CodeGen
     AbstractInterpretation.CreatedBy.CodeGenBase
     AbstractInterpretation.CreatedBy.Pretty
+    AbstractInterpretation.EffectTracking.Result
+    AbstractInterpretation.EffectTracking.CodeGen
+    AbstractInterpretation.EffectTracking.CodeGenBase
+    AbstractInterpretation.EffectTracking.Pretty
     AbstractInterpretation.HeapPointsTo.CodeGen
     AbstractInterpretation.HeapPointsTo.CodeGenBase
     AbstractInterpretation.HeapPointsTo.Pretty
@@ -262,6 +266,7 @@ test-suite grin-test
                      NametableSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
+                     AbstractInterpretation.EffectTrackingSpec
                      AbstractInterpretation.IRSpec
                      AbstractInterpretation.OptimiseAbstractProgramSpec
                      AbstractInterpretation.SharingSpec

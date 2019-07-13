@@ -67,7 +67,7 @@ deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
 
 lookupNodeLivenessM :: Name -> Tag -> LVAResult -> Trf (Vector Bool)
 lookupNodeLivenessM v t lvaResult = do
-  lvInfo <- lookupExcept (noLiveness v) v . _register $ lvaResult
+  lvInfo <- lookupExcept (noLiveness v) v . _registerLv $ lvaResult
   case lvInfo of
     NodeSet taggedLiveness ->
       _fields <$> lookupExcept (noLivenessTag v t) t taggedLiveness

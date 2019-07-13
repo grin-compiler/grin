@@ -49,5 +49,5 @@ deadParameterElimination lvaResult tyEnv = runTrf . cataM alg where
 lookupArgLivenessM :: Name -> LVAResult -> Trf (Vector Bool)
 lookupArgLivenessM f LVAResult{..} = do
   let funNotFound = "Function " ++ show f ++ " was not found in liveness analysis result"
-  (_,argLv) <- lookupExcept funNotFound f _function
+  (_,argLv) <- lookupExcept funNotFound f _functionLv
   return $ Vec.map isLive argLv

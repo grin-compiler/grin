@@ -201,7 +201,7 @@ instance Pretty EffectMap where
     indent 4 (prettyKeyValue $ Map.toList effects)
 
 prettyExternals :: [External] -> Doc
-prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b) exts) where
+prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b && eKind a == eKind b) exts) where
   prettyExtGroup [] = mempty
   prettyExtGroup l@(a : _) = keyword "primop" <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
     (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l] <> line)
@@ -218,7 +218,7 @@ prettyBracedList = encloseSep lbrace rbrace comma
 prettySimplePair :: (Pretty a, Pretty b) => (a, b) -> Doc
 prettySimplePair (x, y) = pretty x <> pretty y
 
-prettyFunction :: Pretty a => (Name, (a, Vector a)) -> Doc
+prettyFunction :: (Pretty a, Pretty name) => (name, (a, Vector a)) -> Doc
 prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " :: ") empty (text " -> ") (map pretty $ (V.toList args) ++ [ret]))
 
 prettyLocSet :: Set Loc -> Doc

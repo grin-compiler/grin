@@ -56,26 +56,30 @@ import Transformations.Names (ExpChanges(..))
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Simplifying.ProducerNameIntroduction
-import qualified AbstractInterpretation.HeapPointsTo.Result as HPT
-import qualified AbstractInterpretation.CreatedBy.Readback as CBy
-import qualified AbstractInterpretation.CreatedBy.Result as CBy
-import qualified AbstractInterpretation.LiveVariable.Result as LVA
-import qualified AbstractInterpretation.Sharing.Result as Sharing
+import qualified AbstractInterpretation.HeapPointsTo.Result   as HPT
+import qualified AbstractInterpretation.CreatedBy.Readback    as CBy
+import qualified AbstractInterpretation.CreatedBy.Result      as CBy
+import qualified AbstractInterpretation.LiveVariable.Result   as LVA
+import qualified AbstractInterpretation.EffectTracking.Result as ET
+import qualified AbstractInterpretation.Sharing.Result        as Sharing
 import AbstractInterpretation.BinaryIR
 import AbstractInterpretation.OptimiseAbstractProgram
 import AbstractInterpretation.CreatedBy.Pretty
 import AbstractInterpretation.HeapPointsTo.Pretty
 import AbstractInterpretation.LiveVariable.Pretty
+import AbstractInterpretation.EffectTracking.Pretty
 import AbstractInterpretation.Sharing.Pretty
 import AbstractInterpretation.Sharing.CodeGen
 import AbstractInterpretation.Reduce (ComputerState, AbstractInterpretationResult(..), evalAbstractProgram)
 import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
-import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
-import qualified AbstractInterpretation.HeapPointsTo.CodeGenBase as HPT
-import qualified AbstractInterpretation.CreatedBy.CodeGen    as CBy
-import qualified AbstractInterpretation.LiveVariable.CodeGen as LVA
-import qualified AbstractInterpretation.Sharing.CodeGen      as Sharing
+import qualified AbstractInterpretation.HeapPointsTo.CodeGen         as HPT
+import qualified AbstractInterpretation.HeapPointsTo.CodeGenBase     as HPT
+import qualified AbstractInterpretation.CreatedBy.CodeGen            as CBy
+import qualified AbstractInterpretation.LiveVariable.CodeGen         as LVA
+import qualified AbstractInterpretation.EffectTracking.CodeGen       as ET
+import qualified AbstractInterpretation.EffectTracking.CodeGenBase   as ET
+import qualified AbstractInterpretation.Sharing.CodeGen              as Sharing
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
@@ -184,6 +188,7 @@ data PipelineStep
   | HPT AbstractComputationStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
+  | ET  AbstractComputationStep
   | Sharing AbstractComputationStep
   | RunCByWithLVA -- TODO: Remove
   | Eff EffectStep
@@ -277,6 +282,8 @@ data PState = PState
     , _psCByResult      :: Maybe CBy.CByResult
     , _psLVAProgram     :: Maybe (IR.AbstractProgram, LVA.LVAMapping)
     , _psLVAResult      :: Maybe LVA.LVAResult
+    , _psETProgram      :: Maybe (IR.AbstractProgram, ET.ETMapping)
+    , _psETResult       :: Maybe ET.ETResult
     , _psSharingProgram :: Maybe (IR.AbstractProgram, Sharing.SharingMapping)
     , _psSharingResult  :: Maybe Sharing.SharingResult
     -- the type environment calculated by HPT
@@ -312,7 +319,6 @@ data TransformationFunc
   | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
   | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges))
   | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
-  | WithEffLVA     (LVA.LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
   | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
 
 -- TODO: Add n paramter for the transformations that use NameM
@@ -351,8 +357,8 @@ transformationFunc n = \case
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
   UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
   NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
-  DeadFunctionElimination         -> WithEffLVA (noNewNames <$$$$$> deadFunctionElimination)
-  DeadVariableElimination         -> WithEffLVA (noNewNames <$$$$$> deadVariableElimination)
+  DeadFunctionElimination         -> WithLVA (noNewNames <$$$$> deadFunctionElimination)
+  DeadVariableElimination         -> WithLVA (noNewNames <$$$$> deadVariableElimination)
   DeadParameterElimination        -> WithLVA (noNewNames <$$$$> deadParameterElimination)
   DeadDataElimination             -> WithLVACBy deadDataElimination
   SparseCaseOptimisation          -> WithTypeEnv (noNewNames <$$$> sparseCaseOptimisation)
@@ -367,6 +373,7 @@ transformation t = do
   e <- use psExp
   te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
   em <- fromMaybe (traceShow "empty effect map is used" mempty) <$> use psEffectMap
+  et <- fromMaybe (traceShow "empty effect tracking result is used" mempty) <$> use psETResult
   cby <- fromMaybe (traceShow "empty created by result is used" CBy.emptyCByResult) <$> use psCByResult
   lva <- fromMaybe (traceShow "empty live variable result is used" LVA.emptyLVAResult) <$> use psLVAResult
   shr <- fromMaybe (traceShow "empty sharing result is used" Sharing.emptySharingResult) <$> use psSharingResult
@@ -376,7 +383,6 @@ transformation t = do
       WithTypeEnv    f -> f te e
       WithTypeEnvEff f -> Right $ f te em e
       WithLVA        f -> f lva te e
-      WithEffLVA     f -> f lva em te e
       WithLVACBy     f -> f lva cby te e
       WithTypeEnvShr f -> Right $ f shr te e
   psTransStep %= (+1)
@@ -421,6 +427,13 @@ pipelineStep p = do
       SaveProgram p -> saveAbstractProgram p psLVAProgram
       RunPure       -> runLVAPure
       PrintResult   -> printAnalysisResult psLVAResult
+
+    ET step -> case step of
+      Compile       -> compileAbstractProgram ET.codeGen psETProgram
+      Optimise      -> optimiseAbsProgWith psETProgram "ET program is not available to be optimized"
+      PrintProgram  -> printAbstractProgram psETProgram
+      RunPure       -> runETPure
+      PrintResult   -> printAnalysisResult psETResult
 
     RunCByWithLVA -> runCByWithLVAPure
 
@@ -577,6 +590,15 @@ runLVAPure = use psLVAProgram >>= \case
         result = LVA.toLVAResult lvaMapping _airComp
     pipelineLogIterations _airIter
     psLVAResult .= Just result
+
+runETPure :: PipelineM ()
+runETPure = use psETProgram >>= \case
+  Nothing -> psETResult .= Nothing
+  Just (etProgram, etMapping) -> do
+    let AbsIntResult{..} = evalAbstractProgram $ etProgram
+        result = ET.toETResult etMapping _airComp
+    pipelineLogIterations _airIter
+    psETResult .= Just result
 
 runSharingPureWith :: (Sharing.SharingMapping -> ComputerState -> Sharing.SharingResult) -> PipelineM ()
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
@@ -817,7 +839,8 @@ randomPipelineM seed = do
     runBasicAnalyses = mapM_ pipelineStep
       [ Sharing Compile
       , Sharing RunPure
-      , Eff CalcEffectMap
+      , ET Compile
+      , ET RunPure
       ]
 
     runCByLVA :: PipelineM ()
@@ -826,7 +849,8 @@ randomPipelineM seed = do
       , CBy RunPure
       , LVA Compile
       , LVA RunPure
-      , Eff CalcEffectMap
+      , ET Compile
+      , ET RunPure
       ]
 
     runNameIntro :: PipelineM ()
@@ -894,6 +918,8 @@ runPipeline o ta e m = do
       , _psCByResult      = Nothing
       , _psLVAProgram     = Nothing
       , _psLVAResult      = Nothing
+      , _psETProgram      = Nothing
+      , _psETResult       = Nothing
       , _psSharingResult  = Nothing
       , _psSharingProgram = Nothing
       , _psTypeEnv        = Nothing
@@ -1051,6 +1077,8 @@ invalidateAnalysisResults = do
   psCByResult      .= Nothing
   psLVAProgram     .= Nothing
   psLVAResult      .= Nothing
+  psETProgram      .= Nothing
+  psETResult       .= Nothing
   psSharingProgram .= Nothing
   psSharingResult  .= Nothing
   psTypeEnv        .= Nothing
@@ -1064,8 +1092,7 @@ runAnalysisFor t = do
     WithTypeEnv    _ -> [hpt]
     WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
-    WithEffLVA     _ -> [hpt, lva, cby, sharing, eff]
-    WithLVACBy     _ -> [hpt, lva, cby, sharing, eff]
+    WithLVACBy     _ -> [hpt,     cby, lva, sharing]
     WithTypeEnvShr _ -> [hpt, sharing]
   where
     analysis getter ann = do
@@ -1078,6 +1105,7 @@ runAnalysisFor t = do
     hpt = analysis psHPTResult HPT
     lva = analysis psLVAResult LVA
     cby = analysis psCByResult CBy
+    et  = analysis psETResult ET
     sharing = analysis psSharingResult Sharing
 
     eff :: PipelineM ()
@@ -1147,6 +1175,8 @@ printingSteps =
   , CBy PrintResult
   , LVA PrintProgram
   , LVA PrintResult
+  , ET  PrintProgram
+  , ET  PrintResult
   , Sharing PrintProgram
   , Sharing PrintResult
   , PrintTypeEnv
