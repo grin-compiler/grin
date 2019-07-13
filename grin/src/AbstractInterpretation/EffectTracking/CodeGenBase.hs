@@ -82,11 +82,17 @@ emit :: IR.Instruction -> CG ()
 emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
 
 addExternal :: External -> CG ()
-addExternal e = modify' $ \s@CGState{..} ->
-  let curSize = fromIntegral . Map.size $ _sExternalMap in
-  s { _sExternalMap = Map.insert (eName e) (E curSize e) _sExternalMap
-    , _sFunctionRetMap = mempty
-    }
+addExternal e = do
+  let name = eName e
+  eMap <- gets _sExternalMap
+  if name `Map.member` eMap then
+    error $ "External already present in the external map: " ++ show name
+  else
+    modify' $ \s@CGState{..} ->
+    let curSize = fromIntegral . Map.size $ _sExternalMap in
+    s { _sExternalMap = Map.insert (eName e) (E curSize e) _sExternalMap
+      , _sFunctionRetMap = mempty
+      }
 
 getExternal :: Name -> CG (Maybe External)
 getExternal name = extExt <$$> Map.lookup name <$> gets _sExternalMap

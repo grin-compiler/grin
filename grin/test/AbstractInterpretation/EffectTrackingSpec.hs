@@ -23,6 +23,12 @@ calcEffects prog
   , computer <- _airComp . evalAbstractProgram $ etProgram
   = toETResult etMapping computer
 
+calcEffectsWithoutPrimopsPrelude :: Exp -> ETResult
+calcEffectsWithoutPrimopsPrelude prog
+  | (etProgram, etMapping) <- codeGen prog
+  , computer <- _airComp . evalAbstractProgram $ etProgram
+  = toETResult etMapping computer
+
 spec :: Spec
 spec = describe "Effect Tracking Analysis" $ do
 
@@ -244,3 +250,87 @@ spec = describe "Effect Tracking Analysis" $ do
         calculated = (calcEffects exp) { _external = mempty }
     calculated `sameAs` expected
 
+  it "custom_externals" $ do
+    let exp = [prog|
+          primop effectful
+            _prim_string_print  :: T_String -> T_Unit
+            _prim_read_string   :: T_String
+
+            "newPrimSomething#" :: {"GHC.Prim.SomePrimType#"}
+
+          primop pure
+            _prim_string_concat   :: T_String -> T_String -> T_String
+
+          ffi pure
+            newPrimSomething :: {GHC.Prim.SomePrimType}
+
+          grinMain =
+            x0 <- _prim_string_print "Hello World!"
+            x1 <- _prim_read_string
+            x2 <- "newPrimSomething#" $
+            x3 <- _prim_string_concat "Hello" "World"
+            x4 <- newPrimSomething
+            pure ()
+        |]
+    let expected = mempty
+          { _register = [ ("x0", Effects ["_prim_string_print"])
+                        , ("x1", Effects ["_prim_read_string"])
+                        , ("x2", Effects ["newPrimSomething#"])
+                        , ("x3", Effects [])
+                        , ("x4", Effects [])
+                        ]
+          , _function = [ ("grinMain", Effects ["_prim_string_print", "_prim_read_string", "newPrimSomething#"]) ]
+          }
+        calculated = (calcEffectsWithoutPrimopsPrelude exp) { _external = mempty }
+    calculated `sameAs` expected
+
+  it "mixed_externals" $ do
+    let exp = [prog|
+          primop effectful
+            "newPrimSomething#" :: {"GHC.Prim.SomePrimType#"}
+
+          ffi pure
+            newPrimSomething :: {GHC.Prim.SomePrimType}
+
+          grinMain =
+            x0 <- _prim_string_print "Hello World!"
+            x1 <- _prim_read_string
+            x2 <- "newPrimSomething#" $
+            x3 <- _prim_string_concat "Hello" "World"
+            x4 <- newPrimSomething
+            pure ()
+        |]
+    let expected = mempty
+          { _register = [ ("x0", Effects ["_prim_string_print"])
+                        , ("x1", Effects ["_prim_read_string"])
+                        , ("x2", Effects ["newPrimSomething#"])
+                        , ("x3", Effects [])
+                        , ("x4", Effects [])
+                        ]
+          , _function = [ ("grinMain", Effects ["_prim_string_print", "_prim_read_string", "newPrimSomething#"]) ]
+          }
+        calculated = (calcEffects exp) { _external = mempty }
+    calculated `sameAs` expected
+
+
+  it "redefining an already existing external is not allowed" $ do
+    let exp = [prog|
+          primop effectful
+            -- already defined in PrimopsPrelude
+            _prim_string_print  :: T_String -> T_Unit
+
+          grinMain =
+            x0 <- _prim_string_print "Hello World!"
+            pure x
+        |]
+    let expected = mempty
+          { _register = [ ("x0", Effects ["_prim_string_print"])
+                        , ("x1", Effects ["_prim_read_string"])
+                        , ("x2", Effects ["newPrimSomething#"])
+                        , ("x3", Effects [])
+                        , ("x4", Effects [])
+                        ]
+          , _function = [ ("grinMain", Effects ["_prim_string_print", "_prim_read_string", "newPrimSomething#"]) ]
+          }
+        calculated = (calcEffects exp) { _external = mempty }
+    (return $! calculated) `shouldThrow` anyException
