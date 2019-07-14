@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, FlexibleInstances #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, FlexibleInstances, InstanceSigs #-}
 module Transformations.Names where
 
 import Text.Printf
@@ -88,40 +88,53 @@ class MapName a where
 class MapVal a where
   mapValM :: Monad m => (Val -> m Val) -> a -> m a
 
-instance MapName (UseSite Exp)
-instance MapName (DefSite Exp)
-instance MapName CPat
-instance MapName Val
+instance MapName CPat where
+  mapNameM :: Monad m => (Name -> m Name) -> CPat -> m CPat
+  mapNameM f = \case
+    NodePat tag args  -> NodePat tag <$> mapM f args
+    cpat -> pure cpat
 
-instance MapVal (UseSite Exp)
-instance MapVal (DefSite Exp)
-instance MapVal Val
+instance MapName Val where
+  mapNameM :: Monad m => (Name -> m Name) -> Val -> m Val
+  mapNameM f = \case
+    ConstTagNode tag args -> ConstTagNode tag <$> mapM f args
+    VarTagNode name args  -> VarTagNode <$> f name <*> mapM f args
+    Var name              -> Var <$> f name
+    val                   -> pure val
+
+instance MapName BPat where
+  mapNameM :: Monad m => (Name -> m Name) -> BPat -> m BPat
+  mapNameM f = \case
+    VarPat v -> VarPat <$> f v
+    AsPat var val -> AsPat <$> f var <*> mapNameM f val
+
+-- QUESTION: monadic lens (over)?
+instance MapName AppName where
+  mapNameM :: Monad m => (Name -> m Name) -> AppName -> m AppName
+  mapNameM f (Ext name) = Ext <$> f name
+  mapNameM f (Fun name) = Fun <$> f name
+
+-- QUESTION: empty instances which are never used
+-- instance MapName (UseSite Exp)
+-- instance MapName (DefSite Exp)
+
+-- instance MapVal (UseSite Exp)
+-- instance MapVal (DefSite Exp)
+-- instance MapVal Val
 
 mapNameUseExpM :: Monad m => (Name -> m Name) -> Exp -> m Exp
 mapNameUseExpM f = \case
-  SApp name vals    -> SApp       <$> f name <*> mapM (mapNamesValM f) vals
-  ECase val alts    -> ECase      <$> mapNamesValM f val <*> pure alts
-  SReturn val       -> SReturn    <$> mapNamesValM f val
-  SStore val        -> SStore     <$> mapNamesValM f val
-  SFetchI name i    -> SFetchI    <$> f name <*> pure i
-  SUpdate name val  -> SUpdate    <$> f name <*> mapNamesValM f val
+  SApp name args    -> SApp       <$> mapNameM f name <*> mapM f args
+  ECase scrut alts  -> ECase      <$> f scrut <*> pure alts
+  SReturn val       -> SReturn    <$> mapNameM f val
+  SStore var        -> SStore     <$> f var
+  SFetchI var i    -> SFetchI     <$> f var <*> pure i
+  SUpdate ptr var  -> SUpdate     <$> f ptr <*> f var
   exp               -> pure exp
 
 mapNameDefExpM :: Monad m => (Name -> m Name) -> Exp -> m Exp
 mapNameDefExpM f = \case
   Def name args body          -> Def <$> f name <*> mapM f args <*> pure body
-  EBind leftExp lpat rightExp -> EBind leftExp <$> mapNamesValM f lpat <*> pure rightExp
-  Alt cpat body               -> Alt <$> mapNamesCPatM f cpat <*> pure body
+  EBind leftExp bPat rightExp -> EBind leftExp <$> mapNameM f bPat <*> pure rightExp
+  Alt cpat body               -> Alt <$> mapNameM f cpat <*> pure body
   exp                         -> pure exp
-
-mapNamesCPatM :: Monad m => (Name -> m Name) -> CPat -> m CPat
-mapNamesCPatM f = \case
-  NodePat tag args  -> NodePat tag <$> mapM f args
-  cpat -> pure cpat
-
-mapNamesValM :: Monad m => (Name -> m Name) -> Val -> m Val
-mapNamesValM f = \case
-  ConstTagNode tag vals -> ConstTagNode tag <$> mapM (mapNamesValM f) vals
-  VarTagNode name vals  -> VarTagNode <$> f name <*> mapM (mapNamesValM f) vals
-  Var name              -> Var <$> f name
-  val                   -> pure val

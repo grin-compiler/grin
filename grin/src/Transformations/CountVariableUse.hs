@@ -12,6 +12,7 @@ import Transformations.Util
 
 import Grin.Grin
 
+-- TODO: review this, no change was required after syntax changes
 
 countVariableUse :: Exp -> Map Name Int
 countVariableUse exp = appEndo (cata folder exp) mempty where

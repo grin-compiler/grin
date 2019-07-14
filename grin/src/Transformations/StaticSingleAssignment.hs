@@ -7,7 +7,7 @@ import Data.Monoid hiding (Alt)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad.State
-import Lens.Micro.Platform ((%=), _1)
+import Lens.Micro.Platform ((%=), _1, over)
 
 import Grin.Grin
 import Transformations.Util
@@ -39,8 +39,8 @@ staticSingleAssignment e = flip evalState (mempty, 1) $
       pure $ DefF name names0 (subst0, body)
 
     EBind lhs v rhs -> do
-      subst' <- foldM (\s n -> snd <$> calcName (n, s)) subst (foldNamesVal (:[]) v)
-      pure $ EBindF (subst', lhs) (mapNamesVal (substName' subst') v) (subst', rhs)
+      subst' <- foldM (\s n -> snd <$> calcName (n, s)) subst (foldNames (:[]) v)
+      pure $ EBindF (subst', lhs) (mapNamesBPat (substName' subst') v) (subst', rhs)
 
     Alt (NodePat tag names) body -> do
       (names0, subst0) <- first reverse <$> foldM
@@ -50,16 +50,16 @@ staticSingleAssignment e = flip evalState (mempty, 1) $
       pure $ AltF (NodePat tag names0) (subst0, body)
 
     -- Substituitions
-    ECase       val alts -> pure $ ECaseF (substVal val) $ ((,) subst) <$> alts
-    SApp        name params -> pure $ SAppF (substName name) (substVal <$> params)
+    ECase       scrut alts -> pure $ ECaseF (substName scrut) $ ((,) subst) <$> alts
+    SApp        f params -> pure $ SAppF (over appName substName $ f) (map substName params)
     SReturn     val -> pure $ SReturnF (substVal val)
-    SStore      val -> pure $ SStoreF (substVal val)
-    SFetchI     name pos -> pure $ SFetchIF (substName name) pos
-    SUpdate     name val -> pure $ SUpdateF (substName name) (substVal val)
+    SStore      var -> pure $ SStoreF (substName var)
+    SFetchI     var pos -> pure $ SFetchIF (substName var) pos
+    SUpdate     ptr var -> pure $ SUpdateF (substName ptr) (substName var)
 
     rest -> pure $ (,) subst <$> project rest
     where
-      -- Checks if the name is already registered, register it if necessary and
+      -- đ Checks if the name is already registered, register it if necessary and
       -- returns a unique name in the block.
       calcName :: (Name, Map.Map Name Int) -> VarM (Name, Map.Map Name Int)
       calcName (nm, subst) = do
@@ -74,13 +74,25 @@ staticSingleAssignment e = flip evalState (mempty, 1) $
             put (Set.insert nm vars, idx + 1)
             pure (nm', subst')
 
+      -- | Create a new name by appending an index to an already existing one.
+      newName :: Name -> Int -> Name
       newName nm i = nm <> "_" <> showTS i
 
+      -- | Basically a mapping on `Name`s inside a `Val` using the
+      -- `substName` function.
+      substVal :: Val -> Val
       substVal = \case
-        ConstTagNode  tag params -> ConstTagNode tag (substVal <$> params)
-        VarTagNode    nm  params -> VarTagNode (substName nm) (substVal <$> params)
+        ConstTagNode  tag params -> ConstTagNode tag (map substName params)
+        VarTagNode    nm  params -> VarTagNode (substName nm) (map substName params)
         Var nm  -> Var $ substName nm
         rest    -> rest
 
+      -- | Lookup a name using the context in the local closure.
+      -- Produce a new name if the given name is already present.
+      substName :: Name -> Name
       substName nm = maybe nm (newName nm) (Map.lookup nm subst)
+
+      -- | Lookup a name using a given context.
+      -- Produce a new name if the given name is already present.
+      substName' :: Map.Map Name Int -> Name -> Name
       substName' s nm = maybe nm (newName nm) (Map.lookup nm s)

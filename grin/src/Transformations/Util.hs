@@ -70,6 +70,11 @@ mapNamesVal f = \case
   Var name              -> Var $ f name
   val                   -> val
 
+mapNamesBPat :: (Name -> Name) -> BPat -> BPat
+mapNamesBPat f = \case
+  VarPat v      -> VarPat (f v)
+  AsPat var val -> AsPat (f var) (mapNamesVal f val)
+
 -- TODO: replace at use sites with
 -- mapValVal :: (Val -> Val) -> Val -> Val
 -- mapValVal f val = case f val of

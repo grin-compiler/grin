@@ -1,5 +1,5 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
-module Transformations.EffectMap
+{-# LANGUAGE LambdaCase, OverloadedStrings, ViewPatterns #-}
+module Transformations.EffectMap {-# DEPRECATED "EffectTracking instead" #-}
   ( effectMap
   ) where
 
@@ -21,7 +21,6 @@ import Grin.TypeEnv
 import Grin.EffectMap
 import Transformations.Util
 
-
 effectMap :: (TypeEnv, Exp) -> EffectMap
 effectMap (te, e) = EffectMap $ withEffectfulExternals $ effectfulFunctions $ unMMap $ snd $ para buildEffectMap e where
 
@@ -39,11 +38,12 @@ effectMap (te, e) = EffectMap $ withEffectfulExternals $ effectfulFunctions $ un
   buildEffectMap :: ExpF (Exp, (Set EffectWithCalls, MonoidMap Name (Set EffectWithCalls))) -> (Set EffectWithCalls, MonoidMap Name (Set EffectWithCalls))
   buildEffectMap =  \case
     DefF name _ (_,(effs, _)) -> (mempty, MMap $ Map.singleton name effs)
-    EBindF (SStore _,lhs) (Var v) (_,rhs)
+    -- QUESTION: is this a correct refactor? Var v ~> (_bPatVar -> v)
+    EBindF (SStore _,lhs) (_bPatVar -> v) (_,rhs)
       | Just locs <- te ^? variable . at v . _Just . _T_SimpleType . _T_Location
       -> let storeEff = (Set.singleton $ Effect $ storesEff locs, mempty)
          in lhs <> rhs <> storeEff
-    SAppF name _
+    SAppF (_appName -> name) _
       | Set.member name effectfulExternals -> (Set.singleton (Effect $ primopEff name), mempty)
       | otherwise -> (Set.singleton (Call name), mempty)
     SUpdateF name _

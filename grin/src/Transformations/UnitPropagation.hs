@@ -11,8 +11,11 @@ import Grin.Grin
 import Grin.TypeEnv
 
 
+{- QUESTION: Is this needed after the syntactical revamp?
+   substVals can only change `pure`s
+-}
 unitPropagation :: TypeEnv -> Exp -> Exp
-unitPropagation TypeEnv{..} e = ana builder e where
+unitPropagation TypeEnv{..} e = e {-ana builder e where
 
   unitEnv :: Map Val Val
   unitEnv = Map.mapKeysMonotonic Var . flip Map.mapMaybe _variable $
@@ -24,3 +27,4 @@ unitPropagation TypeEnv{..} e = ana builder e where
     EBind leftExp lpat rightExp -> EBindF leftExp (substValsVal unitEnv lpat) rightExp
 
     _ -> project e
+-}

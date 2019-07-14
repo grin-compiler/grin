@@ -24,17 +24,19 @@ genEval exclude evalName defs = do
       funAlt name args = do
         argNames <- replicateM (length args) $ deriveNewName "a"
         whnf <- deriveNewName "res"
+        -- QUESTION: any better name ideas?
+        unit <- deriveNewName "unit"
         pure $
           Alt (NodePat (Tag F name) argNames) $
-            EBind (SApp name $ map Var argNames) (Var whnf) $
-            EBind (SUpdate ptrName $ Var whnf) Unit $
+            EBind (SApp (Fun name) argNames) (VarPat whnf) $
+            EBind (SUpdate ptrName whnf) (VarPat unit) $
             SReturn $ Var whnf
 
   alts <- sequence [funAlt name args | Def name args _ <- defs, Set.notMember name exclude]
   pure $
     Def evalName [ptrName] $
-      EBind (SFetch ptrName) (Var valueName) $
-      ECase (Var valueName) (defaultAlt : alts)
+      EBind (SFetch ptrName) (VarPat valueName) $
+      ECase valueName (defaultAlt : alts)
 
 genApply :: Set Name -> Name -> [Def] -> NameM Def
 genApply exclude applyName defs = do
@@ -45,8 +47,8 @@ genApply exclude applyName defs = do
         argNames <- replicateM (arity - missing) $ deriveNewName "a"
         pure $ Alt (NodePat (Tag (P missing) name) argNames) $ if missing < 1 then error "genApply: internal error" else
           if missing == 1
-            then SApp name $ map Var $ argNames ++ [argName]
-            else SReturn $ ConstTagNode (Tag (P $ pred missing) name) $ map Var $ argNames ++ [argName]
+            then SApp (Fun name) $ argNames ++ [argName]
+            else SReturn $ ConstTagNode (Tag (P $ pred missing) name) $ argNames ++ [argName]
 
   alts <- sequence
     [ funAlt name arity missing
@@ -55,4 +57,4 @@ genApply exclude applyName defs = do
     , let arity = length args
     , missing <- [1..arity]
     ]
-  pure $ Def applyName [partialName, argName] $ ECase (Var partialName) alts
+  pure $ Def applyName [partialName, argName] $ ECase partialName alts

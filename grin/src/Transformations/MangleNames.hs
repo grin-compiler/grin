@@ -22,6 +22,7 @@ data Env
 
 type M = State Env
 
+-- TODO: review this, no change was required after syntax changes
 {- NOTE: We need two seperate traversals in order to
          first collect all names at definition sites,
          then to replace all names at use- and definition sites.
