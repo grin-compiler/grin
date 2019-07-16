@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, TupleSections #-}
-module Transformations.Simplifying.CaseSimplification where
+module Transformations.Simplifying.CaseSimplification
+{-# DEPRECATED "The new syntax does not support nodes as case scrutinees" #-}
+  where
 
 import Data.List (foldl')
 import Data.Map (Map)
@@ -13,7 +15,7 @@ import Grin.Grin
 import Transformations.Util
 
 caseSimplification :: Exp -> Exp
-caseSimplification e = ana builder (mempty, mempty, e) where
+caseSimplification e = e {-ana builder (mempty, mempty, e) where
   builder :: (Map Val Val, Map Name Name, Exp) -> ExpF (Map Val Val, Map Name Name, Exp)
   builder (valEnv, nameEnv, exp) =
     case exp of
@@ -29,3 +31,4 @@ caseSimplification e = ana builder (mempty, mempty, e) where
             Var n -> (vEnv, Map.insert name (subst nEnv n) nEnv)          -- name -> name substitution
             _     -> (Map.insert (Var name) (subst vEnv val) vEnv, nEnv)  -- Val -> Val substitution ; i.e. Var name -> Lit
         alt -> (valEnv, nameEnv, alt)
+-}

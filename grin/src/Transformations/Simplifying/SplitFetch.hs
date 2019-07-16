@@ -1,11 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
-module Transformations.Simplifying.SplitFetch where
+module Transformations.Simplifying.SplitFetch
+{-# DEPRECATED "The current GRIN implementation does need the simplified version fo the intermediate language" #-}
+  where
 
 import Data.Functor.Foldable as Foldable
 import Grin.Grin
 
 splitFetch :: Exp -> Exp
-splitFetch = ana builder where
+splitFetch = id {-ana builder where
 
   builder :: Exp -> ExpF Exp
   builder = \case
@@ -15,3 +17,4 @@ splitFetch = ana builder where
 
   newBinds :: Name -> Exp -> [(Int, LPat)] -> Exp
   newBinds name = foldr (\(idx, lpat) exp -> EBind (SFetchI name (Just idx)) lpat exp)
+-}

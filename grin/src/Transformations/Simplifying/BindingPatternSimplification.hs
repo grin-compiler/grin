@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
 
-module Transformations.Simplifying.BindingPatternSimplification where
+module Transformations.Simplifying.BindingPatternSimplification
+{-# DEPRECATED "The new syntax satisfies this property by construction" #-}
+  where
 
 import Control.Monad
 import Data.Functor.Foldable as Foldable
@@ -12,13 +14,13 @@ import Transformations.Names
 import Lens.Micro.Extra
 
 
-newNodeName :: NameM Name
-newNodeName = deriveNewName "p"
+-- newNodeName :: NameM Name
+-- newNodeName = deriveNewName "p"
 
 -- NOTE: This transformation can invalidate the "no left bind" invariant,
 --       so we have to normalize these incorrect bindings after this transformation.
 bindingPatternSimplification :: Exp -> (Exp, ExpChanges)
-bindingPatternSimplification e = evalNameM e . cataM alg $ e where
+bindingPatternSimplification e = (e, NoChange) {- evalNameM e . cataM alg $ e where
   alg :: ExpF Exp -> NameM Exp
   alg = \case
 
@@ -32,3 +34,4 @@ bindingPatternSimplification e = evalNameM e . cataM alg $ e where
       pure $ SBlock $ EBind (SReturn scrut) newVar (ECase newVar alts)
 
     expf -> pure . embed $ expf
+-}

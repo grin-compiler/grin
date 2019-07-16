@@ -1,5 +1,10 @@
 {-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor #-}
-module Transformations.Simplifying.RegisterIntroduction where
+module Transformations.Simplifying.RegisterIntroduction
+{-# DEPRECATED "The current GRIN implementation does need the simplified version fo the intermediate language" #-}
+  where
+
+-- TODO: investigate tag name introduction
+-- QUESTION: Do we need vartags in GRIN?
 
 import Control.Arrow ((***), second)
 import Data.Function
@@ -29,7 +34,7 @@ nthSpec = describe "nth" $ do
     (take 5 $ nth 1 2 [1..]) `shouldBe` [2,4,6,8,10]
 
 registerIntroductionI :: Int -> Exp -> Exp
-registerIntroductionI _ e = apo builder ([1..], e) where
+registerIntroductionI _ e = e {- apo builder ([1..], e) where
   builder :: ([Int], Exp) -> ExpF (Either Exp ([Int], Exp))
   builder (path, exp) =
     case exp of
@@ -84,3 +89,4 @@ registerIntroductionI _ e = apo builder ([1..], e) where
 tests :: Spec
 tests = do
   nthSpec
+-}

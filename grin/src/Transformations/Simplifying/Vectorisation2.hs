@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, OverloadedStrings #-}
-module Transformations.Simplifying.Vectorisation2 (vectorisation) where
+module Transformations.Simplifying.Vectorisation2
+{-# DEPRECATED "The current GRIN implementation does need the simplified version fo the intermediate language" #-}
+  (vectorisation) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -28,7 +30,7 @@ getVarNodeArity typeEnv@TypeEnv{..} name = case Map.lookup name _variable of
   Just (T_NodeSet ns)   -> Just $ maximum [1 + V.length args | args <- Map.elems ns]
 
 vectorisation :: TypeEnv -> Exp -> Exp
-vectorisation typeEnv expression = ana folder (Map.empty, expression)
+vectorisation typeEnv expression = expression {-ana folder (Map.empty, expression)
   where
     folder :: VectorisationAccumulator -> ExpF VectorisationAccumulator
     folder (nameStore, expression) =
@@ -84,3 +86,4 @@ collectFetchVars2 = flip runState emptyInfo . cata collect where
   collect = \case
     --EBindF left var@(Var name) right -> pure $ EBind left var right
     e -> embed <$> sequence e
+-}

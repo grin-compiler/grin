@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, TupleSections, TypeApplications, RecordWildCards, DeriveFunctor, TemplateHaskell, OverloadedStrings #-}
-module Transformations.Simplifying.RightHoistFetch2 (rightHoistFetch) where
+module Transformations.Simplifying.RightHoistFetch2
+{-# DEPRECATED "The current GRIN implementation does need the simplified version fo the intermediate language" #-}
+  (rightHoistFetch) where
 
 import Debug.Trace (traceShowId, trace)
 import Text.Show.Pretty (ppShow)
@@ -18,7 +20,7 @@ import Grin.Grin
 import Transformations.Util
 
 -- path tracking
-
+{-
 data Step
   = SBindL  Int -- ^ duplicate count
   | SBindR  Int -- ^ duplicate count
@@ -120,9 +122,9 @@ data Build -- builder state
 concat <$> mapM makeLenses [''Build]
 
 emptyBuild = Build mempty mempty mempty mempty mempty
-
+-}
 rightHoistFetch :: Exp -> Exp
-rightHoistFetch e = {-trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ -}hylo skipUnit builder (emptyBuild, e)
+rightHoistFetch e = e {-{-trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $ -}hylo skipUnit builder (emptyBuild, e)
   where
     globalFetchMap = collectFetchVars e
 
@@ -162,3 +164,4 @@ rightHoistFetch e = {-trace (printf "fetch vars:\n%s" (ppShow globalFetchMap)) $
 
     genBind :: Name -> [(Name, Int)] -> Exp -> Exp
     genBind fetchVar l (Alt cpat exp) = Alt cpat $ foldr (\(name,idx) e -> EBind (SFetchI fetchVar (Just idx)) (Var name) e) exp $ reverse l
+-}

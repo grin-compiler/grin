@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
-module Transformations.Simplifying.Vectorisation where
+module Transformations.Simplifying.Vectorisation
+{-# DEPRECATED "The current GRIN implementation does need the simplified version fo the intermediate language" #-}
+  where
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set

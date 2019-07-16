@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
 
-module Transformations.Simplifying.ProducerNameIntroduction where
+module Transformations.Simplifying.ProducerNameIntroduction
+{-# DEPRECATED "The new syntax satisfies this property by construction" #-}
+  where
 
 import Control.Monad
 import Data.Functor.Foldable as Foldable
@@ -21,7 +23,7 @@ newNodeName = deriveNewName "v"
         in function application arguments.
 -}
 producerNameIntroduction :: Exp -> (Exp, ExpChanges)
-producerNameIntroduction e = evalNameM e . cata alg $ e where
+producerNameIntroduction e = (e, NoChange) {- evalNameM e . cata alg $ e where
   alg :: ExpF (NameM Exp) -> NameM Exp
   alg e = case e of
     SStoreF    x@VarTagNode{}   -> bindVal SStore x
@@ -40,3 +42,4 @@ producerNameIntroduction e = evalNameM e . cata alg $ e where
   bindVal context val = do
     nodeVar <- fmap Var newNodeName
     return $ SBlock $ EBind (SReturn val) nodeVar (context nodeVar)
+-}
