@@ -49,7 +49,7 @@ If you'd like to join them, please consider become a backer or sponsor on [Patre
 Example using Homebrew on macOS:
 
 ```bash
-$ brew install llvm-hs/llvm/llvm-7.0
+$ brew install llvm-hs/llvm/llvm-7
 ```
 
 #### Debian/Ubuntu
