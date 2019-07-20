@@ -199,8 +199,7 @@ executable grin
                      , binary
   default-language:    Haskell2010
 
-test-suite grin-test
-  type:                exitcode-stdio-1.0
+executable grin-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   default-extensions:  OverloadedStrings
