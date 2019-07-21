@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Main where
+module CLI.Lib where
 
 import Control.Monad
 import Data.Map (Map(..))
@@ -20,6 +20,8 @@ import Grin.PrimOpsPrelude
 import Grin.Parse hiding (value)
 import Grin.Nametable as Nametable
 import Pipeline.Pipeline
+
+
 
 data Options = Options
   { optFiles     :: [FilePath]
@@ -149,14 +151,18 @@ printGrinWithOpt = flip PrintGrin id <$> option (maybeReader maybeRenderingOpt)
   <> help "Print the actual grin code with a given rendering option [simple | with-externals]"
   <> metavar "OPT" )
 
-options :: IO Options
-options = execParser $ info
-  (pipelineArgs <**> helper)
-  (mconcat
-    [ fullDesc
-    , progDesc "grin compiler"
-    , header "grin compiler"
-    ])
+options :: [String] -> IO Options
+options args = do
+  let res = execParserPure defaultPrefs
+              (info
+                (pipelineArgs <**> helper)
+                (mconcat
+                  [ fullDesc
+                  , progDesc "grin compiler"
+                  , header "grin compiler"
+                  ]))
+              args
+  handleParseResult res
   where
     pipelineArgs = Options
       <$> some (argument str (metavar "FILES..."))
@@ -185,10 +191,10 @@ options = execParser $ info
             , help "Save intermediate results in binary format"
             ])
 
-main :: IO ()
-main = do
+mainWithArgs :: [String] -> IO ()
+mainWithArgs args = do
   hSetBuffering stdout NoBuffering
-  Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options
+  Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options args
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
       then do

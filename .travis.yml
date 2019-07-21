@@ -38,9 +38,10 @@ script:
   - mkdir .output
   - stack build --coverage
   - stack exec grin-test --coverage
+  - stack exec grin-end-to-end-test --coverage
   - stack exec grin -- grin/grin/sum_simple.grin
 
 after_script:
   - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj
-  - stack hpc report --all grin-test.tix grin.tix
+  - stack hpc report --all grin.tix grin-test.tix grin-end-to-end-test.tix
   - ./shc --repo-token=zGXui2BR5EcWhA292bY5ouvTWhZCj2zVU combined custom
