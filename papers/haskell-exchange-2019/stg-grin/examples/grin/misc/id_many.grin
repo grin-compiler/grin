@@ -1,0 +1,41 @@
+-- Haskell code: id id id 0
+
+grinMain =
+  zero <- store (CInt 0)
+
+  id_partial_1 <- store (P1_id)
+  id_id_thunk  <- store (Fid id_partial_1)
+
+  id_partial_2   <- store (P1_id)
+  ap_id_id_thunk <- store (Fap id_id_thunk id_partial_2)
+
+  id_id_id <- eval ap_id_id_thunk
+  (CInt r) <- apply id_id_id zero
+
+  _prim_int_print r
+
+eval p =
+  v <- fetch p
+  case v of
+    (CInt n) -> pure v
+    (P1_id)  -> pure v
+    (Fid x.1) ->
+      r.id <- id x.1
+      update p r.id
+      pure r.id
+    (Fap f.2 arg.2) ->
+      r.ap <- ap f.2 arg.2
+      update p r.ap
+      pure r.ap
+
+apply f.0 arg.0 =
+  case f.0 of
+    (P1_id) -> id arg.0
+
+ap f.1 arg.1 =
+  f.1' <- eval f.1
+  apply f.1' arg.1
+
+id x.0 =
+  x.0' <- eval x.0
+  pure x.0'

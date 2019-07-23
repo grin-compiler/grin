@@ -1,0 +1,17 @@
+-- let binding creates a heap object
+-- HOF -> convenient partial application
+
+zero = \ -> Int# 0#;
+one  = \ -> Int# 1#;
+
+id = \x -> x;
+
+add = \x y -> case x of
+  Int# x' -> case y of
+      Int# y' -> case +# x' y' of
+          r -> Int# r;
+      badInt -> Error_min badInt;
+  badInt -> Error_min badInt;
+
+main = \ -> let add_one = \ -> add one
+            in id add_one zero

@@ -1,0 +1,7 @@
+-- eval -> forcing suspended computation
+-- eval can be anywhere
+-- eval is not black magic!
+
+id x.0 =
+  x.0' <- eval x.0
+  pure x.0'

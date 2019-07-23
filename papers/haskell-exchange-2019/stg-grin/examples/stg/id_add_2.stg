@@ -1,0 +1,6 @@
+-- primitive types, lambdas are always boxed
+
+id = \x -> x
+
+zero = \ -> Int# 0#;
+one  = \ -> Int# 1#;

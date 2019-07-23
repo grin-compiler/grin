@@ -1,0 +1,3 @@
+-- id is just a lambda
+
+id = \x -> x

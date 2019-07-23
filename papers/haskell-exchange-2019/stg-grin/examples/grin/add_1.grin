@@ -1,0 +1,7 @@
+-- just adding two boxed integers
+
+add lhs.0 rhs.0 =
+  (CInt lhs.0') <- eval lhs.0
+  (CInt rhs.0') <- eval rhs.0
+  res <- _prim_int_add lhs.0' rhs.0'
+  pure (CInt res)

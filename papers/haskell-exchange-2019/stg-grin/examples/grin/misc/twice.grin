@@ -1,0 +1,50 @@
+-- Haskell code: twice f x = f (f x)
+--               twice (add 1) 0
+grinMain =
+  zero <- store (CInt 0)
+  one  <- store (CInt 1)
+
+  add_1 <- store (P1_add one)
+  twice_thunk <- store (Ftwice add_1 zero)
+
+  (CInt r)    <- eval twice_thunk
+  _prim_int_print r
+
+eval p =
+  v <- fetch p
+  case v of
+    (CInt _n) -> pure v
+    (P2_add) -> pure v
+    (P1_add _x) -> pure v
+    (Fadd lhs.1 rhs.1) ->
+      r.add <- add lhs.1 rhs.1
+      update p r.add
+      pure r.add
+    (Ftwice f.3 arg.3) ->
+      r.twice <- twice f.3 arg.3
+      update p r.twice
+      pure r.twice
+    (Fap f.2 arg.2) ->
+      r.ap <- ap f.2 arg.2
+      update p r.ap
+      pure r.ap
+
+apply f.0 new_arg =
+  case f.0 of
+    (P2_add)     -> pure (P1_add new_ag)
+    (P1_add x.0) -> add x.0 new_arg
+
+ap f.1 arg.1 =
+  f.1' <- eval f.1
+  apply f.1' arg.1
+
+twice f.0 arg.0 =
+  f_arg_thunk <- store (Fap f.0 arg.0)
+  f.0'   <- eval f.0
+  apply f.0' f_arg_thunk
+
+add lhs.0 rhs.0 =
+  (CInt lhs.0') <- eval lhs.0
+  (CInt rhs.0') <- eval rhs.0
+  res <- _prim_int_add lhs.0' rhs.0'
+  pure (CInt res)

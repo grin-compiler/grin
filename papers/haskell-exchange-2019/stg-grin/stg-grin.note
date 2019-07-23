@@ -1,0 +1,284 @@
+- STG in GHC pipeline (rewrite rules, core plugins, core opts before STG, core has types, STG has none)
+- type systems of STG and GRIN
+- constructs of STG
+- constructs of GRIN
+- laziness
+- HOF
+- partial application
+- function pointers
+- defunctionalization
+- modular compliation vs whole program compilation (interpolation between the two)
+- available optimizations and analyses
+- future of GRIN: syntax, SSA, Soufflé
+
+NOTES:
+  - Past presentation of STG
+  - past presentaion of core?
+  - no optimizations on STG
+  - STG is stable
+  - type info of Haskell does not express low level invariant
+    - data-flow analyses can express those
+    - in core, we only think about types like in the surface language (can types match, type theory background)
+
+  - contrast GRIN to STG, what is GRIN's goal?
+  - STG's goal is to evaluate lambda calculus
+  - GRIN optimizes further
+
+
+--------------------------------------------------
+-- Two graph reduction techniques: STG and GRIN --
+--------------------------------------------------
+
+-----------
+-- Goals --
+-----------
+
+Similarities:
+  - intermediate representations of higher order non-strict languages
+  - both are for expressing graph reduction
+
+STG:
+  - simplified higher-order language for efficient code generation
+    + simplified, untyped version of Core
+    + closely integrated together with GHC
+    + less extensible
+
+GRIN:
+  - unified back end for (lazy) functional languages
+    + extensible through externals
+  - remove functional artifacts from the programs
+    + so that conventional (imperative) optimization techniques work well
+
+------------------
+-- Introduction --
+------------------
+
+STG:
+  - language:
+    + high level
+    + non-strict higher order functional language
+    + basically Haskell ...
+      * without syntax sugar
+      * without types
+      * with more fine-grained control over laziness
+  - machine:
+    + spineless ~ no spine for the function application, all arguments are present at once
+    + tagless   ~ no tags for heap objects, just a code pointer describing what to do next (with the object)
+    + G-machine ~ graph reduction machine
+    + some notions only exist on the operational semantics level (heap object, info table)
+
+GRIN:
+  - language:
+    + strict first order imperative language
+    + ... or really low level monadically structured functional language
+      * with nodes
+      * three builtin instructions
+  - machine (?):
+    + the semantics are apparent from the syntax of the language
+    + all functional constructs are explicit, part of the language (faciliattes efficient optimization)
+
+------------
+-- Update --
+------------
+
+STG:
+  - closures are heap objects, a special primitive type
+  - let bindings create heap objects
+  - implicit update
+    + pushing a stack frame which tells what to update with the result
+    + tightly packed with computation implicitly
+
+
+GRIN (63):
+  - closures are just data
+    + F-nodes
+  - stores can put F-nodes onto the heap
+  - explicit update instruction
+    + dedicated instruction for thunk updating
+    + explicit pointer argument to the heap location to be updated
+    + detached from the computation
+  - update only happens during evalution:
+    + only update thunks, not WHNFs
+
+--------------
+-- Laziness --
+--------------
+
+STG:
+  - case expression forces evaluation
+    + implicit laziness
+    + pushes an update frame
+    + evalutes the scrutinee
+    + updates the closure
+    + scutinizes calculated value
+  - more optimal code can generated with strictness analysis
+
+GRIN:
+  - eval:
+    + gets a pointer
+    + evaluates it to WHNF
+    + updates the heap location
+    + returns updated value
+  - can be optimized HPT, GeneralizedUnboxing, ArityRasing
+
+--------------------------
+-- Function Application --
+--------------------------
+
+Similarities:
+  - partially applied functions have their arguments packed together with them
+
+STG:
+  - higher order
+  - can be unknown functions
+  - batched application
+  - differently typed applications (many `stgApply`s generated - varying length and arguments types)
+  - currying supported through eval/apply model:
+    + the caller knows the arity of the function (info table)
+    + exact number of arguments:
+      * jump to function's body
+    + less arguments:
+      * creates partial application node (PAP heap object)
+      * returns it
+    + more arguments:
+      * evaluates the function
+      * creates continuation for the result to be applied to the additional arguments
+    + function is a thunk:
+      * evaluate it
+      * pass arguments to it
+    + function is partially applied
+      * supply additional arguments
+
+
+GRIN:
+  - first order
+  - all calls are to known functions
+  - procedure:
+    + callers puts everything on heap
+    + callee evaluates the args it needs to WHNF (eval)
+    + performs computation
+    + returns a node
+  - apply:
+    + gets a P node and a single argument
+    + creates a one smaller P node or applies the function (always returns a WHNF, since functions return WHNF)
+    + the chains of apply will be optimized away by e.g.: case hoisting
+    + (multi-argument apply would be harder to optimize)
+  - ap:
+    + just for constructing thunks of unknown functions
+  - fun args can be any value (BAV, node, pointer)
+  - fun return can be BAV or node in WHNF (C or P-node)
+    + can be put into multiple registers
+    + callee has no info on how the return value will be used
+    + the return value might not be needed to be placed on the heap
+
+---------------
+-- Semantics --
+---------------
+
+Similarities:
+  - explicit unboxing
+  - sharing analysis
+
+STG:
+  - operational semantics are not appearant on the syntactic level:
+    + execution stack containing continuations
+    + heap
+    + additional primitive type heap objects
+    + additional primitive operations: ARITY, CODE etc ... (manipulating the info table)
+  - passing closures around
+    + heap objects
+    + function/code pointers
+  - builtins:
+    + only exist on op.sem. level
+    + heap objects (containing info tables)
+
+GRIN:
+  - operational semantics are closely tied to the language:
+    + only extra thing we need is the heap
+  - defunctionalization
+    + tags + dispatch function instead of function pointers
+    + standard optimizations "work"
+    + dispatch functions associate data with functions
+  - builtins:
+    - store, fetch, update
+  - nodes in GRIN:
+    + C-node ~ already on WHNF
+    + F-node ~ suspended computation
+    + P-node ~ partially applied function
+
+
+------------------------------
+-- Consequence of Semantics --
+------------------------------
+
+STG:
+  - closures:
+    + represented by heap objects
+      * they need special treatment
+    + generic data layout (every heap object is represented the same way)
+    + not representable in a register (statically unknown size for thunks)
+  - execution model:
+    + uses a custom stack containing continuations TODO: why is it custom? A: it behaves differently
+    + LLVM uses C stack
+    + had to implement custom calling convention for LLVM compilation
+
+
+
+GRIN:
+  - closures:
+    + only data, no builtins
+      * standard optmizations "work"
+        > GUB
+        > dead data
+        > SCO
+    + custom data layout (basically C-style tagged union)
+    + can be anywhere (heap, stack, register)
+      [statically known size/type, LLVM can put it into registers]
+  - execution model:
+    + uses standard C execution model
+    + we get LLVM for free
+
+
+---------------
+-- End slide --
+---------------
+
+Incremental compilation:
+  - is there anything between function ptrs and whole program defunctionalization?
+    + yes!
+    + modular dispatching:
+      * ptr + dispatch (no additional code generation at link time, just link together)
+      * modular dispatch funs + one global dispacth fun which choses a local one (needs link time code generation)
+
+
+
+
+
+
+
+---------------
+-- Questions --
+---------------
+
+- Why no just compile Core into machine code?
+  + Haskell level constructs on Core
+  + incremental, modular transforamtions
+  + for STG saturated CONs
+  + saturated primops, FFIs
+  + deletes type level computations
+  + type-level lambda in Core (for polymorph funs during typing)
+  + just for engineering
+  + STG AST changes way less often
+- calling convention for STG eval/apply?
+
+
+
+Notes:
+
+C--:
+  - STG functional vs C-- imperative
+  - no optimizations for C--
+    TODO: make end slide with these and incremental compilation
+  - for GRIN, the runtime optimizes together with the program
+    + some primops could be implemented in GRIN, and optimized together with the program
+  - GRIN =?= STG + C--, if yes, then more optimizations, hurray!

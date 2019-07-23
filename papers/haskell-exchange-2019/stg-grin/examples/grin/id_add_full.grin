@@ -1,0 +1,45 @@
+-- Haskell code: id (add 1) 0
+
+grinMain =
+  zero <- store (CInt 0)
+  one  <- store (CInt 1)
+
+  add_one <- store (P1_add one)
+  id_add_one_thunk <- store (Fid add_one)
+
+  id_add_one <- eval id_add_one_thunk
+  (CInt r) <- apply id_add_one zero
+
+  _prim_int_print r
+
+eval p =
+  v <- fetch p
+  case v of
+    (CInt _n)   -> pure v
+    (P2_add)    -> pure v
+    (P1_add _x) -> pure v
+    (P1_id)     -> pure v
+    (Fid x.1) ->
+      r.id <- id x.1
+      update p r.id
+      pure r.id
+    (Fadd lhs.1 rhs.1) ->
+      r.add <- add lhs.1 rhs.1
+      update p r.add
+      pure r.add
+
+apply f.0 new_arg =
+  case f.0 of
+    (P2_add)     -> pure (P1_add new_arg)
+    (P1_add x.0) -> add x.0 new_arg
+    (P1_id)      -> id new_arg
+
+id x.0 =
+  x.0' <- eval x.0
+  pure x.0'
+
+add lhs.0 rhs.0 =
+  (CInt lhs.0') <- eval lhs.0
+  (CInt rhs.0') <- eval rhs.0
+  res <- _prim_int_add lhs.0' rhs.0'
+  pure (CInt res)

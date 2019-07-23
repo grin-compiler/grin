@@ -1,0 +1,21 @@
+-- create value, place it on the heap
+-- create thunk, return thunk
+-- NOTE: The more observant ones could have noticed that we didnt extend eval with id_one. We should have ...
+
+id_one =
+  one     <- pure (CInt 1)
+  one_ptr <- store one
+  thunk   <- pure (Fid one)
+  pure thunk
+
+eval p =
+  v <- fetch p
+  case v of
+    (Fid x.1) ->
+      r.id <- id x.1
+      update p r.id
+      pure r.id
+
+id x.0 =
+  x.0' <- eval x.0
+  pure x.0'

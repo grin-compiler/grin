@@ -1,0 +1,18 @@
+grinMain =
+  zero <- pure (CInt 0)
+  one  <- pure (CInt 1)
+
+  p.0 <- store one
+  -- { p.0 -> (CInt 0) }
+
+  p.1 <- store two
+  -- { p.0 -> (CInt 0), p.1 -> (CInt 1) }
+
+  v.0 <- fetch p.0
+  -- v.0 == (CInt 0)
+
+  update p.0 (CInt 42)
+  -- { p.0 -> (CInt 42), p.1 -> (CInt 1) }
+
+  v.1 <- fetch p.0
+  -- v.1 == (CInt 42)

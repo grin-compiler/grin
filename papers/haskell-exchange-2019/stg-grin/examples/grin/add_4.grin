@@ -1,0 +1,27 @@
+-- get the partially applied add
+-- and apply it!
+-- apply isn't black magic either!
+
+grinMain =
+  zero <- (CInt 0)
+  suc <- add_one
+  apply suc zero
+
+add_one =
+  one <- store (CInt 1)
+  pure (P1_add one)
+
+eval p =
+  v <- fetch p
+  case v of
+    (CInt _n) -> pure v
+    (Fadd x.1 y.1) ->
+      r.add <- add x.1 y.1
+      update p r.add
+      pure r.add
+
+add lhs.0 rhs.0 =
+  (CInt lhs.0') <- eval lhs.0
+  (CInt rhs.0') <- eval rhs.0
+  res <- _prim_int_add lhs.0' rhs.0'
+  pure (CInt res)

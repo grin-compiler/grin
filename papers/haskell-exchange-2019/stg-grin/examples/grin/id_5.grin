@@ -1,0 +1,24 @@
+-- don't evaluate values already on WHNF
+
+grinMain =
+  (CInt k) <- eval id_one
+  _prim_int_print k
+
+id_one =
+  one     <- pure (CInt 1)
+  one_ptr <- store one
+  thunk   <- pure (Fid one)
+  pure thunk
+
+eval p =
+  v <- fetch p
+  case v of
+    (CInt _n) -> pure v
+    (Fid x.1) ->
+      r.id <- id x.1
+      update p r.id
+      pure r.id
+
+id x.0 =
+  x.0' <- eval x.0
+  pure x.0'
