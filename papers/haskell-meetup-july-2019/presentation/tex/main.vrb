@@ -1,0 +1,24 @@
+\frametitle{Sparse case optimization}
+
+\begin{center}
+	\begin{minipage}{0.40\textwidth}
+		\begin{haskellcode}
+			<m0>
+			v <- eval l
+			case v of
+			 CNil       -> <m1>
+			 CCons x xs -> <m2>
+		\end{haskellcode}
+	\end{minipage}
+	$\xRightarrow{v \in \{ \text{CCons}\}}$
+	\hfill
+	\begin{minipage}{0.40\textwidth}
+		\begin{haskellcode}
+			<m0>
+			v <- eval l
+			case v of
+			 CCons x xs -> <m2>
+		\end{haskellcode}
+	\end{minipage}
+\end{center}
+
