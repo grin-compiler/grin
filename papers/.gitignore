@@ -5,5 +5,8 @@
 *.log
 *.out
 *.gz
+*.nav
+*.snm
+*.vrb
 *.listing
 **/_minted-main/
