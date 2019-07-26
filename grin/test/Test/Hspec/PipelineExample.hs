@@ -74,6 +74,8 @@ instance Example Pipeline where
               , _poLintOnChange = False
               , _poTypedLint = False
               , _poSaveBinary = False
+              , _poRuntimeC = "runtime.c"
+              , _poPrimOpsC = "prim_ops.c"
               }
         resultExp <- lift $ Pipeline.Pipeline.pipeline opts Nothing beforeExp steps
         when (afterExp /= resultExp) $ do

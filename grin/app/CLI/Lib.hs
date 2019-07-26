@@ -31,6 +31,8 @@ data Options = Options
   , optQuiet     :: Bool
   , optLoadBinary :: Bool
   , optSaveBinary :: Bool
+  , optRuntimeC :: FilePath
+  , optPrimOpsC :: FilePath
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -132,6 +134,7 @@ pipelineOpts =
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
 
+
 maybeRenderingOpt :: String -> Maybe RenderingOption
 maybeRenderingOpt = M.parseMaybe renderingOpt
 
@@ -190,11 +193,29 @@ options args = do
             [ long "save-binary-intermed"
             , help "Save intermediate results in binary format"
             ])
+      <*> strOption (mconcat
+            [ long "runtime-c-path"
+            , value "runtime.c"
+            , help "The path for the runtime implementation in C"])
+      <*> strOption (mconcat
+            [ long "primops-c-path"
+            , value "prim_ops.c"
+            , help "The path for the implementation of prim_ops in C"])
 
 mainWithArgs :: [String] -> IO ()
 mainWithArgs args = do
   hSetBuffering stdout NoBuffering
-  Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options args
+  Options
+    files
+    steps
+    outputDir
+    noPrelude
+    quiet
+    loadBinary
+    saveBinary
+    runtimeC
+    primopsC
+    <- options args
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
       then do
@@ -203,7 +224,14 @@ mainWithArgs args = do
         content <- Text.readFile fname
         let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
         pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
-    let opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
+    let opts = defaultOpts
+                { _poOutputDir = outputDir
+                , _poFailOnLint = True
+                , _poLogging = not quiet
+                , _poSaveBinary = saveBinary
+                , _poRuntimeC = runtimeC
+                , _poPrimOpsC = primopsC
+                }
     case steps of
       [] -> void $ optimize opts program [] postPipeline
       _  -> void $ pipeline opts mTypeEnv program steps
