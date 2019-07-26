@@ -232,6 +232,7 @@ executable grin-test
                      , system-posix-redirect
                      , process
                      , bytestring
+                     , MissingH
 
   other-modules:
                      Transformations.Simplifying.RegisterIntroductionSpec
@@ -316,6 +317,7 @@ executable grin-end-to-end-test
                      , system-posix-redirect
                      , process
                      , bytestring
+                     , MissingH
   other-modules:
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec

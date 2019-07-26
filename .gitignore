@@ -25,3 +25,5 @@ output/
 .output
 .grin-output/
 .vscode/
+*.out
+

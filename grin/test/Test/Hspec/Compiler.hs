@@ -20,6 +20,7 @@ import Control.Exception (catch)
 import qualified Data.Map as Map
 import Data.Char (isDigit)
 import Data.List (isSuffixOf)
+import Data.String.Utils (replace)
 import System.Directory
 
 
@@ -51,7 +52,7 @@ evaluatePipelineTest input options expected params actionWith progressCallback =
                     Binary fp -> [fp, "--load-binary"]
                     Textual fp -> [fp]
         let outFile = inputToFilePath input <.> "out"
-        mainWithArgs $ args ++ options ++ ["--save-grin=" ++ outFile]
+        mainWithArgs $ args ++ (map (replace "$$$OUT$$$" outFile) options)
         content  <- readFile outFile
         expected <- readFile expected
         if (content == expected)
