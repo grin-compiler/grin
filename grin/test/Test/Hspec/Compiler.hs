@@ -1,28 +1,28 @@
 {-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications, DeriveGeneric #-}
 module Test.Hspec.Compiler where
 
+import CLI.Lib (mainWithArgs)
 import Control.Arrow ((&&&))
+import Control.Exception (catch)
 import Control.Monad (forM, when)
-import Test.Hspec.Core.Spec hiding (pending)
+import Data.ByteString.Char8 (ByteString)
+import Data.Char (isDigit)
+import Data.IORef
+import Data.List (isSuffixOf)
+import Data.String (fromString)
+import Data.String.Utils (replace)
+import Data.Yaml as Yaml
+import GHC.Generics
+import GHC.IO.Handle
+import System.Directory
+import System.Directory (doesFileExist, removeDirectoryRecursive)
+import System.Directory (doesFileExist, removeFile)
 import System.Directory.Tree
 import System.FilePath.Posix
-import System.Directory (doesFileExist, removeDirectoryRecursive)
-import Data.Yaml as Yaml
-import CLI.Lib (mainWithArgs)
-import Data.IORef
 import System.Posix.Redirect
 import System.Process
-import System.Directory (doesFileExist, removeFile)
-import GHC.IO.Handle
-import Data.ByteString.Char8 (ByteString)
-import Data.String (fromString)
-import Control.Exception (catch)
+import Test.Hspec.Core.Spec hiding (pending)
 import qualified Data.Map as Map
-import Data.Char (isDigit)
-import Data.List (isSuffixOf)
-import Data.String.Utils (replace)
-import System.Directory
-import GHC.Generics
 
 
 data InputFile
@@ -105,22 +105,35 @@ loopM n a0 = n a0 >>= \case
   Left a  -> loopM n a
   Right b -> pure b
 
-runTest :: FilePath -> ByteString -> IO Bool
-runTest file exp = do
-  let compArgs =
-        [ file
-        , "--quiet"
-        , "--load-binary"
-        , "--eval"
-        ]
-  (grinOut, ()) <- redirectStdout $ mainWithArgs compArgs
-  pure $ grinOut == exp
+class Monad m => BisectM m where
+  createFileMap :: FilePath -> m (Map.Map Int FilePath)
+  runTest       :: FilePath -> ByteString -> m Bool
 
-bisect :: FilePath -> ByteString -> IO Result
+instance BisectM IO where
+  createFileMap directory =
+      fmap (cFileMap . filter isGrinFile) $ listDirectory directory
+    where
+      noOfDigits = 3
+      isGrinFile name = (all isDigit (take noOfDigits name)) && ".binary" `isSuffixOf` name
+      cFileMap files = Map.fromList $
+        [ (itr, directory </> name)
+        | name <- files
+        , let itr = read @Int (take noOfDigits name)
+        ]
+
+  runTest file exp = do
+    let compArgs =
+          [ file
+          , "--quiet"
+          , "--load-binary"
+          , "--eval"
+          ]
+    (grinOut, ()) <- redirectStdout $ mainWithArgs compArgs
+    pure $ grinOut == exp
+
+bisect :: (BisectM m) => FilePath -> ByteString -> m Result
 bisect directory expected = do
-  let dir = directory
-  files <- fmap (filter isGrinFile) $ listDirectory directory
-  let fileMap = createFileMap files
+  fileMap <- createFileMap directory
   let (mn, mx) = findRange fileMap
   tn <- runTest (fileMap Map.! mn) expected
   tx <- runTest (fileMap Map.! mx) expected
@@ -145,14 +158,6 @@ bisect directory expected = do
             (True, False, False) -> pure $ Left ((mn,tn), (md,td))
             (True, True, False)  -> pure $ Left ((md,td), (mx,tx))
             conf -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Unhandled configuration: " ++ show conf
-
-    noOfDigits = 3
-    isGrinFile name = (all isDigit (take noOfDigits name)) && ".binary" `isSuffixOf` name
-    createFileMap files = Map.fromList $
-      [ (itr, directory </> name)
-      | name <- files
-      , let itr = read @Int (take noOfDigits name)
-      ]
     findRange = (minimum &&& maximum) . Map.keys
 
 instance Example CompilerTest where
