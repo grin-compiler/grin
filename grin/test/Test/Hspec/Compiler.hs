@@ -1,14 +1,26 @@
-{-# LANGUAGE TypeFamilies, LambdaCase #-}
+{-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications #-}
 module Test.Hspec.Compiler where
 
+import Control.Arrow ((&&&))
 import Control.Monad (forM, when)
 import Test.Hspec.Core.Spec hiding (pending)
 import System.Directory.Tree
 import System.FilePath.Posix
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, removeDirectoryRecursive)
 import Data.Yaml as Yaml
 import CLI.Lib (mainWithArgs)
 import Data.IORef
+import System.Posix.Redirect
+import System.Process
+import System.Directory (doesFileExist, removeFile)
+import GHC.IO.Handle
+import Data.ByteString.Char8 (ByteString)
+import Data.String (fromString)
+import Control.Exception (catch)
+import qualified Data.Map as Map
+import Data.Char (isDigit)
+import Data.List (isSuffixOf)
+import System.Directory
 
 
 data InputFile
@@ -33,27 +45,112 @@ data CompilerTest
 
 -- TODO: Documentation
 evaluatePipelineTest input options expected params actionWith progressCallback = do
-  result <- newIORef $ Result "" Success
-  actionWith $ \() -> do
-    let args = case input of
-                  Binary fp -> [fp, "--load-binary"]
-                  Textual fp -> [fp]
-    let outFile = inputToFilePath input <.> "out"
-    mainWithArgs $ args ++ options ++ ["--save-grin=" ++ outFile]
-    content  <- readFile outFile
-    expected <- readFile expected
-    when (content /= expected) $ error "BLAH."
+  result <- newIORef $ Result "" $ Failure Nothing $ Reason "End-to-end test did not set test as success."
+  actionWith $ \() -> catch
+    (do let args = case input of
+                    Binary fp -> [fp, "--load-binary"]
+                    Textual fp -> [fp]
+        let outFile = inputToFilePath input <.> "out"
+        mainWithArgs $ args ++ options ++ ["--save-grin=" ++ outFile]
+        content  <- readFile outFile
+        expected <- readFile expected
+        if (content == expected)
+          then writeIORef result $ Result "" Success
+          else writeIORef result $ Result "" $ Failure Nothing $ ExpectedButGot Nothing expected content
+    )
+    (writeIORef result . Result "" . Failure Nothing . Error Nothing)
   readIORef result
 
--- TODO: Checking run result and bisecting
+-- TODO: add input information
 evaluateEndToEndTest input params actionWith progressCallback = do
-  result <- newIORef $ Result "" Success
-  actionWith $ \() -> do
-    let args = case input of
-                  Binary fp  -> [fp, "--load-binary"]
-                  Textual fp -> [fp]
-    mainWithArgs args
+  result <- newIORef $ Result "" $ Failure Nothing $ Reason "End-to-end test did not set test as success."
+  actionWith $ \() -> catch
+    (do let fileArgs = case input of
+                        Binary fp  -> [fp, "--load-binary"]
+                        Textual fp -> [fp]
+        let evalArgs = ["--output-dir=.end-to-end-test", "--quiet", "--eval"]
+        (grinOut, ()) <- redirectStdout $ mainWithArgs $ fileArgs ++ evalArgs
+        removeDirectoryRecursive ".end-to-end-test"
+        let compArgs =
+              [ "--output-dir=.end-to-end-test"
+              , "--quiet"
+              , "--save-binary-intermed"
+              , "--optimize"
+              , "--save-elf=end-to-end-test.bin"
+              , "--runtime-c-path=./grin/test-runtime/runtime.c"
+              , "--primops-c-path=./grin/prim_ops.c"
+              ]
+        mainWithArgs $ fileArgs ++ compArgs
+        let runTest = (shell "./end-to-end-test.bin")
+                      { std_in = NoStream, std_out = CreatePipe, std_err = CreatePipe }
+        (mIn, Just out, Just err, runTestPh) <- createProcess_ "./end-to-end-test.bin" runTest
+        runTestExitCode <- waitForProcess runTestPh
+        doesFileExist "./end-to-end-test.bin" >>= flip when (removeFile "./end-to-end-test.bin")
+        testOut <- hGetContents out
+        if (grinOut == fromString testOut)
+          then writeIORef result $ Result "" Success
+          else do
+            writeIORef result $ Result "" $ Failure Nothing $ Reason "End-to-end test started bisecting but it did not finish."
+            res <- bisect ".end-to-end-test" grinOut
+            writeIORef result res
+    )
+    (writeIORef result . Result "" . Failure Nothing . Error Nothing)
   readIORef result
+
+loopM :: (Monad m) => (a -> m (Either a b)) -> a -> m b
+loopM n a0 = n a0 >>= \case
+  Left a  -> loopM n a
+  Right b -> pure b
+
+runTest :: FilePath -> ByteString -> IO Bool
+runTest file exp = do
+  let compArgs =
+        [ file
+        , "--quiet"
+        , "--load-binary"
+        , "--eval"
+        ]
+  (grinOut, ()) <- redirectStdout $ mainWithArgs compArgs
+  pure $ grinOut == exp
+
+bisect :: FilePath -> ByteString -> IO Result
+bisect directory expected = do
+  let dir = directory
+  files <- fmap (filter isGrinFile) $ listDirectory directory
+  let fileMap = createFileMap files
+  let (mn, mx) = findRange fileMap
+  tn <- runTest (fileMap Map.! mn) expected
+  tx <- runTest (fileMap Map.! mx) expected
+  loopM (go fileMap) ((mn,tn), (mx, tx))
+  where
+    go fm ((mn,tn), (mx, tx))
+      | not tn && not tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and max were failures. This could indicate different errors."
+      |     tn &&     tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and max were success. This shouldn't have happened."
+      | mn > mx  = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min exceded max, something went really wrong."
+      | mn == mx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min==max this should have not happened."
+      | mn + 1 == mx = case (tn, tx) of
+          (True, False) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show tx
+          (False, True) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show tn
+          conf          -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Unhandled configuration: " ++ show conf
+          -- report the one which failed
+      | mn < mx = do
+          let md = (mx - mn) `div` 2
+          td <- runTest (fm Map.! md) expected -- We suppose that md exists
+          case (tn, td, tx) of
+            (False, False, True) -> pure $ Left ((md,td), (mx,tx))
+            (False, True, True)  -> pure $ Left ((mn,tn), (md,td))
+            (True, False, False) -> pure $ Left ((mn,tn), (md,td))
+            (True, True, False)  -> pure $ Left ((md,td), (mx,tx))
+            conf -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Unhandled configuration: " ++ show conf
+
+    noOfDigits = 3
+    isGrinFile name = (all isDigit (take noOfDigits name)) && ".binary" `isSuffixOf` name
+    createFileMap files = Map.fromList $
+      [ (itr, directory </> name)
+      | name <- files
+      , let itr = read @Int (take noOfDigits name)
+      ]
+    findRange = (minimum &&& maximum) . Map.keys
 
 instance Example CompilerTest where
   type Arg CompilerTest = ()

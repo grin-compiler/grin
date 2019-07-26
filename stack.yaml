@@ -14,6 +14,7 @@ extra-deps:
   - neat-interpolation-0.3.2.2
   - set-extra-1.4.1
   - llvm-hs-pretty-0.6.1.0
+  - system-posix-redirect-1.1.0.1
   - github: csabahruska/llvm-hs
     commit: 868e23a13942703255979369defdb49ac57b6866
     subdirs:

@@ -229,6 +229,9 @@ executable grin-test
                      , binary
                      , optparse-applicative
                      , megaparsec
+                     , system-posix-redirect
+                     , process
+                     , bytestring
 
   other-modules:
                      Transformations.Simplifying.RegisterIntroductionSpec
@@ -310,6 +313,9 @@ executable grin-end-to-end-test
                      , megaparsec
                      , binary
                      , optparse-applicative
+                     , system-posix-redirect
+                     , process
+                     , bytestring
   other-modules:
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec
