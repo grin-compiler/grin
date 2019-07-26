@@ -39,7 +39,6 @@ script:
   - stack build --coverage
   - stack exec grin-test --coverage
   - stack exec grin-end-to-end-test --coverage
-  - stack exec grin -- grin/grin/sum_simple.grin
 
 after_script:
   - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj

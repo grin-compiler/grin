@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications #-}
+{-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications, DeriveGeneric #-}
 module Test.Hspec.Compiler where
 
 import Control.Arrow ((&&&))
@@ -22,6 +22,7 @@ import Data.Char (isDigit)
 import Data.List (isSuffixOf)
 import Data.String.Utils (replace)
 import System.Directory
+import GHC.Generics
 
 
 data InputFile
@@ -36,16 +37,17 @@ inputToFilePath = \case
 
 data CompilerTest
   = PipelineTest
-    { compilerInput    :: InputFile  -- name.grin name.binary
-    , compilerOptions  :: [String]   -- input.opts
-    , compilerExpected :: FilePath   -- input.expected
+    { compilerInput     :: InputFile  -- name.grin name.binary
+    , compilerOptions   :: [String]   -- input.opts
+    , compilerExpected  :: FilePath   -- input.expected
+    , compilerOutputExt :: FilePath   -- input.out -- defined in configuration
     }
   | EndToEndTest
     { compilerInput :: InputFile
     }
 
 -- TODO: Documentation
-evaluatePipelineTest input options expected params actionWith progressCallback = do
+evaluatePipelineTest input options expected ext params actionWith progressCallback = do
   result <- newIORef $ Result "" $ Failure Nothing $ Reason "End-to-end test did not set test as success."
   actionWith $ \() -> catch
     (do let args = case input of
@@ -53,7 +55,7 @@ evaluatePipelineTest input options expected params actionWith progressCallback =
                     Textual fp -> [fp]
         let outFile = inputToFilePath input <.> "out"
         mainWithArgs $ args ++ (map (replace "$$$OUT$$$" outFile) options)
-        content  <- readFile outFile
+        content  <- readFile (inputToFilePath input <.> ext)
         expected <- readFile expected
         if (content == expected)
           then writeIORef result $ Result "" Success
@@ -156,8 +158,8 @@ bisect directory expected = do
 instance Example CompilerTest where
   type Arg CompilerTest = ()
   evaluateExample compilerTest = case compilerTest of
-    PipelineTest i o e -> evaluatePipelineTest i o e
-    EndToEndTest i     -> evaluateEndToEndTest i
+    PipelineTest i o e x -> evaluatePipelineTest i o e x
+    EndToEndTest i       -> evaluateEndToEndTest i
 
 endToEnd :: FilePath -> Spec
 endToEnd dp = describe "End to end tests" $ do
@@ -183,21 +185,32 @@ inputFile fp = case takeExtension fp of
   ".grin"   -> Textual fp
   ".binary" -> Binary  fp
 
+data Options = Options
+  { outputExtension :: String
+  , grinOptions     :: [String]
+  } deriving (Generic)
+
+instance FromJSON Options
+
 createPipelineTest :: FilePath -> IO (Either String CompilerTest)
 createPipelineTest fp = do
   eopts <- Yaml.decodeFileWithWarnings (fp <.> "opts")
   case eopts of
     Left errs -> pure $ Left $ show errs
-    Right (warnings, opts) -> do
-      print ("YAML warnings:", warnings)
+    Right (warnings, Options ext opts) -> do
       pure $ Right $ PipelineTest
         { compilerInput = inputFile fp
         , compilerOptions = opts
         , compilerExpected = fp <.> "expected"
+        , compilerOutputExt = ext
         }
 
 treeToSpec :: DirTree (Maybe (Either String CompilerTest)) -> Spec
 treeToSpec = \case
   Failed name ex    -> it       name $ pendingWith $ show ex
   Dir name contents -> describe name $ mapM_ treeToSpec contents
-  File name test    -> maybe (pure ()) (either (it name . pendingWith) (it name)) test
+  File name test    -> maybe (pure ()) (either (it name . pendingWith) (itName name)) test
+  where
+    itName name test = case test of
+      PipelineTest{} -> it ("pipeline-test: " ++ name) test
+      EndToEndTest{} -> it ("end-to-end: " ++ name) test
