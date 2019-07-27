@@ -43,4 +43,4 @@ script:
 after_script:
   - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj
   - stack hpc report --all grin.tix grin-test.tix grin-end-to-end-test.tix
-  - ./shc --repo-token=zGXui2BR5EcWhA292bY5ouvTWhZCj2zVU combined custom
+  - ./shc --repo-token=8QkWaPJlRbej9X5N5AaXSommTtN7uEqRT combined custom
