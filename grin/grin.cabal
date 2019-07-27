@@ -282,7 +282,8 @@ executable grin-test
                      AbstractInterpretation.SharingSpec
                      AbstractInterpretation.CreatedBySpec
                      Test.Hspec.PipelineExample
-                     Test.Hspec.Compiler
+                     Test.EndToEnd
+                     Test.EndToEndSpec
                      CLI.Lib
   default-language:    Haskell2010
 
@@ -366,7 +367,8 @@ executable grin-end-to-end-test
                      AbstractInterpretation.SharingSpec
                      AbstractInterpretation.CreatedBySpec
                      Test.Hspec.PipelineExample
-                     Test.Hspec.Compiler
+                     Test.EndToEnd
+                     Test.EndToEndSpec
                      CLI.Lib
   default-language:    Haskell2010
 

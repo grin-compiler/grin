@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications, DeriveGeneric #-}
-module Test.Hspec.Compiler where
+module Test.EndToEnd where
 
 import CLI.Lib (mainWithArgs)
 import Control.Arrow ((&&&))
@@ -9,6 +9,7 @@ import Data.ByteString.Char8 (ByteString)
 import Data.Char (isDigit)
 import Data.IORef
 import Data.List (isSuffixOf)
+import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import Data.String.Utils (replace)
 import Data.Yaml as Yaml
@@ -135,9 +136,10 @@ bisect :: (BisectM m) => FilePath -> ByteString -> m Result
 bisect directory expected = do
   fileMap <- createFileMap directory
   let (mn, mx) = findRange fileMap
-  tn <- runTest (fileMap Map.! mn) expected
-  tx <- runTest (fileMap Map.! mx) expected
-  loopM (go fileMap) ((mn,tn), (mx, tx))
+  let fileToTest x = fromMaybe (error $ show mn) $ Map.lookup x fileMap
+  tn <- runTest (fileToTest mn) expected
+  tx <- runTest (fileToTest mx) expected
+  loopM (go fileMap) ((mn,tn), (mx,tx))
   where
     go fm ((mn,tn), (mx, tx))
       | not tn && not tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and max were failures. This could indicate different errors."
@@ -145,13 +147,14 @@ bisect directory expected = do
       | mn > mx  = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min exceded max, something went really wrong."
       | mn == mx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min==max this should have not happened."
       | mn + 1 == mx = case (tn, tx) of
-          (True, False) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show tx
-          (False, True) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show tn
+          (True, False) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show mx
+          (False, True) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show mn
           conf          -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Unhandled configuration: " ++ show conf
           -- report the one which failed
       | mn < mx = do
-          let md = (mx - mn) `div` 2
-          td <- runTest (fm Map.! md) expected -- We suppose that md exists
+          let fileToTest x = fromMaybe (error $ show mn) $ Map.lookup x fm
+          let md = (((mx - mn) `div` 2) + mn)
+          td <- runTest (fileToTest md) expected -- We suppose that md exists
           case (tn, td, tx) of
             (False, False, True) -> pure $ Left ((md,td), (mx,tx))
             (False, True, True)  -> pure $ Left ((mn,tn), (md,td))

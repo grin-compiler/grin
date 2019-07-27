@@ -1,7 +1,7 @@
 module Main where
 
 import Test.Hspec (hspec)
-import Test.Hspec.Compiler (endToEnd)
+import Test.EndToEnd (endToEnd)
 
 
 main :: IO ()
