@@ -47,7 +47,10 @@ data CompilerTest
     { compilerInput :: InputFile
     }
 
--- TODO: Documentation
+-- | evaluatePipelineTest reads the input file, runs grin compiler using the
+-- defined options. All the $$$OUT$$$ template value replaced the output file.
+-- Only one output file should be configured in the options as we can define
+-- only one expected output. The output file should be text file of some sort.
 evaluatePipelineTest input options expected ext params actionWith progressCallback = do
   result <- newIORef $ Result "" $ Failure Nothing $ Reason "End-to-end test did not set test as success."
   actionWith $ \() -> catch
@@ -65,7 +68,13 @@ evaluatePipelineTest input options expected ext params actionWith progressCallba
     (writeIORef result . Result "" . Failure Nothing . Error Nothing)
   readIORef result
 
--- TODO: add input information
+-- | evaluateEndToEndTest reads the input file, interprets it without any
+-- optimization, after runs the full optimization pipeline, generates an executable and runs
+-- the executable. It compares its stdout and if the stdout differs from the
+-- interpreted one it tries to find the culprit optimization step.
+--
+-- Currently this approach doesn't support reading input from the stdin. It will be added
+-- when we have a tests which need them.
 evaluateEndToEndTest input params actionWith progressCallback = do
   result <- newIORef $ Result "" $ Failure Nothing $ Reason "End-to-end test did not set test as success."
   actionWith $ \() -> catch
