@@ -201,7 +201,8 @@ executable grin
     CLI.Lib
   default-language:    Haskell2010
 
-executable grin-test
+test-suite grin-test
+  type:                exitcode-stdio-1.0
   hs-source-dirs:      test, app
   main-is:             Spec.hs
   default-extensions:  OverloadedStrings
@@ -287,7 +288,8 @@ executable grin-test
                      CLI.Lib
   default-language:    Haskell2010
 
-executable grin-end-to-end-test
+test-suite grin-end-to-end-test
+  type:                exitcode-stdio-1.0
   hs-source-dirs:      test, app
   main-is:             EndToEnd.hs
   default-extensions:  OverloadedStrings
