@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications, DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications, DeriveGeneric, ScopedTypeVariables #-}
 module Test.EndToEnd where
 
 import CLI.Lib (mainWithArgs)
@@ -106,9 +106,14 @@ loopM n a0 = n a0 >>= \case
   Left a  -> loopM n a
   Right b -> pure b
 
+-- BisectM is a collection of operations that are needed for the bisecting algorithm.
 class Monad m => BisectM m where
+  -- | createFileMap creates a Map that associates intermediate step numbers with
+  -- files created for the step.
   createFileMap :: FilePath -> m (Map.Map Int FilePath)
-  runTest       :: FilePath -> ByteString -> m Bool
+  -- | runTest checks if the intermediate grin file produces the expected result to the stdout.
+  -- returns True if the stdout is the same as the expected result, otherwise False.
+  runTest :: FilePath -> ByteString -> m Bool
 
 instance BisectM IO where
   createFileMap directory =
@@ -132,35 +137,43 @@ instance BisectM IO where
     (grinOut, ()) <- redirectStdout $ mainWithArgs compArgs
     pure $ grinOut == exp
 
-bisect :: (BisectM m) => FilePath -> ByteString -> m Result
+bisect :: forall m . (BisectM m) => FilePath -> ByteString -> m Result
 bisect directory expected = do
   fileMap <- createFileMap directory
   let (mn, mx) = findRange fileMap
   let fileToTest x = fromMaybe (error $ show mn) $ Map.lookup x fileMap
   tn <- runTest (fileToTest mn) expected
   tx <- runTest (fileToTest mx) expected
-  loopM (go fileMap) ((mn,tn), (mx,tx))
+  loopM (reduceRange fileMap) ((mn,tn), (mx,tx))
   where
-    go fm ((mn,tn), (mx, tx))
-      | not tn && not tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and max were failures. This could indicate different errors."
-      |     tn &&     tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and max were success. This shouldn't have happened."
-      | mn > mx  = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min exceded max, something went really wrong."
-      | mn == mx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min==max this should have not happened."
+    -- The range is represented as ((Int,Bool),(Int,Bool)) where
+    -- the (Int, Bool) means the intermediate step its test result.
+    -- Storing the test result in the form of Bool is an optimization step.
+    -- The reduceRange will compute a new range, checking the result
+    -- of the test run associated with the middle element, and decides
+    -- which direction to go (min,mid) or (mid,max)
+    -- The assumption is that min fails and max succeeds.
+    reduceRange :: Map.Map Int FilePath -> ((Int,Bool),(Int,Bool)) -> m (Either ((Int,Bool),(Int,Bool)) Result)
+    reduceRange fm ((mn,tn), (mx,tx))
+      | not tn && not tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and Max were failures. This could indicate different errors."
+      |     tn &&     tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and Max were success. This shouldn't have happened."
+      | mn > mx  = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min exceeded Max, something went really wrong."
+      | mn == mx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min==Max this should have not happened."
       | mn + 1 == mx = case (tn, tx) of
           (True, False) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show mx
           (False, True) -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Test failed in pipeline step: " ++ show mn
-          conf          -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Unhandled configuration: " ++ show conf
+          conf          -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Non-handled configuration: " ++ show conf
           -- report the one which failed
       | mn < mx = do
           let fileToTest x = fromMaybe (error $ show mn) $ Map.lookup x fm
           let md = (((mx - mn) `div` 2) + mn)
-          td <- runTest (fileToTest md) expected -- We suppose that md exists
+          td <- runTest (fileToTest md) expected -- We assume that the middle element exists.
           case (tn, td, tx) of
             (False, False, True) -> pure $ Left ((md,td), (mx,tx))
             (False, True, True)  -> pure $ Left ((mn,tn), (md,td))
             (True, False, False) -> pure $ Left ((mn,tn), (md,td))
             (True, True, False)  -> pure $ Left ((md,td), (mx,tx))
-            conf -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Unhandled configuration: " ++ show conf
+            conf -> pure $ Right $ Result "" $ Failure Nothing $ Reason $ "Non-handled configuration: " ++ show conf
     findRange = (minimum &&& maximum) . Map.keys
 
 instance Example CompilerTest where
