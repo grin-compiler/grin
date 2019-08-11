@@ -69,7 +69,6 @@ data Val
   -- CHANGE: Name
   = ConstTagNode  Tag  [Name]
   -- CHANGE: Name
-  | VarTagNode    Name [Name]
   | ValTag        Tag
   | Unit
   -- simple val
@@ -120,7 +119,7 @@ data Exp
   | SReturn     Val
   -- CHANGE: Name
   | SStore      Name
-  | SFetchI     Name (Maybe Int)
+  | SFetch      Name
   -- CHANGE: Name
   | SUpdate     Name Name
   | SBlock      Exp
@@ -160,8 +159,6 @@ deriving instance Show a  => Show (ExpF a)
 deriving instance Eq a    => Eq   (ExpF a)
 deriving instance Ord a   => Ord  (ExpF a)
 
-pattern SFetch name = SFetchI name Nothing
-pattern SFetchF name = SFetchIF name Nothing
 
 pattern BoolPat b = LitPat (LBool b)
 
