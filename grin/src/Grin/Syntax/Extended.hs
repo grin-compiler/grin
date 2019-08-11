@@ -2,8 +2,8 @@
 {-# LANGUAGE DeriveFoldable, DeriveTraversable, PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving, OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module Grin.ExtendedSyntax
-  ( module Grin.ExtendedSyntax
+module Grin.Syntax.Extended
+  ( module Grin.Syntax.Extended
   , module Grin.SyntaxDefs
   ) where
 
@@ -99,13 +99,6 @@ data BPat
 
 makeLenses ''BPat
 
-data AppName
-  = Fun { _appName :: Name }
-  | Ext { _appName :: Name }
-  deriving (Generic, Data, NFData, Eq, Show, Ord)
-
-makeLenses ''AppName
-
 -- * GRIN Expression
 
 type SimpleExp = Exp
@@ -123,7 +116,7 @@ data Exp
   | ECase       Name [Alt]
   -- Simple Exp
   -- CHANGE: Name
-  | SApp        AppName [Name]
+  | SApp        Name [Name]
   | SReturn     Val
   -- CHANGE: Name
   | SStore      Name
@@ -153,7 +146,6 @@ deriving instance Binary Lit
 deriving instance Binary Tag
 deriving instance Binary CPat
 deriving instance Binary BPat
-deriving instance Binary AppName
 deriving instance Binary Val
 deriving instance Binary Exp
 
@@ -204,10 +196,6 @@ _OnlyVarPat _ other      = pure other
 _BPatVar :: Traversal' BPat Name
 _BPatVar f (AsPat v val) = AsPat <$> f v <*> pure val
 _BPatVar f (VarPat v)    = VarPat <$> f v
-
-_ExternalName :: Traversal' AppName Name
-_ExternalName f (Ext name) = Ext <$> f name
-_ExternalName _ other     = pure other
 
 _TyCon :: Traversal' Ty (Name, [Ty])
 _TyCon f (TyCon n ts) = uncurry TyCon <$> f (n, ts)

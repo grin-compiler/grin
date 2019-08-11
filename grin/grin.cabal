@@ -49,7 +49,7 @@ library
     AbstractInterpretation.Model
     Grin.Grin
     Grin.Syntax
-    Grin.ExtendedSyntax
+    Grin.Syntax.Extended
     Grin.SyntaxDefs
     Grin.TH
     Grin.Lint
