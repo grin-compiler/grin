@@ -33,7 +33,7 @@ folder = \case
   DefF n ps body@(b, NE (InChange _) _) -> pure $ NE Final (Def n ps b)
   DefF n ps body@(_, NE c e)            -> pure $ NE c (Def n ps e)
 
-  SReturnF (ConstTagNode tag [value]) -> pure $ NE (InChange tag) (SReturn value)
+  SReturnF (ConstTagNode tag [arg]) -> pure $ NE (InChange tag) (SReturn (Var arg))
 
   SBlockF (b, NE (InChange _) _) -> pure $ NE None (SBlock b)
   SBlockF (_, NE c e)            -> pure $ NE c    (SBlock e)
@@ -50,7 +50,7 @@ folder = \case
 
   AltF cpat body@(_, NE c e) -> pure $ NE c (Alt cpat e)
 
-  exp@(ECaseF val alts)
+  exp@(ECaseF scrut alts)
     -- Each alternative has the same tag and they are changed.
     | tags <- map (neTag . snd) alts, all isJust tags
       -> if allSame tags
@@ -59,19 +59,19 @@ folder = \case
                   pure $ NE
                     Final
                     (SBlock (EBind
-                        (ECase val (map (neExp . snd) alts))
-                        (Var var)
-                        (SReturn (ConstTagNode tag [Var var]))))
-          else pure $ NE None (ECase val (map fst alts))
+                        (ECase scrut (map (neExp . snd) alts))
+                        (VarPat var)
+                        (SReturn (ConstTagNode tag [var]))))
+          else pure $ NE None (ECase scrut (map fst alts))
     -- Some of the alternatives are final, thus we mark this case as Final and we don't change it.
     | any (hasChange Final) alts
-        -> pure $ NE Final (ECase val $ map getFinalExp alts)
+        -> pure $ NE Final (ECase scrut $ map getFinalExp alts)
     -- Nothing has changed in the alternatives.
     | all (hasChange None) alts
-        -> pure $ NE None (ECase val $ map (neExp . snd) alts)
+        -> pure $ NE None (ECase scrut $ map (neExp . snd) alts)
     -- Some of the alternatives could change, some none, thus we leave them unchanged.
     | any (isJust . neTag . snd) alts
-        -> pure $ NE None (ECase val $ map fst alts)
+        -> pure $ NE None (ECase scrut $ map fst alts)
   where
     neTag (NE (InChange t)_ ) = Just t
     neTag _                   = Nothing
