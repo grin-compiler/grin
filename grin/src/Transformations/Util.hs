@@ -123,12 +123,15 @@ substValsVal env = subst env
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (subst env)
 
-cpatToVal :: CPat -> Val
-cpatToVal = \case
+cPatToVal :: CPat -> Val
+cPatToVal = \case
   NodePat tag args  -> ConstTagNode tag args
   LitPat  lit       -> Lit lit
   TagPat  tag       -> ValTag tag
   DefaultPat        -> Unit
+
+cPatToAsPat :: Name -> CPat -> BPat
+cPatToAsPat name cPat = AsPat name (cPatToVal cPat)
 
 -- monadic recursion schemes
 --  see: https://jtobin.io/monadic-recursion-schemes
