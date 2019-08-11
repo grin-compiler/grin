@@ -36,8 +36,8 @@ getReturnTagSet typeEnv = cata folder where
       | Just (T_NodeSet ns) <- mTypeOfValTE typeEnv val
       -> Just (Map.keysSet ns)
 
-    SAppF name _
-      | T_NodeSet ns <- fst $ functionType typeEnv name
+    SAppF f _
+      | T_NodeSet ns <- fst $ functionType typeEnv (_appName f)
       -> Just (Map.keysSet ns)
 
     SFetchIF name Nothing
@@ -53,24 +53,24 @@ caseHoisting typeEnv exp = first fst $ evalNameM exp $ histoM folder exp where
   folder :: ExpF (Cofree ExpF (Exp, Set Name)) -> NameM (Exp, Set Name)
   folder exp = case exp of
     -- middle case
-    EBindF ((ECase val alts1, leftUse) :< _)  (Var lpatName)
-      (_ :< (EBindF ((ECase (Var varName) alts2, caseUse) :< _) lpat ((rightExp, rightUse) :< _)))
+    EBindF ((ECase scrut alts1, leftUse) :< _)  (VarPat lpatName)
+      (_ :< (EBindF ((ECase varName alts2, caseUse) :< _) lpat ((rightExp, rightUse) :< _)))
         | lpatName == varName
         , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
         , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
         , Set.notMember varName rightUse -- allow only linear variables ; that are not used later
         -> do
           hoistedAlts <- mapM (hoistAlts lpatName) matchList
-          pure (EBind (ECase val hoistedAlts) lpat rightExp, Set.delete varName $ mconcat [leftUse, caseUse, rightUse])
+          pure (EBind (ECase scrut hoistedAlts) lpat rightExp, Set.delete varName $ mconcat [leftUse, caseUse, rightUse])
 
     -- last case
-    EBindF ((ECase val alts1, leftUse) :< _) (Var lpatName) ((ECase (Var varName) alts2, rightUse) :< _)
+    EBindF ((ECase scrut alts1, leftUse) :< _) (VarPat lpatName) ((ECase varName alts2, rightUse) :< _)
         | lpatName == varName
         , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
         , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
         -> do
           hoistedAlts <- mapM (hoistAlts lpatName) matchList
-          pure (ECase val hoistedAlts, Set.delete varName $ mconcat [leftUse, rightUse])
+          pure (ECase scrut hoistedAlts, Set.delete varName $ mconcat [leftUse, rightUse])
 
     _ -> let useSub = Data.Foldable.fold (snd . extract <$> exp)
              useExp = foldNameUseExpF Set.singleton exp
@@ -79,11 +79,12 @@ caseHoisting typeEnv exp = first fst $ evalNameM exp $ histoM folder exp where
 hoistAlts :: Name -> (Alt, Alt) -> NameM Alt
 hoistAlts lpatName (Alt cpat1 alt1, Alt cpat2 alt2) = do
   freshLPatName <- deriveNewName lpatName
+  asPatName <- deriveNewName lpatName
   let nameMap = Map.singleton lpatName freshLPatName
   (freshAlt2, _) <- case cpat2 of
     DefaultPat  -> refreshNames nameMap alt2
-    _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (cpatToLPat cpat2) alt2
-  pure . Alt cpat1 $ EBind (SBlock alt1) (Var freshLPatName) freshAlt2
+    _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (cPatToAsPat asPatName cpat2) alt2
+  pure . Alt cpat1 $ EBind (SBlock alt1) (VarPat freshLPatName) freshAlt2
 
 disjointMatch :: [(Set Tag, Alt)] -> [Alt] -> Maybe [(Alt, Alt)]
 disjointMatch tsAlts1 alts2
