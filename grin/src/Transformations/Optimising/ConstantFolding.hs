@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
-module Transformations.Optimising.ConstantFolding where
+module Transformations.Optimising.ConstantFolding
+{-# DEPRECATED "Constant folding makes no sense in the new syntactic framework" #-}
+  where
 
 import Text.Printf
 import Transformations.Util
@@ -21,20 +23,21 @@ IDEA: fold everything unconditionally
 type Env = (Map Name Name, Map Val Val)
 
 constantFolding :: Exp -> Exp
-constantFolding e = ana builder (mempty, e) where
+constantFolding e = e {-ana builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env@(nameEnv, valEnv), exp) = let e = substVals valEnv . substVarRefExp nameEnv $ exp in case e of
 
-    EBind (SReturn val) lpat rightExp -> EBindF (env, SReturn $ subst valEnv val) lpat (newEnv, rightExp) where
-      newEnv = env `mappend` unify env val lpat
+    EBind (SReturn val) bPat rightExp -> EBindF (env, SReturn $ subst valEnv val) bPat (newEnv, rightExp) where
+      newEnv = env `mappend` unify env val bPat
 
     _ -> (env,) <$> project e
 
-  unify :: Env -> Val -> LPat -> Env
-  unify env@(nameEnv, valEnv) (subst valEnv -> val) lpat = case (lpat, val) of
-    (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
-      | lpatTag == valTag     -> mconcat $ zipWith (unify env) valArgs lpatArgs
-    (Var lpatVar, Var valVar) -> (Map.singleton lpatVar valVar, Map.singleton lpat val) -- update val + name env
-    (Var{}, _)                -> (mempty, Map.singleton lpat val)                       -- update val env
+  unify :: Env -> Val -> BPat -> Env
+  unify env@(nameEnv, valEnv) (subst valEnv -> val) bPat = case (bPat, val) of
+    (ConstTagNode bPatTag bPatArgs, ConstTagNode valTag valArgs)
+      | bPatTag == valTag     -> mconcat $ zipWith (unify env) valArgs bPatArgs
+    (Var lpatVar, Var valVar) -> (Map.singleton lpatVar valVar, Map.singleton bPat val) -- update val + name env
+    (Var{}, _)                -> (mempty, Map.singleton bPat val)                       -- update val env
     _                         -> mempty -- LPat: unit, lit, tag
+-}
