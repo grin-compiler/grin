@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances, DeriveFunctor, RankNTypes, LambdaCase #-}
 module Grin.Grin
   ( module Grin.Grin
-  , module Grin.Syntax
+  , module Grin.Syntax.Extended
   ) where
 
 import Data.Functor.Foldable as Foldable
@@ -9,8 +9,9 @@ import Debug.Trace (trace)
 import Lens.Micro.Platform
 import Data.Maybe
 import Data.Text (pack, unpack)
+import Data.List (nub)
 
-import Grin.Syntax
+import Grin.Syntax.Extended
 import Grin.TypeEnvDefs
 
 class FoldNames n where
@@ -18,24 +19,25 @@ class FoldNames n where
 
 instance FoldNames Val where
   foldNames f = \case
-    ConstTagNode  _tag vals -> mconcat $ foldNames f <$> vals
-    VarTagNode    name vals -> mconcat $ (f name) : (foldNames f <$> vals)
-    ValTag        _tag      -> mempty
-    Unit                    -> mempty
-    Undefined _             -> mempty
-    -- simple val
-    Lit lit                 -> mempty
+    ConstTagNode  _tag vals -> foldMap f vals
     Var name                -> f name
+    _                       -> mempty
+
+instance FoldNames BPat where
+  foldNames f = \case
+    VarPat v    -> f v
+    AsPat v val -> f v <> foldNames f val
+
 
 instance FoldNames CPat where
   foldNames f = \case
-    NodePat _ names -> mconcat (map f names)
-    TagPat _    -> mempty
-    LitPat _    -> mempty
-    DefaultPat  -> mempty
+    NodePat _ names -> foldMap f names
+    TagPat _        -> mempty
+    LitPat _        -> mempty
+    DefaultPat      -> mempty
 
 instance FoldNames n => FoldNames [n] where
-  foldNames f = mconcat . map (foldNames f)
+  foldNames f = foldMap (foldNames f)
 
 dCoAlg :: (a -> String) -> (a -> ExpF b) -> (a -> ExpF b)
 dCoAlg dbg f = f . (\x -> trace (dbg x) x)
@@ -57,13 +59,9 @@ _Var :: Traversal' Val Name
 _Var f (Var name) = Var <$> f name
 _Var _ rest       = pure rest
 
-_CNode :: Traversal' Val (Tag, [Val])
+_CNode :: Traversal' Val (Tag, [Name])
 _CNode f (ConstTagNode tag params) = uncurry ConstTagNode <$> f (tag, params)
 _CNode _ rest = pure rest
-
-_VarNode :: Traversal' Val (Name, [Val])
-_VarNode f (VarTagNode name params) = uncurry VarTagNode <$> f (name, params)
-_VarNode _ rest = pure rest
 
 isBasicCPat :: CPat -> Bool
 isBasicCPat = \case
@@ -71,40 +69,18 @@ isBasicCPat = \case
   LitPat _ -> True
   _        -> False
 
-isConstant :: Val -> Bool
-isConstant = cata $ \case
-  ConstTagNodeF  tag params -> and params
-  ValTagF        tag        -> True
-  UnitF                     -> True
-  LitF lit                  -> True
-  _                         -> False
-
-hasConstant :: Val -> Bool
-hasConstant = cata $ \case
-  ValTagF{} -> True
-  UnitF     -> True
-  LitF{}    -> True
-  v         -> or v
-
-isAllVar :: Val -> Bool
-isAllVar = cata $ \case
-  ConstTagNodeF _ params  -> and params
-  VarF{}                  -> True
-  _                       -> False
-
 isBasicValue :: Val -> Bool
-isBasicValue = \case
-  ValTag _ -> True
-  Unit     -> True
-  Lit _    -> True
-  _        -> False
+isBasicValue ValTag{} = True
+isBasicValue Unit{}   = True
+isBasicValue Lit{}    = True
+isBasicValue _'       = True
 
 isPrimitiveExp :: Exp -> Bool
 isPrimitiveExp = \case
   SApp    _ _ -> True
   SReturn _   -> True
   SStore  _   -> True
-  SFetchI _ _ -> True
+  SFetch  _   -> True
   SUpdate _ _ -> True
   _           -> False
 
@@ -124,7 +100,7 @@ showTS :: Show a => a -> Name
 showTS = packName . show
 
 concatPrograms :: [Program] -> Program
-concatPrograms prgs = Program (concat exts) (concat defs) where
+concatPrograms prgs = Program (nub $ concat exts) (concat defs) where
   (exts, defs) = unzip [(e, d) | Program e d <- prgs]
 
 -- indetifier rules for parser and pretty printer
