@@ -31,8 +31,7 @@ data Options = Options
   , optQuiet     :: Bool
   , optLoadBinary :: Bool
   , optSaveBinary :: Bool
-  , optRuntimeC :: FilePath
-  , optPrimOpsC :: FilePath
+  , optCFiles     :: [FilePath]
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -193,14 +192,10 @@ options args = do
             [ long "save-binary-intermed"
             , help "Save intermediate results in binary format"
             ])
-      <*> strOption (mconcat
-            [ long "runtime-c-path"
-            , value "runtime.c"
-            , help "The path for the runtime implementation in C"])
-      <*> strOption (mconcat
-            [ long "primops-c-path"
-            , value "prim_ops.c"
-            , help "The path for the implementation of prim_ops in C"])
+      <*> many (strOption (mconcat
+            [ short 'C'
+            , long "c-file"
+            , help "The path for the runtime implementation in C"]))
 
 mainWithArgs :: [String] -> IO ()
 mainWithArgs args = do
@@ -213,8 +208,7 @@ mainWithArgs args = do
     quiet
     loadBinary
     saveBinary
-    runtimeC
-    primopsC
+    cFiles
     <- options args
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
@@ -229,8 +223,7 @@ mainWithArgs args = do
                 , _poFailOnLint = True
                 , _poLogging = not quiet
                 , _poSaveBinary = saveBinary
-                , _poRuntimeC = runtimeC
-                , _poPrimOpsC = primopsC
+                , _poCFiles = cFiles
                 }
     case steps of
       [] -> void $ optimize opts program [] postPipeline

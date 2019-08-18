@@ -90,8 +90,8 @@ evaluateEndToEndTest input params actionWith progressCallback = do
               , "--save-binary-intermed"
               , "--optimize"
               , "--save-elf=end-to-end-test.bin"
-              , "--runtime-c-path=./test-runtime/runtime.c"
-              , "--primops-c-path=./prim_ops.c"
+              , "--c-file=./test-runtime/runtime.c"
+              , "--c-file=./prim_ops.c"
               ]
         mainWithArgs $ fileArgs ++ compArgs
         let runTest = (shell "./end-to-end-test.bin")
