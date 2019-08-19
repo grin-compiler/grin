@@ -66,6 +66,13 @@ library
     Grin.PrimOpsPrelude
     Grin.Nametable
     Grin.Research
+    Grin.Syntax.Extended
+    Grin.ExtendedSyntax.Grin
+    Grin.ExtendedSyntax.Parse.AST
+    Grin.ExtendedSyntax.Parse.Basic
+    Grin.ExtendedSyntax.Parse.TypeEnv
+    Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.TypeEnv
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -85,6 +92,8 @@ library
     Test.IO
     Test.Test
     Test.Util
+    Test.ExtendedSyntax.Grammar
+    Test.ExtendedSyntax.Test
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -92,6 +101,7 @@ library
     Transformations.MangleNames
     Transformations.Names
     Transformations.StaticSingleAssignment
+    Transformations.Syntax
     Transformations.UnitPropagation
     Transformations.Util
     Transformations.Optimising.ArityRaising
@@ -253,6 +263,7 @@ test-suite grin-test
                      Transformations.Optimising.DeadParameterEliminationSpec
                      Transformations.Optimising.DeadVariableEliminationSpec
                      Transformations.StaticSingleAssignmentSpec
+                     Transformations.SyntaxSpec
                      Transformations.BindNormalisationSpec
                      Transformations.ConfluenceSpec
                      Transformations.MangleNamesSpec
