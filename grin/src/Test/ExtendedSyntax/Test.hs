@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
 {-# LANGUAGE QuasiQuotes, ViewPatterns, OverloadedStrings #-}
-module Test.ExtenddSyntax.Test where
+module Test.ExtendedSyntax.Test where
 
 import Prelude hiding (GT)
 
