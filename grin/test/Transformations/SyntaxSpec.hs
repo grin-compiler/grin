@@ -18,7 +18,7 @@ runTests = hspec spec
 
 spec :: Spec
 spec = describe "Syntax transformation QuickCheck tests" $
-         prop "Old isalways convertible to New" $
+         prop "Old is always convertible to New" $
           convertibleToNew
 
 -- NOTE: The conversion itself is the proof that it is convertible
