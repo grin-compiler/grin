@@ -3,6 +3,8 @@ module Transformations.SyntaxSpec where
 import Control.DeepSeq
 
 import Grin.Grin
+import Grin.Syntax (Exp)
+import qualified Grin.Syntax.Extended as New (Exp)
 import Transformations.Syntax
 
 import Test.Hspec
@@ -17,12 +19,20 @@ runTests :: IO ()
 runTests = hspec spec
 
 spec :: Spec
-spec = describe "Syntax transformation QuickCheck tests" $
+spec = describe "Syntax transformation QuickCheck tests" $ do
          prop "Old is always convertible to New" $
-          convertibleToNew
+           convertibleToNew
+         prop "Old is always convertible to New then back to Old" $
+           roundtripConvertibleOld
 
 -- NOTE: The conversion itself is the proof that it is convertible
 -- QUESTION: There must be a better way to do this
 -- ANSWER: The conversion function could an Either
 convertibleToNew :: G.Exp -> Bool
 convertibleToNew exp = force (convertToNew $ G.asExp exp) `seq` True
+
+roundtripConvertibleOld :: G.Exp -> Bool
+roundtripConvertibleOld exp = force (convertToOld $ convertToNew $ G.asExp exp) `seq` True where
+
+  convertToOld :: New.Exp -> Exp
+  convertToOld = convert
