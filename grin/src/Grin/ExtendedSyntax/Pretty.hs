@@ -114,6 +114,7 @@ prettyHighlightExternals externals exp = cata prettyExpAlgebra exp where
       | otherwise                  -> hsep ((cyan       $ pretty f) : text "$" : map pretty args)
     SReturnF val            -> keyword "pure" <+> pretty val
     SStoreF v               -> keywordR "store" <+> pretty v
+    SFetchF p               -> keywordR "fetch" <+> pretty p
     SUpdateF name v         -> keywordR "update" <+> pretty name <+> pretty v
     SBlockF exp             -> text "do" <$$> indent 2 exp
     -- Alt
