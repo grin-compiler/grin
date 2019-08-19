@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
-module Grin.Parse.TypeEnv
+module Grin.ExtendedSyntax.Parse.TypeEnv
   ( typeAnnot
   , parseTypeEnv
   , parseMarkedTypeEnv
@@ -28,7 +28,7 @@ import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 
-import Grin.Grin
+import Grin.ExtendedSyntax.Grin
 import Grin.TypeEnvDefs hiding (location, nodeSet, simpleType)
 import qualified Grin.TypeEnvDefs as Env
 import Grin.Parse.Basic

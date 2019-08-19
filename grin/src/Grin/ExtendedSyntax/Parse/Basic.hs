@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Grin.Parse.Basic where
+module Grin.ExtendedSyntax.Parse.Basic where
 
 import Data.Set (Set)
 import Data.Vector (Vector)

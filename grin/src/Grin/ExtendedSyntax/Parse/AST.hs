@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections, LambdaCase, OverloadedStrings #-}
 
-module Grin.Parse.AST
+module Grin.ExtendedSyntax.Parse.AST
   ( parseGrin
   , parseProg
   , parseDef
@@ -19,7 +19,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
 
-import Grin.Grin hiding (appName)
+import Grin.ExtendedSyntax.Grin
 import Grin.Parse.Basic
 import Grin.Parse.TypeEnv
 
@@ -51,25 +51,15 @@ simpleExp :: Pos -> Parser SimpleExp
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
               ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
               SStore <$ kw "store" <*> var <|>
-              SFetchI <$ kw "fetch" <*> var <*> optional (between (char '[') (char ']') $ fromIntegral <$> integer) <|>
+              SFetch <$ kw "fetch" <*> var <|>
               SUpdate <$ kw "update" <*> var <*> var <|>
               SBlock <$ kw "do" <*> (L.indentGuard sc GT i >>= expr) <|>
 
               -- FIXME: remove '$' from app syntax, fix 'value' parser with using 'lineFold' instead
-              SApp <$> appName <* (optional $ op "$") <*> many var
+              SApp <$> primNameOrDefName <* (optional $ op "$") <*> many var
 
-funName :: Parser Name
-funName = var
-
-extName :: Parser Name
-extName = nMap ("_" <>) <$ char '_' <*> var
-
--- TODO: Revisit function application name parsing.
---       Could use some sort of state for parsing (external list?).
---       Naming convention for externals: always begins with underscore.
-appName :: Parser AppName
-appName = Ext <$> extName <|>
-          Fun <$> funName
+primNameOrDefName :: Parser Name
+primNameOrDefName = nMap ("_"<>) <$ char '_' <*> var <|> var
 
 alternative :: Pos -> Parser Alt
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
@@ -89,8 +79,6 @@ value :: Parser Val
 value = Lit <$> literal <|>
         Var <$> var <|>
         Unit <$ op "()" <|>
-        try (parens (ConstTagNode <$> tag <*> many var <|> VarTagNode <$> var <*> many var)) <|>
-        ValTag <$> tag <|>
         Undefined <$> parens (kw "#undefined" *> op "::" *> typeAnnot)
 
 literal :: Parser Lit
