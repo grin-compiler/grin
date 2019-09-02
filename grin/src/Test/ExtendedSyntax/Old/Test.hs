@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
 {-# LANGUAGE QuasiQuotes, ViewPatterns, OverloadedStrings #-}
-module Test.ExtendedSyntax.Test where
+module Test.ExtendedSyntax.Old.Test where
 
 import Prelude hiding (GT)
 
@@ -34,7 +34,7 @@ import Test.QuickCheck.Instances.Vector
 import Generic.Random
 import Lens.Micro
 import Lens.Micro.Mtl
-import qualified Test.ExtendedSyntax.Grammar as G
+import qualified Test.ExtendedSyntax.Old.Grammar as G
 
 import Data.Set (Set); import qualified Data.Set as Set
 import Data.Map (Map); import qualified Data.Map as Map
@@ -42,9 +42,9 @@ import Data.List
 
 import Debug.Trace
 import Data.Text (pack)
-import Grin.Pretty
+import Grin.ExtendedSyntax.Pretty (PP(..))
 import Grin.TH
-import Grin.TypeEnv (TypeEnv, emptyTypeEnv)
+import Grin.ExtendedSyntax.TypeEnv (TypeEnv, emptyTypeEnv)  -- NOTE: might become problematic later
 import Test.Hspec
 import Control.Monad
 import Data.List
