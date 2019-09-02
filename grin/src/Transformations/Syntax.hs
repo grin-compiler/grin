@@ -1,10 +1,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 module Transformations.Syntax where
 
 import Data.String
 import Data.Text (Text(..))
 import Data.Functor.Foldable as Foldable
+
+import qualified Data.Map    as M
+import qualified Data.Vector as V
 
 import Control.Monad
 
@@ -14,9 +19,13 @@ import Lens.Micro.Platform
 import Grin.Grin
 import Grin.Pretty
 import Grin.Syntax
+import Grin.SyntaxDefs
+import Grin.TypeEnvDefs
 import qualified Grin.ExtendedSyntax.Pretty as New
 import qualified Grin.ExtendedSyntax.Grin as New
-import qualified Grin.Syntax.Extended as New
+import qualified Grin.ExtendedSyntax.Syntax as New
+import qualified Grin.ExtendedSyntax.SyntaxDefs as New
+import qualified Grin.ExtendedSyntax.TypeEnvDefs as New
 
 import Transformations.Names
 import Transformations.BindNormalisation
@@ -25,26 +34,97 @@ import Transformations.Simplifying.BindingPatternSimplification
 
 -- TODO: remove these
 import Test.QuickCheck
-import Test.ExtendedSyntax.Test()
-import qualified Test.ExtendedSyntax.Grammar as G
+import Test.ExtendedSyntax.Old.Test()
+import qualified Test.ExtendedSyntax.Old.Grammar as OG
 
 class Convertible a b where
   convert :: a -> b
 
+instance Convertible TagType New.TagType where
+  convert = \case
+    C   -> New.C
+    F   -> New.F
+    P n -> New.P n
+
+instance Convertible Name New.Name where
+  convert = \case
+    NM name -> New.NM name
+    NI n    -> New.NI n
+
+instance Convertible Tag New.Tag where
+  convert Tag{..} = New.Tag (convert tagType) (convert tagName)
+
+instance Convertible Lit New.Lit where
+  convert = \case
+    LInt64 n  -> New.LInt64 n
+    LWord64 n -> New.LWord64 n
+    LFloat f  -> New.LFloat f
+    LBool b   -> New.LBool b
+    LString s -> New.LString s
+    LChar c   -> New.LChar c
+
+instance Convertible SimpleType New.SimpleType where
+  convert = \case
+    T_Int64               -> New.T_Int64
+    T_Word64              -> New.T_Word64
+    T_Float               -> New.T_Float
+    T_Bool                -> New.T_Bool
+    T_Unit                -> New.T_Unit
+    T_Location locs       -> New.T_Location locs
+    T_UnspecifiedLocation -> New.T_UnspecifiedLocation
+    T_Dead                -> New.T_Dead
+    T_String              -> New.T_String
+    T_Char                -> New.T_Char
+
+instance Convertible Type New.Type where
+  convert = \case
+    T_SimpleType st -> New.T_SimpleType (convert st)
+    T_NodeSet ns    -> New.T_NodeSet
+      $ M.mapKeysMonotonic convert
+      . M.map (V.map convert)
+      $ ns
+    _ -> error "convert: Dependent type constructors are not supported in the new syntax."
+
+instance Convertible Ty New.Ty where
+  convert = \case
+    TyCon name tys -> New.TyCon (convert name) (map convert tys)
+    TyVar name     -> New.TyVar (convert name)
+    TySimple st    -> New.TySimple (convert st)
+
+instance Convertible ExternalKind New.ExternalKind where
+  convert = \case
+    PrimOp -> New.PrimOp
+    FFI    -> New.FFI
+
+instance Convertible External New.External where
+  convert External{..} = New.External
+    (convert eName)
+    (convert eRetType)
+    (map convert eArgsType)
+    eEffectful
+    (convert eKind)
+
+instance Convertible CPat New.CPat where
+  convert = \case
+    NodePat t args -> New.NodePat (convert t) (map convert args)
+    LitPat l       -> New.LitPat (convert l)
+    DefaultPat     -> New.DefaultPat
+    TagPat _ -> error "covnert: Tag patterns are not supported in the new syntax."
+
 instance Convertible Val New.Val where
   convert n@(ConstTagNode t vals)
     | any (isn't _Var) [] = error $ "ConstTagNode " ++ show (PP n) ++ " has a non-variable argument."
-    | otherwise           = New.ConstTagNode t (map (view _Var) vals)
+    | otherwise           = New.ConstTagNode (convert t) (map (convert . view _Var) vals)
   convert v@(VarTagNode _ _) = error $ "Cannot transform VarTagNode to new syntax: " ++ show (PP v)
   convert v@(ValTag _)       = error $ "Cannot transform ValTag to new syntax: " ++ show (PP v)
   convert Unit          = New.Unit
-  convert (Lit l)       = New.Lit l
-  convert (Var v)       = New.Var v
-  convert (Undefined t) = New.Undefined t
+  convert (Lit l)       = New.Lit (convert l)
+  convert (Var v)       = New.Var (convert v)
+  convert (Undefined t) = New.Undefined (convert t)
 
 instance Convertible Exp New.Exp where
-  convert (Program exts defs)  = New.Program exts (map convert defs)
-  convert (Def name args body) = New.Def name args (convert body)
+  convert (Program exts defs)  = New.Program (map convert exts) (map convert defs)
+  convert (Def name args body) = New.Def (convert name) (map convert args) (convert body)
   {- NOTE: we assume Binding Pattern Simplification has been run
     v.0 <- pure <value>
     <non-var pat> <- pure v.0
@@ -54,51 +134,120 @@ instance Convertible Exp New.Exp where
     | EBind (SReturn (Var var')) pat rhs2 <- rhs1
     , isn't _Var pat
     , var == var'
-    = New.EBind (convert lhs1) (New.AsPat var (convert pat)) (convert rhs2)
+    = New.EBind (convert lhs1) (New.AsPat (convert var) (convert pat)) (convert rhs2)
   convert (EBind lhs (Var var) rhs)
-    = New.EBind (convert lhs) (New.VarPat var) (convert rhs)
+    = New.EBind (convert lhs) (New.VarPat $ convert var) (convert rhs)
   convert (ECase scrut alts)
     | isn't _Var scrut   = error $ "Non-variable pattern in case scrutinee: " ++ show (PP scrut)
-    | (Var var) <- scrut = New.ECase var (map convert alts)
+    | (Var var) <- scrut = New.ECase (convert var) (map convert alts)
   convert e@(SApp f vals)
     | any (isn't _Var) vals = error $ "Non-variable value in application: " ++ show (PP e)
-    | otherwise             = New.SApp f $ map (view _Var) vals
+    | otherwise             = New.SApp (convert f) $ map (convert . view _Var) vals
   convert e@(SStore val)
     | isn't _Var val   = error $ "Non-variable value in store: " ++ show (PP e)
-    | (Var var) <- val = New.SStore var
+    | (Var var) <- val = New.SStore (convert var)
   convert e@(SFetchI ptr mIx)
-    | Nothing <- mIx = New.SFetch ptr
+    | Nothing <- mIx = New.SFetch (convert ptr)
     | otherwise      = error $ "Indexed fetch is no longer supported: " ++ show (PP e)
   convert e@(SUpdate ptr val)
     | isn't _Var val   = error $ "Non-variable value in update: " ++ show (PP e)
-    | (Var var) <- val = New.SUpdate ptr var
+    | (Var var) <- val = New.SUpdate (convert ptr) (convert var)
   convert (SReturn val)  = New.SReturn (convert val)
   convert (SBlock exp)   = New.SBlock (convert exp)
-  convert (Alt cpat exp) = New.Alt cpat (convert exp)
+  convert (Alt cpat exp) = New.Alt (convert cpat) (convert exp)
+
+instance Convertible New.TagType TagType where
+  convert = \case
+    New.C   -> C
+    New.F   -> F
+    New.P n -> P n
+
+instance Convertible New.Name Name where
+  convert = \case
+    New.NM name -> NM name
+    New.NI n    -> NI n
+
+instance Convertible New.Tag Tag where
+  convert New.Tag{..} = Tag (convert tagType) (convert tagName)
+
+instance Convertible New.Lit Lit where
+  convert = \case
+    New.LInt64 n  -> LInt64 n
+    New.LWord64 n -> LWord64 n
+    New.LFloat f  -> LFloat f
+    New.LBool b   -> LBool b
+    New.LString s -> LString s
+    New.LChar c   -> LChar c
+
+instance Convertible New.SimpleType SimpleType where
+  convert = \case
+    New.T_Int64               -> T_Int64
+    New.T_Word64              -> T_Word64
+    New.T_Float               -> T_Float
+    New.T_Bool                -> T_Bool
+    New.T_Unit                -> T_Unit
+    New.T_Location locs       -> T_Location locs
+    New.T_UnspecifiedLocation -> T_UnspecifiedLocation
+    New.T_Dead                -> T_Dead
+    New.T_String              -> T_String
+    New.T_Char                -> T_Char
+
+instance Convertible New.Type Type where
+  convert = \case
+    New.T_SimpleType st -> T_SimpleType (convert st)
+    New.T_NodeSet ns    -> T_NodeSet
+      $ M.mapKeysMonotonic convert
+      . M.map (V.map convert)
+      $ ns
+
+instance Convertible New.Ty Ty where
+  convert = \case
+    New.TyCon name tys -> TyCon (convert name) (map convert tys)
+    New.TyVar name     -> TyVar (convert name)
+    New.TySimple st    -> TySimple (convert st)
+
+instance Convertible New.ExternalKind ExternalKind where
+  convert = \case
+    New.PrimOp -> PrimOp
+    New.FFI    -> FFI
+
+instance Convertible New.External External where
+  convert New.External{..} = External
+    (convert eName)
+    (convert eRetType)
+    (map convert eArgsType)
+    eEffectful
+    (convert eKind)
+
+instance Convertible New.CPat CPat where
+  convert = \case
+    New.NodePat t args -> NodePat (convert t) (map convert args)
+    New.LitPat l       -> LitPat (convert l)
+    New.DefaultPat     -> DefaultPat
 
 instance Convertible New.Val Val where
-  convert (New.ConstTagNode t vars) = ConstTagNode t (map Var vars)
+  convert (New.ConstTagNode t vars) = ConstTagNode (convert t) $ map (Var . convert) vars
   convert (New.Unit)  = Unit
-  convert (New.Lit l) = Lit l
-  convert (New.Var v) = Var v
-  convert (New.Undefined t) = Undefined t
+  convert (New.Lit l) = Lit (convert l)
+  convert (New.Var v) = Var (convert v)
+  convert (New.Undefined t) = Undefined (convert t)
 
 instance Convertible New.Exp Exp where
-  convert (New.Program exts defs)  = Program exts (map convert defs)
-  convert (New.Def name args body) = Def name args (convert body)
+  convert (New.Program exts defs)  = Program (map convert exts) (map convert defs)
+  convert (New.Def name args body) = Def (convert name) (map convert args) (convert body)
   convert e@(New.EBind lhs pat rhs)
-    | (New.VarPat v)      <- pat = EBind (convert lhs) (Var v) (convert rhs)
+    | (New.VarPat v)      <- pat = EBind (convert lhs) (Var $ convert v) (convert rhs)
     | (New.AsPat  v pat') <- pat -- condition
-    , rhs' <- EBind (SReturn (Var v)) (convert pat') (convert rhs) -- helper
-    = EBind (convert lhs) (Var v) rhs'
-  convert e@(New.ECase scrut alts) = ECase (Var scrut) (map convert alts)
-  convert (New.SApp f vars)        = SApp f $ map Var vars
-  convert (New.SStore var)         = SStore (Var var)
-  convert (New.SFetch ptr)         = SFetchI ptr Nothing
-  convert (New.SUpdate ptr var)    = SUpdate ptr (Var var)
+    , rhs' <- EBind (SReturn (Var $ convert v)) (convert pat') (convert rhs) -- helper
+    = EBind (convert lhs) (Var $ convert v) rhs'
+  convert e@(New.ECase scrut alts) = ECase (Var $ convert scrut) (map convert alts)
+  convert (New.SApp f vars)        = SApp (convert f) $ map (Var . convert) vars
+  convert (New.SStore var)         = SStore (Var $ convert var)
+  convert (New.SFetch ptr)         = SFetchI (convert ptr) Nothing
+  convert (New.SUpdate ptr var)    = SUpdate (convert ptr) (Var $ convert var)
   convert (New.SReturn val)        = SReturn (convert val)
   convert (New.SBlock exp)         = SBlock (convert exp)
-  convert (New.Alt cpat exp)       = Alt cpat (convert exp)
+  convert (New.Alt cpat exp)       = Alt (convert cpat) (convert exp)
 
 convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
@@ -154,7 +303,7 @@ nodeArgumentNaming e = fst . evalNameM e . cata alg $ e where
 
 testToNew :: IO ()
 testToNew = do
-  prog <- G.asExp <$> generate (resize 1 arbitrary :: Gen G.Prog)
+  prog <- OG.asExp <$> generate (resize 1 arbitrary :: Gen OG.Prog)
   putStrLn $ show $ PP prog
   putStrLn "---------------"
   let prog'  = nameEverything prog
