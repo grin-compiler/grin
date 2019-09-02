@@ -4,7 +4,7 @@ import Control.DeepSeq
 
 import Grin.Grin
 import Grin.Syntax (Exp)
-import qualified Grin.Syntax.Extended as New (Exp)
+import qualified Grin.ExtendedSyntax.Syntax as New (Exp)
 import Transformations.Syntax
 
 import Test.Hspec
@@ -12,8 +12,8 @@ import Test.QuickCheck
 import Test.Hspec.QuickCheck
 
 import Test.Assertions
-import Test.ExtendedSyntax.Test()
-import qualified Test.ExtendedSyntax.Grammar as G
+import Test.ExtendedSyntax.Old.Test()
+import qualified Test.ExtendedSyntax.Old.Grammar as G
 
 runTests :: IO ()
 runTests = hspec spec

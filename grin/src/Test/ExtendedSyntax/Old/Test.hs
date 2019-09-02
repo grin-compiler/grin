@@ -249,7 +249,8 @@ instance Arbitrary G.SExp where
 instance Arbitrary CPat where
   arbitrary = oneof
     [ NodePat <$> arbitrary <*> (G.unName <$$> listOf1 arbitrary)
-    , TagPat  <$> arbitrary
+    -- NOTE: TagPats are not allowed in the new syntax
+    -- , TagPat  <$> arbitrary
     , LitPat  <$> arbitrary
     , pure DefaultPat
     ]
@@ -346,7 +347,14 @@ data Type
 
 instance Arbitrary Type where arbitrary = genericArbitraryU
 instance Arbitrary Grin.SimpleType where arbitrary = genericArbitraryU
-instance Arbitrary Grin.Type where arbitrary = genericArbitraryU
+
+instance Arbitrary Grin.Type where
+  arbitrary = oneof
+    [ Grin.T_SimpleType <$> arbitrary
+    , Grin.T_NodeSet <$> arbitrary
+    ]
+
+  shrink = genericShrink
 
 simpleType :: GoalM Type
 simpleType = melements
