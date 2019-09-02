@@ -64,21 +64,25 @@ primNameOrDefName = nMap ("_"<>) <$ char '_' <*> var <|> var
 alternative :: Pos -> Parser Alt
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 
+-- NOTE: The parser `value` already handles the parentheses around "complex" values,
+-- and we don't want to parenthesize variables, literals and units.
 bindingPat :: Parser BPat
-bindingPat = AsPat  <$> (var <* char '@') <*> parens value <|>
-             VarPat <$> var
+bindingPat =
+  try (AsPat <$> (var <* char '@') <*> {- parens -} value) <|>
+  VarPat <$> var
+
 
 altPat :: Parser CPat
 altPat = parens (NodePat <$> tag <*> many var) <|>
          DefaultPat <$ kw "#default" <|>
-         TagPat <$> tag <|>
          LitPat <$> literal
 
 -- #undefined can hold simple types as well as node types
 value :: Parser Val
 value = Lit <$> literal <|>
         Var <$> var <|>
-        Unit <$ op "()" <|>
+        try (parens $ ConstTagNode <$> tag <*> many var) <|>
+        try (Unit <$ op "()") <|>
         Undefined <$> parens (kw "#undefined" *> op "::" *> typeAnnot)
 
 literal :: Parser Lit
