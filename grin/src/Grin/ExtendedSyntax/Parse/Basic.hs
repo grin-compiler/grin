@@ -16,8 +16,8 @@ import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char
 
-import Grin.Grin
-import Grin.TypeEnvDefs
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnvDefs
 
 type Parser = Parsec Void Text
 

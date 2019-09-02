@@ -29,9 +29,9 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char as C
 
 import Grin.ExtendedSyntax.Grin
-import Grin.TypeEnvDefs hiding (location, nodeSet, simpleType)
-import qualified Grin.TypeEnvDefs as Env
-import Grin.Parse.Basic
+import Grin.ExtendedSyntax.TypeEnvDefs hiding (location, nodeSet, simpleType)
+import qualified Grin.ExtendedSyntax.TypeEnvDefs as Env
+import Grin.ExtendedSyntax.Parse.Basic
 
 import Control.Monad.State
 

@@ -66,13 +66,18 @@ library
     Grin.PrimOpsPrelude
     Grin.Nametable
     Grin.Research
-    Grin.Syntax.Extended
+    Grin.ExtendedSyntax.Syntax
+    Grin.ExtendedSyntax.SyntaxDefs
     Grin.ExtendedSyntax.Grin
+    Grin.ExtendedSyntax.EffectMap
+    Grin.ExtendedSyntax.Parse
     Grin.ExtendedSyntax.Parse.AST
     Grin.ExtendedSyntax.Parse.Basic
     Grin.ExtendedSyntax.Parse.TypeEnv
     Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.TH
     Grin.ExtendedSyntax.TypeEnv
+    Grin.ExtendedSyntax.TypeEnvDefs
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -92,8 +97,11 @@ library
     Test.IO
     Test.Test
     Test.Util
-    Test.ExtendedSyntax.Grammar
-    Test.ExtendedSyntax.Test
+    Test.ExtendedSyntax.Assertions
+    Test.ExtendedSyntax.New.Grammar
+    Test.ExtendedSyntax.New.Test
+    Test.ExtendedSyntax.Old.Grammar
+    Test.ExtendedSyntax.Old.Test
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap

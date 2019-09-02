@@ -20,8 +20,8 @@ import Text.Megaparsec.Char as C
 import qualified Data.Set as Set
 
 import Grin.ExtendedSyntax.Grin
-import Grin.Parse.Basic
-import Grin.Parse.TypeEnv
+import Grin.ExtendedSyntax.Parse.Basic
+import Grin.ExtendedSyntax.Parse.TypeEnv
 
 -- grin syntax
 

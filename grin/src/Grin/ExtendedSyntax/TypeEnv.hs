@@ -1,8 +1,8 @@
 {-# LANGUAGE LambdaCase, RecordWildCards #-}
 module Grin.ExtendedSyntax.TypeEnv
   ( module Grin.ExtendedSyntax.TypeEnv
-  , module Grin.TypeEnvDefs
-  , module Grin.SyntaxDefs
+  , module Grin.ExtendedSyntax.TypeEnvDefs
+  , module Grin.ExtendedSyntax.SyntaxDefs
   ) where
 
 import Text.Printf
@@ -24,8 +24,8 @@ import Lens.Micro.Platform
 
 import Grin.ExtendedSyntax.Grin
 import Grin.ExtendedSyntax.Pretty
-import Grin.TypeEnvDefs
-import Grin.SyntaxDefs
+import Grin.ExtendedSyntax.TypeEnvDefs
+import Grin.ExtendedSyntax.SyntaxDefs
 
 
 dead_t :: Type

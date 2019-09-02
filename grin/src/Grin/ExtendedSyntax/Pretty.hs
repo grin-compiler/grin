@@ -37,10 +37,10 @@ import Data.Functor.Foldable as Foldable
 import Text.PrettyPrint.ANSI.Leijen
 
 import Grin.ExtendedSyntax.Grin
-import Grin.TypeEnvDefs
-import Grin.EffectMap
+import Grin.ExtendedSyntax.TypeEnvDefs
+import Grin.ExtendedSyntax.EffectMap
 
-import Grin.Parse
+import Grin.ExtendedSyntax.Parse
 
 showWidth :: Int -> Doc -> String
 showWidth w x = displayS (renderPretty 0.4 w x) ""
@@ -150,7 +150,6 @@ instance Pretty BPat where
 instance Pretty CPat where
   pretty = \case
     NodePat tag vars  -> parens $ hsep (pretty tag : map pretty vars)
-    TagPat  tag       -> pretty tag
     LitPat  lit       -> pretty lit
     DefaultPat        -> keyword "#default"
 

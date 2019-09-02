@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances, DeriveFunctor, RankNTypes, LambdaCase #-}
 module Grin.ExtendedSyntax.Grin
   ( module Grin.ExtendedSyntax.Grin
-  , module Grin.Syntax.Extended
+  , module Grin.ExtendedSyntax.Syntax
   ) where
 
 import Data.Functor.Foldable as Foldable
@@ -11,8 +11,8 @@ import Data.Maybe
 import Data.Text (pack, unpack)
 import Data.List (nub)
 
-import Grin.Syntax.Extended
-import Grin.TypeEnvDefs
+import Grin.ExtendedSyntax.Syntax
+import Grin.ExtendedSyntax.TypeEnvDefs
 
 class FoldNames n where
   foldNames :: (Monoid m) => (Name -> m) -> n -> m
@@ -32,7 +32,6 @@ instance FoldNames BPat where
 instance FoldNames CPat where
   foldNames f = \case
     NodePat _ names -> foldMap f names
-    TagPat _        -> mempty
     LitPat _        -> mempty
     DefaultPat      -> mempty
 
@@ -65,7 +64,6 @@ _CNode _ rest = pure rest
 
 isBasicCPat :: CPat -> Bool
 isBasicCPat = \case
-  TagPat _ -> True
   LitPat _ -> True
   _        -> False
 
@@ -102,9 +100,10 @@ concatPrograms :: [Program] -> Program
 concatPrograms prgs = Program (nub $ concat exts) (concat defs) where
   (exts, defs) = unzip [(e, d) | Program e d <- prgs]
 
+-- NOTE: @ is no longer an allowed special (due to as-patterns)
 -- indetifier rules for parser and pretty printer
 allowedSpecial :: String
-allowedSpecial = "._':!@-"
+allowedSpecial = "._':!-"
 
 allowedInitial :: String
 allowedInitial = "._" ++ ['a'..'z'] ++ ['A'..'Z']
