@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
-module Transformations.Syntax where
+module Transformations.ExtendedSyntax.Conversion where
 
 import Data.String
 import Data.Text (Text(..))

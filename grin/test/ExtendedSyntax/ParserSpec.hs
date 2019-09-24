@@ -1,16 +1,19 @@
 {-# LANGUAGE LambdaCase, QuasiQuotes, OverloadedStrings #-}
-module ParserSpec where
+module ExtendedSyntax.ParserSpec where
 
 import qualified Data.Text as Text
 import Test.Hspec
 import Test.QuickCheck
 
-import Grin.Pretty
-import Grin.Grin
-import Grin.TH
-import Grin.Parse
-import Test.Test
-import Test.Assertions
+import Grin.ExtendedSyntax.Pretty
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TH
+import Grin.ExtendedSyntax.Parse
+
+import Test.ExtendedSyntax.Old.Test
+import Test.ExtendedSyntax.Assertions
+
+import Transformations.ExtendedSyntax.Conversion
 
 runTests :: IO ()
 runTests = hspec spec
@@ -44,10 +47,70 @@ spec = do
       parsedExp `sameAs` exp
 
   describe "simple" $ do
+    it "var-pat" $ do
+      let before = [prog|
+        grinMain =
+          v <- pure ()
+          pure v
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SReturn Unit) (VarPat "v") (SReturn $ Var "v")
+            ]
+      before `sameAs` after
+
+    it "as-pat-unit" $ do
+      let before = [prog|
+        grinMain =
+          v@() <- pure ()
+          pure v
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SReturn Unit) (AsPat "v" Unit) (SReturn $ Var "v")
+            ]
+      before `sameAs` after
+
+    it "as-pat-lit" $ do
+      let before = [prog|
+        grinMain =
+          v@5 <- pure ()
+          pure v
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SReturn Unit) (AsPat "v" (Lit $ LInt64 5)) (SReturn $ Var "v")
+            ]
+      before `sameAs` after
+
+    it "as-pat-nullary-node" $ do
+      let before = [prog|
+        grinMain =
+          v@(CNil) <- pure ()
+          pure v
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SReturn Unit) (AsPat "v" (ConstTagNode (Tag C "Nil") [])) (SReturn $ Var "v")
+            ]
+      before `sameAs` after
+
+    it "as-pat-node" $ do
+      let before = [prog|
+        grinMain =
+          v@(CCons x xs) <- pure ()
+          pure v
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SReturn Unit) (AsPat "v" (ConstTagNode (Tag C "Cons") ["x", "xs"])) (SReturn $ Var "v")
+            ]
+      before `sameAs` after
+
     it "case" $ do
       let before = [prog|
         test p =
-          case p of
+          _unit@() <- case p of
             #default ->
               pure ()
           case p of
@@ -56,8 +119,8 @@ spec = do
         |]
       let after = Program []
             [ Def "test"[ "p" ]
-              ( EBind ( ECase ( Var "p" ) [ Alt DefaultPat ( SReturn Unit ) ] ) Unit
-                ( ECase ( Var "p" ) [ Alt DefaultPat ( SReturn ( Var "p" ) ) ] )
+              ( EBind ( ECase "p" [ Alt DefaultPat ( SReturn Unit ) ] ) (AsPat "_unit" Unit)
+                ( ECase "p" [ Alt DefaultPat ( SReturn (Var "p") ) ] )
               )
             ]
       before `sameAs` after
@@ -65,43 +128,40 @@ spec = do
     it "literal - bind" $ do
       let before = [prog|
         grinMain =
-          floatLit1 <- pure 13.1415
-          nodeLit1 <- pure (CNode 13.1415 +13.1415 -13.1415 42 +42 -42 64u #True #False floatLit1)
-          pure ()
+          x0 <- pure 13.1415
+          x1 <- pure +13.1415
+          x2 <- pure -13.1415
+          x3 <- pure 42
+          x4 <- pure +42
+          x5 <- pure -42
+          x6 <- pure 64u
+          x7 <- pure #True
+          x8 <- pure #False
+          x9 <- pure ()
+          pure (CNode x0 x1 x2 x3 x4 x5 x6 x7 x8 x9)
         |]
       let after = Program []
-            [ Def "grinMain"[]
-                ( EBind ( SReturn ( Lit ( LFloat 13.1415 ) ) ) ( Var "floatLit1" )
-                    ( EBind
-                        ( SReturn
-                            ( ConstTagNode
-                                ( Tag
-                                    { tagType = C
-                                    , tagName = "Node"
-                                    }
-                                )
-                                [ Lit ( LFloat 13.1415 )
-                                , Lit ( LFloat 13.1415 )
-                                , Lit ( LFloat ( -13.1415 ) )
-                                , Lit ( LInt64 42 )
-                                , Lit ( LInt64 42 )
-                                , Lit ( LInt64 ( -42 ) )
-                                , Lit ( LWord64 64 )
-                                , Lit ( LBool True )
-                                , Lit ( LBool False )
-                                , Var "floatLit1"
-                                ]
-                            )
-                        ) ( Var "nodeLit1" ) ( SReturn Unit )
-                    )
-                )
+            [ Def "grinMain" [] $
+                EBind ( SReturn ( Lit ( LFloat 13.1415 ) ) )    (VarPat "x0") $
+                EBind ( SReturn ( Lit ( LFloat 13.1415 ) ) )    (VarPat "x1") $
+                EBind ( SReturn ( Lit ( LFloat (-13.1415) ) ) ) (VarPat "x2") $
+                EBind ( SReturn ( Lit ( LInt64 42 ) ) )         (VarPat "x3") $
+                EBind ( SReturn ( Lit ( LInt64 42 ) ) )         (VarPat "x4") $
+                EBind ( SReturn ( Lit ( LInt64 (-42) ) ) )      (VarPat "x5") $
+                EBind ( SReturn ( Lit ( LWord64 64 ) ) )        (VarPat "x6") $
+                EBind ( SReturn ( Lit ( LBool True ) ) )        (VarPat "x7") $
+                EBind ( SReturn ( Lit ( LBool False ) ) )       (VarPat "x8") $
+                EBind ( SReturn Unit )                          (VarPat "x9") $
+                SReturn (ConstTagNode (Tag C "Node") ["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9"])
+
+
             ]
       before `sameAs` after
 
     it "literal - case" $ do
       let before = [prog|
         grinMain =
-          case -12.12 of
+          case scrut of
             13.1415   -> pure ()
             +14.1415  -> pure ()
             -14.1415  -> pure ()
@@ -116,7 +176,7 @@ spec = do
         |]
       let after = Program []
             [ Def "grinMain"[]
-                ( ECase ( Lit ( LFloat ( -12.12 ) ) )
+                ( ECase "scrut"
                     [ Alt ( LitPat ( LFloat 13.1415 ) ) ( SReturn Unit )
                     , Alt ( LitPat ( LFloat 14.1415 ) ) ( SReturn Unit )
                     , Alt ( LitPat ( LFloat ( -14.1415 ) ) ) ( SReturn Unit )
@@ -155,10 +215,10 @@ spec = do
       |]
       let after =
             EBind
-              (ECase (Var "y")
+              (ECase "y"
                 [ Alt (LitPat (LInt64 1)) $ SReturn $ Lit $ LInt64 2
                 ])
-              (Var "x") $
+              (VarPat "x") $
             SReturn (Var "x")
       before `shouldBe` after
 
@@ -200,6 +260,7 @@ spec = do
     exp `sameAs` (parseProg . Text.pack . show . WPP $ exp)
 
   it "store undefined" $ do
+    pendingWith "store can only be applied to names in the new syntax"
     let exp = [prog|
             grinMain =
               p0 <- store (#undefined :: {CInt[T_Int64]})
@@ -213,6 +274,7 @@ spec = do
     exp `sameAs` (parseProg . Text.pack . show . WPP $ exp)
 
   it "update undefined" $ do
+    pendingWith "update can only be applied to names in the new syntax"
     let exp = [prog|
             grinMain p =
               update p (#undefined :: {CInt[T_Int64]})
@@ -228,87 +290,50 @@ spec = do
   it "string literal" $ do
     let before = [prog|
           grinMain =
-            v0 <- fun_call $ 1 #"a" 1
             v1 <- pure #""
             v2 <- pure #"a"
-            v3 <- case #"" of
+            v3 <- case v1 of
               #"" -> pure 1
               #"a" -> pure 2
               #default -> pure 3
-            v4 <- pure (CTag1 #"")
-            v5 <- pure (CTag2 #"" #"a")
-            v6 <- pure (CTag3 #"a" #"")
-            v7 <- pure (CTag4 #"a" #"" #"b")
-            v8 <- pure (CTag5 1 #"" 1 #"a")
-            v9 <- pure (CTag6 1 #"" 1 #"a" 4)
-            v10 <- case (CTag7 1 #"" 3) of
-              (CTag7 v11 v12 v13) -> pure 1
-            v11 <- store (CTag8 #"a" 1 #"")
-            (CTag9 #"a") <- pure (CTag9 #"a")
+            _x@#"a" <- pure v2
             pure ()
         |]
     let after = Program []
-          [Def "grinMain" []
-            (EBind (SApp "fun_call" [Lit (LInt64 1),Lit (LString "a"),Lit (LInt64 1)]) (Var "v0")
-            (EBind (SReturn (Lit (LString ""))) (Var "v1")
-            (EBind (SReturn (Lit (LString "a"))) (Var "v2")
-            (EBind (ECase (Lit (LString ""))
+          [Def "grinMain" [] $
+            EBind (SReturn (Lit (LString ""))) (VarPat "v1") $
+            EBind (SReturn (Lit (LString "a"))) (VarPat "v2") $
+            EBind (ECase "v1" $
               [Alt (LitPat (LString "")) (SReturn (Lit (LInt64 1)))
               ,Alt (LitPat (LString "a")) (SReturn (Lit (LInt64 2)))
               ,Alt DefaultPat (SReturn (Lit (LInt64 3)))
-              ]) (Var "v3")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag1"}) [Lit (LString "")])) (Var "v4")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag2"}) [Lit (LString ""),Lit (LString "a")])) (Var "v5")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag3"}) [Lit (LString "a"),Lit (LString "")])) (Var "v6")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag4"}) [Lit (LString "a"),Lit (LString ""),Lit (LString "b")])) (Var "v7")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag5"}) [Lit (LInt64 1),Lit (LString ""),Lit (LInt64 1),Lit (LString "a")])) (Var "v8")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag6"}) [Lit (LInt64 1),Lit (LString ""),Lit (LInt64 1),Lit (LString "a"),Lit (LInt64 4)])) (Var "v9")
-            (EBind (ECase (ConstTagNode (Tag {tagType = C, tagName = "Tag7"}) [Lit (LInt64 1),Lit (LString ""),Lit (LInt64 3)])
-                      [Alt (NodePat (Tag {tagType = C, tagName = "Tag7"}) ["v11","v12","v13"]) (SReturn (Lit (LInt64 1)))]) (Var "v10")
-            (EBind (SStore (ConstTagNode (Tag {tagType = C, tagName = "Tag8"}) [Lit (LString "a"),Lit (LInt64 1),Lit (LString "")])) (Var "v11")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LString "a")])) (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LString "a")])
-            (SReturn Unit))))))))))))))
+              ]) (VarPat "v3") $
+            EBind (SReturn $ Var "v2") (AsPat "_x" $ (Lit (LString "a"))) $
+            SReturn Unit
           ]
-    before `shouldBe` after
+    before `sameAs` after
 
   it "char literals" $ do
     let before = [prog|
           grinMain =
-            v0 <- fun_call $ 1 #'a' 1
             v2 <- pure #'a'
-            v3 <- case #'b' of
+            v3 <- case v2 of
               #'b' -> pure 1
               #'c' -> pure 2
               #default -> pure 3
-            v5 <- pure (CTag2 #'a' #'b')
-            v6 <- pure (CTag3 #'a')
-            v8 <- pure (CTag5 1 #'a')
-            v9 <- pure (CTag6 1 #'a' 4)
-            v10 <- case (CTag7 1 #'b' 3) of
-              (CTag7 v11 v12 v13) -> pure 1
-            v11 <- store (CTag8 #'a' 1 #'c')
-            (CTag9 #'a') <- pure (CTag9 #'a')
+            _c@#'a' <- pure v2
             pure ()
         |]
     let after = Program []
-          [Def "grinMain" []
-            (EBind (SApp "fun_call" [Lit (LInt64 1),Lit (LChar 'a'),Lit (LInt64 1)]) (Var "v0")
-            (EBind (SReturn (Lit (LChar 'a'))) (Var "v2")
-            (EBind (ECase (Lit (LChar 'b'))
+          [Def "grinMain" [] $
+            EBind (SReturn (Lit (LChar 'a'))) (VarPat "v2") $
+            EBind (ECase "v2" $
               [Alt (LitPat (LChar 'b')) (SReturn (Lit (LInt64 1)))
               ,Alt (LitPat (LChar 'c')) (SReturn (Lit (LInt64 2)))
               ,Alt DefaultPat (SReturn (Lit (LInt64 3)))
-              ]) (Var "v3")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag2"}) [Lit (LChar 'a'),Lit (LChar 'b')])) (Var "v5")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag3"}) [Lit (LChar 'a')])) (Var "v6")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag5"}) [Lit (LInt64 1),Lit (LChar 'a')])) (Var "v8")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag6"}) [Lit (LInt64 1),Lit (LChar 'a'),Lit (LInt64 4)])) (Var "v9")
-            (EBind (ECase (ConstTagNode (Tag {tagType = C, tagName = "Tag7"}) [Lit (LInt64 1),Lit (LChar 'b'),Lit (LInt64 3)])
-              [Alt (NodePat (Tag {tagType = C, tagName = "Tag7"}) ["v11","v12","v13"]) (SReturn (Lit (LInt64 1)))
-              ]) (Var "v10")
-            (EBind (SStore (ConstTagNode (Tag {tagType = C, tagName = "Tag8"}) [Lit (LChar 'a'),Lit (LInt64 1),Lit (LChar 'c')])) (Var "v11")
-            (EBind (SReturn (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LChar 'a')])) (ConstTagNode (Tag {tagType = C, tagName = "Tag9"}) [Lit (LChar 'a')])
-            (SReturn Unit)))))))))))
+              ]) (VarPat "v3") $
+            EBind (SReturn $ Var "v2") (AsPat "_c" $ Lit (LChar 'a')) $
+            SReturn Unit
           ]
     before `shouldBe` after
 
@@ -423,8 +448,12 @@ spec = do
 
       before `sameAs` after
 
+  -- TODO: Kind of hack for now. Now, we generate an old AST,
+  -- convert it to the new syntax, then test for the property.
+  -- We will need to fix Test.ExtendedSyntax.New.Test.
   describe "generated" $ do
     it "parse . pretty print == id" $ property $
-      forAll (PP <$> genProg) $ \p ->
-        let p' = parseGrin "" (Text.pack $ show p)
-        in (fmap PP p') `shouldBe` (Right p)
+      forAll (convertToNew <$> genProg) $ \newAst -> do
+        let newAst' = either (error "Couldn't parse pretty printed AST, see generated NEW AST below.") id $
+              parseGrin "" (Text.pack . show . WPP $ newAst)
+        newAst' `sameAs` newAst

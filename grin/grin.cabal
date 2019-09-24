@@ -98,8 +98,6 @@ library
     Test.Test
     Test.Util
     Test.ExtendedSyntax.Assertions
-    Test.ExtendedSyntax.New.Grammar
-    Test.ExtendedSyntax.New.Test
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
     Transformations.BindNormalisation
@@ -109,9 +107,9 @@ library
     Transformations.MangleNames
     Transformations.Names
     Transformations.StaticSingleAssignment
-    Transformations.Syntax
     Transformations.UnitPropagation
     Transformations.Util
+    Transformations.ExtendedSyntax.Conversion
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CaseHoisting
@@ -243,6 +241,8 @@ test-suite grin-test
                      , inline-c
 
   other-modules:
+                     ExtendedSyntax.ParserSpec
+                     Transformations.ExtendedSyntax.ConversionSpec
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec
                      Transformations.Simplifying.SplitFetchSpec
@@ -271,7 +271,6 @@ test-suite grin-test
                      Transformations.Optimising.DeadParameterEliminationSpec
                      Transformations.Optimising.DeadVariableEliminationSpec
                      Transformations.StaticSingleAssignmentSpec
-                     Transformations.SyntaxSpec
                      Transformations.BindNormalisationSpec
                      Transformations.ConfluenceSpec
                      Transformations.MangleNamesSpec

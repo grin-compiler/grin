@@ -1,11 +1,11 @@
-module Transformations.SyntaxSpec where
+module Transformations.ExtendedSyntax.ConversionSpec where
 
 import Control.DeepSeq
 
 import Grin.Grin
 import Grin.Syntax (Exp)
 import qualified Grin.ExtendedSyntax.Syntax as New (Exp)
-import Transformations.Syntax
+import Transformations.ExtendedSyntax.Conversion
 
 import Test.Hspec
 import Test.QuickCheck
