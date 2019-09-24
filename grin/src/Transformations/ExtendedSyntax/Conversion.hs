@@ -300,14 +300,3 @@ nodeArgumentNaming e = fst . evalNameM e . cata alg $ e where
 
   newArgName :: NameM Name
   newArgName = deriveNewName "y"
-
-testToNew :: IO ()
-testToNew = do
-  prog <- OG.asExp <$> generate (resize 1 arbitrary :: Gen OG.Prog)
-  putStrLn $ show $ PP prog
-  putStrLn "---------------"
-  let prog'  = nameEverything prog
-  putStrLn $ show $ PP prog'
-  putStrLn "---------------"
-  let prog'' = convertToNew prog
-  putStrLn $ show $ PP prog''
