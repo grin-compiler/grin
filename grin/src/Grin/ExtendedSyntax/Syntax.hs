@@ -64,9 +64,7 @@ data Lit
 -- * GRIN Value
 
 data Val
-  -- CHANGE: Name
   = ConstTagNode  Tag  [Name]
-  -- CHANGE: Name
   | Unit
   -- simple val
   | Lit Lit
@@ -108,18 +106,13 @@ data Exp
   = Program     [External] [Def]
   | Def         Name [Name] Exp
   -- Exp
-  -- CHANGE: BPat
   | EBind       SimpleExp BPat Exp
-  -- CHANGE: Name
   | ECase       Name [Alt]
   -- Simple Exp
-  -- CHANGE: Name
   | SApp        Name [Name]
   | SReturn     Val
-  -- CHANGE: Name
   | SStore      Name
   | SFetch      Name
-  -- CHANGE: Name
   | SUpdate     Name Name
   | SBlock      Exp
   -- Alt

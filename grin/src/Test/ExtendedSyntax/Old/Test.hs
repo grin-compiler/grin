@@ -11,7 +11,7 @@ import Control.Monad.Logic
 import Control.Monad.Trans (lift)
 import Control.Monad.Identity
 import Control.Monad.Trans.Maybe
-import Control.Monad.Trans.State -- .Plus
+import Control.Monad.Trans.State
 import Control.Monad.Trans.Reader
 import qualified Control.Monad.State.Class as CMS
 import qualified Control.Monad.Reader.Class as CMR
@@ -28,7 +28,6 @@ import Grin.Grin hiding (Def)
 import qualified Grin.Grin as Grin
 import qualified Grin.TypeEnvDefs as Grin
 import qualified Grin.PrimOpsPrelude as PrimOps'
--- import qualified Test.PrimOps as PrimOps
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Vector
 import Generic.Random
@@ -249,8 +248,6 @@ instance Arbitrary G.SExp where
 instance Arbitrary CPat where
   arbitrary = oneof
     [ NodePat <$> arbitrary <*> (G.unName <$$> listOf1 arbitrary)
-    -- NOTE: TagPats are not allowed in the new syntax
-    -- , TagPat  <$> arbitrary
     , LitPat  <$> arbitrary
     , pure DefaultPat
     ]
@@ -363,7 +360,6 @@ simpleType = melements
   , TWord
   , TUnit
   , TBool
---  , TLoc
   , TString
   , TChar
   ]
@@ -374,8 +370,6 @@ primitiveType = melements
   , TFloat
   , TWord
   , TBool
---  , TUnit
---  , TLoc
   , TString
   , TChar
   ]
