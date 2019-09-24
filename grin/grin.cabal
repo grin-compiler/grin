@@ -176,7 +176,7 @@ library
 
 executable grin
   hs-source-dirs:      app
-  main-is:             GrinCLI.hs
+  main-is:             CLI/Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base >=4.11
                      , grin
@@ -197,11 +197,13 @@ executable grin
                      , optparse-applicative
                      , directory
                      , binary
+  other-modules:
+    CLI.Lib
   default-language:    Haskell2010
 
 test-suite grin-test
   type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
+  hs-source-dirs:      test, app
   main-is:             Spec.hs
   default-extensions:  OverloadedStrings
   build-depends:       base >=4.11
@@ -223,6 +225,15 @@ test-suite grin-test
                      , ansi-wl-pprint
                      , directory
                      , inline-c
+                     , directory-tree
+                     , yaml
+                     , binary
+                     , optparse-applicative
+                     , megaparsec
+                     , system-posix-redirect
+                     , process
+                     , bytestring
+                     , MissingH
 
   other-modules:
                      Transformations.Simplifying.RegisterIntroductionSpec
@@ -272,7 +283,97 @@ test-suite grin-test
                      AbstractInterpretation.SharingSpec
                      AbstractInterpretation.CreatedBySpec
                      Test.Hspec.PipelineExample
+                     Test.EndToEnd
+                     Test.EndToEndSpec
+                     CLI.Lib
   default-language:    Haskell2010
+
+test-suite grin-end-to-end-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test, app
+  main-is:             EndToEnd.hs
+  default-extensions:  OverloadedStrings
+  build-depends:       base >=4.11
+                     , containers
+                     , filepath
+                     , functor-infix
+                     , grin
+                     , hspec
+                     , hspec-core
+                     , hspec-discover
+                     , QuickCheck
+                     , deepseq
+                     , vector
+                     , text
+                     , random
+                     , microlens
+                     , transformers
+                     , mtl
+                     , ansi-wl-pprint
+                     , directory
+                     , inline-c
+                     , directory-tree
+                     , yaml
+                     , megaparsec
+                     , binary
+                     , optparse-applicative
+                     , system-posix-redirect
+                     , process
+                     , bytestring
+                     , MissingH
+  other-modules:
+                     Transformations.Simplifying.RegisterIntroductionSpec
+                     Transformations.Simplifying.CaseSimplificationSpec
+                     Transformations.Simplifying.SplitFetchSpec
+                     Transformations.Simplifying.RightHoistFetchSpec
+                     Transformations.Simplifying.VectorisationSpec
+                     Transformations.Simplifying.ProducerNameIntroductionSpec
+                     Transformations.Simplifying.BindingPatternSimplificationSpec
+                     Transformations.Optimising.CaseCopyPropagationSpec
+                     Transformations.Optimising.CopyPropagationSpec
+                     Transformations.Optimising.ConstantFoldingSpec
+                     Transformations.Optimising.ConstantPropagationSpec
+                     Transformations.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.Optimising.TrivialCaseEliminationSpec
+                     Transformations.Optimising.SparseCaseOptimisationSpec
+                     Transformations.Optimising.UpdateEliminationSpec
+                     Transformations.Optimising.CSESpec
+                     Transformations.Optimising.GeneralizedUnboxingSpec
+                     Transformations.Optimising.ArityRaisingSpec
+                     Transformations.Optimising.SimpleDeadFunctionEliminationSpec
+                     Transformations.Optimising.SimpleDeadParameterEliminationSpec
+                     Transformations.Optimising.SimpleDeadVariableEliminationSpec
+                     Transformations.Optimising.InliningSpec
+                     Transformations.Optimising.CaseHoistingSpec
+                     Transformations.Optimising.DeadDataEliminationSpec
+                     Transformations.Optimising.DeadFunctionEliminationSpec
+                     Transformations.Optimising.DeadParameterEliminationSpec
+                     Transformations.Optimising.DeadVariableEliminationSpec
+                     Transformations.StaticSingleAssignmentSpec
+                     Transformations.BindNormalisationSpec
+                     Transformations.ConfluenceSpec
+                     Transformations.MangleNamesSpec
+                     Samples.SumListSpec
+                     Samples.ArityFullRemoveSpec
+                     LintSpec
+                     TestSpec
+                     PipelineSpec
+                     ParserSpec
+                     PrimOpsSpec
+                     NametableSpec
+                     AbstractInterpretation.HptSpec
+                     AbstractInterpretation.LiveVariableSpec
+                     AbstractInterpretation.EffectTrackingSpec
+                     AbstractInterpretation.IRSpec
+                     AbstractInterpretation.OptimiseAbstractProgramSpec
+                     AbstractInterpretation.SharingSpec
+                     AbstractInterpretation.CreatedBySpec
+                     Test.Hspec.PipelineExample
+                     Test.EndToEnd
+                     Test.EndToEndSpec
+                     CLI.Lib
+  default-language:    Haskell2010
+
 
 benchmark grin-benchmark
   type:                exitcode-stdio-1.0

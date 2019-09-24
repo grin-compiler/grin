@@ -257,6 +257,7 @@ data PipelineOpts = PipelineOpts
   , _poLintOnChange :: Bool
   , _poTypedLint :: Bool -- Run HPT before every lint
   , _poSaveBinary :: Bool
+  , _poCFiles :: [FilePath]
   }
 
 defaultOpts :: PipelineOpts
@@ -269,6 +270,7 @@ defaultOpts = PipelineOpts
   , _poLintOnChange = True
   , _poTypedLint    = False
   , _poSaveBinary   = False
+  , _poCFiles       = []
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -728,9 +730,10 @@ saveExecutable debugSymbols path = do
   callCommand $ printf
     ("llc-7 -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
     grinOptCodeFile
+  cfg <- ask
   callCommand $ printf
-    ("clang-7 -O3 prim_ops.c runtime.c %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
-    grinOptCodeFile fname
+    ("clang-7 -O3 %s %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
+    (intercalate " " $ _poCFiles cfg) grinOptCodeFile fname
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do

@@ -8,6 +8,7 @@
 <h2 align="center">Bronze via Patreon</h2>
 
 - Stephen Diehl
+- Christopher Goes
 
 <h2 align="center">Generous Backers via Patreon ($50+)</h2>
 
@@ -17,6 +18,7 @@
 - Peter Kadlot
 - Michael Koloberdin
 - William Harvey
+- Steven Kane
 <!--50 end-->
 
 <h2 align="center">Backers via Patreon</h2>
@@ -40,4 +42,11 @@
 - Kametrixom Tikara
 - Denis Redozubov
 - Andrei Dziahel
+- Oleh Stolyar
+- Alberto Centelles
+- Tom Hunger
+- Mirzhan Irkegulov
+- James MacAulay
+- Adam S E
+- Michael
 <!--10 end-->

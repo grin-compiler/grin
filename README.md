@@ -1,10 +1,10 @@
 # GRIN
 
-[![Build Status](https://travis-ci.org/grin-compiler/grin.svg?branch=master)](https://travis-ci.org/grin-compiler/grin) [![Coverage Status](https://coveralls.io/repos/github/grin-tech/grin/badge.svg?branch=master)](https://coveralls.io/github/grin-tech/grin?branch=master)
+[![Build Status](https://travis-ci.org/grin-compiler/grin.svg?branch=master)](https://travis-ci.org/grin-compiler/grin) [![Coverage Status](https://coveralls.io/repos/github/grin-compiler/grin/badge.svg?branch=master)](https://coveralls.io/github/grin-compiler/grin?branch=master)
 [![Gitter chat](https://badges.gitter.im/grin-compiler/grin.png)](https://gitter.im/Grin-Development/Lobby)
 
 The name GRIN is short for *Graph Reduction Intermediate Notation*, and it is an intermediate language for graph reduction. GRIN is the optimizer and code generator component of the GRIN Compiler project which includes language frontends for *Haskell*, *Idris* and *Agda*.
-To get the big picture of the project check the [project website](https://grin-compiler.github.io/).  
+To get the big picture of the project check the [project website](https://grin-compiler.github.io/).
 For an overview of the optimizer read
 <a href="http://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/The GRIN Project.pdf">
 The GRIN Project
@@ -21,7 +21,7 @@ Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.ju
 
 ## Support
 
-The project is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md).   
+The project is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md).
 If you'd like to join them, please consider become a backer or sponsor on [Patreon](https://www.patreon.com/csaba_hruska).
 
 
@@ -49,7 +49,7 @@ If you'd like to join them, please consider become a backer or sponsor on [Patre
 Example using Homebrew on macOS:
 
 ```bash
-$ brew install llvm-hs/llvm/llvm-7.0
+$ brew install llvm-hs/llvm/llvm-7
 ```
 
 #### Debian/Ubuntu
@@ -96,7 +96,7 @@ stack build
 stack exec -- grin grin/grin/opt-stages-high-level/stage-00.grin
 ```
 ## How to Contribute
-See: [Issues / Tasks for new contributors](https://github.com/grin-compiler/grin/issues/3)  
+See: [Issues / Tasks for new contributors](https://github.com/grin-compiler/grin/issues/3)
 Keep it simple: We follow the fundamentals laid down in [HaskellerZ - Feb 2018 - Getting things done in Haskell](https://www.youtube.com/watch?v=-X1vrxQUETM)
 
 ## Example Front-End
@@ -150,10 +150,10 @@ Transformation | Schema
 [case hoisting][153]                      <br><br> _source code:_ <br> [CaseHoisting.hs]             <br><br> _test:_ <br> [CaseHoistingSpec.hs]              | [<img src="images/case-hoisting.png"              width="500">][153]
 [whnf update elimination][149]            <br><br> _source code:_ <br> __TODO__                      <br><br> _test:_ <br> __TODO__                           | [<img src="images/whnf-update-elimination.png"    width="500">][149]
 [common sub-expression elimination][164]  <br><br> _source code:_ <br> [CSE.hs]                      <br><br> _test:_ <br> [CSESpec.hs]                       | [<img src="images/common-sub-expression-elimination-1.png" width="500"><img src="images/common-sub-expression-elimination-2.png" width="500">][164]
-[constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]      <br><br> _test:_ <br> [ConstantPropagationSpec.hs]       | 
-[dead function elimination][169]          <br><br> _source code:_ <br> [SimpleDeadFunctionElimination.hs]  <br><br> _test:_ <br> [SimpleDeadFunctionEliminationSpec.hs]   | 
-[dead variable elimination][170]          <br><br> _source code:_ <br> [SimpleDeadVariableElimination.hs]  <br><br> _test:_ <br> [SimpleDeadVariableEliminationSpec.hs]   | 
-[dead parameter elimination][171]         <br><br> _source code:_ <br> [SimpleDeadParameterElimination.hs] <br><br> _test:_ <br> [SimpleDeadParameterEliminationSpec.hs]  | 
+[constant propagation][159]               <br><br> _source code:_ <br> [ConstantPropagation.hs]      <br><br> _test:_ <br> [ConstantPropagationSpec.hs]       |
+[dead function elimination][169]          <br><br> _source code:_ <br> [SimpleDeadFunctionElimination.hs]  <br><br> _test:_ <br> [SimpleDeadFunctionEliminationSpec.hs]   |
+[dead variable elimination][170]          <br><br> _source code:_ <br> [SimpleDeadVariableElimination.hs]  <br><br> _test:_ <br> [SimpleDeadVariableEliminationSpec.hs]   |
+[dead parameter elimination][171]         <br><br> _source code:_ <br> [SimpleDeadParameterElimination.hs] <br><br> _test:_ <br> [SimpleDeadParameterEliminationSpec.hs]  |
 
 [129]: http://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=129
 [134]: http://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=134
