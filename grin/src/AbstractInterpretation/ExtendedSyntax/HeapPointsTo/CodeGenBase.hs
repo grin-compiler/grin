@@ -14,10 +14,10 @@ import qualified Data.Vector as Vec
 
 import Control.Monad.State
 
-import Grin.Grin (Name, SimpleType(..), CPat(..), unpackName, Tag(..), External(..))
-import Grin.TypeEnvDefs
-import AbstractInterpretation.IR (Instruction(..), Reg(..), AbstractMapping)
-import qualified AbstractInterpretation.IR as IR
+import Grin.ExtendedSyntax.Grin (Name, SimpleType(..), CPat(..), unpackName, Tag(..), External(..))
+import Grin.ExtendedSyntax.TypeEnvDefs
+import AbstractInterpretation.ExtendedSyntax.IR (Instruction(..), Reg(..), AbstractMapping)
+import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
 
 import Lens.Micro.Platform
 

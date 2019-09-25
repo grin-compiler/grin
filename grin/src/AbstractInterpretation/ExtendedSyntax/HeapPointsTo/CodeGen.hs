@@ -14,11 +14,11 @@ import Data.Functor.Foldable as Foldable
 
 import Lens.Micro.Platform
 
-import Grin.Grin
-import Grin.TypeEnv
-import qualified AbstractInterpretation.IR as IR
-import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
-import AbstractInterpretation.HeapPointsTo.CodeGenBase
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnv
+import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
+import AbstractInterpretation.ExtendedSyntax.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
+import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase
 
 codeGen :: Program -> (AbstractProgram, HPTMapping)
 codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
