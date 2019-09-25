@@ -17,6 +17,10 @@ library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
   exposed-modules:
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result
     AbstractInterpretation.CreatedBy.Result
     AbstractInterpretation.CreatedBy.Readback
     AbstractInterpretation.CreatedBy.Util
