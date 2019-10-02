@@ -15,6 +15,7 @@ import Data.Functor.Foldable as Foldable
 import Lens.Micro.Platform
 
 import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.Pretty
 import Grin.ExtendedSyntax.TypeEnv
 import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
 import AbstractInterpretation.ExtendedSyntax.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
@@ -79,23 +80,13 @@ codeGenVal = \case
     r <- newReg
     irTag <- getTag tag
     emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals)}
-    forM_ (zip [0..] vals) $ \(idx, val) -> case val of
-      Var name -> do
-        valReg <- getReg name
-        emit IR.Extend
-          { srcReg      = valReg
-          , dstSelector = IR.NodeItem irTag idx
-          , dstReg      = r
-          }
-      Lit lit -> emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
-      Undefined (T_SimpleType t) -> do
-        tmp <- codeGenSimpleType t
-        emit IR.Extend
-          { srcReg      = tmp
-          , dstSelector = IR.NodeItem irTag idx
-          , dstReg      = r
-          }
-      _ -> error $ "illegal node item value " ++ show val
+    forM_ (zip [0..] vals) $ \(idx, varName) -> do
+      varReg <- getReg varName
+      emit IR.Extend
+        { srcReg      = varReg
+        , dstSelector = IR.NodeItem irTag idx
+        , dstReg      = r
+        }
     pure r
   Unit -> do
     r <- newReg
@@ -110,7 +101,6 @@ codeGenVal = \case
     pure r
   Var name -> getReg name
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeHPT) t
-  val -> error $ "unsupported value " ++ show val
 
 typeTag :: Name -> Tag
 typeTag n = Tag F n -- FIXME: this is a hack
@@ -158,10 +148,10 @@ constructType argMap = \case
     emit IR.Set {dstReg = r, constant = IR.CHeapLocation loc}
     pure r
 
-codeGenExternal :: External -> [Val] -> CG Result
+codeGenExternal :: External -> [Name] -> CG Result
 codeGenExternal External{..} args = do
-  valRegs <- mapM codeGenVal args
-  argMap <- concat <$> zipWithM projectType valRegs eArgsType
+  argRegs <- mapM getReg args
+  argMap <- concat <$> zipWithM projectType argRegs eArgsType
   r <- constructType argMap eRetType
   pure $ R r
 
@@ -183,29 +173,34 @@ codeGenM = cata folder where
       modify' $ \s@CGState{..} -> s {_sInstructions = reverse _sInstructions ++ instructions}
       pure Z
 
-    EBindF leftExp lpat rightExp -> do
+    EBindF leftExp bpat rightExp -> do
       leftExp >>= \case
-        Z -> case lpat of
-          Unit -> pure ()
-          Var name -> do
+        Z -> case bpat of
+          AsPat varName Unit -> do
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
-            addReg name r
-          _ -> error $ "pattern mismatch at HPT bind codegen, expected Unit got " ++ show lpat
-        R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
-          Unit  -> pure () -- TODO: is this ok? or error?
+            addReg varName r
+          VarPat varName -> do
+            r <- newReg
+            emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
+            addReg varName r
+          _ -> error $ "pattern mismatch at HPT bind codegen, Unit cannot be matched against " ++ show bpat
+        R r -> case bpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
+          VarPat varName -> addReg varName r
+          AsPat varName Unit -> do
+            addReg varName r
+            pure () -- TODO: is this ok? or error?
           -- NOTE: I think this is okay. Could be optimised though (since we already know the result)?
-          Lit{} -> pure () -- TODO: is this ok? or error?
-          Var name -> addReg name r
-          ConstTagNode tag args -> do
+          AsPat varName Lit{} -> do
+            addReg varName r
+            pure () -- TODO: is this ok? or error?
+          AsPat varName (ConstTagNode tag args) -> do
+            addReg varName r
             irTag <- getTag tag
-            bindInstructions <- forM (zip [0..] args) $ \(idx, arg) -> case arg of
-              Var name -> do
-                argReg <- newReg
-                addReg name argReg
-                pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
-              Lit {} -> pure []
-              _ -> error $ "illegal node pattern component " ++ show arg
+            bindInstructions <- forM (zip [0..] args) $ \(idx, name) -> do
+              argReg <- newReg
+              addReg name argReg
+              pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
             -- QUESTION: In HPTProgram the instructions are in reverse order, here they are in regular order, isn't this inconsistent?
             -- A: each cpat argument has zero or one instruction
             --    the order of cpat binding evaluation does not matter because they does not depend on each other
@@ -214,17 +209,14 @@ codeGenM = cata folder where
               , srcReg        = r
               , instructions  = concat bindInstructions
               }
-          _ -> error $ "unsupported lpat " ++ show lpat
+          _ -> error $ "unsupported bpat " ++ show bpat
       rightExp
 
-    ECaseF val alts_ -> do
-      valReg <- codeGenVal val
+    ECaseF scrut alts_ -> do
+      scrutReg <- newReg
+      addReg scrut scrutReg
       caseResultReg <- newReg
 
-      -- save scrutinee register mapping
-      scrutRegMapping <- case val of
-        Var name -> Just . (name,) <$> getReg name
-        _ -> pure Nothing
       {-
         TODO:
           - create scope monadic combinator to handle scopes
@@ -244,112 +236,104 @@ codeGenM = cata folder where
             irTag <- getTag tag
             altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              forM_ scrutRegMapping $ \(name, _) -> do
-                altScrutReg <- newReg
-                addReg name altScrutReg
-                -- NOTE: We just create a new empty register, and associate it with the scrutinee in this alternative. Then we annotate the register with restricted properties of the scrutinee.
-                emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists irTag
-                  , srcReg = valReg
-                  , dstReg = altScrutReg
-                  }
+              altScrutReg <- newReg
+              addReg scrut altScrutReg
+              -- NOTE: We just create a new empty register,
+              -- and associate it with the scrutinee in this alternative.
+              -- Then we annotate the register with restricted properties of the scrutinee.
+              emit IR.Project
+                { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists irTag
+                , srcReg = scrutReg
+                , dstReg = altScrutReg
+                }
 
               -- bind pattern variables
               forM_ (zip [0..] vars) $ \(idx, name) -> do
                   argReg <- newReg
                   addReg name argReg
-                  emit IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
-            emit IR.If {condition = IR.NodeTypeExists irTag, srcReg = valReg, instructions = altInstructions}
+                  emit IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = scrutReg, dstReg = argReg}
+            emit IR.If {condition = IR.NodeTypeExists irTag, srcReg = scrutReg, instructions = altInstructions}
 
           LitPat lit -> do
-            altInstructions <- codeGenAlt $
+            altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              forM_ scrutRegMapping $ \(name, _) -> do
-                altScrutReg <- newReg
-                addReg name altScrutReg
-                emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.SimpleTypeExists (litToSimpleType lit)
-                  , srcReg = valReg
-                  , dstReg = altScrutReg
-                  }
+              altScrutReg <- newReg
+              addReg scrut altScrutReg
+              emit IR.Project
+                { srcSelector = IR.ConditionAsSelector $ IR.SimpleTypeExists (litToSimpleType lit)
+                , srcReg = scrutReg
+                , dstReg = altScrutReg
+                }
             -- QUESTION: Redundant IF. Just for consistency?
-            emit IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
+            emit IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = scrutReg, instructions = altInstructions}
 
           DefaultPat -> do
             tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
-            altInstructions <- codeGenAlt $
+            altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              forM_ scrutRegMapping $ \(name, _) -> do
-                altScrutReg <- newReg
-                addReg name altScrutReg
-                emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
-                  , srcReg = valReg
-                  , dstReg = altScrutReg
-                  }
+              altScrutReg <- newReg
+              addReg scrut altScrutReg
+              emit IR.Project
+                { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
+                , srcReg = scrutReg
+                , dstReg = altScrutReg
+                }
             -- QUESTION: Redundant IF. Just for consistency?
-            emit IR.If {condition = IR.AnyNotIn tags, srcReg = valReg, instructions = altInstructions}
-
-          _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
+            emit IR.If {condition = IR.AnyNotIn tags, srcReg = scrutReg, instructions = altInstructions}
 
       -- restore scrutinee register mapping
-      maybe (pure ()) (uncurry addReg) scrutRegMapping
+      addReg scrut scrutReg
 
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp
 
-    SAppF name args -> getExternal name >>= \case
-      Just ext  -> do
-        res <- codeGenExternal ext args
-        let R r = res
-        -- HINT: workaround
-        -----------
-        -- copy args to definition's variables ; read function result register
-        (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-        valRegs <- mapM codeGenVal args
-        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
-        -- old prim codegen
-        let External{..} = ext
-            isTySimple TySimple{} = True
-            isTySimple _ = False
-        emit IR.Move {srcReg = r, dstReg = funResultReg}
-        when (isTySimple eRetType && all isTySimple eArgsType) $ do
-          zipWithM_ (\argReg (TySimple argTy) -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType (codegenSimpleType argTy)}) funArgRegs eArgsType
+    SAppF name args -> do
+      -- copy args to definition's variables ; read function result register
+      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+      argRegs <- mapM getReg args
+      zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) argRegs funArgRegs
 
-        pure res
+      mExt <- getExternal name
+      case mExt of
+        Just ext  -> do
+          res <- codeGenExternal ext args
+          let R r = res
 
-        -----------
+          let External{..} = ext
 
-      Nothing   -> do
-        -- copy args to definition's variables ; read function result register
-        (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-        valRegs <- mapM codeGenVal args
-        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
-        pure $ R funResultReg
+              isTySimple TySimple{} = True
+              isTySimple _ = False
+
+          emit IR.Move {srcReg = r, dstReg = funResultReg}
+          when (isTySimple eRetType && all isTySimple eArgsType) $ do
+            zipWithM_ (\argReg (TySimple argTy) -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType (codegenSimpleType argTy)}) funArgRegs eArgsType
+
+          pure res
+
+        Nothing   -> do
+          pure $ R funResultReg
 
     SReturnF val -> R <$> codeGenVal val
 
-    SStoreF val -> do
-      loc <- newMem
+    SStoreF v -> do
+      loc    <- newMem
+      varReg <- getReg v
+      ptr    <- newReg
+      emit IR.Store {srcReg = varReg, address = loc}
+      emit IR.Set {dstReg = ptr, constant = IR.CHeapLocation loc}
+      pure $ R ptr
+
+    SFetchF name -> do
+      addressReg <- getReg name
       r <- newReg
-      valReg <- codeGenVal val
-      emit IR.Store {srcReg = valReg, address = loc}
-      emit IR.Set {dstReg = r, constant = IR.CHeapLocation loc}
+      emit IR.Fetch {addressReg = addressReg, dstReg = r}
       pure $ R r
 
-    SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> error "HPT codegen does not support indexed fetch"
-      Nothing -> do
-        addressReg <- getReg name
-        r <- newReg
-        emit IR.Fetch {addressReg = addressReg, dstReg = r}
-        pure $ R r
-
-    SUpdateF name val -> do
+    SUpdateF name v -> do
       addressReg <- getReg name
-      valReg <- codeGenVal val
-      emit IR.Update {srcReg = valReg, addressReg = addressReg}
+      varReg <- getReg v
+      emit IR.Update {srcReg = varReg, addressReg = addressReg}
       pure Z
 
     SBlockF exp -> exp
