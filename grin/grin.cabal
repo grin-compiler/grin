@@ -18,6 +18,12 @@ library
   default-extensions:  OverloadedStrings
   exposed-modules:
     AbstractInterpretation.ExtendedSyntax.IR
+    AbstractInterpretation.ExtendedSyntax.PrettyIR
+    AbstractInterpretation.ExtendedSyntax.BinaryIR
+    AbstractInterpretation.ExtendedSyntax.BinaryResult
+    AbstractInterpretation.ExtendedSyntax.ReduceCpp
+    AbstractInterpretation.ExtendedSyntax.Reduce
+    AbstractInterpretation.ExtendedSyntax.Util
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
@@ -287,6 +293,7 @@ test-suite grin-test
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
+                     AbstractInterpretation.ExtendedSyntax.HptSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
                      AbstractInterpretation.EffectTrackingSpec
