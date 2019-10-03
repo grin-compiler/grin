@@ -37,6 +37,8 @@ import Transformations.ExtendedSyntax.Util
 import Debug.Trace
 import Data.Maybe
 
+-- TODO: remove redundant syntaxE s
+
 {-
 Linter is responsible for the semantical checks of the program.
 -}
@@ -195,6 +197,7 @@ checkNameDef role name = do
   when defined $ do
     warning Semantics [msg $ printf "multiple defintion of %s" name]
 
+    -- TODO: state -> gets
 checkNameUse :: Name -> Check ()
 checkNameUse name = do
   defined <- state $ \env@Env{..} -> (Map.member name envDefinedNames, env)
@@ -243,7 +246,7 @@ annotate te = cata builder where
           foldM unionType n ns
       )
       :< SFetchF var -- Fetch returns a value based on its arguments that is associated in its binded variable
-    SAppF f params -> (te ^? function . at f . _Just . _1) :< SAppF f params
+    SAppF name params -> (te ^? function . at name . _Just . _1) :< SAppF name params
     AltF cpat body -> extract body :< AltF cpat body
     ECaseF var alts ->
       (do case catMaybes $ map extract alts of
@@ -268,6 +271,8 @@ check exp nodeCheckM = do
 lint :: [WarningKind] -> Maybe TypeEnv -> Exp -> (Cofree ExpF Int, Map Int [Error])
 lint warningKinds mTypeEnv exp@(Program exts _) =
   fmap envErrors $ flip runState (emptyEnv { envWarningKinds = warningKinds }) $ do
+    forM_ exts $ \External{..} -> do
+      modify' $ \env@Env{..} -> env { envDefinedNames = Map.insert eName FunName envDefinedNames }
     cata functionNames exp
     anaM builder (ProgramCtx, maybe noAnnotation annotate mTypeEnv exp)
   where
@@ -355,18 +360,18 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
             Nothing -> pure ()
 
     -- Simple Exp
-    (_ :< SAppF f args) -> checkWithChild ctx $ do
+    (_ :< SAppF name args) -> checkWithChild ctx $ do
       syntaxE SEWithoutNodesCtx
       -- Test existence of the function.
       Env{..} <- get
-      unless (isExternalName exts f) $
-        case Map.lookup f envDefinedNames of
+      when (not $ isExternalName exts name) $
+        case Map.lookup name envDefinedNames of
           (Just FunName) -> pure ()
-          (Just _)       -> warning Syntax [msg $ printf "non-function in function call: %s" f]
-          Nothing        -> warning Syntax [msg $ printf "non-defined function is called: %s" f]
+          (Just _)       -> warning Syntax [msg $ printf "non-function in function call: %s" name]
+          Nothing        -> warning Syntax [msg $ printf "non-defined function is called: %s" name]
       -- Non saturated function call
-      forM_ (Map.lookup f envFunArity) $ \n -> when (n /= length args) $ do
-        warning Syntax [msg $ printf "non-saturated function call: %s" f]
+      forM_ (Map.lookup name envFunArity) $ \n -> when (n /= length args) $ do
+        warning Syntax [msg $ printf "non-saturated function call: %s" name]
 
     -- Only simple values should be returned,
     -- unless the returned value is bound to a variable.
