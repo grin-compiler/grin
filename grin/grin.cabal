@@ -81,11 +81,13 @@ library
     Grin.ExtendedSyntax.SyntaxDefs
     Grin.ExtendedSyntax.Grin
     Grin.ExtendedSyntax.EffectMap
+    Grin.ExtendedSyntax.Lint
     Grin.ExtendedSyntax.Parse
     Grin.ExtendedSyntax.Parse.AST
     Grin.ExtendedSyntax.Parse.Basic
     Grin.ExtendedSyntax.Parse.TypeEnv
     Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.PrimOpsPrelude
     Grin.ExtendedSyntax.TH
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
@@ -121,6 +123,7 @@ library
     Transformations.UnitPropagation
     Transformations.Util
     Transformations.ExtendedSyntax.Conversion
+    Transformations.ExtendedSyntax.Util
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CaseHoisting
