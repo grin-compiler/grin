@@ -256,6 +256,7 @@ test-suite grin-test
                      , inline-c
 
   other-modules:
+                     ExtendedSyntax.LintSpec
                      ExtendedSyntax.ParserSpec
                      Transformations.ExtendedSyntax.ConversionSpec
                      Transformations.Simplifying.RegisterIntroductionSpec
