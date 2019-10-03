@@ -89,6 +89,7 @@ library
     Grin.ExtendedSyntax.Pretty
     Grin.ExtendedSyntax.PrimOpsPrelude
     Grin.ExtendedSyntax.TH
+    Grin.ExtendedSyntax.TypeCheck
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
     Pipeline.Eval
