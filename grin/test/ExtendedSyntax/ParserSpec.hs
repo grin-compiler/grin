@@ -9,6 +9,7 @@ import Grin.ExtendedSyntax.Pretty
 import Grin.ExtendedSyntax.Grin
 import Grin.ExtendedSyntax.TH
 import Grin.ExtendedSyntax.Parse
+import Grin.ExtendedSyntax.PrimOpsPrelude
 
 import Test.ExtendedSyntax.Old.Test
 import Test.ExtendedSyntax.Assertions
@@ -335,9 +336,14 @@ spec = do
             EBind (SReturn $ Var "v2") (AsPat "_c" $ Lit (LChar 'a')) $
             SReturn Unit
           ]
-    before `shouldBe` after
+    before `sameAs` after
 
   describe "external defintions" $ do
+    it "primops-prelude" $ do
+      let before = withPrimPrelude $ Program [] []
+      let after  = primPrelude
+      before `shouldBe` after
+
     it "primop" $ do
       let before = [prog|
         primop effectful
