@@ -16,9 +16,9 @@ import qualified Data.IntMap as IntMap
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
-import Grin.Grin (Tag, Name)
-import Grin.Pretty
-import qualified AbstractInterpretation.HeapPointsTo.Result as R
+import Grin.ExtendedSyntax.Grin (Tag, Name)
+import Grin.ExtendedSyntax.Pretty
+import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as R
 
 -- HPT Result NEW
 

@@ -13,13 +13,13 @@ import qualified Data.Bimap as Bimap
 import Lens.Micro.Platform
 import Lens.Micro.Extra
 
-import Grin.Grin (Name, Tag)
-import AbstractInterpretation.IR hiding (Tag, SimpleType)
-import AbstractInterpretation.Reduce (ComputerState(..))
-import qualified Grin.TypeEnv as TypeEnv
-import qualified AbstractInterpretation.IR as IR
-import qualified AbstractInterpretation.Reduce as R
-import AbstractInterpretation.HeapPointsTo.CodeGenBase (HPTMapping)
+import Grin.ExtendedSyntax.Grin (Name, Tag)
+import AbstractInterpretation.ExtendedSyntax.IR hiding (Tag, SimpleType)
+import AbstractInterpretation.ExtendedSyntax.Reduce (ComputerState(..))
+import qualified Grin.ExtendedSyntax.TypeEnv as TypeEnv
+import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
+import qualified AbstractInterpretation.ExtendedSyntax.Reduce as R
+import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase (HPTMapping)
 
 type Loc = Int
 
