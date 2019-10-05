@@ -66,6 +66,18 @@ library
     Grin.PrimOpsPrelude
     Grin.Nametable
     Grin.Research
+    Grin.ExtendedSyntax.Syntax
+    Grin.ExtendedSyntax.SyntaxDefs
+    Grin.ExtendedSyntax.Grin
+    Grin.ExtendedSyntax.EffectMap
+    Grin.ExtendedSyntax.Parse
+    Grin.ExtendedSyntax.Parse.AST
+    Grin.ExtendedSyntax.Parse.Basic
+    Grin.ExtendedSyntax.Parse.TypeEnv
+    Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.TH
+    Grin.ExtendedSyntax.TypeEnv
+    Grin.ExtendedSyntax.TypeEnvDefs
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -85,6 +97,9 @@ library
     Test.IO
     Test.Test
     Test.Util
+    Test.ExtendedSyntax.Assertions
+    Test.ExtendedSyntax.Old.Grammar
+    Test.ExtendedSyntax.Old.Test
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -94,6 +109,7 @@ library
     Transformations.StaticSingleAssignment
     Transformations.UnitPropagation
     Transformations.Util
+    Transformations.ExtendedSyntax.Conversion
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CaseHoisting
@@ -322,6 +338,8 @@ test-suite grin-end-to-end-test
                      , bytestring
                      , MissingH
   other-modules:
+                     ExtendedSyntax.ParserSpec
+                     Transformations.ExtendedSyntax.ConversionSpec
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec
                      Transformations.Simplifying.SplitFetchSpec
