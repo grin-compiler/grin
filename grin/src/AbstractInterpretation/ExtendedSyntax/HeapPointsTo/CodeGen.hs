@@ -213,7 +213,7 @@ codeGenM = cata folder where
       rightExp
 
     ECaseF scrut alts_ -> do
-      scrutReg <- newReg
+      scrutReg <- getReg scrut
       addReg scrut scrutReg
       caseResultReg <- newReg
 

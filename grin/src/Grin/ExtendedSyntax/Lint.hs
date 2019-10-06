@@ -304,6 +304,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
       let lhsCtx = if isn't _OnlyVarPat bPat then SEWithoutNodesCtx else SimpleExpCtx
       check (EBindF (lhsCtx, leftExp) bPat (ExpCtx, rightExp)) $ do
         syntaxE ExpCtx
+        -- QUESTION: Is this needed wit hthe new syntax? Undefined introduction is still an open question.
         when (isFetchF leftExp && isn't _OnlyVarPat bPat) (warning DDE [msg $ "The result of Fetch can only be bound to a variable: " ++ plainShow bPat])
 
         when (isn't _OnlyVarPat bPat) $ do
@@ -348,7 +349,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
           Just st
             | has _T_Location st || has _T_String st || has _T_Float st
             -> warning Semantics [beforeMsg $ printf "case variable %s has non-supported pattern match type: %s" scrut (plainShow st)]
-          Nothing -> pure ()
+          _ -> pure () -- TODO
 
         -- Non-covered alternatives
         when (noOfDefaults == 0) $ do
@@ -357,7 +358,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
             Just tags -> do
               forM_ tags $ \tag -> when (Map.notMember tag tagOccurences) $ do
                 warning Semantics [beforeMsg $ printf "case has non-covered alternative %s" (plainShow tag)]
-            Nothing -> pure ()
+            _ -> pure () -- TODO
 
     -- Simple Exp
     (_ :< SAppF name args) -> checkWithChild ctx $ do
