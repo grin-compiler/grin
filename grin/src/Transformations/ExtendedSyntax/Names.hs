@@ -101,18 +101,19 @@ instance MapVal Val
 
 mapNameUseExpM :: Monad m => (Name -> m Name) -> Exp -> m Exp
 mapNameUseExpM f = \case
-  SApp name vals    -> SApp       <$> f name <*> mapM (mapNamesValM f) vals
-  ECase val alts    -> ECase      <$> mapNamesValM f val <*> pure alts
+  SApp name args    -> SApp       <$> f name <*> mapM f args
+  ECase scrut alts  -> ECase      <$> f scrut <*> pure alts
   SReturn val       -> SReturn    <$> mapNamesValM f val
-  SStore val        -> SStore     <$> mapNamesValM f val
-  SFetchI name i    -> SFetchI    <$> f name <*> pure i
-  SUpdate name val  -> SUpdate    <$> f name <*> mapNamesValM f val
+  SStore var        -> SStore     <$> f var
+  SFetch ptr        -> SFetch     <$> f ptr
+  SUpdate ptr var   -> SUpdate    <$> f ptr <*> f var
   exp               -> pure exp
 
 mapNameDefExpM :: Monad m => (Name -> m Name) -> Exp -> m Exp
 mapNameDefExpM f = \case
   Def name args body          -> Def <$> f name <*> mapM f args <*> pure body
-  EBind leftExp lpat rightExp -> EBind leftExp <$> mapNamesValM f lpat <*> pure rightExp
+  EBind leftExp (VarPat var) rightExp -> do EBind leftExp <$> (VarPat <$> f var) <*> pure rightExp
+  EBind leftExp (AsPat var val) rightExp -> EBind leftExp <$> (AsPat <$> f var <*> mapNamesValM f val) <*> pure rightExp
   Alt cpat body               -> Alt <$> mapNamesCPatM f cpat <*> pure body
   exp                         -> pure exp
 
@@ -123,7 +124,6 @@ mapNamesCPatM f = \case
 
 mapNamesValM :: Monad m => (Name -> m Name) -> Val -> m Val
 mapNamesValM f = \case
-  ConstTagNode tag vals -> ConstTagNode tag <$> mapM (mapNamesValM f) vals
-  VarTagNode name vals  -> VarTagNode <$> f name <*> mapM (mapNamesValM f) vals
+  ConstTagNode tag args -> ConstTagNode tag <$> mapM f args
   Var name              -> Var <$> f name
   val                   -> pure val

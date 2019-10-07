@@ -10,10 +10,11 @@ import Grin.ExtendedSyntax.TypeEnv
 -- import AbstractInterpretation.CreatedBy.Result (ProducerMap,ProducerGraph(..))
 -- import AbstractInterpretation.LiveVariable.Pretty
 -- import AbstractInterpretation.LiveVariable.Result (LVAResult)
+import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result (HPTResult)
 import AbstractInterpretation.ExtendedSyntax.EffectTracking.Pretty
 import AbstractInterpretation.ExtendedSyntax.EffectTracking.Result (ETResult)
-import Transformations.Names
+import Transformations.ExtendedSyntax.Names
 
 
 class SameAs a where
