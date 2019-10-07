@@ -14,6 +14,7 @@ import AbstractInterpretation.ExtendedSyntax.Reduce (AbstractInterpretationResul
 import AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGen hiding (live)
 import AbstractInterpretation.ExtendedSyntax.EffectTracking.Result
 
+
 runTests :: IO ()
 runTests = hspec spec
 
@@ -35,10 +36,11 @@ spec = describe "Effect Tracking Analysis" $ do
   it "simple_print" $ do
     let exp = [prog|
           grinMain =
-            _prim_int_print 0
+            zero <- pure 0
+            _prim_int_print zero
         |]
     let expected = mempty
-          { _register = []
+          { _register = [ ("zero", Effects []) ]
           , _function = [ ("grinMain", Effects ["_prim_int_print"]) ]
           }
         calculated = (calcEffects exp) { _external = mempty }
@@ -47,11 +49,14 @@ spec = describe "Effect Tracking Analysis" $ do
   it "bound_print" $ do
     let exp = [prog|
           grinMain =
-            x <- _prim_int_print 0
+            zero <- pure 0
+            x <- _prim_int_print zero
             pure x
         |]
     let expected = mempty
-          { _register = [ ("x", Effects ["_prim_int_print"]) ]
+          { _register = [ ("zero", Effects [])
+                        , ("x", Effects ["_prim_int_print"])
+                        ]
           , _function = [ ("grinMain", Effects ["_prim_int_print"]) ]
           }
         calculated = (calcEffects exp) { _external = mempty }
@@ -59,12 +64,14 @@ spec = describe "Effect Tracking Analysis" $ do
 
   it "fun_print" $ do
     let exp = [prog|
-          grinMain = f 0
+          grinMain =
+            zero <- pure 0
+            f zero
 
           f x = _prim_int_print x
         |]
     let expected = mempty
-          { _register = []
+          { _register = [ ("zero", Effects []) ]
           , _function = [ ("f", Effects ["_prim_int_print"])
                         , ("grinMain", Effects ["_prim_int_print"])
                         ]
@@ -75,13 +82,16 @@ spec = describe "Effect Tracking Analysis" $ do
   it "bound_fun_print" $ do
     let exp = [prog|
           grinMain =
-            y <- f 0
+            zero <- pure 0
+            y <- f zero
             pure y
 
           f x = _prim_int_print x
         |]
     let expected = mempty
-          { _register = [ ("y", Effects ["_prim_int_print"]) ]
+          { _register = [ ("zero", Effects [])
+                        , ("y", Effects ["_prim_int_print"])
+                        ]
           , _function = [ ("f", Effects ["_prim_int_print"])
                         , ("grinMain", Effects ["_prim_int_print"])
                         ]
@@ -92,7 +102,8 @@ spec = describe "Effect Tracking Analysis" $ do
   it "bound_in_fun_print" $ do
     let exp = [prog|
           grinMain =
-            z <- f 0
+            zero <- pure 0
+            z <- f zero
             pure z
 
           f x =
@@ -100,7 +111,8 @@ spec = describe "Effect Tracking Analysis" $ do
             pure y
         |]
     let expected = mempty
-          { _register = [ ("y", Effects ["_prim_int_print"])
+          { _register = [ ("zero", Effects [])
+                        , ("y", Effects ["_prim_int_print"])
                         , ("z", Effects ["_prim_int_print"])
                         ]
           , _function = [ ("f", Effects ["_prim_int_print"])
@@ -116,13 +128,20 @@ spec = describe "Effect Tracking Analysis" $ do
           grinMain =
             n <- pure (COne)
             y <- case n of
-              (COne) -> _prim_int_print 0
-              (CTwo) -> _prim_string_print #"asd"
-              (CFoo) -> pure ()
+              (COne) ->
+                zero <- pure 0
+                _prim_int_print zero
+              (CTwo) ->
+                asd <- pure #"asd"
+                _prim_string_print asd
+              (CFoo) ->
+                pure ()
             pure y
         |]
     let expected = mempty
-          { _register = [ ("y", Effects ["_prim_int_print", "_prim_string_print"])
+          { _register = [ ("zero", Effects [])
+                        , ("asd", Effects [])
+                        , ("y", Effects ["_prim_int_print", "_prim_string_print"])
                         , ("n", Effects [])
                         ]
           , _function = [ ("grinMain", Effects ["_prim_int_print", "_prim_string_print"]) ]
@@ -135,8 +154,12 @@ spec = describe "Effect Tracking Analysis" $ do
           grinMain =
             n <- pure (COne)
             y <- case n of
-              (COne) -> f 0
-              (CTwo) -> g #"asd"
+              (COne) ->
+                zero <- pure 0
+                f zero
+              (CTwo) ->
+                asd <- pure #"asd"
+                g asd
               (CFoo) -> h
             pure y
 
@@ -145,7 +168,9 @@ spec = describe "Effect Tracking Analysis" $ do
           h    = pure ()
         |]
     let expected = mempty
-          { _register = [ ("y", Effects ["_prim_int_print", "_prim_string_print"])
+          { _register = [ ("zero", Effects [])
+                        , ("asd", Effects [])
+                        , ("y", Effects ["_prim_int_print", "_prim_string_print"])
                         , ("n", Effects [])
                         ]
           , _function = [ ("f",  Effects ["_prim_int_print"])
@@ -164,15 +189,24 @@ spec = describe "Effect Tracking Analysis" $ do
             y <- case n of
               (COne) ->
                 z <- case n of
-                  (COne) -> _prim_int_print 0
-                  (CTwo) -> _prim_error "Never should have come here"
+                  (COne) ->
+                    zero <- pure 0
+                    _prim_int_print zero
+                  (CTwo) ->
+                    errMsg <- pure "Never should have come here"
+                    _prim_error errMsg
                 pure z
-              (CTwo) -> _prim_string_print #"asd"
+              (CTwo) ->
+                asd <- pure #"asd"
+                _prim_string_print asd
               (CFoo) -> pure ()
             pure y
         |]
     let expected = mempty
-          { _register = [ ("y", Effects ["_prim_int_print", "_prim_string_print", "_prim_error"])
+          { _register = [ ("zero", Effects [])
+                        , ("asd", Effects [])
+                        , ("errMsg", Effects [])
+                        , ("y", Effects ["_prim_int_print", "_prim_string_print", "_prim_error"])
                         , ("z", Effects ["_prim_int_print", "_prim_error"])
                         , ("n", Effects [])
                         ]
@@ -184,15 +218,19 @@ spec = describe "Effect Tracking Analysis" $ do
   it "bind_sequence" $ do
     let exp = [prog|
           grinMain =
+            zero <- pure 0
+            asd <- pure #"asd"
             x1 <- pure (COne)
-            x2 <- _prim_int_print 0
-            x3 <- pure 0
-            x4 <- _prim_int_add 0 0
-            x5 <- _prim_string_print #"asd"
+            x2 <- _prim_int_print zero
+            x3 <- pure zero
+            x4 <- _prim_int_add zero zero
+            x5 <- _prim_string_print asd
             pure ()
         |]
     let expected = mempty
-          { _register = [ ("x1", Effects [])
+          { _register = [ ("zero", Effects [])
+                        , ("asd", Effects [])
+                        , ("x1", Effects [])
                         , ("x2", Effects ["_prim_int_print"])
                         , ("x3", Effects [])
                         , ("x4", Effects [])
@@ -208,27 +246,31 @@ spec = describe "Effect Tracking Analysis" $ do
           grinMain =
             k <- pure 0
             y1 <- f k
-            y2 <- pure (CInt 0)
+            y2 <- pure (CInt k)
             y3 <- g k
             pure ()
 
           f n =
+            asd <- pure #"asd"
             x1 <- pure (COne)
             x2 <- _prim_int_print n
             x3 <- pure n
             x4 <- _prim_int_add n n
-            x5 <- _prim_string_print #"asd"
+            x5 <- _prim_string_print asd
             pure ()
 
           g m =
+            errMsg <- pure "ERROR"
             z1 <- pure (CTwo)
             z2 <- pure n
-            z3 <- _prim_error "ERROR"
+            z3 <- _prim_error errMsg
             z4 <- _prim_int_add n n
             pure ()
         |]
     let expected = mempty
           { _register = [ ("k", Effects [])
+                        , ("asd", Effects [])
+                        , ("errMsg", Effects [])
                         , ("x1", Effects [])
                         , ("x2", Effects ["_prim_int_print"])
                         , ("x3", Effects [])
@@ -265,15 +307,21 @@ spec = describe "Effect Tracking Analysis" $ do
             newPrimSomething :: {GHC.Prim.SomePrimType}
 
           grinMain =
-            x0 <- _prim_string_print "Hello World!"
+            helloWorld <- pure "Hello World!"
+            hello <- pure "Hello"
+            world <- pure "World"
+            x0 <- _prim_string_print helloWorld
             x1 <- _prim_read_string
             x2 <- "newPrimSomething#" $
-            x3 <- _prim_string_concat "Hello" "World"
+            x3 <- _prim_string_concat hello world
             x4 <- newPrimSomething
             pure ()
         |]
     let expected = mempty
-          { _register = [ ("x0", Effects ["_prim_string_print"])
+          { _register = [ ("helloWorld", Effects [])
+                        , ("hello", Effects [])
+                        , ("world", Effects [])
+                        , ("x0", Effects ["_prim_string_print"])
                         , ("x1", Effects ["_prim_read_string"])
                         , ("x2", Effects ["newPrimSomething#"])
                         , ("x3", Effects [])
@@ -293,15 +341,21 @@ spec = describe "Effect Tracking Analysis" $ do
             newPrimSomething :: {GHC.Prim.SomePrimType}
 
           grinMain =
-            x0 <- _prim_string_print "Hello World!"
+            helloWorld <- pure "Hello World!"
+            hello <- pure "Hello"
+            world <- pure "World"
+            x0 <- _prim_string_print helloWorld
             x1 <- _prim_read_string
             x2 <- "newPrimSomething#" $
-            x3 <- _prim_string_concat "Hello" "World"
+            x3 <- _prim_string_concat hello world
             x4 <- newPrimSomething
             pure ()
         |]
     let expected = mempty
-          { _register = [ ("x0", Effects ["_prim_string_print"])
+          { _register = [ ("helloWorld", Effects [])
+                        , ("hello", Effects [])
+                        , ("world", Effects [])
+                        , ("x0", Effects ["_prim_string_print"])
                         , ("x1", Effects ["_prim_read_string"])
                         , ("x2", Effects ["newPrimSomething#"])
                         , ("x3", Effects [])
@@ -320,11 +374,13 @@ spec = describe "Effect Tracking Analysis" $ do
             _prim_string_print  :: T_String -> T_Unit
 
           grinMain =
-            x0 <- _prim_string_print "Hello World!"
+            helloWorld <- "Hello World!"
+            x0 <- _prim_string_print helloWorld
             pure x
         |]
     let expected = mempty
-          { _register = [ ("x0", Effects ["_prim_string_print"])
+          { _register = [ ("helloWorld", Effects [])
+                        , ("x0", Effects ["_prim_string_print"])
                         , ("x1", Effects ["_prim_read_string"])
                         , ("x2", Effects ["newPrimSomething#"])
                         , ("x3", Effects [])
