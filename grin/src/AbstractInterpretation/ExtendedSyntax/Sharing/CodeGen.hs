@@ -64,20 +64,22 @@ calcNonLinearNonUpdateLocVariables :: Exp -> Set Name
 calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
   where
     union = Map.unionsWith (+)
+
+    collect :: ExpF (Map Name Int) -> Map Name Int
     collect = \case
-      ECaseF val alts -> union (seen val : alts)
-      SStoreF val -> seen val
-      SFetchIF var _ -> seen (Var var)
-      SUpdateF var val -> seen val
-      SReturnF val -> seen val
+      ECaseF scrut alts -> union (seen scrut : alts)
+      SStoreF var -> seen var
+      SFetchF var -> seen var
+      SUpdateF p var -> seen var
+      SReturnF val -> case val of
+        Var v               -> seen v
+        ConstTagNode _ args -> union $ map seen args
+        _                   -> mempty
       SAppF _ ps -> union $ fmap seen ps
       rest -> Data.Foldable.foldr (Map.unionWith (+)) mempty rest
 
-    seen = \case
-      Var v -> Map.singleton v 1
-      ConstTagNode _ ps -> union $ fmap seen ps
-      VarTagNode v ps -> union $ fmap seen (Var v : ps)
-      _ -> Map.empty
+    seen :: Name -> Map Name Int
+    seen v = Map.singleton v 1
 
 calcSharedLocationsPure :: TypeEnv -> Exp -> Set Loc
 calcSharedLocationsPure TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) origShVarLocs where
