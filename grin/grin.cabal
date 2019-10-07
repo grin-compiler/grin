@@ -132,6 +132,7 @@ library
     Transformations.UnitPropagation
     Transformations.Util
     Transformations.ExtendedSyntax.Conversion
+    Transformations.ExtendedSyntax.Names
     Transformations.ExtendedSyntax.Util
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
