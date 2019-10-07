@@ -306,6 +306,7 @@ test-suite grin-test
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
+                     AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
                      AbstractInterpretation.ExtendedSyntax.HptSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
                      AbstractInterpretation.HptSpec
