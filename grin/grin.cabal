@@ -28,6 +28,9 @@ library
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result
+    AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen
+    AbstractInterpretation.ExtendedSyntax.Sharing.Pretty
+    AbstractInterpretation.ExtendedSyntax.Sharing.Result
     AbstractInterpretation.CreatedBy.Result
     AbstractInterpretation.CreatedBy.Readback
     AbstractInterpretation.CreatedBy.Util
