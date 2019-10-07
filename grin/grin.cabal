@@ -112,6 +112,7 @@ library
     Test.Test
     Test.Util
     Test.ExtendedSyntax.Assertions
+    Test.ExtendedSyntax.Util
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
     Transformations.BindNormalisation
