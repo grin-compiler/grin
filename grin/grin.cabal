@@ -303,6 +303,7 @@ test-suite grin-test
                      PrimOpsSpec
                      NametableSpec
                      AbstractInterpretation.ExtendedSyntax.HptSpec
+                     AbstractInterpretation.ExtendedSyntax.SharingSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
                      AbstractInterpretation.EffectTrackingSpec
