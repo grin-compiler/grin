@@ -59,23 +59,15 @@ codeGenM = cata folder where
       modify' $ \s@CGState{..} -> s {_sInstructions = reverse _sInstructions ++ instructions}
       pure Z
 
-    EBindF leftExp lpat rightExp -> do
+    EBindF leftExp bPat rightExp -> do
       lhs <- leftExp
       rhs <- rightExp
       let R lhsReg = lhs
       let R rhsReg = rhs
 
-      case lpat of
-        {- NOTE: By convention, all bindings should have a variable pattern
-           or a simple left-hand side of form `pure <var>`. This guarantees
-           that all relevant computations will have a name. Also, it means
-           the information has been already propagated to the variable.
-        -}
-        Unit           -> pure ()
-        Lit{}          -> pure ()
-        ConstTagNode{} -> pure ()
-        Var name -> addReg name lhsReg
-        _ -> error $ "Effect tracking: unsupported lpat " ++ show (PP lpat)
+      case bPat of
+        VarPat var   -> addReg var lhsReg
+        AsPat  var _ -> addReg var lhsReg
 
       emit IR.Move { srcReg = lhsReg, dstReg = rhsReg }
       pure $ R rhsReg
@@ -109,7 +101,7 @@ codeGenM = cata folder where
 
     SStoreF{} -> R <$> newReg
 
-    SFetchIF{}-> R <$> newReg
+    SFetchF{}-> R <$> newReg
 
     SUpdateF{} -> R <$> newReg
 
