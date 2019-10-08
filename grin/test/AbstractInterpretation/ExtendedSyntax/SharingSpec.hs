@@ -80,6 +80,22 @@ spec = describe "Sharing analysis" $ do
     let exptected = Set.fromList [1]
     result `shouldBe` exptected
 
+  it "finds location fetched twice inside a node with as-pattern" $ do
+    let code = [prog|
+          main =
+            one <- pure (COne)
+            l0 <- store one
+            two <- pure (CTwo l0)
+            l1 <- store two
+            _1@(CTwo l2) <- fetch l1
+            _2 <- fetch l2
+            _2 <- fetch l2
+            pure ()
+        |]
+    let result = calcSharedLocations code
+    let exptected = Set.fromList [0]
+    result `shouldBe` exptected
+
 calcSharedLocations :: Exp -> Set Loc
 calcSharedLocations = _sharedLocs . calcSharingResult
 
