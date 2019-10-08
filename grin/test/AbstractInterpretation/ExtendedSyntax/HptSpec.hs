@@ -44,6 +44,34 @@ spec = do
             }
       result `shouldBe` exptected
 
+    it "handles as-patterns correctly" $ do
+      let code = withPrimPrelude [prog|
+            grinMain =
+              k0 <- pure 0
+              x0 <- pure (CInt k0)
+              x1@(CInt k1) <- pure x0
+              k2 <- _prim_int_add k0 k1
+              _v <- _prim_int_print k2
+              pure ()
+          |]
+      let result = inferTypeEnv code
+          exptected = emptyTypeEnv
+            { TypeEnv._variable = Map.fromList
+                [ ("k0",   int64_t)
+                , ("k1",   int64_t)
+                , ("k2",   int64_t)
+                , ("_v",   unit_t)
+                , ("x0",   T_NodeSet $ cnode_t "Int" [TypeEnv.T_Int64])
+                , ("x1",   T_NodeSet $ cnode_t "Int" [TypeEnv.T_Int64])
+                ]
+            , TypeEnv._function = mconcat
+                [ fun_t "grinMain" [] unit_t
+                , fun_t "_prim_int_add" [int64_t, int64_t] int64_t
+                , fun_t "_prim_int_print" [int64_t] unit_t
+                ]
+            }
+      result `shouldBe` exptected
+
   describe "case" $ do
     it "default bug01" $ do
       let code = withPrimPrelude [prog|
