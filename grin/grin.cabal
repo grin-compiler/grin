@@ -313,6 +313,7 @@ test-suite grin-test
                      NametableSpec
                      AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
                      AbstractInterpretation.ExtendedSyntax.HptSpec
+                     AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
