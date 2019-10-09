@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase, TupleSections, TemplateHaskell, OverloadedStrings, RecordWildCards #-}
 module AbstractInterpretation.ExtendedSyntax.LiveVariable.CodeGen
-  ( module AbstractInterpretation.LiveVariable.CodeGen
+  ( module AbstractInterpretation.ExtendedSyntax.LiveVariable.CodeGen
   , live, sideEffecting
   ) where
 
@@ -15,6 +15,7 @@ import Data.Functor.Foldable as Foldable
 import Lens.Micro.Platform
 
 import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.Pretty (PP(..))
 import Grin.ExtendedSyntax.TypeEnvDefs
 import Transformations.ExtendedSyntax.Util
 import AbstractInterpretation.ExtendedSyntax.Util
@@ -161,56 +162,35 @@ setBasicValSideEffecting = emit . setBasicValSideEffectingInst
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
-  ConstTagNode tag vals -> do
+  ConstTagNode tag args -> do
     r <- newReg
     irTag <- getTag tag
-    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals + 1)}
-    forM_ (zip [1..] vals) $ \(idx, val) -> case val of
-      Var name -> do
-        tmp    <- newReg
-        valReg <- getReg name
+    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length args + 1)}
+    forM_ (zip [1..] args) $ \(idx, arg) -> do
+      tmp    <- newReg
+      valReg <- getReg arg
 
-        -- propagating liveness info backwards
-        emit IR.Project { srcReg = r
-                        , srcSelector = IR.NodeItem irTag idx
-                        , dstReg = valReg
-                        }
+      -- propagating liveness info backwards
+      emit IR.Project { srcReg = r
+                      , srcSelector = IR.NodeItem irTag idx
+                      , dstReg = valReg
+                      }
 
-        -- propagating pointer info forwards
-        emit $ copyStructureWithPtrInfo valReg tmp
-        emit IR.Extend { srcReg      = tmp
-                       , dstSelector = IR.NodeItem irTag idx
-                       , dstReg      = r
-                       }
-      Lit lit -> doNothing
-      Undefined (T_SimpleType t) -> do
-        -- undefined values should not have specified location info
-        -- this is here "just in case"
-        ptrInfo <- newReg
-        tmp     <- codeGenSimpleType t
-        emit $ copyStructureWithPtrInfo tmp ptrInfo
-        emit IR.Extend
-          { srcReg      = ptrInfo
-          , dstSelector = IR.NodeItem irTag idx
-          , dstReg      = r
-          }
-      _ -> error $ "illegal node item value " ++ show val
+      -- propagating pointer info forwards
+      emit $ copyStructureWithPtrInfo valReg tmp
+      emit IR.Extend { srcReg      = tmp
+                      , dstSelector = IR.NodeItem irTag idx
+                      , dstReg      = r
+                      }
     pure r
   Unit  -> emptyReg
   Lit _ -> emptyReg
   Var name -> getReg name
-  ValTag tag -> do
-    r <- newReg
-    irTag <- getTag tag
-    emit IR.Set { dstReg = r, constant = IR.CNodeType irTag 1 }
-    pure r
   Undefined t -> do
     r <- newReg
     typed <- codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenTaggedNodeType) t
     emit $ copyStructureWithPtrInfo typed r
     pure r
-  val -> error $ "unsupported value " ++ show val
-
 
 codeGen :: Program -> (AbstractProgram, LVAMapping)
 codeGen prg@(Program exts defs) = evalState (codeGenM prg >> mkAbstractProgramM) emptyCGState
@@ -246,39 +226,38 @@ codeGenM e = (cata folder >=> const setMainLive) e
         R r -> varPatternDataFlow funResultReg r
       pure Z
 
-    EBindF leftExp lpat rightExp -> do
+    EBindF leftExp bPat rightExp -> do
       lhs <- leftExp
       let R lhsReg = lhs
 
-      case lpat of
-      {- NOTE: By convention, all bindings should have a variable pattern
-          or a simple left-hand side of form `pure <var>`. This guarantees
-          that all relevant computations will have a name. Also, it means
-          the information has been already propagated to the variable.
-      -}
-        Unit  -> setBasicValLive lhsReg
-        Lit{} -> setBasicValLive lhsReg
-        Var v -> do
-          varReg <- newReg
-          addReg v varReg
-          varPatternDataFlow varReg lhsReg
-        ConstTagNode tag args -> do
+      let mkRegsThenVarPatternDataFlow v = do
+            varReg <- newReg
+            addReg v varReg
+            varPatternDataFlow varReg lhsReg
+
+      case bPat of
+        VarPat v -> mkRegsThenVarPatternDataFlow v
+        AsPat v Unit -> do
+          setBasicValLive lhsReg
+          mkRegsThenVarPatternDataFlow v
+        AsPat v Lit{} -> do
+          setBasicValLive lhsReg
+          mkRegsThenVarPatternDataFlow v
+        AsPat v (ConstTagNode tag args) -> do
           irTag <- getTag tag
           setTagLive irTag lhsReg
-          bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) ->
-            case arg of
-              Var name -> do
-                argReg <- newReg
-                addReg name argReg
-                nodePatternDataFlow argReg lhsReg irTag idx
-              Lit {} -> emit IR.Set { dstReg = lhsReg, constant = IR.CNodeItem irTag idx live }
-              _ -> error $ "illegal node pattern component " ++ show arg
+          bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) -> do
+            argReg <- newReg
+            addReg arg argReg
+            nodePatternDataFlow argReg lhsReg irTag idx
           emit IR.If
             { condition     = IR.NodeTypeExists irTag
             , srcReg        = lhsReg
             , instructions  = bindInstructions
             }
-        _ -> error $ "unsupported lpat " ++ show lpat
+          mkRegsThenVarPatternDataFlow v
+        -- QUESTION: what about undefined?
+        _ -> error $ "unsupported bpat " ++ show (PP bPat)
 
       rhs <- rightExp
       let R rhsReg = rhs
@@ -286,14 +265,9 @@ codeGenM e = (cata folder >=> const setMainLive) e
 
       pure $ R rhsReg
 
-    ECaseF val alts_ -> do
-      valReg <- codeGenVal val
+    ECaseF scrut alts_ -> do
+      originalScrutineeReg <- getReg scrut
       caseResultReg <- newReg
-
-      -- save scrutinee register mapping
-      scrutRegMapping <- case val of
-        Var name -> pure (Just name, valReg)
-        _        -> pure (Nothing,   valReg)
 
       alts <- sequence alts_
 
@@ -341,14 +315,16 @@ codeGenM e = (cata folder >=> const setMainLive) e
 
       forM_ alts $ \(A cpat altM) -> do
 
-        let codeGenAltExists tag before = codeGenAlt scrutRegMapping
+        let codeGenAltExists tag before = codeGenAlt scrut
+                                                     originalScrutineeReg
                                                      (restrictExists tag)
                                                      before
                                                      altM
                                                      processAltResult
                                                      restoreScrutReg
 
-            codeGenAltNotIn tags before = codeGenAlt scrutRegMapping
+            codeGenAltNotIn tags before = codeGenAlt scrut
+                                                     originalScrutineeReg
                                                      (restrictNotIn tags)
                                                      before
                                                      altM
@@ -378,7 +354,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
                 nodePatternDataFlow argReg altScrutReg irTag idx
             emit IR.If
               { condition    = IR.NodeTypeExists irTag
-              , srcReg       = valReg
+              , srcReg       = originalScrutineeReg
               , instructions = altInstructions
               }
 
@@ -386,8 +362,8 @@ codeGenM e = (cata folder >=> const setMainLive) e
           -- we could generate code conditionally here as well
           LitPat lit -> do
             -- NOTE: should be altResultRegister
-            caseResultReg `isLiveThenM`         setBasicValLive valReg
-            caseResultReg `hasSideEffectsThenM` setBasicValLive valReg
+            caseResultReg `isLiveThenM`         setBasicValLive originalScrutineeReg
+            caseResultReg `hasSideEffectsThenM` setBasicValLive originalScrutineeReg
             altM >>= processAltResult
 
           DefaultPat -> do
@@ -411,18 +387,17 @@ codeGenM e = (cata folder >=> const setMainLive) e
             else
               emit IR.If
                 { condition    = IR.AnyNotIn tags
-                , srcReg       = valReg
+                , srcReg       = originalScrutineeReg
                 , instructions = altInstructions
                 }
 
-          _ -> error $ "LVA does not support the following case pattern: " ++ show cpat
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp
 
     SAppF name args -> do
       appReg  <- newReg
-      argRegs <- mapM codeGenVal args
+      argRegs <- mapM getReg args
 
       mExt <- getExternal name
       case mExt of
@@ -442,86 +417,86 @@ codeGenM e = (cata folder >=> const setMainLive) e
 
     SReturnF val -> R <$> codeGenVal val
 
-    -- Store is like an Update, just with a singleton address set
-    -- (can only update a single heap location at a time).
-    -- The other differnce is that it also creates a new heap location.
-    -- We will initialize this new heap location with structural information.
-    -- Also, we only need information about tags already available
-    -- in valReg, so we restrict the flow of information to those.
-    SStoreF val -> do
+    {- NOTE: Store is like an Update, just with a singleton address set
+       (can only update a single heap location at a time).
+       The other difference is that it also creates a new heap location.
+       We will initialize this new heap location with structural information.
+       Also, we only need information about tags already available
+       in valReg, so we restrict the flow of information to those.
+    -}
+    SStoreF var -> do
       loc    <- newMem
-      r      <- newReg
+      res    <- newReg
       tmp1   <- newReg
       tmp2   <- newReg
-      valReg <- codeGenVal val
+      varReg <- getReg var
 
       -- setting pointer information
-      emit IR.Set { dstReg = r, constant = IR.CHeapLocation loc }
+      emit IR.Set { dstReg = res, constant = IR.CHeapLocation loc }
 
       -- copying structural information to the heap
-      emit $ copyStructureWithPtrInfo valReg tmp1
+      emit $ copyStructureWithPtrInfo varReg tmp1
       emit IR.Store          { srcReg = tmp1,   address = loc  }
 
       -- restrictively propagating info from heap
-      emit IR.Fetch          { addressReg = r,    dstReg = tmp2   }
-      emit IR.RestrictedMove { srcReg     = tmp2, dstReg = valReg }
+      emit IR.Fetch          { addressReg = res,  dstReg = tmp2   }
+      emit IR.RestrictedMove { srcReg     = tmp2, dstReg = varReg }
 
-      pure $ R r
+      pure $ R res
 
     -- We want to update each location with only relevant information.
     -- This means, if a tag is not already present on that location,
     -- we do not update it.
-    SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> error "LVA codegen does not support indexed fetch"
-      Nothing -> do
-        addressReg <- getReg name
-        tmp        <- newReg
-        r          <- newReg
+    SFetchF ptr -> do
+      ptrReg <- getReg ptr
+      tmp    <- newReg
+      res    <- newReg
 
-        -- copying structural information from the heap
-        emit IR.Fetch { addressReg = addressReg, dstReg = tmp }
-        emit $ copyStructureWithPtrInfo tmp r
+      -- copying structural information from the heap
+      emit IR.Fetch { addressReg = ptrReg, dstReg = tmp }
+      emit $ copyStructureWithPtrInfo tmp res
 
-        -- restrictively propagating info to heap
-        emit IR.RestrictedUpdate {srcReg = r, addressReg = addressReg}
-
-        -- setting pointer liveness
-        emit $ r `isLiveThen` [setBasicValLiveInst addressReg]
-
-        pure $ R r
-
-    SUpdateF name val -> do
-      addressReg <- getReg name
-      tmp1       <- newReg
-      tmp2       <- newReg
-      valReg     <- codeGenVal val
-
-      -- copying structural information to the heap
-      emit $ copyStructureWithPtrInfo valReg tmp1
-      emit IR.Update         { srcReg = tmp1, addressReg = addressReg  }
-
-      -- restrictively propagating info from heap
-      emit IR.Fetch          { addressReg = addressReg, dstReg = tmp2   }
-      emit IR.RestrictedMove { srcReg     = tmp2,       dstReg = valReg }
+      -- restrictively propagating info to heap
+      emit IR.RestrictedUpdate {srcReg = res, addressReg = ptrReg}
 
       -- setting pointer liveness
-      emit $ valReg `isLiveThen` [setBasicValLiveInst addressReg]
+      emit $ res `isLiveThen` [setBasicValLiveInst ptrReg]
+
+      pure $ R res
+
+    SUpdateF ptr var -> do
+      ptrReg <- getReg ptr
+      tmp1   <- newReg
+      tmp2   <- newReg
+      varReg <- getReg var
+
+      -- copying structural information to the heap
+      emit $ copyStructureWithPtrInfo varReg tmp1
+      emit IR.Update         { srcReg = tmp1, addressReg = ptrReg  }
+
+      -- restrictively propagating info from heap
+      emit IR.Fetch          { addressReg = ptrReg, dstReg = tmp2   }
+      emit IR.RestrictedMove { srcReg     = tmp2,   dstReg = varReg }
+
+      -- setting pointer liveness
+      emit $ varReg `isLiveThen` [setBasicValLiveInst ptrReg]
 
       R <$> newReg
 
     SBlockF exp -> exp
 
-codeGenAlt :: (Maybe Name, IR.Reg) ->
+codeGenAlt :: Name ->
+              IR.Reg ->
               (IR.Reg -> Name -> CG IR.Reg) ->
               (IR.Reg -> CG ()) ->
               CG Result ->
               (Result -> CG ()) ->
               (IR.Reg -> Name -> CG ()) ->
               CG [IR.Instruction]
-codeGenAlt (mName, reg) restrict before altM after restore =
+codeGenAlt scrutName scrutReg restrict before altM after restore =
   codeGenBlock_ $ do
-    altReg <- maybe (pure reg) (restrict reg) mName
+    altReg <- restrict scrutReg scrutName
     before altReg
     altResult <- altM
     after altResult
-    mapM_ (restore reg) mName
+    restore scrutReg scrutName
