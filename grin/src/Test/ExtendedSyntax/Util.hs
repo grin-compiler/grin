@@ -50,6 +50,12 @@ cNil = Tag C "Nil"
 cCons :: Tag
 cCons = Tag C "Cons"
 
+cNope :: Tag
+cNope = Tag C "Nope"
+
+cNopeH :: Tag
+cNopeH = Tag C "NopeH"
+
 -- name ~ name of the test case, and also the grin source file
 mkBeforeAfterTestCase :: String ->
                          FilePath ->
