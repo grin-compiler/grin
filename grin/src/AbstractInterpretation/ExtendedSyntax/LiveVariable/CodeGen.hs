@@ -243,6 +243,9 @@ codeGenM e = (cata folder >=> const setMainLive) e
         AsPat v Lit{} -> do
           setBasicValLive lhsReg
           mkRegsThenVarPatternDataFlow v
+        AsPat v1 (Var v2) -> do
+          mkRegsThenVarPatternDataFlow v1
+          mkRegsThenVarPatternDataFlow v2
         AsPat v (ConstTagNode tag args) -> do
           irTag <- getTag tag
           setTagLive irTag lhsReg
