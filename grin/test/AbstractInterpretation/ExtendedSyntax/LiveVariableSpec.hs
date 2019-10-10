@@ -20,11 +20,11 @@ import AbstractInterpretation.ExtendedSyntax.LiveVariable.Result
 
 import AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec (calcEffects)
 
--- TODO: add as-pattern tests
--- TODO: investigate as-pattern behaviour (eg.: lit_pat)
--- TODO: Hard to decipher error message for effects when the expected result is "no effect"
---       but the actual result has no entry for the given variable.
---       Nothing is displayed in the diff.
+{- NOTE: Hard to decipher error message for effects
+   when the expected result is "no effect",
+   but the actual result has no entry for the given variable.
+   Nothing is displayed in the diff.
+-}
 
 {- NOTE: Variables with names like "z<i>" are introduced just for naming.
    They are not relevant to the result of the analysis.
@@ -44,6 +44,83 @@ calcLiveness prog
 
 spec :: Spec
 spec = describe "Live Variable Analysis" $ do
+
+  it "variable_alias" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            x <- pure 0
+            y <- pure x
+            _prim_int_print x
+      |]
+    let variableAliasExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("x", liveVal)
+                          , ("y", deadVal)
+                          ]
+          , _functionLv = mkFunctionLivenessMap []
+          }
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` variableAliasExpected
+
+  it "variable_alias_with_as_pattern" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            x <- pure 0
+            y@z <- pure x
+            _prim_int_print y
+      |]
+    let variableAliasWithAsPatternExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("x", liveVal)
+                          , ("y", liveVal)
+                          , ("z", deadVal)
+                          ]
+          , _functionLv = mkFunctionLivenessMap []
+          }
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` variableAliasWithAsPatternExpected
+
+  it "as_pattern_with_node_1" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            x0 <- pure 0
+            n0 <- pure (CInt x0)
+            _v@(CInt x1) <- pure n0
+            _prim_int_print x1
+      |]
+    let variableAliasExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("x0", liveVal)
+                          , ("x1", liveVal)
+                          , ("n0", nodeSet [ (cInt, [live]) ])
+                          , ("_v", deadNodeSet [ (cInt, 1) ])
+                          ]
+          , _functionLv = mkFunctionLivenessMap []
+          }
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` variableAliasExpected
+
+  it "as_pattern_with_node_2" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            x0 <- pure 0
+            n0 <- pure (CInt x0)
+            n1@(CInt _v) <- pure n0
+            case n1 of
+              (CInt c0) -> _prim_int_print c0
+      |]
+    let variableAliasExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("x0", liveVal)
+                          , ("_v", deadVal)
+                          , ("c0", liveVal)
+                          , ("n0", nodeSet [ (cInt, [live]) ])
+                          , ("n1", nodeSet [ (cInt, [live]) ])
+                          ]
+          , _functionLv = mkFunctionLivenessMap []
+          }
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` variableAliasExpected
 
   it "case_anonymous" $ do
     let exp = [prog|
@@ -834,6 +911,7 @@ spec = describe "Live Variable Analysis" $ do
           { _memory     = []
           , _registerLv = [ ("y", liveVal)
                           , ("x", liveVal)
+
                           , ("_1", deadVal)
                           ]
           , _functionLv = litPatExpectedFunctions
@@ -1117,8 +1195,6 @@ spec = describe "Live Variable Analysis" $ do
         cConsDead  = deadNodeSet [ (cCons, 2) ]
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` undefinedExpected
-
--- TODO: resume from here
 
   it "undefined_with_loc_info" $ do
     let exp = [prog|
