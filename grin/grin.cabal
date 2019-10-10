@@ -24,6 +24,12 @@ library
     AbstractInterpretation.ExtendedSyntax.ReduceCpp
     AbstractInterpretation.ExtendedSyntax.Reduce
     AbstractInterpretation.ExtendedSyntax.Util
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Util
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGen
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Pretty
     AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGenBase
     AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGen
     AbstractInterpretation.ExtendedSyntax.EffectTracking.Pretty
