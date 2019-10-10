@@ -194,6 +194,9 @@ codeGenM = cata folder where
           AsPat varName Lit{} -> do
             addReg varName r
             pure () -- TODO: is this ok? or error?
+          AsPat v1 (Var v2) -> do
+            addReg v1 r
+            addReg v2 r
           AsPat varName (ConstTagNode tag args) -> do
             addReg varName r
             irTag <- getTag tag
@@ -202,8 +205,8 @@ codeGenM = cata folder where
               addReg name argReg
               pure [IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = argReg}]
             -- QUESTION: In HPTProgram the instructions are in reverse order, here they are in regular order, isn't this inconsistent?
-            -- A: each cpat argument has zero or one instruction
-            --    the order of cpat binding evaluation does not matter because they does not depend on each other
+            -- ANSWER: Each cpat argument has zero or one instruction.
+            --    The order of cpat binding evaluation does not matter because they don't depend on each other.
             emit IR.If
               { condition     = IR.NodeTypeExists irTag
               , srcReg        = r
