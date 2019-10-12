@@ -49,4 +49,5 @@
 - James MacAulay
 - Adam S E
 - Michael
+- Chai T. Rex
 <!--10 end-->
