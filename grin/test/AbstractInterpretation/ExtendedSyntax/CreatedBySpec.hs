@@ -6,18 +6,13 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 
-import System.FilePath
-
 import Grin.ExtendedSyntax.Grin hiding (SimpleType(..))
 import Grin.ExtendedSyntax.TH
 
 import Test.Hspec
-import Test.ExtendedSyntax.IO
-import Test.ExtendedSyntax.Old.Test
 import Test.ExtendedSyntax.Util
 import Test.ExtendedSyntax.Assertions
 
-import AbstractInterpretation.ExtendedSyntax.IR hiding (Tag)
 import AbstractInterpretation.ExtendedSyntax.Reduce
 import AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGen
 import AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
