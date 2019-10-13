@@ -16,7 +16,9 @@ import Data.Functor.Foldable as Foldable
 import Lens.Micro.Platform
 
 import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.Pretty (PP(..))
 import Grin.ExtendedSyntax.TypeEnvDefs
+import Transformations.ExtendedSyntax.Util (paraM)
 import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
 import AbstractInterpretation.ExtendedSyntax.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, AbstractMapping(..))
 import AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGenBase
@@ -52,8 +54,8 @@ mkCByProgramM = do
 
 type Producer = IR.Int32
 
-addProducer :: IR.Reg -> Name -> CG ()
-addProducer r v = sProducerMap %= Map.insert r v
+addProducer :: Name -> IR.Reg -> CG ()
+addProducer v r = sProducerMap %= Map.insert r v
 
 registerToProducer :: IR.Reg -> Producer
 registerToProducer (IR.Reg r) = fromIntegral r
@@ -71,28 +73,18 @@ codeGenNodeTypeCBy tag ts = do
 
 codeGenVal :: Val -> CG IR.Reg
 codeGenVal = \case
-  ConstTagNode tag vals -> do
+  ConstTagNode tag args -> do
     r <- newReg
     irTag <- getTag tag
-    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length vals + 1)}
+    emit IR.Set {dstReg = r, constant = IR.CNodeType irTag (length args + 1)}
     emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag 0 (registerToProducer r)}
-    forM_ (zip [1..] vals) $ \(idx, val) -> case val of
-      Var name -> do
-        valReg <- getReg name
-        emit IR.Extend
-          { srcReg      = valReg
-          , dstSelector = IR.NodeItem irTag idx
-          , dstReg      = r
-          }
-      Lit lit -> emit IR.Set {dstReg = r, constant = IR.CNodeItem irTag idx (litToSimpleType lit)}
-      Undefined (T_SimpleType t) -> do
-        tmp <- codeGenSimpleType t
-        emit IR.Extend
-          { srcReg      = tmp
-          , dstSelector = IR.NodeItem irTag idx
-          , dstReg      = r
-          }
-      _ -> error $ "illegal node item value " ++ show val
+    forM_ (zip [1..] args) $ \(idx, arg) -> do
+      valReg <- getReg arg
+      emit IR.Extend
+        { srcReg      = valReg
+        , dstSelector = IR.NodeItem irTag idx
+        , dstReg      = r
+        }
     pure r
   Unit -> do
     r <- newReg
@@ -107,7 +99,6 @@ codeGenVal = \case
     pure r
   Var name -> getReg name
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeCBy) t
-  val -> error $ "unsupported value " ++ show val
 
 typeTag :: Name -> Tag
 typeTag n = Tag F n -- FIXME: this is a hack
@@ -156,89 +147,104 @@ constructType argMap = \case
     emit IR.Set {dstReg = r, constant = IR.CHeapLocation loc}
     pure r
 
-codeGenExternal :: External -> [Val] -> CG Result
+codeGenExternal :: External -> [Name] -> CG Result
 codeGenExternal External{..} args = do
-  valRegs <- mapM codeGenVal args
+  valRegs <- mapM getReg args
   argMap <- concat <$> zipWithM projectType valRegs eArgsType
   R <$> constructType argMap eRetType
 
+-- TODO: remove
+codeGenProducer :: CG Result -> Name -> CG Result -> CG Result
+codeGenProducer cgLeftExp prodName cgRightExp = do
+  lResult <- cgLeftExp
+  let R r = lResult
+  addReg prodName r
+  addProducer prodName r
+  cgRightExp
+
+producesNode :: Val -> Bool
+producesNode ConstTagNode{} = True
+producesNode (Undefined T_NodeSet{}) = True
+producesNode _ = False
+
+asPatternDataflow :: IR.Reg -> BPat -> CG ()
+asPatternDataflow r asPat@(AsPat _ asVal) = case asVal of
+  Unit  -> pure ()
+  Lit{} -> pure ()
+  Var v -> addReg v r
+  ConstTagNode tag args -> do
+    irTag <- getTag tag
+    bindInstructions <- forM (zip [1..] args) $ \(idx, arg) -> do
+      argReg <- newReg
+      addReg arg argReg
+      pure [ IR.Project { srcReg      = r
+                        , srcSelector = IR.NodeItem irTag idx
+                        , dstReg      = argReg
+                        }
+           ]
+    emit IR.If
+      { condition     = IR.NodeTypeExists irTag
+      , srcReg        = r
+      , instructions  = concat bindInstructions
+      }
+  valPat -> error $ "unsupported @pattern: " ++ show (PP asPat)
+asPatternDataflow _ pat = error $ "not @pattern: " ++ show (PP pat)
+
 codeGen :: Exp -> (AbstractProgram, CByMapping)
-codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
-  folder :: ExpF (Exp, CG Result) -> CG Result
+codeGen e = flip evalState emptyCGState $ paraM folder e >> mkCByProgramM where
+  folder :: ExpF (Exp, Result) -> CG Result
   folder = \case
     ProgramF exts defs -> do
       mapM_ addExternal exts
-      mapM_ snd defs
       pure Z
 
-    DefF name args (_,body) -> do
+    DefF name args (_,bodyRes) -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM_ addReg args funArgRegs
-      body >>= \case
+      case bodyRes of
         Z   -> emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       pure Z
 
-    EBindF (SReturn lhs,leftExp) (Var v) (_,rightExp)
-      | ConstTagNode{}        <- lhs -> cgProducer leftExp v rightExp
-      | Undefined T_NodeSet{} <- lhs -> cgProducer leftExp v rightExp
-      where
-        cgProducer lExp p rExp = do
-          reg <- lExp
-          let R r = reg
-          addReg v r
-          addProducer r v
-          rExp
-    EBindF (_,leftExp) lpat (_,rightExp) -> do
-      leftExp >>= \case
-        Z -> case lpat of
-          Unit -> pure ()
-          Var name -> do
-            r <- newReg
-            emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
-            addReg name r
-          _ -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show lpat
-        R r -> case lpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
-          Unit  -> pure () -- TODO: is this ok? or error?
-          Lit{} -> pure () -- TODO: is this ok? or error?
-          Var name -> addReg name r
-          ConstTagNode tag args -> do
-            irTag <- getTag tag
-            bindInstructions <- forM (zip [1..] args) $ \(idx, arg) -> case arg of
-              Var name -> do
-                argReg <- newReg
-                addReg name argReg
-                pure [ IR.Project { srcReg      = r
-                                  , srcSelector = IR.NodeItem irTag idx
-                                  , dstReg      = argReg
-                                  }
-                     ]
-              Lit {} -> pure []
-              _ -> error $ "illegal node pattern component " ++ show arg
-            emit IR.If
-              { condition     = IR.NodeTypeExists irTag
-              , srcReg        = r
-              , instructions  = concat bindInstructions
-              }
-          _ -> error $ "unsupported lpat " ++ show lpat
-      rightExp
+    EBindF (_, Z) (VarPat var) (_, rhsRes) -> do
+      r <- newReg
+      addReg var r
+      pure rhsRes
+    EBindF (SReturn lhs, R r) (VarPat var) (_, rhsRes)
+      | producesNode lhs -> do
+        addReg var r
+        addProducer var r
+        pure rhsRes
+    EBindF (_, R r) (VarPat var) (_, rhsRes) -> do
+      addReg var r
+      pure rhsRes
 
-    ECaseF val alts_ -> do
-      valReg <- codeGenVal val
+    EBindF (_, Z) (AsPat var val) (_, rhsRes) -> do
+      r <- newReg
+      emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
+      addReg var r
+      case val of
+        Unit      -> pure ()
+        Var inner -> addReg inner r
+        _ -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show (PP val)
+      pure rhsRes
+    EBindF (SReturn lhs, R r) asPat@(AsPat var _) (_, rhsRes)
+      | producesNode lhs -> do
+        addReg var r
+        addProducer var r
+        asPatternDataflow r asPat
+        pure rhsRes
+    EBindF (_, R r) asPat@(AsPat var _) (_, rhsRes) -> do
+      addReg var r
+      asPatternDataflow r asPat
+      pure rhsRes
+
+    ECaseF scrut alts -> do
+      scrutReg <- getReg scrut
       caseResultReg <- newReg
 
-      -- save scrutinee register mapping
-      scrutRegMapping <- case val of
-        Var name -> Just . (name,) <$> getReg name
-        _ -> pure Nothing
-      {-
-        TODO:
-          - create scope monadic combinator to handle scopes
-          - set scrutinee value to the case alternative pattern value in the alternative scope
-      -}
-      alts <- sequence . fmap snd $ alts_
-
-      forM_ alts $ \(A cpat altM) -> do
+      let altResults = map snd alts
+      forM_ altResults $ \(A cpat altM) -> do
         let codeGenAlt bindM = codeGenBlock_ $ do
               bindM
               altM >>= \case
@@ -250,58 +256,74 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
             irTag <- getTag tag
             altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              forM_ scrutRegMapping $ \(name, _) -> do
-                altScrutReg <- newReg
-                addReg name altScrutReg
-                -- NOTE: We just create a new empty register, and associate it with the scrutinee in this alternative. Then we annotate the register with restricted properties of the scrutinee.
-                emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists irTag
-                  , srcReg = valReg
-                  , dstReg = altScrutReg
-                  }
+              altScrutReg <- newReg
+              addReg scrut altScrutReg
+              {- NOTE: We just create a new empty register, and associate it with the scrutinee in this alternative.
+                Then we annotate the register with restricted properties of the scrutinee.
+              -}
+              emit IR.Project
+                { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists irTag
+                , srcReg = scrutReg
+                , dstReg = altScrutReg
+                }
 
               -- bind pattern variables
-              forM_ (zip [1..] vars) $ \(idx, name) -> do
-                  argReg <- newReg
-                  addReg name argReg
-                  emit IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = valReg, dstReg = argReg}
-            emit IR.If {condition = IR.NodeTypeExists irTag, srcReg = valReg, instructions = altInstructions}
+              forM_ (zip [1..] vars) $ \(idx, var) -> do
+                argReg <- newReg
+                addReg var argReg
+                emit IR.Project
+                  { srcSelector = IR.NodeItem irTag idx
+                  , srcReg      = scrutReg
+                  , dstReg      = argReg
+                  }
+            emit IR.If
+              { condition    = IR.NodeTypeExists irTag
+              , srcReg       = scrutReg
+              , instructions = altInstructions
+              }
 
           LitPat lit -> do
-            altInstructions <- codeGenAlt $
+            altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              forM_ scrutRegMapping $ \(name, _) -> do
-                altScrutReg <- newReg
-                addReg name altScrutReg
-                emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.SimpleTypeExists (litToSimpleType lit)
-                  , srcReg = valReg
-                  , dstReg = altScrutReg
-                  }
-            emit IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = valReg, instructions = altInstructions}
+              altScrutReg <- newReg
+              addReg scrut altScrutReg
+              emit IR.Project
+                { srcSelector = IR.ConditionAsSelector $ IR.SimpleTypeExists (litToSimpleType lit)
+                , srcReg = scrutReg
+                , dstReg = altScrutReg
+                }
+            emit IR.If
+              { condition    = IR.SimpleTypeExists (litToSimpleType lit)
+              , srcReg       = scrutReg
+              , instructions = altInstructions
+              }
 
           DefaultPat -> do
-            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
-            altInstructions <- codeGenAlt $
+            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- altResults]
+            altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
-              forM_ scrutRegMapping $ \(name, _) -> do
-                altScrutReg <- newReg
-                addReg name altScrutReg
-                emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
-                  , srcReg = valReg
-                  , dstReg = altScrutReg
-                  }
-            emit IR.If {condition = IR.AnyNotIn tags, srcReg = valReg, instructions = altInstructions}
-
-          _ -> error $ "CBy does not support the following case pattern: " ++ show cpat
+              altScrutReg <- newReg
+              addReg scrut altScrutReg
+              emit IR.Project
+                { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
+                , srcReg      = scrutReg
+                , dstReg      = altScrutReg
+                }
+            emit IR.If
+              { condition    = IR.AnyNotIn tags
+              , srcReg       = scrutReg
+              , instructions = altInstructions
+              }
 
       -- restore scrutinee register mapping
-      maybe (pure ()) (uncurry addReg) scrutRegMapping
+      addReg scrut scrutReg
 
       pure $ R caseResultReg
 
-    AltF cpat (_,exp) -> pure $ A cpat exp
+    {- NOTE: The alternatives are already evaluated,
+       we only have return them.
+    -}
+    AltF cpat (_,exp) -> pure $ A cpat (pure exp)
 
     SAppF name args -> getExternal name >>= \case
       Just ext  -> do
@@ -311,8 +333,8 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
         -----------
         -- copy args to definition's variables ; read function result register
         (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-        valRegs <- mapM codeGenVal args
-        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
+        argRegs <- mapM getReg args
+        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) argRegs funArgRegs
         -- old prim codegen
         let External{..} = ext
             isTySimple TySimple{} = True
@@ -328,33 +350,31 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       Nothing   -> do
         -- copy args to definition's variables ; read function result register
         (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-        valRegs <- mapM codeGenVal args
-        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
+        argRegs <- mapM getReg args
+        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) argRegs funArgRegs
         pure $ R funResultReg
 
 
     SReturnF val -> R <$> codeGenVal val
 
-    SStoreF val -> do
+    SStoreF var -> do
       loc <- newMem
       r <- newReg
-      valReg <- codeGenVal val
-      emit IR.Store {srcReg = valReg, address = loc}
+      varReg <- getReg var
+      emit IR.Store {srcReg = varReg, address = loc}
       emit IR.Set {dstReg = r, constant = IR.CHeapLocation loc}
       pure $ R r
 
-    SFetchIF name maybeIndex -> case maybeIndex of
-      Just {} -> error "CBy codegen does not support indexed fetch"
-      Nothing -> do
-        addressReg <- getReg name
-        r <- newReg
-        emit IR.Fetch {addressReg = addressReg, dstReg = r}
-        pure $ R r
+    SFetchF ptr -> do
+      ptrReg <- getReg ptr
+      r <- newReg
+      emit IR.Fetch {addressReg = ptrReg, dstReg = r}
+      pure $ R r
 
-    SUpdateF name val -> do
-      addressReg <- getReg name
-      valReg <- codeGenVal val
-      emit IR.Update {srcReg = valReg, addressReg = addressReg}
+    SUpdateF ptr var -> do
+      ptrReg <- getReg ptr
+      varReg <- getReg var
+      emit IR.Update {srcReg = varReg, addressReg = ptrReg}
       pure Z
 
-    SBlockF (_,exp) -> exp
+    SBlockF (_,exp) -> pure exp
