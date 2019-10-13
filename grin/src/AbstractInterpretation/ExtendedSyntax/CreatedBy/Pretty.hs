@@ -7,8 +7,8 @@ import Text.PrettyPrint.ANSI.Leijen
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-import Grin.Pretty
-import Grin.Grin (Tag, Name)
+import Grin.ExtendedSyntax.Pretty
+import Grin.ExtendedSyntax.Grin (Tag, Name)
 
 import AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
