@@ -18,12 +18,14 @@ import Lens.Micro.Platform
 import Grin.ExtendedSyntax.Grin
 import Grin.ExtendedSyntax.Pretty (PP(..))
 import Grin.ExtendedSyntax.TypeEnvDefs
-import Transformations.ExtendedSyntax.Util (paraM)
 import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
 import AbstractInterpretation.ExtendedSyntax.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, AbstractMapping(..))
 import AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGenBase
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen (litToSimpleType, unitType, codegenSimpleType) -- FIXME: why? remove, refactor
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result (undefinedProducer) -- FIXME: why? remove, refactor
+
+-- TODO: remove
+import Debug.Trace
 
 data CByMapping
   = CByMapping
@@ -190,60 +192,70 @@ asPatternDataflow r asPat@(AsPat _ asVal) = case asVal of
   valPat -> error $ "unsupported @pattern: " ++ show (PP asPat)
 asPatternDataflow _ pat = error $ "not @pattern: " ++ show (PP pat)
 
+{- NOTE: para is needed to specify the order of evalution of the lhs and rhs on binds.
+   paraM would execute both lhs and rhs before running the action that actually adds
+   the variables to the scope (addReg).
+-}
 codeGen :: Exp -> (AbstractProgram, CByMapping)
-codeGen e = flip evalState emptyCGState $ paraM folder e >> mkCByProgramM where
-  folder :: ExpF (Exp, Result) -> CG Result
+codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
+  folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
     ProgramF exts defs -> do
       mapM_ addExternal exts
+      mapM_ snd defs
       pure Z
 
     DefF name args (_,bodyRes) -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
       zipWithM_ addReg args funArgRegs
-      case bodyRes of
+      bodyRes >>= \case
         Z   -> emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType unitType}
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       pure Z
 
-    EBindF (_, Z) (VarPat var) (_, rhsRes) -> do
-      r <- newReg
-      addReg var r
-      pure rhsRes
-    EBindF (SReturn lhs, R r) (VarPat var) (_, rhsRes)
-      | producesNode lhs -> do
-        addReg var r
-        addProducer var r
-        pure rhsRes
-    EBindF (_, R r) (VarPat var) (_, rhsRes) -> do
-      addReg var r
-      pure rhsRes
+    -- NOTE: variable patterns
+    EBindF (lhs, cgLhs) (VarPat var) (_, cgRhs) -> do
+      lhsRes <- cgLhs
+      case lhsRes of
+        Z -> do
+          r <- newReg
+          addReg var r
+        R r -> do
+          case lhs of
+            SReturn val | producesNode val -> do
+              addReg var r
+              addProducer var r
+            _ -> addReg var r
+      cgRhs
 
-    EBindF (_, Z) (AsPat var val) (_, rhsRes) -> do
-      r <- newReg
-      emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
-      addReg var r
-      case val of
-        Unit      -> pure ()
-        Var inner -> addReg inner r
-        _ -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show (PP val)
-      pure rhsRes
-    EBindF (SReturn lhs, R r) asPat@(AsPat var _) (_, rhsRes)
-      | producesNode lhs -> do
-        addReg var r
-        addProducer var r
-        asPatternDataflow r asPat
-        pure rhsRes
-    EBindF (_, R r) asPat@(AsPat var _) (_, rhsRes) -> do
-      addReg var r
-      asPatternDataflow r asPat
-      pure rhsRes
+    -- NOTE: @patterns
+    EBindF (lhs, cgLhs) asPat@(AsPat var valPat) (_, cgRhs) -> do
+      lhsRes <- cgLhs
+      case lhsRes of
+        Z -> do
+          r <- newReg
+          emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
+          addReg var r
+          case valPat of
+            Unit      -> pure ()
+            Var inner -> addReg inner r
+            _ -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show (PP valPat)
+        R r -> do
+          case lhs of
+            SReturn val | producesNode val -> do
+              addReg var r
+              addProducer var r
+              asPatternDataflow r asPat
+            _ -> do
+              addReg var r
+              asPatternDataflow r asPat
+      cgRhs
 
-    ECaseF scrut alts -> do
-      scrutReg <- getReg scrut
+    ECaseF scrut alts_ -> do
+      scrutReg      <- getReg scrut
       caseResultReg <- newReg
+      altResults    <- sequence . fmap snd $ alts_
 
-      let altResults = map snd alts
       forM_ altResults $ \(A cpat altM) -> do
         let codeGenAlt bindM = codeGenBlock_ $ do
               bindM
@@ -323,7 +335,7 @@ codeGen e = flip evalState emptyCGState $ paraM folder e >> mkCByProgramM where
     {- NOTE: The alternatives are already evaluated,
        we only have return them.
     -}
-    AltF cpat (_,exp) -> pure $ A cpat (pure exp)
+    AltF cpat (_, cgAlt) -> pure $ A cpat cgAlt
 
     SAppF name args -> getExternal name >>= \case
       Just ext  -> do
@@ -377,4 +389,4 @@ codeGen e = flip evalState emptyCGState $ paraM folder e >> mkCByProgramM where
       emit IR.Update {srcReg = varReg, addressReg = ptrReg}
       pure Z
 
-    SBlockF (_,exp) -> pure exp
+    SBlockF (_, cgBlock) -> cgBlock
