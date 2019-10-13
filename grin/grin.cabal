@@ -130,7 +130,6 @@ library
     Test.Test
     Test.Util
     Test.ExtendedSyntax.Assertions
-    Test.ExtendedSyntax.IO
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
     Test.ExtendedSyntax.Util
