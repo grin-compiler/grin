@@ -129,9 +129,10 @@ library
     Test.Test
     Test.Util
     Test.ExtendedSyntax.Assertions
-    Test.ExtendedSyntax.Util
+    Test.ExtendedSyntax.IO
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
+    Test.ExtendedSyntax.Util
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -318,6 +319,7 @@ test-suite grin-test
                      PrimOpsSpec
                      NametableSpec
                      AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
+                     AbstractInterpretation.ExtendedSyntax.CreatedBySpec
                      AbstractInterpretation.ExtendedSyntax.HptSpec
                      AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
