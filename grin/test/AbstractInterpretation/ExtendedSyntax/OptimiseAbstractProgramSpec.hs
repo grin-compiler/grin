@@ -5,13 +5,15 @@ module AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec where
 
 import Test.Hspec
 
+import qualified Grin.TH as Old
+
 import Grin.ExtendedSyntax.Grin
-import Grin.ExtendedSyntax.TH
 import Grin.ExtendedSyntax.PrimOpsPrelude
 import AbstractInterpretation.ExtendedSyntax.IR
 import AbstractInterpretation.ExtendedSyntax.Reduce
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen
 import AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgram
+import Transformations.ExtendedSyntax.Conversion (convertToNew)
 
 
 runTests :: IO ()
@@ -39,7 +41,7 @@ spec = do
       (_absInstructions absProgram1) `shouldBe` (_absInstructions absProgram2)
 
 testProgram :: Exp
-testProgram = withPrimPrelude [prog|
+testProgram = withPrimPrelude . convertToNew $ [Old.prog|
     grinMain = t1 <- store (CInt 1)
                t2 <- store (CInt 10000)
                t3 <- store (Fupto t1 t2)
