@@ -20,8 +20,6 @@ import AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as HPT
 
 
--- TODO: @patern tests
-
 {- NOTE: Variables with names like "z<i>" are introduced just for naming.
    They are not relevant to the result of the analysis.
 
@@ -68,7 +66,7 @@ spec = do
               ]
       (calcProducers exp) `shouldBe` puresExpected
 
-    it "function_call" $ do
+    it "function_calls" $ do
       let exp = [prog|
               grinMain =
                 z0 <- pure 0
@@ -421,6 +419,50 @@ spec = do
                        ]
           producerN0 = mkProducerSet [(cNil, ["n0"])]
       (calcProducers exp) `shouldBe` expected
+
+    it "variable as-patterns" $ do
+      let exp = [prog|
+            grinMain =
+                z0 <- pure 0
+                a1@a2 <- pure (CInt z0)
+                b1 <- pure a1
+                b2 <- pure a2
+                c1 <- pure b1
+                c2 <- pure b2
+                pure a1
+        |]
+      let producerA1 = mkProducerSet [(Tag C "Int", ["a1"])]
+      let puresExpected = ProducerMap $
+            M.fromList
+              [ ("a1", producerA1)
+              , ("a2", producerA1)
+              , ("b1", producerA1)
+              , ("b2", producerA1)
+              , ("c1", producerA1)
+              , ("c2", producerA1)
+
+              , ("z0", emptyProducerSet)
+              ]
+      (calcProducers exp) `shouldBe` puresExpected
+
+    it "node as-patterns" $ do
+      let exp = [prog|
+            grinMain =
+                z0 <- pure 0
+                a@(CInt _1) <- pure (CInt z0)
+                b <- pure a
+                pure a
+        |]
+      let producerA = mkProducerSet [(Tag C "Int", ["a"])]
+      let puresExpected = ProducerMap $
+            M.fromList
+              [ ("a", producerA)
+              , ("b", producerA)
+
+              , ("_1", emptyProducerSet)
+              , ("z0", emptyProducerSet)
+              ]
+      (calcProducers exp) `shouldBe` puresExpected
 
   describe "Created-By type info" $ do
 
