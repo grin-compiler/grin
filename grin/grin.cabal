@@ -324,7 +324,9 @@ test-suite grin-test
                      AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
                      AbstractInterpretation.ExtendedSyntax.CreatedBySpec
                      AbstractInterpretation.ExtendedSyntax.HptSpec
+                     AbstractInterpretation.ExtendedSyntax.IRSpec
                      AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
+                     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
