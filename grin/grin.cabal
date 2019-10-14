@@ -24,6 +24,8 @@ library
     AbstractInterpretation.ExtendedSyntax.ReduceCpp
     AbstractInterpretation.ExtendedSyntax.Reduce
     AbstractInterpretation.ExtendedSyntax.Util
+    AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgram
+    AbstractInterpretation.ExtendedSyntax.Model
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Util
@@ -45,6 +47,7 @@ library
     AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen
     AbstractInterpretation.ExtendedSyntax.Sharing.Pretty
     AbstractInterpretation.ExtendedSyntax.Sharing.Result
+
     AbstractInterpretation.CreatedBy.Result
     AbstractInterpretation.CreatedBy.Readback
     AbstractInterpretation.CreatedBy.Util
