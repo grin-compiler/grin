@@ -20,6 +20,14 @@ import AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as HPT
 
 
+-- TODO: @patern tests
+
+{- NOTE: Variables with names like "z<i>" are introduced just for naming.
+   They are not relevant to the result of the analysis.
+
+   Variables with names like "_<i>" are introduced just for named bindings.
+   They will never be used.
+-}
 
 runTests :: IO ()
 runTests = hspec spec
@@ -42,32 +50,37 @@ spec = do
   describe "Created-By producers are calculated correctly for" $ do
     it "pures" $ do
       let exp = [prog|
-              grinMain =
-                a <- pure (CInt 5)
+            grinMain =
+                z0 <- pure 0
+                a <- pure (CInt z0)
                 b <- pure a
                 c <- pure b
-                pure c
-            |]
+                pure a
+        |]
       let producerA = mkProducerSet [(Tag C "Int", ["a"])]
       let puresExpected = ProducerMap $
             M.fromList
               [ ("a", producerA)
               , ("b", producerA)
               , ("c", producerA)
+
+              , ("z0", emptyProducerSet)
               ]
       (calcProducers exp) `shouldBe` puresExpected
 
     it "function_call" $ do
       let exp = [prog|
               grinMain =
-                a <- pure (CInt 5)
+                z0 <- pure 0
+                a <- pure (CInt z0)
                 b <- pure a
-                c <- f 5
-                d <- g 5
+                c <- f z0
+                d <- g z0
                 pure 5
 
               f x =
-                x1 <- pure (CInt 5)
+                z1 <- pure 0
+                x1 <- pure (CInt z1)
                 pure x1
 
               g y =
@@ -85,27 +98,35 @@ spec = do
                        , ("x1", producerX1)
                        , ("y",  emptyProducerSet)
                        , ("y1", producerX1)
+
+                       , ("z0",  emptyProducerSet)
+                       , ("z1",  emptyProducerSet)
                        ]
       (calcProducers exp) `shouldBe` expected
 
     it "case_simple" $ do
       let exp = [prog|
             grinMain =
-              a <- f 0
+              z0 <- pure 0
+              a <- f z0
               pure a
 
             f x =
-             case x of
-              0 -> x0 <- pure (CInt 5)
-                   pure x0
-              1 -> x1 <- pure (CBool 0)
-                   pure x1
+              z1 <- pure 0
+              case x of
+                0 -> x0 <- pure (CInt z1)
+                     pure x0
+                1 -> x1 <- pure (CBool z1)
+                     pure x1
            |]
       let expected = ProducerMap $
             M.fromList [ ("a",  producerA)
                        , ("x",  emptyProducerSet)
                        , ("x0", producerX0)
                        , ("x1", producerX1)
+
+                       , ("z0",  emptyProducerSet)
+                       , ("z1",  emptyProducerSet)
                        ]
           producerA  = mkProducerSet [ (Tag C "Int",  ["x0"])
                                      , (Tag C "Bool", ["x1"])
@@ -117,13 +138,14 @@ spec = do
     it "heap" $ do
       let exp = [prog|
             grinMain =
-              x0 <- pure (CInt 5)
-              x1 <- pure (CBool 0)
-              x2 <- pure (CBool 1)
+              z0 <- pure 0
+              x0 <- pure (CInt  z0)
+              x1 <- pure (CBool z0)
+              x2 <- pure (CBool z0)
               p0 <- store x0
               p1 <- store x1
-              update p0 x2
-              update p1 x2
+              _1 <- update p0 x2
+              _2 <- update p1 x2
               y0 <- fetch p0
               y1 <- fetch p1
               pure 5
@@ -136,6 +158,10 @@ spec = do
                        , ("p1", emptyProducerSet)
                        , ("y0", producerY0)
                        , ("y1", producerY1)
+
+                       , ("z0", emptyProducerSet)
+                       , ("_1", emptyProducerSet)
+                       , ("_2", emptyProducerSet)
                        ]
           producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
           producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
@@ -147,9 +173,10 @@ spec = do
     it "pointer_in_node" $ do
       let exp = [prog|
             grinMain =
+              z0 <- pure 0
               n0 <- pure (CNil)
               p0 <- store n0
-              n1 <- pure (CCons 5 p0)
+              n1 <- pure (CCons z0 p0)
               case n1 of
                 (CCons x pxs) -> xs <- fetch pxs
                                  pure 5
@@ -161,6 +188,8 @@ spec = do
                        , ("x",   emptyProducerSet)
                        , ("pxs", emptyProducerSet)
                        , ("xs",  producerXS)
+
+                       , ("z0",   emptyProducerSet)
                        ]
           producerN0 = mkProducerSet [(Tag C "Nil",  ["n0"])]
           producerN1 = mkProducerSet [(Tag C "Cons", ["n1"])]
@@ -170,23 +199,25 @@ spec = do
     it "case_restricted_1" $ do
       let exp = [prog|
             grinMain =
-              a0 <- f 0
+              z0 <- pure 0
+              a0 <- f z0
               r0 <- case a0 of
-                (CInt c0)  -> b0 <- pure (CInt 5)
+                (CInt c0)  -> b0 <- pure (CInt  z0)
                               pure b0
-                (CBool c1) -> b1 <- pure (CBool 0)
+                (CBool c1) -> b1 <- pure (CBool z0)
                               pure b1
-                (CNope c2) -> b2 <- pure (CNope 1)
+                (CNope c2) -> b2 <- pure (CNope z0)
                               pure b2
               pure r0
 
 
             f x =
-             case x of
-              0 -> x0 <- pure (CInt 5)
-                   pure x0
-              1 -> x1 <- pure (CBool 0)
-                   pure x1
+              z1 <- pure 0
+              case x of
+                0 -> x0 <- pure (CInt  z0)
+                     pure x0
+                1 -> x1 <- pure (CBool z0)
+                     pure x1
           |]
       let expected = ProducerMap $
             M.fromList [ ("a0", producerA0)
@@ -200,6 +231,9 @@ spec = do
                        , ("x",  emptyProducerSet)
                        , ("x0", producerX0)
                        , ("x1", producerX1)
+
+                       , ("z0", emptyProducerSet)
+                       , ("z1", emptyProducerSet)
                        ]
           producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
           producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
@@ -212,22 +246,24 @@ spec = do
     it "case_restricted_2" $ do
       let exp = [prog|
             grinMain =
-              a0 <- f 0
+              z0 <- pure 0
+              a0 <- f z0
               r0 <- case a0 of
-                (CInt c0)  -> b0 <- f 0
+                (CInt c0)  -> b0 <- f z0
                               pure b0
-                (CBool c1) -> b1 <- pure (CBool 0)
+                (CBool c1) -> b1 <- pure (CBool z0)
                               pure b1
-                (CNope c2) -> b2 <- pure (CNope 1)
+                (CNope c2) -> b2 <- pure (CNope z0)
                               pure b2
               pure r0
 
             f x =
-             case x of
-              0 -> x0 <- pure (CInt 5)
-                   pure x0
-              1 -> x1 <- pure (CBool 0)
-                   pure x1
+              z1 <- pure 0
+              case x of
+                0 -> x0 <- pure (CInt z1)
+                     pure x0
+                1 -> x1 <- pure (CBool z1)
+                     pure x1
           |]
       let expected = ProducerMap $
             M.fromList [ ("a0", producerA0)
@@ -241,6 +277,9 @@ spec = do
                        , ("x",  emptyProducerSet)
                        , ("x0", producerX0)
                        , ("x1", producerX1)
+
+                       , ("z0", emptyProducerSet)
+                       , ("z1", emptyProducerSet)
                        ]
           producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
           producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
@@ -253,32 +292,35 @@ spec = do
     it "case_restricted_3" $ do
       let exp = [prog|
             grinMain =
-              a0 <- f 1
-              a1 <- pure (CWord 3)
+              z0 <- pure 1
+              a0 <- f z0
+              a1 <- pure (CWord z0)
               r0 <- case a0 of
                 (CInt c0)  -> b0 <- g a0
                               pure b0
                 (CBool c1) -> b1 <- g a1
                               pure b1
-                (CNope c2) -> b2 <- pure (CNope 1)
+                (CNope c2) -> b2 <- pure (CNope z0)
                               pure b2
               pure r0
 
             f x =
-             case x of
-              0 -> x0 <- pure (CInt 5)
-                   pure x0
-              1 -> x1 <- pure (CBool 0)
-                   pure x1
+              z1 <- pure 1
+              case x of
+                0 -> x0 <- pure (CInt  z1)
+                     pure x0
+                1 -> x1 <- pure (CBool z1)
+                     pure x1
 
             g y =
-             case y of
-              (CInt n)  -> y0 <- pure (CInt 5)
-                           pure y0
-              (CBool b) -> y1 <- pure (CBool 0)
-                           pure y1
-              (CWord w) -> y2 <- pure (CWord 3)
-                           pure y2
+              z2 <- pure 1
+              case y of
+                (CInt n)  -> y0 <- pure (CInt  z2)
+                             pure y0
+                (CBool b) -> y1 <- pure (CBool z2)
+                             pure y1
+                (CWord w) -> y2 <- pure (CWord z2)
+                             pure y2
           |]
       let restrictedBy (ProducerSet ps) tag = ProducerSet $ M.filterWithKey (\k _ -> k == tag) ps
       let expected = ProducerMap $
@@ -301,6 +343,10 @@ spec = do
                        , ("n",  emptyProducerSet)
                        , ("b",  emptyProducerSet)
                        , ("w",  emptyProducerSet)
+
+                       , ("z0", emptyProducerSet)
+                       , ("z1", emptyProducerSet)
+                       , ("z2", emptyProducerSet)
                        ]
           producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
           producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
@@ -318,13 +364,19 @@ spec = do
     it "undefined" $ do
       let exp = [prog|
             grinMain =
-              p0 <- store (CNil)
-              p1 <- store (CCons 0 p0)
+              z0 <- pure 0
+              z1 <- pure (CNil)
+              z3 <- pure (#undefined :: T_Int64)
+
+              p0 <- store z1
+              z2 <- pure (CCons z0 p0)
+
+              p1 <- store z2
               x0 <- pure (#undefined :: T_Int64)
               n0 <- pure (#undefined :: {CCons[T_Int64,{0,1}]})
               p2 <- store n0
               n1 <- pure (#undefined :: {CNil[],CCons[T_Int64,{2}]})
-              n2 <- pure (CCons (#undefined :: T_Int64) p0)
+              n2 <- pure (CCons z3 p0)
               pure 5
           |]
       let expected =ProducerMap $
@@ -335,17 +387,26 @@ spec = do
                        , ("p1",  emptyProducerSet)
                        , ("p2",  emptyProducerSet)
                        , ("x0",  emptyProducerSet)
+
+                       , ("z0", emptyProducerSet)
+                       , ("z1", producerZ1)
+                       , ("z2", producerZ2)
+                       , ("z3", emptyProducerSet)
                        ]
           producerN0 = mkProducerSet [(Tag C "Cons", [undefinedProducerName])]
           producerN1 = mkProducerSet [(Tag C "Cons", [undefinedProducerName]), (Tag C "Nil", [undefinedProducerName])]
           producerN2 = mkProducerSet [(Tag C "Cons", ["n2"])]
+
+          producerZ1 = mkProducerSet [(Tag C "Nil",  ["z1"])]
+          producerZ2 = mkProducerSet [(Tag C "Cons", ["z2"])]
       (calcProducers exp) `shouldBe` expected
 
     it "unspec_loc" $ do
       let exp = [prog|
               grinMain =
+                z0 <- pure 0
                 n0 <- pure (CNil)
-                p0 <- case 0 of
+                p0 <- case z0 of
                   0 -> store n0
                   1 -> pure (#undefined :: #ptr)
                 n1 <- fetch p0
@@ -355,6 +416,8 @@ spec = do
             M.fromList [ ("n0",  producerN0)
                        , ("n1",  producerN0)
                        , ("p0",  emptyProducerSet)
+
+                       , ("z0",  emptyProducerSet)
                        ]
           producerN0 = mkProducerSet [(cNil, ["n0"])]
       (calcProducers exp) `shouldBe` expected
@@ -364,13 +427,19 @@ spec = do
     it "undefined" $ do
       let exp = [prog|
             grinMain =
-              p0 <- store (CNil)
-              p1 <- store (CCons 0 p0)
+              z0 <- pure 0
+              z1 <- pure (CNil)
+              z3 <- pure (#undefined :: T_Int64)
+
+              p0 <- store z1
+              z2 <- pure (CCons z0 p0)
+
+              p1 <- store z2
               x0 <- pure (#undefined :: T_Int64)
               n0 <- pure (#undefined :: {CCons[T_Int64,{0,1}]})
               p2 <- store n0
               n1 <- pure (#undefined :: {CNil[],CCons[T_Int64,{2}]})
-              n2 <- pure (CCons (#undefined :: T_Int64) p0)
+              n2 <- pure (CCons z3 p0)
               pure 5
           |]
       let expected = HPTResult
@@ -386,6 +455,11 @@ spec = do
             , ("n0", tySetFromNodeSet nodeSetN0)
             , ("n1", typeN1)
             , ("n2", typeN2)
+
+            , ("z0", tySetFromTypes [T_Int64])
+            , ("z1", tySetFromNodeSet $ mkNodeSet [ (cNil,  []) ])
+            , ("z2", tySetFromNodeSet $ mkNodeSet [ (cCons, [[T_Int64], [T_Location 0]]) ])
+            , ("z3", tySetFromTypes [T_Int64])
             ]
             where typeN1 = mkTySet [ (cCons, [[T_Int64], [T_Location 2]])
                                    , (cNil, [])
@@ -406,12 +480,15 @@ spec = do
     it "unspec_loc" $ do
       let exp = [prog|
               grinMain =
-                p0 <- case 0 of
-                  0 -> store (CInt 5)
+                z0 <- pure 0
+                z1 <- pure (CInt z0)
+
+                p0 <- case z0 of
+                  0 -> store z1
                   1 -> pure (#undefined :: #ptr)
                 n0 <- fetch p0
                 n1 <- pure (#undefined :: {CNode[#ptr]})
-                (CNode p1) <- pure n1
+                _1@(CNode p1) <- pure n1
                 x0 <- fetch p1
                 update p0 x0
             |]
@@ -431,6 +508,10 @@ spec = do
             , ("n0", tySetFromNodeSet nodeSetN0)
             , ("n1", tySetFromNodeSet nodeSetN1)
             , ("x0", tySetFromTypes [])
+
+            , ("z0", tySetFromTypes [T_Int64])
+            , ("z1", tySetFromNodeSet $ mkNodeSet [ (cInt,  [ [T_Int64] ]) ])
+            , ("_1", tySetFromNodeSet $ mkNodeSet [ (cNode, [ [T_UnspecifiedLocation] ]) ])
             ]
           unspecLocExpectedFunctions = M.singleton "grinMain" (mkSimpleMain T_Unit)
       (calcHPTResultWithCBy exp) `shouldBe` expected
