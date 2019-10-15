@@ -145,6 +145,7 @@ library
     Transformations.ExtendedSyntax.CountVariableUse
     Transformations.ExtendedSyntax.EffectMap
     Transformations.ExtendedSyntax.GenerateEval
+    Transformations.ExtendedSyntax.MangleNames
 
     Transformations.BindNormalisation
     Transformations.CountVariableUse
