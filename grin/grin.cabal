@@ -142,6 +142,7 @@ library
     Test.ExtendedSyntax.Util
 
     Transformations.ExtendedSyntax.BindNormalisation
+    Transformations.ExtendedSyntax.CountVariableUse
 
     Transformations.BindNormalisation
     Transformations.CountVariableUse
