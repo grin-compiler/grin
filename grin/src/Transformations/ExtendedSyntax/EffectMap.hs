@@ -1,5 +1,5 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
-module Transformations.ExtendedSyntax.EffectMap
+{-# LANGUAGE LambdaCase, OverloadedStrings, ViewPatterns #-}
+module Transformations.ExtendedSyntax.EffectMap {-# DEPRECATED "Use EffectTracking instead" #-}
   ( effectMap
   ) where
 
@@ -39,7 +39,7 @@ effectMap (te, e) = EffectMap $ withEffectfulExternals $ effectfulFunctions $ un
   buildEffectMap :: ExpF (Exp, (Set EffectWithCalls, MonoidMap Name (Set EffectWithCalls))) -> (Set EffectWithCalls, MonoidMap Name (Set EffectWithCalls))
   buildEffectMap =  \case
     DefF name _ (_,(effs, _)) -> (mempty, MMap $ Map.singleton name effs)
-    EBindF (SStore _,lhs) (Var v) (_,rhs)
+    EBindF (SStore _,lhs) (_bPatVar -> v) (_,rhs)
       | Just locs <- te ^? variable . at v . _Just . _T_SimpleType . _T_Location
       -> let storeEff = (Set.singleton $ Effect $ storesEff locs, mempty)
          in lhs <> rhs <> storeEff
