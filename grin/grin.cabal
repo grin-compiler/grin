@@ -295,6 +295,8 @@ test-suite grin-test
                      ExtendedSyntax.ParserSpec
                      Transformations.ExtendedSyntax.BindNormalisationSpec
                      Transformations.ExtendedSyntax.ConversionSpec
+                     Transformations.ExtendedSyntax.MangleNamesSpec
+
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec
                      Transformations.Simplifying.SplitFetchSpec
