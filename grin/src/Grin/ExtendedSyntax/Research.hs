@@ -16,6 +16,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Grin.ExtendedSyntax.Research where
 
+{- QUESTION: is this module needed?
 import Data.Functor.Foldable
 import Grin.ExtendedSyntax.Syntax
 import Lens.Micro.Platform
@@ -200,3 +201,4 @@ testMain = do
   let Just (cexp, res) = calcSimpleTypes testProg
   print res
   putStrLn $ showWide $ prettyAnnExp $ fmap (const id) cexp
+-}
