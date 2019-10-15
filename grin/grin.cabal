@@ -140,6 +140,9 @@ library
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
     Test.ExtendedSyntax.Util
+
+    Transformations.ExtendedSyntax.BindNormalisation
+
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
