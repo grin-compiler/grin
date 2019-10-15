@@ -284,6 +284,7 @@ test-suite grin-test
 
   other-modules:
                      ExtendedSyntax.LintSpec
+                     ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec
                      Transformations.ExtendedSyntax.ConversionSpec
                      Transformations.Simplifying.RegisterIntroductionSpec
