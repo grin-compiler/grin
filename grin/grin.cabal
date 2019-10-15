@@ -143,6 +143,7 @@ library
 
     Transformations.ExtendedSyntax.BindNormalisation
     Transformations.ExtendedSyntax.CountVariableUse
+    Transformations.ExtendedSyntax.EffectMap
 
     Transformations.BindNormalisation
     Transformations.CountVariableUse
