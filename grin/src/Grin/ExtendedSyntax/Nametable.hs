@@ -51,9 +51,7 @@ lit = pure -- TODO: Handle string literals
 
 value :: Val -> NametableM Val
 value = \case
-  ConstTagNode t vs -> ConstTagNode <$> tag t <*> mapM value vs
-  VarTagNode   n vs -> VarTagNode <$> nameToIdx n <*> mapM value vs
-  ValTag       t    -> ValTag <$> tag t
+  ConstTagNode t vs -> ConstTagNode <$> tag t <*> mapM nameToIdx vs
   Unit              -> pure Unit
   Lit l             -> Lit <$> lit l
   Var n             -> Var <$> nameToIdx n
@@ -64,7 +62,6 @@ cpat = \case
   NodePat t ns -> NodePat <$> tag t <*> mapM nameToIdx ns
   LitPat  l    -> LitPat <$> lit l
   DefaultPat   -> pure DefaultPat
-  TagPat  t    -> TagPat <$> tag t
 
 ty :: Ty -> NametableM Ty
 ty = \case
@@ -86,17 +83,18 @@ convert :: Exp -> (Exp, Nametable)
 convert = second (view nametable) . flip runState emptyNS . cata build where
   build :: ExpF (NametableM Exp) -> NametableM Exp
   build = \case
-    ProgramF es defs  -> Program <$> mapM external es <*> sequence defs
-    DefF fn ps body   -> Def <$> (nameToIdx fn) <*> (mapM nameToIdx ps) <*> body
-    EBindF l v r      -> EBind <$> l <*> value v <*> r
-    ECaseF v alts     -> ECase <$> value v <*> sequence alts
-    SAppF v ps        -> SApp <$> nameToIdx v <*> (mapM value ps)
-    SReturnF v        -> SReturn <$> value v
-    SStoreF v         -> SStore <$> value v
-    SFetchIF n p      -> SFetchI <$> nameToIdx n <*> (pure p)
-    SUpdateF n v      -> SUpdate <$> nameToIdx n <*> value v
-    SBlockF body      -> SBlock <$> body
-    AltF cp e         -> Alt <$> cpat cp <*> e
+    ProgramF es defs            -> Program <$> mapM external es <*> sequence defs
+    DefF fn ps body             -> Def <$> (nameToIdx fn) <*> (mapM nameToIdx ps) <*> body
+    EBindF l (VarPat v) r       -> EBind <$> l <*> (VarPat <$> nameToIdx v) <*> r
+    EBindF l (AsPat var val) r  -> EBind <$> l <*> (AsPat <$> nameToIdx var <*> value val) <*> r
+    ECaseF v alts               -> ECase <$> nameToIdx v <*> sequence alts
+    SAppF v ps                  -> SApp <$> nameToIdx v <*> (mapM nameToIdx ps)
+    SReturnF v                  -> SReturn <$> value v
+    SStoreF v                   -> SStore <$> nameToIdx v
+    SFetchF ptr                 -> SFetch <$> nameToIdx ptr
+    SUpdateF ptr var            -> SUpdate <$> nameToIdx ptr <*> nameToIdx var
+    SBlockF body                -> SBlock <$> body
+    AltF cp e                   -> Alt <$> cpat cp <*> e
 
 -- * Restore
 
@@ -106,26 +104,25 @@ restore :: (Exp, Nametable) -> Exp
 restore (exp, nt) = cata build exp where
   build :: ExpF Exp -> Exp
   build = \case
-    ProgramF es defs  -> Program (map rexternal es) defs
-    DefF fn ps body   -> Def (rname fn) (map rname ps) body
-    EBindF l v r      -> EBind l (rvalue v) r
-    ECaseF v alts     -> ECase (rvalue v) alts
-    SAppF v ps        -> SApp (rname v) (map rvalue ps)
-    SReturnF v        -> SReturn (rvalue v)
-    SStoreF v         -> SStore (rvalue v)
-    SFetchIF n p      -> SFetchI (rname n) p
-    SUpdateF n v      -> SUpdate (rname n) (rvalue v)
-    SBlockF body      -> SBlock body
-    AltF cp e         -> Alt (rcpat cp) e
+    ProgramF es defs           -> Program (map rexternal es) defs
+    DefF fn ps body            -> Def (rname fn) (map rname ps) body
+    EBindF l (VarPat v) r      -> EBind l (VarPat $ rname v) r
+    EBindF l (AsPat var val) r -> EBind l (AsPat (rname var) (rvalue val)) r
+    ECaseF v alts              -> ECase (rname v) alts
+    SAppF v ps                 -> SApp (rname v) (map rname ps)
+    SReturnF v                 -> SReturn (rvalue v)
+    SStoreF v                  -> SStore (rname v)
+    SFetchF ptr                -> SFetch (rname ptr)
+    SUpdateF ptr var           -> SUpdate (rname ptr) (rname var)
+    SBlockF body               -> SBlock body
+    AltF cp e                  -> Alt (rcpat cp) e
 
   rname :: Name -> Name
   rname (NI i) = maybe (error $ show i ++ " is not found") NM $ Map.lookup i nt
 
   rvalue :: Val -> Val
   rvalue = \case
-    ConstTagNode t vs -> ConstTagNode (rtag t) (map rvalue vs)
-    VarTagNode   n vs -> VarTagNode (rname n) (map rvalue vs)
-    ValTag       t    -> ValTag (rtag t)
+    ConstTagNode t vs -> ConstTagNode (rtag t) (map rname vs)
     Unit              -> Unit
     Lit l             -> Lit (rlit l)
     Var n             -> Var (rname n)
@@ -142,7 +139,6 @@ restore (exp, nt) = cata build exp where
     NodePat t ns -> NodePat (rtag t) (map rname ns)
     LitPat  l    -> LitPat (rlit l)
     DefaultPat   -> DefaultPat
-    TagPat  t    -> TagPat (rtag t)
 
   rexternal :: External -> External
   rexternal External{..} =
