@@ -41,16 +41,14 @@ prettyAnnExp exp = cata folder exp where
       ProgramF exts defs  -> vcat (map pretty defs)
       DefF name args exp  -> hsep (pretty name : map pretty args) <+> text "=" <$$> indent 2 (pretty exp) <> line
       -- Exp
-      EBindF simpleexp Unit exp -> pretty simpleexp <$$> pretty exp
-      EBindF simpleexp lpat exp -> pretty lpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
-      ECaseF val alts   -> keyword "case" <+> pretty val <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
+      EBindF simpleexp bpat exp -> pretty bpat <+> text "<-" <+> pretty simpleexp <$$> pretty exp
+      ECaseF scrut alts         -> keyword "case" <+> pretty scrut <+> keyword "of" <$$> indent 2 (vsep (map pretty alts))
       -- Simple Expr
       SAppF name args         -> hsep (((if isExternalName exts name then dullyellow else cyan) $ pretty name) : map pretty args)
       SReturnF val            -> keyword "pure" <+> pretty val
-      SStoreF val             -> keywordR "store" <+> pretty val
-      SFetchIF name Nothing   -> keywordR "fetch" <+> pretty name
-      SFetchIF name (Just i)  -> keywordR "fetch" <+> pretty name <> brackets (int i)
-      SUpdateF name val       -> keywordR "update" <+> pretty name <+> pretty val
+      SStoreF var             -> keywordR "store" <+> pretty var
+      SFetchF ptr             -> keywordR "fetch" <+> pretty ptr
+      SUpdateF ptr var        -> keywordR "update" <+> pretty ptr <+> pretty var
       SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
       AltF cpat exp     -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
