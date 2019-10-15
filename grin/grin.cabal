@@ -102,12 +102,16 @@ library
     Grin.ExtendedSyntax.Grin
     Grin.ExtendedSyntax.EffectMap
     Grin.ExtendedSyntax.Lint
+    Grin.ExtendedSyntax.Nametable
     Grin.ExtendedSyntax.Parse
     Grin.ExtendedSyntax.Parse.AST
     Grin.ExtendedSyntax.Parse.Basic
     Grin.ExtendedSyntax.Parse.TypeEnv
     Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.PrettyLint
     Grin.ExtendedSyntax.PrimOpsPrelude
+    Grin.ExtendedSyntax.Research
+    Grin.ExtendedSyntax.Statistics
     Grin.ExtendedSyntax.TH
     Grin.ExtendedSyntax.TypeCheck
     Grin.ExtendedSyntax.TypeEnv
