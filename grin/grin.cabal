@@ -17,6 +17,17 @@ library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
   exposed-modules:
+    AbstractInterpretation.ExtendedSyntax.IR
+    AbstractInterpretation.ExtendedSyntax.PrettyIR
+    AbstractInterpretation.ExtendedSyntax.BinaryIR
+    AbstractInterpretation.ExtendedSyntax.BinaryResult
+    AbstractInterpretation.ExtendedSyntax.ReduceCpp
+    AbstractInterpretation.ExtendedSyntax.Reduce
+    AbstractInterpretation.ExtendedSyntax.Util
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result
     AbstractInterpretation.CreatedBy.Result
     AbstractInterpretation.CreatedBy.Readback
     AbstractInterpretation.CreatedBy.Util
@@ -70,12 +81,15 @@ library
     Grin.ExtendedSyntax.SyntaxDefs
     Grin.ExtendedSyntax.Grin
     Grin.ExtendedSyntax.EffectMap
+    Grin.ExtendedSyntax.Lint
     Grin.ExtendedSyntax.Parse
     Grin.ExtendedSyntax.Parse.AST
     Grin.ExtendedSyntax.Parse.Basic
     Grin.ExtendedSyntax.Parse.TypeEnv
     Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.PrimOpsPrelude
     Grin.ExtendedSyntax.TH
+    Grin.ExtendedSyntax.TypeCheck
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
     Pipeline.Eval
@@ -98,6 +112,7 @@ library
     Test.Test
     Test.Util
     Test.ExtendedSyntax.Assertions
+    Test.ExtendedSyntax.Util
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
     Transformations.BindNormalisation
@@ -110,6 +125,7 @@ library
     Transformations.UnitPropagation
     Transformations.Util
     Transformations.ExtendedSyntax.Conversion
+    Transformations.ExtendedSyntax.Util
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CaseHoisting
@@ -241,6 +257,7 @@ test-suite grin-test
                      , inline-c
 
   other-modules:
+                     ExtendedSyntax.LintSpec
                      ExtendedSyntax.ParserSpec
                      Transformations.ExtendedSyntax.ConversionSpec
                      Transformations.Simplifying.RegisterIntroductionSpec
@@ -282,6 +299,7 @@ test-suite grin-test
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
+                     AbstractInterpretation.ExtendedSyntax.HptSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
                      AbstractInterpretation.EffectTrackingSpec
