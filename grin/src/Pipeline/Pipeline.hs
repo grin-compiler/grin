@@ -709,6 +709,7 @@ callCommand cmd = do
 saveLLVM :: Path -> PipelineM ()
 saveLLVM path = do
   e <- use psExp
+  pipelineStep HPTPass
   Just typeEnv <- use psTypeEnv
   fname <- relPath path
   let code = CGLLVM.codeGen typeEnv e
