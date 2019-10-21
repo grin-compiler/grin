@@ -50,5 +50,4 @@
 - Adam S E
 - Michael
 - Chai T. Rex
-- Huerta G
 <!--10 end-->
