@@ -107,7 +107,7 @@ calcSharingResult prog
   = shResult
 
 testProgram :: Exp
--- The syntax conversion preserves the abstarct heap layout
+-- The syntax conversion preserves the abstract heap layout
 testProgram = withPrimPrelude . convertToNew $ [Old.prog|
     grinMain = t1 <- store (CInt 1)
                t2 <- store (CInt 10000)
