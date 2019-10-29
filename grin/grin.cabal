@@ -24,6 +24,10 @@ library
     AbstractInterpretation.ExtendedSyntax.ReduceCpp
     AbstractInterpretation.ExtendedSyntax.Reduce
     AbstractInterpretation.ExtendedSyntax.Util
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGen
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.Pretty
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.Result
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen
     AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
@@ -129,6 +133,7 @@ library
     Transformations.UnitPropagation
     Transformations.Util
     Transformations.ExtendedSyntax.Conversion
+    Transformations.ExtendedSyntax.Names
     Transformations.ExtendedSyntax.Util
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
@@ -303,6 +308,7 @@ test-suite grin-test
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
+                     AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
                      AbstractInterpretation.ExtendedSyntax.HptSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
                      AbstractInterpretation.HptSpec
