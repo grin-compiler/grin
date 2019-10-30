@@ -24,6 +24,12 @@ library
     AbstractInterpretation.ExtendedSyntax.ReduceCpp
     AbstractInterpretation.ExtendedSyntax.Reduce
     AbstractInterpretation.ExtendedSyntax.Util
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Util
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGen
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Pretty
     AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGenBase
     AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGen
     AbstractInterpretation.ExtendedSyntax.EffectTracking.Pretty
@@ -124,9 +130,9 @@ library
     Test.Test
     Test.Util
     Test.ExtendedSyntax.Assertions
-    Test.ExtendedSyntax.Util
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
+    Test.ExtendedSyntax.Util
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -313,6 +319,7 @@ test-suite grin-test
                      PrimOpsSpec
                      NametableSpec
                      AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
+                     AbstractInterpretation.ExtendedSyntax.CreatedBySpec
                      AbstractInterpretation.ExtendedSyntax.HptSpec
                      AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
