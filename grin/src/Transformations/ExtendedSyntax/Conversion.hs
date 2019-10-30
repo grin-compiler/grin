@@ -27,6 +27,7 @@ import qualified Grin.ExtendedSyntax.Syntax as New
 import qualified Grin.ExtendedSyntax.SyntaxDefs as New
 import qualified Grin.ExtendedSyntax.TypeEnvDefs as New
 
+import Transformations.Util
 import Transformations.Names
 import Transformations.BindNormalisation
 import Transformations.Simplifying.ProducerNameIntroduction
@@ -109,7 +110,7 @@ instance Convertible CPat New.CPat where
     NodePat t args -> New.NodePat (convert t) (map convert args)
     LitPat l       -> New.LitPat (convert l)
     DefaultPat     -> New.DefaultPat
-    TagPat _ -> error "covnert: Tag patterns are not supported in the new syntax."
+    TagPat _ -> error "convert: Tag patterns are not supported in the new syntax."
 
 instance Convertible Val New.Val where
   convert n@(ConstTagNode t vals)
@@ -123,38 +124,40 @@ instance Convertible Val New.Val where
   convert (Undefined t) = New.Undefined (convert t)
 
 instance Convertible Exp New.Exp where
-  convert (Program exts defs)  = New.Program (map convert exts) (map convert defs)
-  convert (Def name args body) = New.Def (convert name) (map convert args) (convert body)
-  {- NOTE: we assume Binding Pattern Simplification has been run
-    v.0 <- pure <value>
-    <non-var pat> <- pure v.0
-    <rhs2>
-  -}
-  convert (EBind lhs1 (Var var) rhs1)
-    | EBind (SReturn (Var var')) pat rhs2 <- rhs1
-    , isn't _Var pat
-    , var == var'
-    = New.EBind (convert lhs1) (New.AsPat (convert var) (convert pat)) (convert rhs2)
-  convert (EBind lhs (Var var) rhs)
-    = New.EBind (convert lhs) (New.VarPat $ convert var) (convert rhs)
-  convert (ECase scrut alts)
-    | isn't _Var scrut   = error $ "Non-variable pattern in case scrutinee: " ++ show (PP scrut)
-    | (Var var) <- scrut = New.ECase (convert var) (map convert alts)
-  convert e@(SApp f vals)
-    | any (isn't _Var) vals = error $ "Non-variable value in application: " ++ show (PP e)
-    | otherwise             = New.SApp (convert f) $ map (convert . view _Var) vals
-  convert e@(SStore val)
-    | isn't _Var val   = error $ "Non-variable value in store: " ++ show (PP e)
-    | (Var var) <- val = New.SStore (convert var)
-  convert e@(SFetchI ptr mIx)
-    | Nothing <- mIx = New.SFetch (convert ptr)
-    | otherwise      = error $ "Indexed fetch is no longer supported: " ++ show (PP e)
-  convert e@(SUpdate ptr val)
-    | isn't _Var val   = error $ "Non-variable value in update: " ++ show (PP e)
-    | (Var var) <- val = New.SUpdate (convert ptr) (convert var)
-  convert (SReturn val)  = New.SReturn (convert val)
-  convert (SBlock exp)   = New.SBlock (convert exp)
-  convert (Alt cpat exp) = New.Alt (convert cpat) (convert exp)
+  convert exp = flip ana exp $ \case
+    (Program exts defs)  -> New.ProgramF (map convert exts) defs
+    (Def name args body) -> New.DefF (convert name) (map convert args) body
+    {- NOTE: we assume Binding Pattern Simplification has been run
+      v.0 <- pure <value>
+      <non-var pat> <- pure v.0
+      <rhs2>
+    -}
+    (EBind lhs1 (Var var) rhs1)
+      | EBind (SReturn (Var var')) pat rhs2 <- rhs1
+      , isn't _Var pat
+      , var == var'
+      -> New.EBindF lhs1 (New.AsPat (convert var) (convert pat)) rhs2
+    (EBind lhs (Var var) rhs)
+      -> New.EBindF lhs (New.VarPat $ convert var) rhs
+    (ECase scrut alts)
+      | isn't _Var scrut   -> error $ "Non-variable pattern in case scrutinee: " ++ show (PP scrut)
+      | (Var var) <- scrut -> New.ECaseF (convert var) alts
+    e@(SApp f vals)
+      | any (isn't _Var) vals -> error $ "Non-variable value in application: " ++ show (PP e)
+      | otherwise             -> New.SAppF (convert f) $ map (convert . view _Var) vals
+    e@(SStore val)
+      | isn't _Var val   -> error $ "Non-variable value in store: " ++ show (PP e)
+      | (Var var) <- val -> New.SStoreF (convert var)
+    e@(SFetchI ptr mIx)
+      | Nothing <- mIx -> New.SFetchF (convert ptr)
+      | otherwise      -> error $ "Indexed fetch is no longer supported: " ++ show (PP e)
+    e@(SUpdate ptr val)
+      | isn't _Var val   -> error $ "Non-variable value in update: " ++ show (PP e)
+      | (Var var) <- val -> New.SUpdateF (convert ptr) (convert var)
+    (SReturn val)  -> New.SReturnF (convert val)
+    (SBlock exp)   -> New.SBlockF exp
+    -- TODO: to NAlt
+    (Alt cpat exp) -> New.AltF (convert cpat) exp
 
 instance Convertible New.TagType TagType where
   convert = \case
@@ -247,6 +250,7 @@ instance Convertible New.Exp Exp where
   convert (New.SUpdate ptr var)    = SUpdate (convert ptr) (Var $ convert var)
   convert (New.SReturn val)        = SReturn (convert val)
   convert (New.SBlock exp)         = SBlock (convert exp)
+  -- TODO: NAlt
   convert (New.Alt cpat exp)       = Alt (convert cpat) (convert exp)
 
 convertToNew :: Exp -> New.Exp
