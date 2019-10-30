@@ -8,8 +8,8 @@ import Grin.ExtendedSyntax.TypeEnv
 
 -- import AbstractInterpretation.CreatedBy.Pretty
 -- import AbstractInterpretation.CreatedBy.Result (ProducerMap,ProducerGraph(..))
--- import AbstractInterpretation.LiveVariable.Pretty
--- import AbstractInterpretation.LiveVariable.Result (LVAResult)
+import AbstractInterpretation.ExtendedSyntax.LiveVariable.Pretty
+import AbstractInterpretation.ExtendedSyntax.LiveVariable.Result (LVAResult)
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result (HPTResult)
 import AbstractInterpretation.ExtendedSyntax.EffectTracking.Pretty
@@ -29,8 +29,8 @@ instance SameAs TypeEnv where
 instance SameAs HPTResult where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
 
--- instance SameAs LVAResult where
---   sameAs found expected = (PP found) `shouldBe` (PP expected)
+instance SameAs LVAResult where
+  sameAs found expected = (PP found) `shouldBe` (PP expected)
 
 instance SameAs ETResult where
   sameAs found expected = (PP found) `shouldBe` (PP expected)
