@@ -109,7 +109,6 @@ library
     Grin.ExtendedSyntax.Pretty
     Grin.ExtendedSyntax.PrettyLint
     Grin.ExtendedSyntax.PrimOpsPrelude
-    Grin.ExtendedSyntax.Research
     Grin.ExtendedSyntax.Statistics
     Grin.ExtendedSyntax.TH
     Grin.ExtendedSyntax.TypeCheck
