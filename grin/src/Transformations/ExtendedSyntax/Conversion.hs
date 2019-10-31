@@ -12,6 +12,7 @@ import qualified Data.Map    as M
 import qualified Data.Vector as V
 
 import Control.Monad
+import Control.Monad.Identity
 
 import Lens.Micro.Extra
 import Lens.Micro.Platform
@@ -33,10 +34,6 @@ import Transformations.BindNormalisation
 import Transformations.Simplifying.ProducerNameIntroduction
 import Transformations.Simplifying.BindingPatternSimplification
 
--- TODO: remove these
-import Test.QuickCheck
-import Test.ExtendedSyntax.Old.Test()
-import qualified Test.ExtendedSyntax.Old.Grammar as OG
 
 class Convertible a b where
   convert :: a -> b
@@ -124,9 +121,9 @@ instance Convertible Val New.Val where
   convert (Undefined t) = New.Undefined (convert t)
 
 instance Convertible Exp New.Exp where
-  convert exp = flip ana exp $ \case
-    (Program exts defs)  -> New.ProgramF (map convert exts) defs
-    (Def name args body) -> New.DefF (convert name) (map convert args) body
+  convert exp = fst $ evalNameM exp $ flip anaM exp $ \case
+    (Program exts defs)  -> pure $ New.ProgramF (map convert exts) defs
+    (Def name args body) -> pure $ New.DefF (convert name) (map convert args) body
     {- NOTE: we assume Binding Pattern Simplification has been run
       v.0 <- pure <value>
       <non-var pat> <- pure v.0
@@ -136,28 +133,30 @@ instance Convertible Exp New.Exp where
       | EBind (SReturn (Var var')) pat rhs2 <- rhs1
       , isn't _Var pat
       , var == var'
-      -> New.EBindF lhs1 (New.AsPat (convert var) (convert pat)) rhs2
+      -> pure $ New.EBindF lhs1 (New.AsPat (convert var) (convert pat)) rhs2
     (EBind lhs (Var var) rhs)
-      -> New.EBindF lhs (New.VarPat $ convert var) rhs
+      -> pure $ New.EBindF lhs (New.VarPat $ convert var) rhs
     (ECase scrut alts)
       | isn't _Var scrut   -> error $ "Non-variable pattern in case scrutinee: " ++ show (PP scrut)
-      | (Var var) <- scrut -> New.ECaseF (convert var) alts
+      | (Var var) <- scrut -> pure $ New.ECaseF (convert var) alts
     e@(SApp f vals)
       | any (isn't _Var) vals -> error $ "Non-variable value in application: " ++ show (PP e)
-      | otherwise             -> New.SAppF (convert f) $ map (convert . view _Var) vals
+      | otherwise             -> pure $ New.SAppF (convert f) $ map (convert . view _Var) vals
     e@(SStore val)
       | isn't _Var val   -> error $ "Non-variable value in store: " ++ show (PP e)
-      | (Var var) <- val -> New.SStoreF (convert var)
+      | (Var var) <- val -> pure $ New.SStoreF (convert var)
     e@(SFetchI ptr mIx)
-      | Nothing <- mIx -> New.SFetchF (convert ptr)
+      | Nothing <- mIx -> pure $ New.SFetchF (convert ptr)
       | otherwise      -> error $ "Indexed fetch is no longer supported: " ++ show (PP e)
     e@(SUpdate ptr val)
       | isn't _Var val   -> error $ "Non-variable value in update: " ++ show (PP e)
-      | (Var var) <- val -> New.SUpdateF (convert ptr) (convert var)
-    (SReturn val)  -> New.SReturnF (convert val)
-    (SBlock exp)   -> New.SBlockF exp
+      | (Var var) <- val -> pure $ New.SUpdateF (convert ptr) (convert var)
+    (SReturn val)  -> pure $ New.SReturnF (convert val)
+    (SBlock exp)   -> pure $ New.SBlockF exp
     -- TODO: to NAlt
-    (Alt cpat exp) -> New.AltF (convert cpat) exp
+    (Alt cpat exp) -> do
+      altName <- deriveNewName "alt"
+      pure $ New.NAltF (convert cpat) (convert altName) exp
 
 instance Convertible New.TagType TagType where
   convert = \case
