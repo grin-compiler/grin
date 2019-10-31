@@ -25,7 +25,6 @@ library
     AbstractInterpretation.ExtendedSyntax.Reduce
     AbstractInterpretation.ExtendedSyntax.Util
     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgram
-    AbstractInterpretation.ExtendedSyntax.Model
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Util
