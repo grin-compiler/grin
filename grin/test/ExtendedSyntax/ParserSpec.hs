@@ -112,16 +112,16 @@ spec = do
       let before = [prog|
         test p =
           _unit@() <- case p of
-            #default ->
+            #default@_1 ->
               pure ()
           case p of
-            #default ->
+            #default@_2 ->
               pure p
         |]
       let after = Program []
             [ Def "test"[ "p" ]
-              ( EBind ( ECase "p" [ Alt DefaultPat ( SReturn Unit ) ] ) (AsPat "_unit" Unit)
-                ( ECase "p" [ Alt DefaultPat ( SReturn (Var "p") ) ] )
+              ( EBind ( ECase "p" [ NAlt DefaultPat "_1" ( SReturn Unit ) ] ) (AsPat "_unit" Unit)
+                ( ECase "p" [ NAlt DefaultPat "_2" ( SReturn (Var "p") ) ] )
               )
             ]
       before `sameAs` after
@@ -163,29 +163,29 @@ spec = do
       let before = [prog|
         grinMain =
           case scrut of
-            13.1415   -> pure ()
-            +14.1415  -> pure ()
-            -14.1415  -> pure ()
-            42        -> pure ()
-            +43       -> pure ()
-            -42       -> pure ()
-            64u       -> pure ()
-            (CNode a1 a2 a3 a4 a5) -> pure ()
-            #default  -> pure ()
-            #True     -> pure ()
-            #False    -> pure ()
+            13.1415@_1   -> pure ()
+            +14.1415@_2  -> pure ()
+            -14.1415@_3  -> pure ()
+            42@_4        -> pure ()
+            +43@_5       -> pure ()
+            -42@_6       -> pure ()
+            64u@_7       -> pure ()
+            (CNode a1 a2 a3 a4 a5)@_8 -> pure ()
+            #default@_9  -> pure ()
+            #True@_10    -> pure ()
+            #False@_11   -> pure ()
         |]
       let after = Program []
             [ Def "grinMain"[]
                 ( ECase "scrut"
-                    [ Alt ( LitPat ( LFloat 13.1415 ) ) ( SReturn Unit )
-                    , Alt ( LitPat ( LFloat 14.1415 ) ) ( SReturn Unit )
-                    , Alt ( LitPat ( LFloat ( -14.1415 ) ) ) ( SReturn Unit )
-                    , Alt ( LitPat ( LInt64 42 ) ) ( SReturn Unit )
-                    , Alt ( LitPat ( LInt64 43 ) ) ( SReturn Unit )
-                    , Alt ( LitPat ( LInt64 ( -42 ) ) ) ( SReturn Unit )
-                    , Alt ( LitPat ( LWord64 64 ) ) ( SReturn Unit )
-                    , Alt
+                    [ NAlt ( LitPat ( LFloat 13.1415 ) ) "_1" ( SReturn Unit )
+                    , NAlt ( LitPat ( LFloat 14.1415 ) ) "_2" ( SReturn Unit )
+                    , NAlt ( LitPat ( LFloat ( -14.1415 ) ) ) "_3" ( SReturn Unit )
+                    , NAlt ( LitPat ( LInt64 42 ) ) "_4" ( SReturn Unit )
+                    , NAlt ( LitPat ( LInt64 43 ) ) "_5" ( SReturn Unit )
+                    , NAlt ( LitPat ( LInt64 ( -42 ) ) ) "_6" ( SReturn Unit )
+                    , NAlt ( LitPat ( LWord64 64 ) ) "_7" ( SReturn Unit )
+                    , NAlt
                         ( NodePat
                             ( Tag
                                 { tagType = C
@@ -198,10 +198,10 @@ spec = do
                             , "a4"
                             , "a5"
                             ]
-                        ) ( SReturn Unit )
-                    , Alt DefaultPat ( SReturn Unit )
-                    , Alt ( LitPat ( LBool True ) ) ( SReturn Unit )
-                    , Alt ( LitPat ( LBool False ) ) ( SReturn Unit )
+                        ) "_8" ( SReturn Unit )
+                    , NAlt DefaultPat "_9" ( SReturn Unit )
+                    , NAlt ( LitPat ( LBool True ) ) "_10" ( SReturn Unit )
+                    , NAlt ( LitPat ( LBool False ) ) "_11" ( SReturn Unit )
                     ]
                 )
             ]
@@ -294,9 +294,9 @@ spec = do
             v1 <- pure #""
             v2 <- pure #"a"
             v3 <- case v1 of
-              #"" -> pure 1
-              #"a" -> pure 2
-              #default -> pure 3
+              #""@_1 -> pure 1
+              #"a"@_2 -> pure 2
+              #default@_3 -> pure 3
             _x@#"a" <- pure v2
             pure ()
         |]
@@ -305,9 +305,9 @@ spec = do
             EBind (SReturn (Lit (LString ""))) (VarPat "v1") $
             EBind (SReturn (Lit (LString "a"))) (VarPat "v2") $
             EBind (ECase "v1" $
-              [Alt (LitPat (LString "")) (SReturn (Lit (LInt64 1)))
-              ,Alt (LitPat (LString "a")) (SReturn (Lit (LInt64 2)))
-              ,Alt DefaultPat (SReturn (Lit (LInt64 3)))
+              [NAlt (LitPat (LString "")) "_1" (SReturn (Lit (LInt64 1)))
+              ,NAlt (LitPat (LString "a")) "_2" (SReturn (Lit (LInt64 2)))
+              ,NAlt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
               ]) (VarPat "v3") $
             EBind (SReturn $ Var "v2") (AsPat "_x" $ (Lit (LString "a"))) $
             SReturn Unit
@@ -319,9 +319,9 @@ spec = do
           grinMain =
             v2 <- pure #'a'
             v3 <- case v2 of
-              #'b' -> pure 1
-              #'c' -> pure 2
-              #default -> pure 3
+              #'b'@_1 -> pure 1
+              #'c'@_2 -> pure 2
+              #default@_3 -> pure 3
             _c@#'a' <- pure v2
             pure ()
         |]
@@ -329,9 +329,9 @@ spec = do
           [Def "grinMain" [] $
             EBind (SReturn (Lit (LChar 'a'))) (VarPat "v2") $
             EBind (ECase "v2" $
-              [Alt (LitPat (LChar 'b')) (SReturn (Lit (LInt64 1)))
-              ,Alt (LitPat (LChar 'c')) (SReturn (Lit (LInt64 2)))
-              ,Alt DefaultPat (SReturn (Lit (LInt64 3)))
+              [NAlt (LitPat (LChar 'b')) "_1" (SReturn (Lit (LInt64 1)))
+              ,NAlt (LitPat (LChar 'c')) "_2" (SReturn (Lit (LInt64 2)))
+              ,NAlt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
               ]) (VarPat "v3") $
             EBind (SReturn $ Var "v2") (AsPat "_c" $ Lit (LChar 'a')) $
             SReturn Unit
