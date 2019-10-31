@@ -249,8 +249,8 @@ instance Convertible New.Exp Exp where
   convert (New.SUpdate ptr var)    = SUpdate (convert ptr) (Var $ convert var)
   convert (New.SReturn val)        = SReturn (convert val)
   convert (New.SBlock exp)         = SBlock (convert exp)
-  -- TODO: NAlt
   convert (New.Alt cpat exp)       = Alt (convert cpat) (convert exp)
+  convert (New.NAlt cpat _ exp)    = Alt (convert cpat) (convert exp)
 
 convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
