@@ -207,17 +207,45 @@ spec = do
             ]
       before `sameAs` after
 
+    it "block" $ do
+      let before = [prog|
+        grinMain =
+          a <- do
+            pure ()
+          pure ()
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SBlock $ SReturn Unit) (VarPat "a") (SReturn Unit)
+            ]
+      before `sameAs` after
+
+    it "nested block" $ do
+      let before = [prog|
+        grinMain =
+          a <- do
+            b <- do
+              pure ()
+            pure ()
+          pure ()
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SBlock $ EBind (SBlock $ SReturn Unit) (VarPat "b") (SReturn Unit)) (VarPat "a") (SReturn Unit)
+            ]
+      before `sameAs` after
+
     xit "bind case on left hand side" $ do
       let before = [expr|
           x <-
             case y of
-              1 -> pure 2
+              1@_1 -> pure 2
           pure x
       |]
       let after =
             EBind
               (ECase "y"
-                [ Alt (LitPat (LInt64 1)) $ SReturn $ Lit $ LInt64 2
+                [ NAlt (LitPat (LInt64 1)) ("_1") $ SReturn $ Lit $ LInt64 2
                 ])
               (VarPat "x") $
             SReturn (Var "x")
