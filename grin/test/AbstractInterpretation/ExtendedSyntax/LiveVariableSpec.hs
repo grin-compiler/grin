@@ -31,6 +31,9 @@ import AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec (calcEffects)
 
    Variables with names like "_<i>" are introduced just for named bindings.
    They will never be used.
+
+   Variables with names like "alt<i>" are introduced just for named case alternatives.
+   They will never be used.
 -}
 
 runTests :: IO ()
@@ -107,7 +110,7 @@ spec = describe "Live Variable Analysis" $ do
             n0 <- pure (CInt x0)
             n1@(CInt _v) <- pure n0
             case n1 of
-              (CInt c0) -> _prim_int_print c0
+              (CInt c0)@alt0 -> _prim_int_print c0
       |]
     let variableAliasExpected = emptyLVAResult
           { _memory     = []
@@ -116,6 +119,8 @@ spec = describe "Live Variable Analysis" $ do
                           , ("c0", liveVal)
                           , ("n0", nodeSet [ (cInt, [live]) ])
                           , ("n1", nodeSet [ (cInt, [live]) ])
+
+                          , ("alt0", deadVal)
                           ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -129,9 +134,9 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- pure (CBool z0)
             case n0 of
-              (CBool c0) -> pure (CBool c0)
-              (CWord c1) -> pure (CNode c1)
-              #default   -> pure (CWord a0)
+              (CBool c0)@alt0 -> pure (CBool c0)
+              (CWord c1)@alt1 -> pure (CNode c1)
+              #default@alt2   -> pure (CWord a0)
         |]
     let caseAnonymousExpected = emptyLVAResult
           { _memory     = []
@@ -141,6 +146,9 @@ spec = describe "Live Variable Analysis" $ do
                           , ("n0", livenessN0)
 
                           , ("z0", liveVal)
+                          , ("alt0", deadVal)
+                          , ("alt1", deadVal)
+                          , ("alt2", deadVal)
                           ]
           , _functionLv = [ ("grinMain", fun (livenessN0, [])) ]
           }
@@ -157,9 +165,9 @@ spec = describe "Live Variable Analysis" $ do
             d <- pure 0
             e <- pure 0
             case a of
-              0 -> pure b
-              1 -> pure c
-              2 -> pure d
+              0@alt0 -> pure b
+              1@alt1 -> pure c
+              2@alt2 -> pure d
         |]
     let caseMinLitExpected = emptyLVAResult
           { _memory     = []
@@ -169,6 +177,10 @@ spec = describe "Live Variable Analysis" $ do
               , ("c", liveVal)
               , ("d", liveVal)
               , ("e", deadVal)
+
+              , ("alt0", deadVal)
+              , ("alt1", deadVal)
+              , ("alt2", deadVal)
               ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -182,9 +194,9 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- pure (CBool z0)
             n1 <- case n0 of
-              (CBool c0) -> pure (CNode c0)
-              (CWord c1) -> pure (CWord c1)
-              #default   -> pure (CNope)
+              (CBool c0)@alt0 -> pure (CNode c0)
+              (CWord c1)@alt1 -> pure (CWord c1)
+              #default@alt2   -> pure (CNope)
             _1@(CNode b0) <- pure n1
             pure b0
         |]
@@ -199,6 +211,9 @@ spec = describe "Live Variable Analysis" $ do
 
               , ("z0", liveVal)
               , ("_1", nodeSet' [ (cNode, [dead, dead]) ])
+              , ("alt0", deadVal)
+              , ("alt1", deadVal)
+              , ("alt2", deadVal)
               ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -215,19 +230,21 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             case n0 of
-              (CBool c0) -> case n0 of
-                              (CBool c1) -> pure (CBool c1)
-                              (CWord c2) -> pure (CWord b0)
-                              (CNope c3) -> pure (CNope c3)
-              (CWord c4) -> case n0 of
-                              (CBool c5) -> pure (CBool b1)
-                              (CWord c6) -> pure (CWord c4)
-                              (CNope c7) -> pure (CNope c7)
+              (CBool c0)@alt0 ->
+                case n0 of
+                  (CBool c1)@alt1 -> pure (CBool c1)
+                  (CWord c2)@alt2 -> pure (CWord b0)
+                  (CNope c3)@alt3 -> pure (CNope c3)
+              (CWord c4)@alt3 ->
+                case n0 of
+                  (CBool c5)@alt4 -> pure (CBool b1)
+                  (CWord c6)@alt5 -> pure (CWord c4)
+                  (CNope c7)@alt6 -> pure (CNope c7)
           f x =
             z1 <- pure 0
             case x of
-              0 -> pure (CBool z1)
-              1 -> pure (CWord z1)
+              0@alt7 -> pure (CBool z1)
+              1@alt8 -> pure (CWord z1)
         |]
     let caseNestedExpected = emptyLVAResult
           { _memory     = []
@@ -252,6 +269,15 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
+          , ("alt4", deadVal)
+          , ("alt5", deadVal)
+          , ("alt6", deadVal)
+          , ("alt7", deadVal)
+          , ("alt8", deadVal)
           ]
         caseNestedExpectedFunctions =
           [ ("f", fun (livenessFRet, [liveVal]))
@@ -266,17 +292,20 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             case n0 of
-              (CInt  c0) -> _1@(CInt  b0) <- pure n0
-                            pure b0
-              (CBool c1) -> pure c1
-              #default   -> _2@(CWord b1) <- pure n0
-                            pure b1
+              (CInt  c0)@alt0 ->
+                _1@(CInt b0) <- pure n0
+                pure b0
+              (CBool c1)@alt1 ->
+                pure c1
+              #default@alt2 ->
+                _2@(CWord b1) <- pure n0
+                pure b1
 
           f x =
             z1 <- pure 0
             case x of
-              0 -> pure (CInt  z1)
-              1 -> pure (CWord z1)
+              0@alt3 -> pure (CInt  z1)
+              1@alt4 -> pure (CWord z1)
         |]
         caseRestrictedExpected = emptyLVAResult
           { _memory     = []
@@ -295,6 +324,11 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", liveVal)
           , ("_1", nodeSet' [ (cInt,  [dead, dead]) ])
           , ("_2", nodeSet' [ (cWord, [dead, dead]) ])
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
+          , ("alt4", deadVal)
           ]
         caseRestrictedExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessFRet, [liveVal])) ]
@@ -308,22 +342,25 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             n4 <- case n0 of
-              (CInt  c0) -> _1@(CInt  b0) <- pure n0
-                            n1 <- f b0
-                            pure n1
-              (CBool c1) -> n2 <- f c1
-                            pure n2
-              #default   -> _2@(CWord b1) <- pure n0
-                            n3 <- f b1
-                            pure n3
+              (CInt  c0)@alt0 ->
+                _1@(CInt  b0) <- pure n0
+                n1 <- f b0
+                pure n1
+              (CBool c1)@alt1 ->
+                n2 <- f c1
+                pure n2
+              #default@alt2 ->
+                _2@(CWord b1) <- pure n0
+                n3 <- f b1
+                pure n3
             pure n4
 
           f x =
             z1 <- pure 0
             case x of
-              0 -> pure (CInt  z1)
-              1 -> pure (CBool z1)
-              2 -> pure (CWord z1)
+              0@alt3 -> pure (CInt  z1)
+              1@alt4 -> pure (CBool z1)
+              2@alt5 -> pure (CWord z1)
         |]
         caseRestrictedNodesExpected = emptyLVAResult
           { _memory     = []
@@ -346,6 +383,12 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", liveVal)
           , ("_1", nodeSet' [ (cInt,  [dead, dead]) ])
           , ("_2", nodeSet' [ (cWord, [dead, dead]) ])
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
+          , ("alt4", deadVal)
+          , ("alt5", deadVal)
           ]
         caseRestrictedNodesExpectedFunctions =
           [ ("f",        fun (livenessFRet, [liveVal]))
@@ -386,15 +429,15 @@ spec = describe "Live Variable Analysis" $ do
             _2 <- update p1 z1
 
             n4 <- case z0 of
-              0 ->
+              0@alt0 ->
                 n2 <- fetch p0
                 pure n2
-              1 ->
+              1@alt1 ->
                 n3 <- fetch p1
                 pure n3
 
             case n4 of
-              (CInt c0) -> pure z0
+              (CInt c0)@alt2 -> pure z0
         |]
         deadTagsExpected = emptyLVAResult
           { _memory     = [ livenessN2, livenessN3 ]
@@ -415,6 +458,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", nodeSet [ (cInt, [dead]) ])
           , ("_1", deadLoc)
           , ("_2", deadLoc)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
           ]
         livenessN0 = deadNodeSet [ (cNil, 0) ]
         livenessN1 = deadNodeSet [ (cCons, 2) ]
@@ -431,12 +477,13 @@ spec = describe "Live Variable Analysis" $ do
             a1 <- pure 1
             n0 <- pure (CNode a0 a1)
             case n0 of
-              (CNode c0 c1) -> n1 <- pure (CNode c0 c1)
-                               f n1
+              (CNode c0 c1)@alt0 ->
+                n1 <- pure (CNode c0 c1)
+                f n1
 
           f x =
             case x of
-              (CNode c2 c3) -> pure c3
+              (CNode c2 c3)@alt1 -> pure c3
         |]
     let fieldsExpected = emptyLVAResult
           { _memory     = []
@@ -453,6 +500,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("c3", liveVal)
           , ("n1", livenessX)
           , ("x",  livenessX)
+
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
           ]
         fieldsExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [livenessX])) ]
@@ -470,8 +520,8 @@ spec = describe "Live Variable Analysis" $ do
 
           f x =
             case x of
-              (CFoo c0) -> pure c0
-              (CBar c1) -> pure z0
+              (CFoo c0)@alt0 -> pure c0
+              (CBar c1)@alt1 -> pure z0
         |]
     let functionCall1Expected = emptyLVAResult
           { _memory     = []
@@ -486,6 +536,8 @@ spec = describe "Live Variable Analysis" $ do
           , ("x",  livenessX)
 
           , ("z0", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
           ]
         livenessN = nodeSet [ (cFoo, [live]) ]
         livenessX = nodeSet [ (cFoo, [live]) ]
@@ -534,7 +586,7 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             z1 <- pure (CBool z0)
             p0 <- case z1 of
-              (CBool c1) ->
+              (CBool c1)@alt0 ->
                 z2 <- pure (CBool c1)
                 store z2
             _1@(CBool a1) <- fetch p0
@@ -550,6 +602,7 @@ spec = describe "Live Variable Analysis" $ do
                           , ("z1", nodeSet  [ (cBool, [live]) ])
                           , ("z2", nodeSet  [ (cBool, [live]) ])
                           , ("_1", nodeSet' [ (cBool, [dead, dead]) ])
+                          , ("alt0", deadVal)
                           ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -563,26 +616,26 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             p0 <- case n0 of
-              (CWord c0) ->
+              (CWord c0)@alt0 ->
                 z1 <- pure (CWordH c0)
                 store z1
-              (CBool c1) ->
+              (CBool c1)@alt1 ->
                 z2 <- pure (CBoolH c1)
                 store z2
-              (CNope c2) ->
+              (CNope c2)@alt2 ->
                 z3 <- pure (CNopeH c2)
                 store z3
             n1 <- fetch p0
             case n1 of
-              (CWordH c3) -> pure z0
-              (CBoolH c4) -> pure c4
-              (CNopeH c5) -> pure c5
+              (CWordH c3)@alt3 -> pure z0
+              (CBoolH c4)@alt4 -> pure c4
+              (CNopeH c5)@alt5 -> pure c5
 
           f x =
             z4 <- pure 0
             case x of
-              0 -> pure (CBool z4)
-              1 -> pure (CWord z4)
+              0@alt6 -> pure (CBool z4)
+              1@alt7 -> pure (CWord z4)
         |]
     let heapCaseExpected = emptyLVAResult
           { _memory     = heapCaseExpectedHeap
@@ -611,6 +664,14 @@ spec = describe "Live Variable Analysis" $ do
           , ("z2", nodeSet  [ (cBoolH, [live]) ])
           , ("z3", deadVal) -- deadVal because that case alternative is not analyzed
           , ("z4", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
+          , ("alt4", deadVal)
+          , ("alt5", deadVal)
+          , ("alt6", deadVal)
+          , ("alt7", deadVal)
           ]
         livenessN1 = nodeSet [ (cBoolH, [live]), (cWordH, [dead]) ]
         heapCaseExpectedFunctions = mkFunctionLivenessMap
@@ -638,9 +699,9 @@ spec = describe "Live Variable Analysis" $ do
             z3 <- pure 0
             n <- fetch p0
             x <- case n of
-              (CNil c0) -> pure z3
-              (COne c1) -> pure z3
-              #default  -> pure z3
+              (CNil c0)@alt0 -> pure z3
+              (COne c1)@alt1 -> pure z3
+              #default@alt2  -> pure z3
 
             pure x
         |]
@@ -661,6 +722,9 @@ spec = describe "Live Variable Analysis" $ do
                           , ("z3",  liveVal)
                           , ("_1",  deadVal)
                           , ("_2",  deadVal)
+                          , ("alt0", deadVal)
+                          , ("alt1", deadVal)
+                          , ("alt2", deadVal)
                           ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -679,9 +743,9 @@ spec = describe "Live Variable Analysis" $ do
             p0 <- store n0
             n1 <- pure (CCons a0 p0)
             r <- case n1 of
-              (CNil) ->
+              (CNil)@alt0 ->
                 pure (CNil)
-              (CCons x xs) ->
+              (CCons x xs)@alt1 ->
                 xs' <- fetch xs
                 pure xs'
             pure r
@@ -700,6 +764,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("x", deadVal)
           , ("xs", liveVal)
           , ("xs'", livenessN0)
+
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
           ]
         livenessN0 = nodeSet [ (cNil, []) ]
         livenessN1 = nodeSet [ (cCons, [dead,live]) ]
@@ -747,16 +814,16 @@ spec = describe "Live Variable Analysis" $ do
             n0 <- pure (CBool z0)
             n1 <- pure (CWord z0)
             p0 <- case z0 of
-                    0 -> store n0
-                    1 -> store n1
+              0@alt0 -> store n0
+              1@alt1 -> store n1
             n2 <- pure (CNode z0)
             _1 <- update p0 n2
             n3 <- fetch p0
             case n3 of
-              (CBool c0) -> pure c0
-              (CWord c1) -> pure z0
-              (CNode c2) -> pure c2
-              (CNope c3) -> pure c3
+              (CBool c0)@alt2 -> pure c0
+              (CWord c1)@alt3 -> pure z0
+              (CNode c2)@alt4 -> pure c2
+              (CNope c3)@alt5 -> pure c3
         |]
     let heapUpdateComplexExpected = emptyLVAResult
           { _memory     = heapUpdateComplexExpectedHeap
@@ -780,6 +847,12 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("_1", deadVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
+          , ("alt4", deadVal)
+          , ("alt5", deadVal)
           ]
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cWord, [dead]) ]
@@ -802,16 +875,16 @@ spec = describe "Live Variable Analysis" $ do
             q0 <- g p0 n2
             n3 <- fetch p0
             case n3 of
-              (CBool c0) -> pure c0
-              (CWord c1) -> pure z0
-              (CNode c2) -> pure c2
-              (CNope c3) -> pure c3
+              (CBool c0)@alt0 -> pure c0
+              (CWord c1)@alt1 -> pure z0
+              (CNode c2)@alt2 -> pure c2
+              (CNope c3)@alt3 -> pure c3
 
           f x y z =
             z1 <- pure 0
             case z1 of
-              0 -> store y
-              1 -> store z
+              0@alt4 -> store y
+              1@alt5 -> store z
 
           g u v =
             update u v
@@ -844,6 +917,12 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
+          , ("alt4", deadVal)
+          , ("alt5", deadVal)
           ]
         livenessN3 = nodeSet [ (cBool, [live])
                              , (cWord, [dead])
@@ -869,9 +948,9 @@ spec = describe "Live Variable Analysis" $ do
             _1 <- update p0 n1
             n2 <- fetch p0
             case n2 of
-              (CBool c0) -> pure c0
-              (CWord c1) -> pure z0
-              (CNope c2) -> pure c2
+              (CBool c0)@alt0 -> pure c0
+              (CWord c1)@alt1 -> pure z0
+              (CNope c2)@alt2 -> pure c2
         |]
     let heapUpdateLocalExpected = emptyLVAResult
           { _memory     = heapUpdateLocalExpectedHeap
@@ -891,6 +970,9 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("_1", deadVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
           ]
         livenessN0 = nodeSet [ (cBool, [live]) ]
         livenessN1 = nodeSet [ (cWord, [dead]) ]
@@ -1003,13 +1085,13 @@ spec = describe "Live Variable Analysis" $ do
             a2 <- pure 2
             n0 <- f a0 a1 a2
             case n0 of
-              (CInt  c0) -> pure c0
-              (CBool c1) -> pure 5
+              (CInt  c0)@alt0 -> pure c0
+              (CBool c1)@alt1 -> pure 5
 
           f x y z =
             case x of
-              0 -> pure (CInt  y)
-              1 -> pure (CBool z)
+              0@alt2 -> pure (CInt  y)
+              1@alt3 -> pure (CBool z)
         |]
     let nodesSimpleExpected = emptyLVAResult
           { _memory     = []
@@ -1026,6 +1108,11 @@ spec = describe "Live Variable Analysis" $ do
           , ("x",  liveVal)
           , ("y",  liveVal)
           , ("z",  deadVal)
+
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
           ]
         livenessN = nodeSet [ (cFoo, [live]) ]
         nodesSimpleExpectedFunctions = mkFunctionLivenessMap
@@ -1041,13 +1128,13 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             case n0 of
-              (COne c0 c1) -> pure z0
-              (CTwo c2 c3) -> pure c2
+              (COne c0 c1)@alt0 -> pure z0
+              (CTwo c2 c3)@alt1 -> pure c2
 
           f x =
             case x of
-              0 -> pure (COne x)
-              1 -> pure (CTwo z0 x)
+              0@alt2 -> pure (COne x)
+              1@alt3 -> pure (CTwo z0 x)
         |]
     let nodesTrickyExpected = emptyLVAResult
           { _memory     = []
@@ -1063,6 +1150,10 @@ spec = describe "Live Variable Analysis" $ do
           , ("x",  liveVal)
 
           , ("z0", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
+          , ("alt3", deadVal)
           ]
         nodesTrickyExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (livenessN0, [liveVal])) ]
@@ -1070,6 +1161,7 @@ spec = describe "Live Variable Analysis" $ do
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` nodesTrickyExpected
 
+  -- TODO: new syntax, no conversion
   it "sum_opt" $ do
     let exp = withPrimPrelude [prog|
           grinMain =
@@ -1235,13 +1327,13 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             n <- pure 0
             y <- case n of
-              0 ->
+              0@alt0 ->
                 z0 <- pure 0
                 _prim_int_print z0
-              1 ->
+              1@alt1 ->
                 z1 <- pure #"asd"
                 _prim_string_print z1
-              2 ->
+              2@alt2 ->
                 pure ()
             pure ()
         |]
@@ -1258,6 +1350,9 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap []
 
@@ -1267,6 +1362,9 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", noEffect)
           , ("z1", noEffect)
+          , ("alt0", noEffect)
+          , ("alt1", noEffect)
+          , ("alt2", noEffect)
           ]
 
         expectedFunctionEffects =
@@ -1282,13 +1380,13 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n <- pure (COne z0)
             y <- case n of
-              (COne c1) ->
+              (COne c1)@alt0 ->
                 zero <- pure 0
                 _prim_int_print zero
-              (CTwo c2) ->
+              (CTwo c2)@alt1 ->
                 asd <- pure #"asd"
                 _prim_string_print asd
-              (CFoo c3) ->
+              (CFoo c3)@alt2 ->
                 pure ()
             pure ()
         |]
@@ -1309,6 +1407,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("asd",  deadVal) -- because CTwo does not get analyzed
 
           , ("z0", deadVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap []
 
@@ -1322,6 +1423,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("asd",  noEffect)
 
           , ("z0", noEffect)
+          , ("alt0", noEffect)
+          , ("alt1", noEffect)
+          , ("alt2", noEffect)
           ]
 
         expectedFunctionEffects =
@@ -1337,9 +1441,9 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n <- pure (COne z0)
             y <- case n of
-              (CFoo c2) ->
+              (CFoo c2)@alt0 ->
                 pure ()
-              #default ->
+              #default@alt1 ->
                 z1 <- pure 0
                 _prim_int_print z1
             pure ()
@@ -1358,6 +1462,8 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", deadVal)
           , ("z1", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap []
 
@@ -1368,6 +1474,8 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", noEffect)
           , ("z1", noEffect)
+          , ("alt0", noEffect)
+          , ("alt1", noEffect)
           ]
 
         expectedFunctionEffects =
@@ -1388,7 +1496,7 @@ spec = describe "Live Variable Analysis" $ do
             _1 <- update p n2
             n3 <- fetch p
             y <- case n3 of
-              (CTwo c) ->
+              (CTwo c)@alt0 ->
                 z2 <- pure #"asd"
                 _prim_string_print z2
             pure ()
@@ -1421,6 +1529,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", deadVal)
           , ("z2", liveVal)
           , ("_1", deadVal)
+          , ("alt0", deadVal)
           ]
 
         expectedFunctionLiveness = mkFunctionLivenessMap []
@@ -1437,6 +1546,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", noEffect)
           , ("z2", noEffect)
           , ("_1", noEffect)
+          , ("alt0", noEffect)
           ]
 
         expectedFunctionEffects =
@@ -1452,12 +1562,12 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n <- pure (COne z0)
             y <- case n of
-              (COne c1) ->
+              (COne c1)@alt0 ->
                 f z0
-              (CTwo c2) ->
+              (CTwo c2)@alt1 ->
                 asd <- pure #"asd"
                 g asd
-              (CFoo c3) ->
+              (CFoo c3)@alt2 ->
                 h
             pure ()
 
@@ -1483,6 +1593,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("asd", deadVal) -- because the CTwo alternative is impossible
 
           , ("z0", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
+          , ("alt2", deadVal)
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap
           [ ("f", fun (deadVal, [liveVal]))
@@ -1501,6 +1614,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("asd", noEffect)
 
           , ("z0", noEffect)
+          , ("alt0", noEffect)
+          , ("alt1", noEffect)
+          , ("alt2", noEffect)
           ]
 
         expectedFunctionEffects =
@@ -1519,9 +1635,9 @@ spec = describe "Live Variable Analysis" $ do
                   z0 <- pure 0
                   x <- pure (CInt z0)
                   y <- case x of
-                    (CInt n) ->
+                    (CInt n)@alt0 ->
                       z <- case n of
-                        #default ->
+                        #default@alt1 ->
                           _v <- _prim_int_print z0
                           pure ()
                       pure z
@@ -1542,6 +1658,8 @@ spec = describe "Live Variable Analysis" $ do
           , ("_v", deadVal)
 
           , ("z0", liveVal)
+          , ("alt0", deadVal)
+          , ("alt1", deadVal)
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap []
 
@@ -1553,6 +1671,8 @@ spec = describe "Live Variable Analysis" $ do
           , ("_v", hasEffect)
 
           , ("z0", noEffect)
+          , ("alt0", noEffect)
+          , ("alt1", noEffect)
           ]
 
         expectedFunctionEffects =
