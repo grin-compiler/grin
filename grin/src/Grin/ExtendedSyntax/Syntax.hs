@@ -137,20 +137,14 @@ deriving instance Ord a   => Ord  (ExpF a)
 pattern BoolPat b = LitPat (LBool b)
 
 _AltCPat :: Traversal' Exp CPat
-_AltCPat f (Alt p e) = (`Alt` e) <$> f p
-_AltCPat _ other     = pure other
+_AltCPat f (Alt p e)    = (`Alt` e) <$> f p
+_AltCPat f (NAlt p n e) = NAlt <$> f p <*> pure n <*> pure e
+_AltCPat _ other        = pure other
 
 _AltFCPat :: Traversal' (ExpF a) CPat
-_AltFCPat f (AltF p e) = (`AltF` e) <$> f p
-_AltFCPat _ other      = pure other
-
-_NAltCPat :: Traversal' Exp CPat
-_NAltCPat f (NAlt p n e) = NAlt <$> f p <*> pure n <*> pure e
-_NAltCPat _ other       = pure other
-
-_NAltFCPat :: Traversal' (ExpF a) CPat
-_NAltFCPat f (NAltF p n e) = NAltF <$> f p <*> pure n <*> pure e
-_NAltFCPat _ other        = pure other
+_AltFCPat f (AltF p e)    = (`AltF` e) <$> f p
+_AltFCPat f (NAltF p n e) = NAltF <$> f p <*> pure n <*> pure e
+_AltFCPat _ other         = pure other
 
 _ValVar :: Traversal' Val Name
 _ValVar f (Var name) = Var <$> f name
