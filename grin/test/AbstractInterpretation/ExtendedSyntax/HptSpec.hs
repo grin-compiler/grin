@@ -113,13 +113,13 @@ spec = do
         test a b =
           c <- _prim_int_add a b
           case c of
-                0 ->
+                0@_1 ->
                   k <- pure 100
                   pure (CInt k)
-                1 ->
+                1@_2 ->
                   e0 <- pure c
                   pure (CInt e0)
-                #default ->
+                #default@_3 ->
                   e1 <- pure c
                   pure (CInt e1)
         |]
@@ -137,6 +137,10 @@ spec = do
                 , ("m",   int64_t)
                 , ("k",   int64_t)
                 , ("_v",  T_NodeSet $ cnode_t "Int" [TypeEnv.T_Int64])
+
+                , ("_1", dead_t)
+                , ("_2", dead_t)
+                , ("_3", dead_t)
                 ]
             , TypeEnv._function = mconcat
                 [ fun_t "_prim_int_add" [int64_t, int64_t] int64_t
@@ -208,10 +212,10 @@ spec = do
             grinMain =
               k0 <- pure 0
               p0 <- case k0 of
-                0 ->
+                0@_1 ->
                   nil <- pure (CNil)
                   store nil
-                1 ->
+                1@_2 ->
                   pure (#undefined :: #ptr)
               n0 <- fetch p0
               n1 <- pure (#undefined :: {CNode[#ptr]})
@@ -236,6 +240,9 @@ spec = do
             , ("_v", tySetFromNodes nodeSetN1)
             , ("x0", tySetFromTypes [])
             , ("nil", tySetFromNodes nodeSetN0)
+
+            , ("_1", tySetFromTypes [])
+            , ("_2", tySetFromTypes [])
             ]
       (calcHPTResult exp) `shouldBe` expected
 
