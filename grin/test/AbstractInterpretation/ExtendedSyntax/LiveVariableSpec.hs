@@ -1164,22 +1164,36 @@ spec = describe "Live Variable Analysis" $ do
   -- TODO: new syntax, no conversion
   it "sum_opt" $ do
     let exp = withPrimPrelude [prog|
-          grinMain =
-            z0 <- pure 0
-            z1 <- pure 1
-            z2 <- pure 100000
-            n13 <- sum z0 z1 z2
-            _prim_int_print n13
+      grinMain =
+        z0 <- pure 0
+        z1 <- pure 1
+        z2 <- pure 100000
+        x.2 <- pure z2
+        x.1 <- pure z1
+        x.0 <- pure z0
+        n13 <- sum $ x.0 x.1 x.2
+        x.3 <- pure n13
+        _prim_int_print $ x.3
 
-          sum n29 n30 n31 =
-            b2 <- _prim_int_gt n30 n31
-            if b2 then
-              pure n29
-            else
-              z3 <- pure 1
-              n18 <- _prim_int_add n30 z3
-              n28 <- _prim_int_add n29 n30
-              sum n28 n18 n31
+      sum n29 n30 n31 =
+        x.5 <- pure n31
+        x.4 <- pure n30
+        b2 <- _prim_int_gt $ x.4 x.5
+        case b2 of
+          #True@alt.0 ->
+            pure n29
+          #False@alt.1 ->
+            z3 <- pure 1
+            x.7 <- pure z3
+            x.6 <- pure n30
+            n18 <- _prim_int_add $ x.6 x.7
+            x.9 <- pure n30
+            x.8 <- pure n29
+            n28 <- _prim_int_add $ x.8 x.9
+            x.12 <- pure n31
+            x.11 <- pure n18
+            x.10 <- pure n28
+            sum $ x.10 x.11 x.12
         |]
     let sumOptExpected = emptyLVAResult
           { _memory     = []
@@ -1197,11 +1211,26 @@ spec = describe "Live Variable Analysis" $ do
           , ("b2",  liveVal)
           , ("n18",  liveVal)
           , ("n28",  liveVal)
+          , ("x.0", liveVal)
+          , ("x.1", liveVal)
+          , ("x.2", liveVal)
+          , ("x.3", liveVal)
+          , ("x.4", liveVal)
+          , ("x.5", liveVal)
+          , ("x.6", liveVal)
+          , ("x.7", liveVal)
+          , ("x.8", liveVal)
+          , ("x.9", liveVal)
+          , ("x.10", liveVal)
+          , ("x.11", liveVal)
+          , ("x.12", liveVal)
 
           , ("z0", liveVal)
           , ("z1", liveVal)
           , ("z2", liveVal)
           , ("z3", liveVal)
+          , ("alt.0", deadVal)
+          , ("alt.1", deadVal)
           ]
         sumOptExpectedFunctions = mkFunctionLivenessMap
           [ ("sum", fun (liveVal, [liveVal, liveVal, liveVal]))
@@ -1216,11 +1245,26 @@ spec = describe "Live Variable Analysis" $ do
           , ("b2",  noEffect)
           , ("n18", noEffect)
           , ("n28", noEffect)
+          , ("x.0", noEffect)
+          , ("x.1", noEffect)
+          , ("x.2", noEffect)
+          , ("x.3", noEffect)
+          , ("x.4", noEffect)
+          , ("x.5", noEffect)
+          , ("x.6", noEffect)
+          , ("x.7", noEffect)
+          , ("x.8", noEffect)
+          , ("x.9", noEffect)
+          , ("x.10", noEffect)
+          , ("x.11", noEffect)
+          , ("x.12", noEffect)
 
           , ("z0", noEffect)
           , ("z1", noEffect)
           , ("z2", noEffect)
           , ("z3", noEffect)
+          , ("alt.0", noEffect)
+          , ("alt.1", noEffect)
           ]
 
         sumOptExpectedFunctionEffects =
