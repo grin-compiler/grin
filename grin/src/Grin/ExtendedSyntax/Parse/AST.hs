@@ -49,7 +49,7 @@ ifThenElse i = do
 
 simpleExp :: Pos -> Parser SimpleExp
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
-              ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . (\pos -> try (alternative pos) <|> nAlternative pos)) <|>
+              ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . nAlternative) <|>
               SStore <$ kw "store" <*> var <|>
               SFetch <$ kw "fetch" <*> var <|>
               SUpdate <$ kw "update" <*> var <*> var <|>
