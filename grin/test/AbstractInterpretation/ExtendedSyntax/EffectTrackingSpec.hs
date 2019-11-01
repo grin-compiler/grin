@@ -128,13 +128,13 @@ spec = describe "Effect Tracking Analysis" $ do
           grinMain =
             n <- pure (COne)
             y <- case n of
-              (COne) ->
+              (COne)@_1 ->
                 zero <- pure 0
                 _prim_int_print zero
-              (CTwo) ->
+              (CTwo)@_2 ->
                 asd <- pure #"asd"
                 _prim_string_print asd
-              (CFoo) ->
+              (CFoo)@_3 ->
                 pure ()
             pure y
         |]
@@ -143,6 +143,10 @@ spec = describe "Effect Tracking Analysis" $ do
                         , ("asd", Effects [])
                         , ("y", Effects ["_prim_int_print", "_prim_string_print"])
                         , ("n", Effects [])
+
+                        , ("_1", Effects [])
+                        , ("_2", Effects [])
+                        , ("_3", Effects [])
                         ]
           , _function = [ ("grinMain", Effects ["_prim_int_print", "_prim_string_print"]) ]
           }
@@ -154,13 +158,13 @@ spec = describe "Effect Tracking Analysis" $ do
           grinMain =
             n <- pure (COne)
             y <- case n of
-              (COne) ->
+              (COne)@_1 ->
                 zero <- pure 0
                 f zero
-              (CTwo) ->
+              (CTwo)@_2 ->
                 asd <- pure #"asd"
                 g asd
-              (CFoo) -> h
+              (CFoo)@_3 -> h
             pure y
 
           f x1 = _prim_int_print x1
@@ -172,6 +176,10 @@ spec = describe "Effect Tracking Analysis" $ do
                         , ("asd", Effects [])
                         , ("y", Effects ["_prim_int_print", "_prim_string_print"])
                         , ("n", Effects [])
+
+                        , ("_1", Effects [])
+                        , ("_2", Effects [])
+                        , ("_3", Effects [])
                         ]
           , _function = [ ("f",  Effects ["_prim_int_print"])
                         , ("g",  Effects ["_prim_string_print"])
@@ -187,19 +195,19 @@ spec = describe "Effect Tracking Analysis" $ do
           grinMain =
             n <- pure (COne)
             y <- case n of
-              (COne) ->
+              (COne)@_1 ->
                 z <- case n of
-                  (COne) ->
+                  (COne)@_11 ->
                     zero <- pure 0
                     _prim_int_print zero
-                  (CTwo) ->
+                  (CTwo)@_12 ->
                     errMsg <- pure "Never should have come here"
                     _prim_error errMsg
                 pure z
-              (CTwo) ->
+              (CTwo)@_2 ->
                 asd <- pure #"asd"
                 _prim_string_print asd
-              (CFoo) -> pure ()
+              (CFoo)@_3 -> pure ()
             pure y
         |]
     let expected = mempty
@@ -209,6 +217,12 @@ spec = describe "Effect Tracking Analysis" $ do
                         , ("y", Effects ["_prim_int_print", "_prim_string_print", "_prim_error"])
                         , ("z", Effects ["_prim_int_print", "_prim_error"])
                         , ("n", Effects [])
+
+                        , ("_1",  Effects [])
+                        , ("_11", Effects [])
+                        , ("_12", Effects [])
+                        , ("_2",  Effects [])
+                        , ("_3",  Effects [])
                         ]
           , _function = [ ("grinMain", Effects ["_prim_int_print", "_prim_string_print", "_prim_error"]) ]
           }
