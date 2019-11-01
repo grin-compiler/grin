@@ -226,7 +226,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for v@((CTwo)). Expected pattern of type: {CTwo[]}, but got: {COne[]}"]
+      lintErrors errors `shouldBe` ["Invalid pattern match for v@(CTwo). Expected pattern of type: {CTwo[]}, but got: {COne[]}"]
 
     it "disregards variable patterns" $ do
       let program = [prog|
@@ -267,7 +267,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for v@((COne)). Expected pattern of type: {COne[]}, but got: {COne[],CTwo[]}"]
+      lintErrors errors `shouldBe` ["Invalid pattern match for v@(COne). Expected pattern of type: {COne[]}, but got: {COne[],CTwo[]}"]
 
   describe "Producer lint" $ do
     it "finds nodes in single return statment" $ do
@@ -313,7 +313,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (COne)"]
 
-    -- QUESTION: Is this needed wit hthe new syntax? Undefined introduction is still an open question.
+    -- QUESTION: Is this needed with the new syntax? Undefined introduction is still an open question.
     -- this is optional, but makes DDE simpler
     xit "finds nodes LPat of a binding with a Fetch left-hand side" $ do
       let program = [prog|
@@ -325,4 +325,4 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["The result of Fetch can only be bound to a variable: v@((COne))"]
+      lintErrors errors `shouldBe` ["The result of Fetch can only be bound to a variable: v@(COne)"]
