@@ -146,7 +146,7 @@ instance Pretty Lit where
 instance Pretty BPat where
   pretty = \case
     VarPat v    -> pretty v
-    AsPat v val -> pretty v <> pretty '@' <> pretty '(' <> pretty val <> pretty ')'
+    AsPat v val -> pretty v <> pretty '@' <> pretty val
 
 instance Pretty CPat where
   pretty = \case
