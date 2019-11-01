@@ -81,7 +81,10 @@ codeGenM = cata folder where
 
     AltF _ exp -> exp
     -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
-    NAltF _ _ exp -> exp
+    NAltF _ n exp -> do
+      altNameReg <- newReg
+      addReg n altNameReg
+      exp
 
     SAppF name args -> getExternal name >>= \case
       Just ext  -> do
