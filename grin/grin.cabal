@@ -25,7 +25,6 @@ library
     AbstractInterpretation.ExtendedSyntax.Reduce
     AbstractInterpretation.ExtendedSyntax.Util
     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgram
-    AbstractInterpretation.ExtendedSyntax.Model
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
     AbstractInterpretation.ExtendedSyntax.CreatedBy.Util
@@ -102,12 +101,15 @@ library
     Grin.ExtendedSyntax.Grin
     Grin.ExtendedSyntax.EffectMap
     Grin.ExtendedSyntax.Lint
+    Grin.ExtendedSyntax.Nametable
     Grin.ExtendedSyntax.Parse
     Grin.ExtendedSyntax.Parse.AST
     Grin.ExtendedSyntax.Parse.Basic
     Grin.ExtendedSyntax.Parse.TypeEnv
     Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.PrettyLint
     Grin.ExtendedSyntax.PrimOpsPrelude
+    Grin.ExtendedSyntax.Statistics
     Grin.ExtendedSyntax.TH
     Grin.ExtendedSyntax.TypeCheck
     Grin.ExtendedSyntax.TypeEnv
@@ -136,6 +138,14 @@ library
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
     Test.ExtendedSyntax.Util
+
+    Transformations.ExtendedSyntax.BindNormalisation
+    Transformations.ExtendedSyntax.CountVariableUse
+    Transformations.ExtendedSyntax.EffectMap
+    Transformations.ExtendedSyntax.GenerateEval
+    Transformations.ExtendedSyntax.MangleNames
+    Transformations.ExtendedSyntax.StaticSingleAssignment
+
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -280,8 +290,13 @@ test-suite grin-test
 
   other-modules:
                      ExtendedSyntax.LintSpec
+                     ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec
+                     Transformations.ExtendedSyntax.BindNormalisationSpec
                      Transformations.ExtendedSyntax.ConversionSpec
+                     Transformations.ExtendedSyntax.MangleNamesSpec
+                     Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
+
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec
                      Transformations.Simplifying.SplitFetchSpec

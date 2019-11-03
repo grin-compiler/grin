@@ -45,6 +45,19 @@ deriveNewName name = do
     then deriveNewName name
     else pure newName
 
+deriveWildCard :: NameM Name
+deriveWildCard = do
+  (newWildCard, conflict) <- state $ \env@NameEnv{..} ->
+    let wildcard = "_"
+        idx = Map.findWithDefault 0 wildcard namePool
+        new = packName $ printf "%s%d" wildcard idx
+    in  ( (new, Set.member new nameSet)
+        , env {namePool = Map.insert wildcard (succ idx) namePool, nameSet = Set.insert new nameSet}
+        )
+  if conflict
+    then deriveWildCard
+    else pure newWildCard
+
 boolTF :: a -> a -> Bool -> a
 boolTF true false x = if x then true else false
 
