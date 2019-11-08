@@ -112,10 +112,10 @@ spec = do
       let before = [prog|
         test p =
           _unit@() <- case p of
-            #default@_1 ->
+            #default @ _1 ->
               pure ()
           case p of
-            #default@_2 ->
+            #default @ _2 ->
               pure p
         |]
       let after = Program []
@@ -163,17 +163,17 @@ spec = do
       let before = [prog|
         grinMain =
           case scrut of
-            13.1415@_1   -> pure ()
-            +14.1415@_2  -> pure ()
-            -14.1415@_3  -> pure ()
-            42@_4        -> pure ()
-            +43@_5       -> pure ()
-            -42@_6       -> pure ()
-            64u@_7       -> pure ()
-            (CNode a1 a2 a3 a4 a5)@_8 -> pure ()
-            #default@_9  -> pure ()
-            #True@_10    -> pure ()
-            #False@_11   -> pure ()
+            13.1415 @ _1   -> pure ()
+            +14.1415 @ _2  -> pure ()
+            -14.1415 @ _3  -> pure ()
+            42 @ _4        -> pure ()
+            +43 @ _5       -> pure ()
+            -42 @ _6       -> pure ()
+            64u @ _7       -> pure ()
+            (CNode a1 a2 a3 a4 a5) @ _8 -> pure ()
+            #default @ _9  -> pure ()
+            #True @ _10    -> pure ()
+            #False @ _11   -> pure ()
         |]
       let after = Program []
             [ Def "grinMain"[]
@@ -294,9 +294,9 @@ spec = do
             v1 <- pure #""
             v2 <- pure #"a"
             v3 <- case v1 of
-              #""@_1 -> pure 1
-              #"a"@_2 -> pure 2
-              #default@_3 -> pure 3
+              #"" @ _1 -> pure 1
+              #"a" @ _2 -> pure 2
+              #default @ _3 -> pure 3
             _x@#"a" <- pure v2
             pure ()
         |]
@@ -319,9 +319,9 @@ spec = do
           grinMain =
             v2 <- pure #'a'
             v3 <- case v2 of
-              #'b'@_1 -> pure 1
-              #'c'@_2 -> pure 2
-              #default@_3 -> pure 3
+              #'b' @ _1 -> pure 1
+              #'c' @ _2 -> pure 2
+              #default @ _3 -> pure 3
             _c@#'a' <- pure v2
             pure ()
         |]
