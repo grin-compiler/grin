@@ -49,7 +49,7 @@ ifThenElse i = do
 
 simpleExp :: Pos -> Parser SimpleExp
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
-              ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
+              ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . (\pos -> try (alternative pos) <|> nAlternative pos)) <|>
               SStore <$ kw "store" <*> var <|>
               SFetch <$ kw "fetch" <*> var <|>
               SUpdate <$ kw "update" <*> var <*> var <|>
@@ -63,6 +63,9 @@ primNameOrDefName = nMap ("_"<>) <$ char '_' <*> var <|> var
 
 alternative :: Pos -> Parser Alt
 alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
+
+nAlternative :: Pos -> Parser NAlt
+nAlternative i = NAlt <$> try (L.indentGuard sc EQ i *> altPat) <*> (op "@" *> var) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 
 -- NOTE: The parser `value` already handles the parentheses around "complex" values,
 -- and we don't want to parenthesize variables, literals and units.

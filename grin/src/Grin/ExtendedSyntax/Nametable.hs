@@ -95,6 +95,7 @@ convert = second (view nametable) . flip runState emptyNS . cata build where
     SUpdateF ptr var            -> SUpdate <$> nameToIdx ptr <*> nameToIdx var
     SBlockF body                -> SBlock <$> body
     AltF cp e                   -> Alt <$> cpat cp <*> e
+    NAltF cp n e                -> NAlt <$> cpat cp <*> nameToIdx n <*> e
 
 -- * Restore
 
@@ -116,6 +117,7 @@ restore (exp, nt) = cata build exp where
     SUpdateF ptr var           -> SUpdate (rname ptr) (rname var)
     SBlockF body               -> SBlock body
     AltF cp e                  -> Alt (rcpat cp) e
+    NAltF cp n e               -> NAlt (rcpat cp) (rname n) e
 
   rname :: Name -> Name
   rname (NI i) = maybe (error $ show i ++ " is not found") NM $ Map.lookup i nt

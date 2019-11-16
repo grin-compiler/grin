@@ -248,6 +248,7 @@ annotate te = cata builder where
       :< SFetchF var -- Fetch returns a value based on its arguments that is associated in its binded variable
     SAppF name params -> (te ^? function . at name . _Just . _1) :< SAppF name params
     AltF cpat body -> extract body :< AltF cpat body
+    NAltF cpat n body -> extract body :< NAltF cpat n body
     ECaseF var alts ->
       (do case catMaybes $ map extract alts of
             [] -> Nothing
@@ -445,6 +446,10 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
     -- Alt
     (_ :< AltF cpat _) -> checkWithChild ExpCtx $ do
+      syntaxE AltCtx
+    -- TODO: Define some checks for the alt name.
+    -- For example, that it is a fresh variable.
+    (_ :< NAltF cpat n _) -> checkWithChild ExpCtx $ do
       syntaxE AltCtx
 
     where
