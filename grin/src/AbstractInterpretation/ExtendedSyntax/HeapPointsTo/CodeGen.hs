@@ -290,6 +290,8 @@ codeGenM = cata folder where
       pure $ R caseResultReg
 
     AltF cpat exp -> pure $ A cpat exp
+    -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
+    NAltF cpat n exp -> pure $ A cpat exp
 
     SAppF name args -> do
       -- copy args to definition's variables ; read function result register

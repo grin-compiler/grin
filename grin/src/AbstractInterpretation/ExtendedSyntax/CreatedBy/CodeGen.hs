@@ -336,6 +336,8 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
        we only have return them.
     -}
     AltF cpat (_, cgAlt) -> pure $ A cpat cgAlt
+    -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
+    NAltF cpat n (_, cgAlt) -> pure $ A cpat cgAlt
 
     SAppF name args -> getExternal name >>= \case
       Just ext  -> do
