@@ -49,14 +49,6 @@
 	
 	GRIN is not the only IR available for functional languages. In fact, it is not even the most advanced one. Other representations can either be structurally different or can have different expressive power. For example GRIN and LLVM are both structurally and expressively different representations, because GRIN has monadic structure, while LLVM uses basic blocks, and while GRIN has sum types, LLVM has vector instructions. In general, different design choices can open up different optimization opportunities.
 	
-	\subsubsection{Intel Research Compiler}
-	
-	The Intel Labs Haskell Research Compiler~\cite{hrc} was a result of a long running research project of Intel focusing on functional language compilation. The project's main goal was to generate very efficient code for numerical computations utilizing whole program optimization.
-	
-	The compiler reused the front end part of GHC, and worked with the external Core representation provided by it. Its optimizer part was written in MLton and was a general purpose compiler back end for strict functional languages. Differently from GRIN, it used basic blocks which can open up a whole spectrum of new optimization opportunities. Furthermore, instead of whole program defunctionalization (the generation of global \pilcode{eval}), their compiler used function pointers and data-flow analysis techniques to globally analyze the program. They also supported synchronous exceptions and multi-threading.
-	
-	One of their most relevant optimizations was the SIMD vectorization pass~\cite{hrc-simd}. Using this optimization, they could transform sequential programs into vectorized ones. In conjunction with their other optimizations, they achieved performance metrics comparable to native C~\cite{haskell-gap}.
-	
 	\subsubsection{MLton}
 	
 	MLton~\cite{mlton} is a widely used Standard ML compiler. It also uses whole program optimization, and focuses on efficiency.
@@ -66,6 +58,14 @@
 	Furthermore, MLton supports contification~\cite{contification}, a control flow based transformation, which turns function calls into continuations. This can expose a lot of additional control flow information, allowing for a broad range of optimizations such as tail recursive function call optimization.
 	
 	As for its back end, MLton has its own native code generator, but it can also generate LLVM IR code~\cite{mlton-llvm}.
+	
+	\subsubsection{Intel Research Compiler}
+	
+	The Intel Labs Haskell Research Compiler~\cite{hrc} was a result of a long running research project of Intel focusing on functional language compilation. The project's main goal was to generate very efficient code for numerical computations utilizing whole program optimization.
+	
+	The compiler reused the front end part of GHC, and worked with the external Core representation provided by it. Its optimizer part was written in MLton and was a general purpose compiler back end for strict functional languages. Differently from GRIN, it used basic blocks which can open up a whole spectrum of new optimization opportunities. Furthermore, instead of whole program defunctionalization (the generation of global \pilcode{eval}), their compiler used function pointers and data-flow analysis techniques to globally analyze the program. They also supported synchronous exceptions and multi-threading.
+	
+	One of their most relevant optimizations was the SIMD vectorization pass~\cite{hrc-simd}. Using this optimization, they could transform sequential programs into vectorized ones. In conjunction with their other optimizations, they achieved performance metrics comparable to native C~\cite{haskell-gap}.
 	
 	% \subsection{Compilers with LLVM Back Ends}
 	
