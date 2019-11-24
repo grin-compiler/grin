@@ -88,6 +88,7 @@
 \usepackage{lstautogobble}
 \definecolor{identifierColor}{rgb}{0.65,0.16,0.16}
 \definecolor{keywordColor}{rgb}{0.65,0.20,0.90}
+\definecolor{grinMemopColor}{HTML}{CC3300}
 \lstnewenvironment{code}
 {	\lstset
 	{ language   			= Haskell
@@ -154,6 +155,29 @@
 								\fill[gray!80!blue!20!white] (frame.south west) rectangle ([xshift=5mm]frame.north west);
 							\end{tcbclipinterior}
 						}
+}
+% takes 1 parameters, the default value for the first one is 0
+\newtcblisting{haskellNum}[1]
+{ listing engine    = minted
+,	minted style    = colorful
+,	minted language = Haskell
+,	minted options  = { fontsize = \small
+										, breaklines
+										, autogobble
+										, linenos
+										, numbersep = 3mm
+										, escapeinside = \%\%
+										, firstnumber = #1
+										}
+,	colback  = gray!5!white
+, colframe = gray!75!black
+, listing only
+,	left = 5mm
+, enhanced
+,	overlay = { \begin{tcbclipinterior}
+		\fill[gray!80!blue!20!white] (frame.south west) rectangle ([xshift=5mm]frame.north west);
+	\end{tcbclipinterior}
+	}
 }
 \newtcblisting{oneLineHaskell}
 { listing engine  = minted

@@ -3,6 +3,8 @@
 	
 	GRIN is short for \emph{Graph Reduction Intermediate Notation}. GRIN consists of an intermediate representation language (IR in the followings) as well as the entire compiler back end framework built around it. GRIN tries to resolve the issues highlighted in Section~\ref{sec:intro} by using interprocedural whole program optimization. 
 	
+	\subsection{General overview}
+	
 	Interprocedural program analysis is a type of data-flow analysis that propagates information about certain program elements through function calls. Using interprocedural analyses instead of intraprocedural ones, allows for optimizations across functions. This means the framework can handle the issue of large sets of small interconnecting functions presented by the composable programming style. 
 	
 	Whole program analysis enables optimizations across modules. This type of data-flow analysis has all the available information about the program at once. As a consequence, it is possible to analyze and optimize global functions. Furthermore, with the help of whole program analysis, laziness can be made explicit. In fact, the evaluation of suspended computations in GRIN is done by an ordinary function called \pilcode{eval}. This is a global function uniquely generated for each program, meaning it can be optimized just like any other function by using whole program analysis. 
@@ -10,5 +12,63 @@
 	Finally, since the analyses and optimizations are implemented on a general intermediate representation, many other languages can benefit from the features provided by the GRIN back end. The intermediate layer of GRIN between the front end language and the low level machine code serves the purpose of eliminating functional artifacts from programs such as closures, higher-order functions and even laziness. This is achieved by using optimizing program transformations specific to the GRIN IR and functional languages in general. The simplified programs can then be optimized further by using conventional techniques already available. For example, it is possible to compile GRIN to LLVM and take advantage of an entire compiler framework providing a huge array of very powerful tools and features.
 	
 	% TODO: refer LLVM section
+	
+	\subsection{A small example}
+	
+	As a brief introduction to the GRIN language, we will show how a small functional program can be encoded in GRIN. We will use the following example program: \pilcode{(add 1) (add 2 3)}. The \pilcode{add} function simply takes two integers, and adds them together. This means, that the program only makes sense in a language that supports partial function application, due to \pilcode{add} being applied only to a single argument. We will also assume, that the language has lazy semantics. We can see the GRIN code generated from the above program in Program code~\ref{code:grin-add}.
+	
+	\hspace{-0.5cm}
+	\begin{codeFloat}
+		\begin{minipage}{0.48\textwidth}
+			\begin{haskell}
+	      grinMain =
+	        a <- %\textcolor{identifierColor}{store}% (CInt 1)
+	        b <- %\textcolor{identifierColor}{store}% (CInt 2)
+	        c <- %\textcolor{identifierColor}{store}% (CInt 3)
+	        
+	        r <- %\textcolor{identifierColor}{store}% (Fadd b c)
+	        suc <- pure (P1_add a)
+	        apply suc r
+	
+	      add x y =
+	        (CInt x') <- eval x
+	        (CInt y') <- eval y
+	        r <- _prim_int_add x' y'
+	        pure (CInt r)
+			\end{haskell}
+		\end{minipage}
+		\hfill
+		\begin{minipage}{0.50\textwidth}
+			\begin{haskellNum}{12}
+	     eval p =
+	       v <- %\textcolor{identifierColor}{fetch}% p
+	       case v of
+	         (CInt _n) -> pure v
+	         (P2_add) -> pure v
+	         (P1_add _x) -> pure v
+	         (Fadd x.1 y.1) ->
+	           r.add <- add x.1 y.1
+	           %\textcolor{identifierColor}{update}% p r.add
+	           pure r.add
+	       
+	     apply f u =
+	       case f of
+	         (P2_add) -> 
+	           pure (P1_add u)
+	         (P1_add z) -> add z u
+			\end{haskellNum}
+		\end{minipage}
+		\caption{GRIN code generated from \pilcode{(add 1) (add 2 3)}}
+		\label{code:grin-add}
+		
+	\end{codeFloat}
+		
+	The first thing we can notice is that GRIN has a monadic structure, and syntactically it is very similar to low-level Haskell. The second one, is that it has data constructors (\pilcode{CInt}, \pilcode{Fadd}, etc). We will refer to them as \emph{nodes}. Thirdly, we can see four function definitions: \pilcode{grinMain}, the main entry point of our program; \pilcode{add}, the function adding two integers together; and two other functions called \pilcode{eval} and \pilcode{apply}. Lastly, we can see \pilcode{\_prim\_int\_add} and the \pilcode{store}, \pilcode{fetch} and \pilcode{update} operations, which do not have definitions. The first one is a primitive operation, and the last three are intrinsic operations responsible for graph reduction. We can also view \pilcode{store}, \pilcode{fetch} and \pilcode{update} as simple heap operations: \pilcode{store} puts values onto the heap,  \pilcode{fetch} reads values from the heap, and \pilcode{update} modifies values on the heap.
+	
+	% The GRIN code is generated in two phases. In the first phase, the front end generates the \pilcode{grinMain} and \pilcode{add} functions, using the \pilcode{eval} and \pilcode{apply} functions to express laziness and partial function application respectively. In the second phase, the definitions of the \pilcode{eval} and \pilcode{apply} functions are generated by the GRIN back end from the previously generated GRIN program. As we can see, \pilcode{eval} and \pilcode{apply} are just ordinary GRIN functions, which means the compiler can analyze and optimize them.
+	
+	The GRIN program is always a first order, defunctionalized version of the original program, where laziness and partial application are expressed explicitly by \pilcode{eval} and \pilcode{apply}. A lazy function call can be expressed by wrapping its arguments into an \pilcode{F} node. As can be seen, the \pilcode{add 2 3} expression is compiled into the \pilcode{Fadd 2 3} node. Whenever a lazy value needs to be evaluated, the GRIN program will call the  \pilcode{eval} function, which will force the given computation and update the stored value (so that it is not computed twice), or it will just return the value if it is already on weak head normal form. For a partial function call, the GRIN program will construct a \pilcode{P} node, and call the \pilcode{apply} function. The number in the \pilcode{P} node's tag indicates how many arguments are still missing to the given function call. The \pilcode{apply} function will take a partially applied function (a \pilcode{P} node), and will apply it to a given argument. The result can be either another partially applied function, or the result of a saturated function call. 
+	
+	The definitions of \pilcode{eval} and \pilcode{apply} are uniquely generated for each program by the GRIN back end. As we can see, they are just ordinary GRIN functions, which means the compiler can analyze and optimize them. For a more detailed description, the reader can refer to \cite{boquist-phd}.
 	
 \end{document}
