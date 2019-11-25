@@ -43,11 +43,11 @@
 	
 	For its intermediate representation, JHC uses an alternate version of GRIN. Meacham made several modifications to the original specification of GRIN. Some of the most relevant additions are mutable variables, memory regions (heap and stack) and throw-only IO exceptions. JHC's exceptions are rather simple compared to those of UHC, since they can only be thrown, but never caught.
 	
-	JHC generates completely portable ISO C from the intermediate GRIN code.
+	JHC generates completely portable ISO C, which for instance was used to implement a NetBSD sound driver in high-level Haskell \cite{ajhc}.
 	
-	\subsubsection{AJHC}
+	% \subsubsection{AJHC}
 	
-	Originally, AJHC~\cite{ajhc} was a fork of JHC, but later it was remerged with all of its functionalities. The main goal of AJHC was to utilize formal methods in systems programming. It was used implementing a NetBSD sound driver in high-level Haskell.
+	% Originally, AJHC~\cite{ajhc} was a fork of JHC, but later it was remerged with all of its functionalities. The main goal of AJHC was to utilize formal methods in systems programming. It was used implementing a NetBSD sound driver in high-level Haskell.
 	
 	\subsubsection{LHC}
 	
