@@ -257,7 +257,8 @@ convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
 
 nameEverything :: Exp -> Exp
-nameEverything = nodeArgumentNaming
+nameEverything = bindNormalisation
+               . nodeArgumentNaming
                . bindNormalisation
                . appArgumentNaming
                . bindNormalisation
@@ -284,7 +285,7 @@ appArgumentNaming e = fst . evalNameM e . cata alg $ e where
   newArgName :: NameM Name
   newArgName = deriveNewName "x"
 
--- NOTE: we can ssume tha Producer Name Introduction
+-- NOTE: we can assume that Producer Name Introduction
 -- & Binding Pattern Simplification has already been run
 -- ConstTagNodes can only appear in SReturns
 nodeArgumentNaming :: Exp -> Exp
