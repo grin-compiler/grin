@@ -254,7 +254,7 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       caseResultReg <- newReg
       altResults    <- sequence . fmap snd $ alts_
 
-      forM_ altResults $ \(A cpat altM) -> do
+      forM_ altResults $ \(A cpat altNameReg altM) -> do
         let codeGenAlt bindM = codeGenBlock_ $ do
               bindM
               altM >>= \case
@@ -275,6 +275,10 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
                 { srcSelector = IR.ConditionAsSelector $ IR.NodeTypeExists irTag
                 , srcReg = scrutReg
                 , dstReg = altScrutReg
+                }
+              emit IR.Move
+                { srcReg = altScrutReg
+                , dstReg = altNameReg
                 }
 
               -- bind pattern variables
@@ -302,6 +306,10 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
                 , srcReg = scrutReg
                 , dstReg = altScrutReg
                 }
+              emit IR.Move
+                { srcReg = altScrutReg
+                , dstReg = altNameReg
+                }
             emit IR.If
               { condition    = IR.SimpleTypeExists (litToSimpleType lit)
               , srcReg       = scrutReg
@@ -309,7 +317,7 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
               }
 
           DefaultPat -> do
-            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- altResults]
+            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ _ <- altResults]
             altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
               altScrutReg <- newReg
@@ -318,6 +326,10 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
                 { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
                 , srcReg      = scrutReg
                 , dstReg      = altScrutReg
+                }
+              emit IR.Move
+                { srcReg = altScrutReg
+                , dstReg = altNameReg
                 }
             emit IR.If
               { condition    = IR.AnyNotIn tags
@@ -333,11 +345,10 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
     {- NOTE: The alternatives are already evaluated,
        we only have return them.
     -}
-    -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
     AltF cpat n (_, cgAlt) -> do
       altNameReg <- newReg
       addReg n altNameReg
-      pure $ A cpat cgAlt
+      pure $ A cpat altNameReg cgAlt
 
     SAppF name args -> getExternal name >>= \case
       Just ext  -> do

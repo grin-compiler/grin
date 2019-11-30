@@ -193,7 +193,7 @@ spec = do
                        , ("xs",  producerXS)
 
                        , ("z0",   emptyProducerSet)
-                       , ("_1",   emptyProducerSet)
+                       , ("_1",   producerN1)
                        ]
           producerN0 = mkProducerSet [(Tag C "Nil",  ["n0"])]
           producerN1 = mkProducerSet [(Tag C "Cons", ["n1"])]
@@ -243,8 +243,8 @@ spec = do
 
                        , ("z0", emptyProducerSet)
                        , ("z1", emptyProducerSet)
-                       , ("_1", emptyProducerSet)
-                       , ("_2", emptyProducerSet)
+                       , ("_1", producerX0)
+                       , ("_2", producerX1)
                        , ("_3", emptyProducerSet)
                        , ("_4", emptyProducerSet)
                        , ("_5", emptyProducerSet)
@@ -299,8 +299,8 @@ spec = do
 
                        , ("z0", emptyProducerSet)
                        , ("z1", emptyProducerSet)
-                       , ("_1", emptyProducerSet)
-                       , ("_2", emptyProducerSet)
+                       , ("_1", producerX0)
+                       , ("_2", producerX1)
                        , ("_3", emptyProducerSet)
                        , ("_4", emptyProducerSet)
                        , ("_5", emptyProducerSet)
@@ -379,14 +379,14 @@ spec = do
                        , ("z0", emptyProducerSet)
                        , ("z1", emptyProducerSet)
                        , ("z2", emptyProducerSet)
-                       , ("_1", emptyProducerSet)
-                       , ("_2", emptyProducerSet)
+                       , ("_1", producerX0)
+                       , ("_2", producerX1)
                        , ("_3", emptyProducerSet)
                        , ("_4", emptyProducerSet)
                        , ("_5", emptyProducerSet)
-                       , ("_6", emptyProducerSet)
+                       , ("_6", producerX0)
                        , ("_7", emptyProducerSet)
-                       , ("_8", emptyProducerSet)
+                       , ("_8", producerA1)
                        ]
           producerX0 = mkProducerSet [(Tag C "Int",  ["x0"])]
           producerX1 = mkProducerSet [(Tag C "Bool", ["x1"])]
@@ -597,8 +597,8 @@ spec = do
 
             , ("z0", tySetFromTypes [T_Int64])
             , ("z1", tySetFromNodeSet $ mkNodeSet [ (cInt,  [ [T_Int64] ]) ])
-            , ("_1", tySetFromTypes [])
-            , ("_2", tySetFromTypes [])
+            , ("_1", tySetFromTypes [T_Int64])
+            , ("_2", tySetFromTypes [T_Int64])
             , ("_3", tySetFromNodeSet $ mkNodeSet [ (cNode, [ [T_UnspecifiedLocation] ]) ])
             ]
           unspecLocExpectedFunctions = M.singleton "grinMain" (mkSimpleMain T_Unit)
