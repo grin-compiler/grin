@@ -120,7 +120,7 @@ spec = describe "Live Variable Analysis" $ do
                           , ("n0", nodeSet [ (cInt, [live]) ])
                           , ("n1", nodeSet [ (cInt, [live]) ])
 
-                          , ("alt0", deadVal)
+                          , ("alt0", deadNodeSet [ (cInt, 1) ])
                           ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -146,7 +146,7 @@ spec = describe "Live Variable Analysis" $ do
                           , ("n0", livenessN0)
 
                           , ("z0", liveVal)
-                          , ("alt0", deadVal)
+                          , ("alt0", deadNodeSet [ (cBool, 1) ])
                           , ("alt1", deadVal)
                           , ("alt2", deadVal)
                           ]
@@ -196,7 +196,7 @@ spec = describe "Live Variable Analysis" $ do
             n1 <- case n0 of
               (CBool c0) @ alt0 -> pure (CNode c0)
               (CWord c1) @ alt1 -> pure (CWord c1)
-              #default@alt2   -> pure (CNope)
+              #default   @ alt2 -> pure (CNope)
             (CNode b0) @ _1 <- pure n1
             pure b0
         |]
@@ -211,7 +211,7 @@ spec = describe "Live Variable Analysis" $ do
 
               , ("z0", liveVal)
               , ("_1", nodeSet' [ (cNode, [dead, dead]) ])
-              , ("alt0", deadVal)
+              , ("alt0", deadNodeSet [ (cBool, 1) ])
               , ("alt1", deadVal)
               , ("alt2", deadVal)
               ]
@@ -243,8 +243,8 @@ spec = describe "Live Variable Analysis" $ do
           f x =
             z1 <- pure 0
             case x of
-              0@alt7 -> pure (CBool z1)
-              1@alt8 -> pure (CWord z1)
+              0@alt2 -> pure (CBool z1)
+              1@alt3 -> pure (CWord z1)
         |]
     let caseNestedExpected = emptyLVAResult
           { _memory     = []
@@ -269,15 +269,16 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", liveVal)
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
+          , ("alt0",  deadNodeSet [ (cBool, 1) ])
+          , ("alt01", deadNodeSet [ (cBool, 1) ])
+          , ("alt02", deadVal)
+          , ("alt03", deadVal)
+          , ("alt1",  deadNodeSet [ (cWord, 1) ])
+          , ("alt11", deadVal)
+          , ("alt12", deadNodeSet [ (cWord, 1) ])
+          , ("alt13", deadVal)
           , ("alt2", deadVal)
           , ("alt3", deadVal)
-          , ("alt4", deadVal)
-          , ("alt5", deadVal)
-          , ("alt6", deadVal)
-          , ("alt7", deadVal)
-          , ("alt8", deadVal)
           ]
         caseNestedExpectedFunctions =
           [ ("f", fun (livenessFRet, [liveVal]))
@@ -324,9 +325,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", liveVal)
           , ("_1", nodeSet' [ (cInt,  [dead, dead]) ])
           , ("_2", nodeSet' [ (cWord, [dead, dead]) ])
-          , ("alt0", deadVal)
+          , ("alt0", deadNodeSet [ (cInt, 1) ])
           , ("alt1", deadVal)
-          , ("alt2", deadVal)
+          , ("alt2", deadNodeSet [ (cWord, 1) ])
           , ("alt3", deadVal)
           , ("alt4", deadVal)
           ]
@@ -383,9 +384,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", liveVal)
           , ("_1", nodeSet' [ (cInt,  [dead, dead]) ])
           , ("_2", nodeSet' [ (cWord, [dead, dead]) ])
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
-          , ("alt2", deadVal)
+          , ("alt0", deadNodeSet [ (cInt,  1) ])
+          , ("alt1", deadNodeSet [ (cBool, 1) ])
+          , ("alt2", deadNodeSet [ (cWord, 1) ])
           , ("alt3", deadVal)
           , ("alt4", deadVal)
           , ("alt5", deadVal)
@@ -460,7 +461,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("_2", deadLoc)
           , ("alt0", deadVal)
           , ("alt1", deadVal)
-          , ("alt2", deadVal)
+          , ("alt2", deadNodeSet [ (cInt, 1) ])
           ]
         livenessN0 = deadNodeSet [ (cNil, 0) ]
         livenessN1 = deadNodeSet [ (cCons, 2) ]
@@ -501,8 +502,8 @@ spec = describe "Live Variable Analysis" $ do
           , ("n1", livenessX)
           , ("x",  livenessX)
 
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
+          , ("alt0", deadNodeSet [ (cNode, 2) ])
+          , ("alt1", deadNodeSet [ (cNode, 2) ])
           ]
         fieldsExpectedFunctions = mkFunctionLivenessMap
           [ ("f", fun (liveVal, [livenessX])) ]
@@ -536,7 +537,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("x",  livenessX)
 
           , ("z0", liveVal)
-          , ("alt0", deadVal)
+          , ("alt0", deadNodeSet [ (cFoo, 1) ])
           , ("alt1", deadVal)
           ]
         livenessN = nodeSet [ (cFoo, [live]) ]
@@ -602,7 +603,7 @@ spec = describe "Live Variable Analysis" $ do
                           , ("z1", nodeSet  [ (cBool, [live]) ])
                           , ("z2", nodeSet  [ (cBool, [live]) ])
                           , ("_1", nodeSet' [ (cBool, [dead, dead]) ])
-                          , ("alt0", deadVal)
+                          , ("alt0", deadNodeSet [ (cBool, 1) ])
                           ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -664,11 +665,11 @@ spec = describe "Live Variable Analysis" $ do
           , ("z2", nodeSet  [ (cBoolH, [live]) ])
           , ("z3", deadVal) -- deadVal because that case alternative is not analyzed
           , ("z4", liveVal)
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
+          , ("alt0", deadNodeSet [ (cWord, 1) ])
+          , ("alt1", deadNodeSet [ (cBool, 1) ])
           , ("alt2", deadVal)
-          , ("alt3", deadVal)
-          , ("alt4", deadVal)
+          , ("alt3", deadNodeSet [ (cWordH, 1) ])
+          , ("alt4", deadNodeSet [ (cBoolH, 1) ])
           , ("alt5", deadVal)
           , ("alt6", deadVal)
           , ("alt7", deadVal)
@@ -701,7 +702,7 @@ spec = describe "Live Variable Analysis" $ do
             x <- case n of
               (CNil c0) @ alt0 -> pure z3
               (COne c1) @ alt1 -> pure z3
-              #default@alt2  -> pure z3
+              #default  @ alt2  -> pure z3
 
             pure x
         |]
@@ -722,9 +723,9 @@ spec = describe "Live Variable Analysis" $ do
                           , ("z3",  liveVal)
                           , ("_1",  deadVal)
                           , ("_2",  deadVal)
-                          , ("alt0", deadVal)
-                          , ("alt1", deadVal)
-                          , ("alt2", deadVal)
+                          , ("alt0", deadNodeSet [ (cNil, 1) ])
+                          , ("alt1", deadNodeSet [ (cOne, 1) ])
+                          , ("alt2", deadNodeSet [ (cTwo, 1) ])
                           ]
           , _functionLv = mkFunctionLivenessMap []
           }
@@ -766,7 +767,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("xs'", livenessN0)
 
           , ("alt0", deadVal)
-          , ("alt1", deadVal)
+          , ("alt1", deadNodeSet [ (cCons, 2) ])
           ]
         livenessN0 = nodeSet [ (cNil, []) ]
         livenessN1 = nodeSet [ (cCons, [dead,live]) ]
@@ -849,9 +850,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("_1", deadVal)
           , ("alt0", deadVal)
           , ("alt1", deadVal)
-          , ("alt2", deadVal)
-          , ("alt3", deadVal)
-          , ("alt4", deadVal)
+          , ("alt2", deadNodeSet [ (cBool, 1) ])
+          , ("alt3", deadNodeSet [ (cWord, 1) ])
+          , ("alt4", deadNodeSet [ (cNode, 1) ])
           , ("alt5", deadVal)
           ]
         livenessN0 = nodeSet [ (cBool, [live]) ]
@@ -917,9 +918,9 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", liveVal)
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
-          , ("alt2", deadVal)
+          , ("alt0", deadNodeSet [ (cBool, 1) ])
+          , ("alt1", deadNodeSet [ (cWord, 1) ])
+          , ("alt2", deadNodeSet [ (cNode, 1) ])
           , ("alt3", deadVal)
           , ("alt4", deadVal)
           , ("alt5", deadVal)
@@ -970,8 +971,8 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("_1", deadVal)
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
+          , ("alt0", deadNodeSet [ (cBool, 1) ])
+          , ("alt1", deadNodeSet [ (cWord, 1) ])
           , ("alt2", deadVal)
           ]
         livenessN0 = nodeSet [ (cBool, [live]) ]
@@ -1109,8 +1110,8 @@ spec = describe "Live Variable Analysis" $ do
           , ("y",  liveVal)
           , ("z",  deadVal)
 
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
+          , ("alt0", deadNodeSet [ (cInt, 1) ])
+          , ("alt1", deadNodeSet [ (cBool, 1) ])
           , ("alt2", deadVal)
           , ("alt3", deadVal)
           ]
@@ -1451,7 +1452,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("asd",  deadVal) -- because CTwo does not get analyzed
 
           , ("z0", deadVal)
-          , ("alt0", deadVal)
+          , ("alt0", deadNodeSet [ (cOne, 1) ])
           , ("alt1", deadVal)
           , ("alt2", deadVal)
           ]
@@ -1507,7 +1508,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("z0", deadVal)
           , ("z1", liveVal)
           , ("alt0", deadVal)
-          , ("alt1", deadVal)
+          , ("alt1", deadNodeSet [ (cOne, 1) ])
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap []
 
@@ -1573,7 +1574,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("z1", deadVal)
           , ("z2", liveVal)
           , ("_1", deadVal)
-          , ("alt0", deadVal)
+          , ("alt0", deadNodeSet [ (cTwo, 1) ])
           ]
 
         expectedFunctionLiveness = mkFunctionLivenessMap []
@@ -1637,7 +1638,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("asd", deadVal) -- because the CTwo alternative is impossible
 
           , ("z0", liveVal)
-          , ("alt0", deadVal)
+          , ("alt0", deadNodeSet [ (cOne, 1) ])
           , ("alt1", deadVal)
           , ("alt2", deadVal)
           ]
@@ -1681,7 +1682,7 @@ spec = describe "Live Variable Analysis" $ do
                   y <- case x of
                     (CInt n) @ alt0 ->
                       z <- case n of
-                        #default@alt1 ->
+                        #default @ alt1 ->
                           _v <- _prim_int_print z0
                           pure ()
                       pure z
@@ -1702,7 +1703,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("_v", deadVal)
 
           , ("z0", liveVal)
-          , ("alt0", deadVal)
+          , ("alt0", deadNodeSet [ (cInt, 1) ])
           , ("alt1", deadVal)
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap []

@@ -316,7 +316,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
             -- restoring scrut reg
             addReg scrutName origScrutReg
 
-      forM_ alts $ \(A cpat altM) -> do
+      forM_ alts $ \(A cpat altNameReg altM) -> do
 
         let codeGenAltExists tag before = codeGenAlt scrut
                                                      originalScrutineeReg
@@ -350,6 +350,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
               -- NOTE: should be altResultRegister
               caseResultReg `isLiveThenM`         setTagLive irTag altScrutReg
               caseResultReg `hasSideEffectsThenM` setTagLive irTag altScrutReg
+              varPatternDataFlow altNameReg altScrutReg
               -- bind pattern variables
               forM_ (zip [1..] vars) $ \(idx, name) -> do
                 argReg <- newReg
@@ -367,13 +368,15 @@ codeGenM e = (cata folder >=> const setMainLive) e
             -- NOTE: should be altResultRegister
             caseResultReg `isLiveThenM`         setBasicValLive originalScrutineeReg
             caseResultReg `hasSideEffectsThenM` setBasicValLive originalScrutineeReg
+            varPatternDataFlow altNameReg originalScrutineeReg
             altM >>= processAltResult
 
           DefaultPat -> do
-            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
+            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ _ <- alts]
             altInstructions <- codeGenAltNotIn tags $ \altScrutReg -> do
               caseResultReg `isLiveThenM`         (setBasicValLive altScrutReg >> setAllTagsLive altScrutReg)
               caseResultReg `hasSideEffectsThenM` (setBasicValLive altScrutReg >> setAllTagsLive altScrutReg)
+              varPatternDataFlow altNameReg altScrutReg
 
             let canBeLiteral = null tags
             {- NOTE: Since, we are not tracking simple types (literals),
@@ -400,7 +403,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
     AltF cpat n exp -> do
       altNameReg <- newReg
       addReg n altNameReg
-      pure $ A cpat exp
+      pure $ A cpat altNameReg exp
 
     SAppF name args -> do
       appReg  <- newReg
