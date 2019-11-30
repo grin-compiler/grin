@@ -399,7 +399,6 @@ codeGenM e = (cata folder >=> const setMainLive) e
 
       pure $ R caseResultReg
 
-    -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
     AltF cpat n exp -> do
       altNameReg <- newReg
       addReg n altNameReg
