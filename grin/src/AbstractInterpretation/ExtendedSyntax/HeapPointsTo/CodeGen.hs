@@ -227,7 +227,7 @@ codeGenM = cata folder where
       -}
       alts <- sequence alts_
 
-      forM_ alts $ \(A cpat altM) -> do
+      forM_ alts $ \(A cpat altNameReg altM) -> do
         let codeGenAlt bindM = codeGenBlock_ $ do
               bindM
               altM >>= \case
@@ -249,6 +249,11 @@ codeGenM = cata folder where
                 , srcReg = scrutReg
                 , dstReg = altScrutReg
                 }
+              -- The altNameReg is just an explicit version of the restricted scrutinee
+              emit IR.Move
+                { srcReg = altScrutReg
+                , dstReg = altNameReg
+                }
 
               -- bind pattern variables
               forM_ (zip [0..] vars) $ \(idx, name) -> do
@@ -267,11 +272,17 @@ codeGenM = cata folder where
                 , srcReg = scrutReg
                 , dstReg = altScrutReg
                 }
+              -- The altNameReg is just an explicit version of the restricted scrutinee
+              emit IR.Move
+                { srcReg = altScrutReg
+                , dstReg = altNameReg
+                }
+
             -- QUESTION: Redundant IF. Just for consistency?
             emit IR.If {condition = IR.SimpleTypeExists (litToSimpleType lit), srcReg = scrutReg, instructions = altInstructions}
 
           DefaultPat -> do
-            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ <- alts]
+            tags <- Set.fromList <$> sequence [getTag tag | A (NodePat tag _) _ _ <- alts]
             altInstructions <- codeGenAlt $ do
               -- restrict scrutinee to alternative's domain
               altScrutReg <- newReg
@@ -280,6 +291,11 @@ codeGenM = cata folder where
                 { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
                 , srcReg = scrutReg
                 , dstReg = altScrutReg
+                }
+              -- The altNameReg is just an explicit version of the restricted scrutinee
+              emit IR.Move
+                { srcReg = altScrutReg
+                , dstReg = altNameReg
                 }
             -- QUESTION: Redundant IF. Just for consistency?
             emit IR.If {condition = IR.AnyNotIn tags, srcReg = scrutReg, instructions = altInstructions}
@@ -293,7 +309,7 @@ codeGenM = cata folder where
     AltF cpat n exp -> do
       altNameReg <- newReg
       addReg n altNameReg
-      pure $ A cpat exp
+      pure $ A cpat altNameReg exp
 
     SAppF name args -> do
       -- copy args to definition's variables ; read function result register

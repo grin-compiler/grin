@@ -113,15 +113,15 @@ spec = do
         test a b =
           c <- _prim_int_add a b
           case c of
-                0@_1 ->
-                  k <- pure 100
-                  pure (CInt k)
-                1@_2 ->
-                  e0 <- pure c
-                  pure (CInt e0)
-                #default@_3 ->
-                  e1 <- pure c
-                  pure (CInt e1)
+            0 @ _1 ->
+              k <- pure 100
+              pure (CInt k)
+            1 @ _2 ->
+              e0 <- pure c
+              pure (CInt e0)
+            #default@_3 ->
+              e1 <- pure c
+              pure (CInt e1)
         |]
       let result = inferTypeEnv code
           exptected = emptyTypeEnv
@@ -138,9 +138,9 @@ spec = do
                 , ("k",   int64_t)
                 , ("_v",  T_NodeSet $ cnode_t "Int" [TypeEnv.T_Int64])
 
-                , ("_1", dead_t)
-                , ("_2", dead_t)
-                , ("_3", dead_t)
+                , ("_1", int64_t)
+                , ("_2", int64_t)
+                , ("_3", int64_t)
                 ]
             , TypeEnv._function = mconcat
                 [ fun_t "_prim_int_add" [int64_t, int64_t] int64_t
@@ -212,10 +212,10 @@ spec = do
             grinMain =
               k0 <- pure 0
               p0 <- case k0 of
-                0@_1 ->
+                0 @ _1 ->
                   nil <- pure (CNil)
                   store nil
-                1@_2 ->
+                1 @ _2 ->
                   pure (#undefined :: #ptr)
               n0 <- fetch p0
               n1 <- pure (#undefined :: {CNode[#ptr]})
@@ -241,8 +241,46 @@ spec = do
             , ("x0", tySetFromTypes [])
             , ("nil", tySetFromNodes nodeSetN0)
 
-            , ("_1", tySetFromTypes [])
-            , ("_2", tySetFromTypes [])
+            , ("_1", tySetFromTypes [HPT.T_Int64])
+            , ("_2", tySetFromTypes [HPT.T_Int64])
+            ]
+      (calcHPTResult exp) `shouldBe` expected
+
+    it "simple_case_node" $ do
+      let exp = [prog|
+            grinMain =
+              k0 <- pure 0
+              p0 <- case k0 of
+                0 @ _1 ->
+                  one <- pure (COne)
+                  store one
+                1 @ _2 ->
+                  two <- pure (CTwo)
+                  store two
+              n0 <- fetch p0
+              case n0 of
+                (COne) @ _3 -> pure ()
+                (CTwo) @ _4 -> pure ()
+          |]
+      let expected = HPTResult
+            { HPT._memory   = V.fromList [ nodeSetOne, nodeSetTwo ]
+            , HPT._register = unspecLocExpectedRegisters
+            , HPT._function = Map.singleton "grinMain" (mkSimpleMain HPT.T_Unit)
+            }
+          nodeSetOne = mkNodeSet [(cOne,  [])]
+          nodeSetTwo = mkNodeSet [(cTwo,  [])]
+
+          unspecLocExpectedRegisters = Map.fromList
+            [ ("k0", tySetFromTypes [HPT.T_Int64])
+            , ("p0", tySetFromTypes [HPT.T_Location 0, HPT.T_Location 1])
+            , ("n0", tySetFromNodes (nodeSetOne <> nodeSetTwo))
+            , ("one", tySetFromNodes nodeSetOne)
+            , ("two", tySetFromNodes nodeSetTwo)
+
+            , ("_1", tySetFromTypes [HPT.T_Int64])
+            , ("_2", tySetFromTypes [HPT.T_Int64])
+            , ("_3", tySetFromNodes nodeSetOne)
+            , ("_4", tySetFromNodes nodeSetTwo)
             ]
       (calcHPTResult exp) `shouldBe` expected
 
