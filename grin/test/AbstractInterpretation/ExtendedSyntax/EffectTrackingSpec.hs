@@ -144,8 +144,8 @@ spec = describe "Effect Tracking Analysis" $ do
                         , ("y", Effects ["_prim_int_print", "_prim_string_print"])
                         , ("n", Effects [])
 
-                        , ("_1", Effects [])
-                        , ("_2", Effects [])
+                        , ("_1", Effects ["_prim_int_print"])
+                        , ("_2", Effects ["_prim_string_print"])
                         , ("_3", Effects [])
                         ]
           , _function = [ ("grinMain", Effects ["_prim_int_print", "_prim_string_print"]) ]
@@ -177,8 +177,8 @@ spec = describe "Effect Tracking Analysis" $ do
                         , ("y", Effects ["_prim_int_print", "_prim_string_print"])
                         , ("n", Effects [])
 
-                        , ("_1", Effects [])
-                        , ("_2", Effects [])
+                        , ("_1", Effects ["_prim_int_print"])
+                        , ("_2", Effects ["_prim_string_print"])
                         , ("_3", Effects [])
                         ]
           , _function = [ ("f",  Effects ["_prim_int_print"])
@@ -218,10 +218,10 @@ spec = describe "Effect Tracking Analysis" $ do
                         , ("z", Effects ["_prim_int_print", "_prim_error"])
                         , ("n", Effects [])
 
-                        , ("_1",  Effects [])
-                        , ("_11", Effects [])
-                        , ("_12", Effects [])
-                        , ("_2",  Effects [])
+                        , ("_1",  Effects ["_prim_int_print", "_prim_error"])
+                        , ("_11", Effects ["_prim_int_print"])
+                        , ("_12", Effects ["_prim_error"])
+                        , ("_2",  Effects ["_prim_string_print"])
                         , ("_3",  Effects [])
                         ]
           , _function = [ ("grinMain", Effects ["_prim_int_print", "_prim_string_print", "_prim_error"]) ]

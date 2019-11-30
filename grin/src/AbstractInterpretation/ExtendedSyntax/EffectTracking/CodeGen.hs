@@ -75,15 +75,22 @@ codeGenM = cata folder where
     ECaseF val alts_ -> do
       caseResultReg <- newReg
       altRegs <- sequence alts_
-      forM altRegs $ \(R altReg) ->
-        emit IR.Move { srcReg = altReg, dstReg = caseResultReg }
+      forM altRegs $ \(A _ altNameReg altM) -> do
+        altResult <- altM
+        case altResult of
+          R altResultReg -> do
+            -- NOTE: Propagate the effect info back to both the case result register and the alternative's register as well
+            emit IR.Move { srcReg = altResultReg, dstReg = caseResultReg }
+            emit IR.Move { srcReg = altResultReg, dstReg = altNameReg }
+          -- TODO: maybe put altName into "A" as well?
+          _ -> error $ "Effect tracking: a case alternative did not return a register. Scrutinee was: " ++ show (PP val)
       pure $ R caseResultReg
 
     -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
-    AltF _ n exp -> do
+    AltF cpat n exp -> do
       altNameReg <- newReg
       addReg n altNameReg
-      exp
+      pure $ A cpat altNameReg exp
 
     SAppF name args -> getExternal name >>= \case
       Just ext  -> do
