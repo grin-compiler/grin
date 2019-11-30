@@ -100,7 +100,7 @@ testProgram = withPrimPrelude [prog|
         x.9 <- pure x
         (CInt x')@p.4 <- eval $ x.9
         x.10 <- pure xs
-        @(CInt s')@p.3 <- sum $ x.10
+        (CInt s')@p.3 <- sum $ x.10
         x.12 <- pure s'
         x.11 <- pure x'
         ax' <- _prim_int_add $ x.11 x.12

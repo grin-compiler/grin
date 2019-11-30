@@ -122,7 +122,7 @@ testProgram = [prog|
         x.14 <- pure b
         x.13 <- pure a
         w <- upto $ x.13 x.14
-        p.5@() <- update q w
+        ()@p.5 <- update q w
         pure w
       (Fsum c) @ alt.8 ->
         x.15 <- pure c
