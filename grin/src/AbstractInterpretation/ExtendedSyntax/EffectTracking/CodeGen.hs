@@ -81,6 +81,9 @@ codeGenM = cata folder where
           R altResultReg -> do
             -- NOTE: Propagate the effect info back to both the case result register and the alternative's register as well
             emit IR.Move { srcReg = altResultReg, dstReg = caseResultReg }
+            -- NOTE: This abstract interpretation is different from the concrete one.
+            -- In the concrete semantics, the alt name is only a restricted version
+            -- of the scrutinee. Here, it is used to collect the effects of the alt's body.
             emit IR.Move { srcReg = altResultReg, dstReg = altNameReg }
           -- TODO: maybe put altName into "A" as well?
           _ -> error $ "Effect tracking: a case alternative did not return a register. Scrutinee was: " ++ show (PP val)
