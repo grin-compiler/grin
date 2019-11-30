@@ -24,8 +24,6 @@ import AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGenBase
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen (litToSimpleType, unitType, codegenSimpleType) -- FIXME: why? remove, refactor
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result (undefinedProducer) -- FIXME: why? remove, refactor
 
--- TODO: remove
-import Debug.Trace
 
 data CByMapping
   = CByMapping
@@ -335,9 +333,8 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
     {- NOTE: The alternatives are already evaluated,
        we only have return them.
     -}
-    AltF cpat (_, cgAlt) -> pure $ A cpat cgAlt
     -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
-    NAltF cpat n (_, cgAlt) -> do
+    AltF cpat n (_, cgAlt) -> do
       altNameReg <- newReg
       addReg n altNameReg
       pure $ A cpat cgAlt

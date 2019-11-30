@@ -79,9 +79,8 @@ codeGenM = cata folder where
         emit IR.Move { srcReg = altReg, dstReg = caseResultReg }
       pure $ R caseResultReg
 
-    AltF _ exp -> exp
     -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
-    NAltF _ n exp -> do
+    AltF _ n exp -> do
       altNameReg <- newReg
       addReg n altNameReg
       exp
