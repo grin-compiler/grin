@@ -71,7 +71,7 @@ nAlternative i = NAlt <$> try (L.indentGuard sc EQ i *> altPat) <*> (op "@" *> v
 -- and we don't want to parenthesize variables, literals and units.
 bindingPat :: Parser BPat
 bindingPat =
-  try (AsPat <$> (var <* char '@') <*> {- parens -} value) <|>
+  try (flip AsPat <$> value <*> (op "@" *> var)) <|>
   VarPat <$> var
 
 

@@ -36,15 +36,15 @@ spec = do
     let before = [prog|
       grinMain =
         n0 <- pure 5
-        n1@n2 <- pure n0
-        v@(CInt k) <- pure (CInt n0)
+        n2@n1 <- pure n0
+        (CInt k)@v <- pure (CInt n0)
         pure k
       |]
     let after = [prog|
       name.0 =
         name.1 <- pure 5
-        name.2@name.3 <- pure name.1
-        name.4@(CInt name.5) <- pure (CInt name.1)
+        name.3@name.2 <- pure name.1
+        (CInt name.5)@name.4 <- pure (CInt name.1)
         pure name.5
       |]
     (mangleNames before) `sameAs` after

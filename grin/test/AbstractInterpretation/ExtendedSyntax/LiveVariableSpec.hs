@@ -88,7 +88,7 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             x0 <- pure 0
             n0 <- pure (CInt x0)
-            _v@(CInt x1) <- pure n0
+            (CInt x1)@_v <- pure n0
             _prim_int_print x1
       |]
     let variableAliasExpected = emptyLVAResult
@@ -108,7 +108,7 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             x0 <- pure 0
             n0 <- pure (CInt x0)
-            n1@(CInt _v) <- pure n0
+            (CInt _v)@n1 <- pure n0
             case n1 of
               (CInt c0)@alt0 -> _prim_int_print c0
       |]
@@ -197,7 +197,7 @@ spec = describe "Live Variable Analysis" $ do
               (CBool c0)@alt0 -> pure (CNode c0)
               (CWord c1)@alt1 -> pure (CWord c1)
               #default@alt2   -> pure (CNope)
-            _1@(CNode b0) <- pure n1
+            (CNode b0)@_1 <- pure n1
             pure b0
         |]
     let caseMinNodesExpected = emptyLVAResult
@@ -293,12 +293,12 @@ spec = describe "Live Variable Analysis" $ do
             n0 <- f z0
             case n0 of
               (CInt  c0)@alt0 ->
-                _1@(CInt b0) <- pure n0
+                (CInt b0)@_1 <- pure n0
                 pure b0
               (CBool c1)@alt1 ->
                 pure c1
               #default@alt2 ->
-                _2@(CWord b1) <- pure n0
+                (CWord b1)@_2 <- pure n0
                 pure b1
 
           f x =
@@ -343,14 +343,14 @@ spec = describe "Live Variable Analysis" $ do
             n0 <- f z0
             n4 <- case n0 of
               (CInt  c0)@alt0 ->
-                _1@(CInt  b0) <- pure n0
+                (CInt  b0)@_1 <- pure n0
                 n1 <- f b0
                 pure n1
               (CBool c1)@alt1 ->
                 n2 <- f c1
                 pure n2
               #default@alt2 ->
-                _2@(CWord b1) <- pure n0
+                (CWord b1)@_2 <- pure n0
                 n3 <- f b1
                 pure n3
             pure n4
@@ -549,7 +549,7 @@ spec = describe "Live Variable Analysis" $ do
   it "function_call_2" $ do
     let exp = [prog|
           grinMain =
-            _1@(CTwo a1 b1) <- f
+            (CTwo a1 b1)@_1 <- f
             n <- pure (COne a1)
             pure n
 
@@ -589,7 +589,7 @@ spec = describe "Live Variable Analysis" $ do
               (CBool c1)@alt0 ->
                 z2 <- pure (CBool c1)
                 store z2
-            _1@(CBool a1) <- fetch p0
+            (CBool a1)@_1 <- fetch p0
             pure a1
         |]
     let heapCaseMinExpected = emptyLVAResult
@@ -782,7 +782,7 @@ spec = describe "Live Variable Analysis" $ do
             n <- pure (CTwo z0 z1)
             p <- store n
             x <- fetch p
-            _1@(CTwo a b) <- pure x
+            (CTwo a b)@_1 <- pure x
             pure a
         |]
     let heapSimpleExpected = emptyLVAResult
@@ -984,7 +984,7 @@ spec = describe "Live Variable Analysis" $ do
     let exp = [prog|
           grinMain =
             y <- pure 0
-            _1@5 <- f y
+            5 @ _1 <- f y
             pure 0
 
           f x = pure x
@@ -1027,7 +1027,7 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             z0 <- pure 0
             y <- pure (CInt z0)
-            _1@(CInt n) <- f y
+            (CInt n)@_1 <- f y
             pure y
 
           f x = pure x
@@ -1293,7 +1293,7 @@ spec = describe "Live Variable Analysis" $ do
 
             z4 <- pure (#undefined :: #ptr)
             n2 <- pure (CCons z4 p0)
-            _1@(CCons c0 c1) <- pure n2
+            (CCons c0 c1)@_1 <- pure n2
             x1 <- fetch c0
             pure x1
         |]
@@ -1339,7 +1339,7 @@ spec = describe "Live Variable Analysis" $ do
             p0 <- store z0
             z1 <- pure (#undefined :: {0})
             n0 <- pure (CCons z1 p0)
-            _1@(CCons c0 c1) <- pure n0
+            (CCons c0 c1)@_1 <- pure n0
             x0 <- fetch c0
             pure x0
         |]
@@ -1371,13 +1371,13 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             n <- pure 0
             y <- case n of
-              0@alt0 ->
+              0 @ alt0 ->
                 z0 <- pure 0
                 _prim_int_print z0
-              1@alt1 ->
+              1 @ alt1 ->
                 z1 <- pure #"asd"
                 _prim_string_print z1
-              2@alt2 ->
+              2 @ alt2 ->
                 pure ()
             pure ()
         |]

@@ -49,7 +49,7 @@ spec = do
             grinMain =
               k0 <- pure 0
               x0 <- pure (CInt k0)
-              x1@x2 <- pure x0
+              x2@x1 <- pure x0
 
               pure ()
           |]
@@ -77,7 +77,7 @@ spec = do
             grinMain =
               k0 <- pure 0
               x0 <- pure (CInt k0)
-              x1@(CInt k1) <- pure x0
+              (CInt k1)@x1 <- pure x0
               k2 <- _prim_int_add k0 k1
               _v <- _prim_int_print k2
               pure ()
@@ -106,7 +106,7 @@ spec = do
         grinMain =
           n <- pure 1
           m <- pure 2
-          _v@(CInt x) <- test n m
+          (CInt x)@_v <- test n m
           y <- pure x
           _prim_int_print y
 
@@ -219,7 +219,7 @@ spec = do
                   pure (#undefined :: #ptr)
               n0 <- fetch p0
               n1 <- pure (#undefined :: {CNode[#ptr]})
-              _v@(CNode p1) <- pure n1
+              (CNode p1)@_v <- pure n1
               x0 <- fetch p1
               update p0 x0
           |]

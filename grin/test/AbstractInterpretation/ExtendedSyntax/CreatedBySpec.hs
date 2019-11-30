@@ -447,8 +447,8 @@ spec = do
                 z0 <- pure 0
                 n0 <- pure (CNil)
                 p0 <- case z0 of
-                  0@_1 -> store n0
-                  1@_2 -> pure (#undefined :: #ptr)
+                  0 @ _1 -> store n0
+                  1 @ _2 -> pure (#undefined :: #ptr)
                 n1 <- fetch p0
                 pure 0
             |]
@@ -468,7 +468,7 @@ spec = do
       let exp = [prog|
             grinMain =
                 z0 <- pure 0
-                a1@a2 <- pure (CInt z0)
+                a2@a1 <- pure (CInt z0)
                 b1 <- pure a1
                 b2 <- pure a2
                 c1 <- pure b1
@@ -493,7 +493,7 @@ spec = do
       let exp = [prog|
             grinMain =
                 z0 <- pure 0
-                a@(CInt _1) <- pure (CInt z0)
+                (CInt _1)@a <- pure (CInt z0)
                 b <- pure a
                 pure a
         |]
@@ -570,11 +570,11 @@ spec = do
                 z1 <- pure (CInt z0)
 
                 p0 <- case z0 of
-                  0@_1 -> store z1
-                  1@_2 -> pure (#undefined :: #ptr)
+                  0 @ _1 -> store z1
+                  1 @ _2 -> pure (#undefined :: #ptr)
                 n0 <- fetch p0
                 n1 <- pure (#undefined :: {CNode[#ptr]})
-                _3@(CNode p1) <- pure n1
+                (CNode p1)@_3 <- pure n1
                 x0 <- fetch p1
                 update p0 x0
             |]

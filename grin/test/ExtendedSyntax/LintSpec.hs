@@ -221,7 +221,7 @@ spec = do
       let program = [prog|
           main =
             n <- pure (COne)
-            v@(CTwo) <- pure n
+            (CTwo)@v <- pure n
             pure ()
         |]
       let typeEnv = inferTypeEnv program
@@ -257,7 +257,7 @@ spec = do
                 pure n2
             -- NOTE: HPT would restrict the scrutinee here, and would find that it can only have type COne.
             -- However, the bottom-up typing approach used in the linter does not recognize this fact.
-            v@(COne) <- case n0 of
+            (COne)@v <- case n0 of
               (COne)@_3 ->
                 pure n0
               (CTwo)@_4 ->
