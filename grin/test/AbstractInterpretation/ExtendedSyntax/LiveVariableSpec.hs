@@ -222,6 +222,44 @@ spec = describe "Live Variable Analysis" $ do
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` caseMinNodesExpected
 
+  it "case_nodes_named_alt" $ do
+    let exp = [prog|
+          grinMain =
+            z0 <- pure 0
+            n0 <- pure (CBool z0)
+            n1 <- case n0 of
+              (CBool c0) @ alt0 ->
+                case alt0 of
+                  (CBool c1) @ alt1 -> pure (CNode c1)
+              (CWord c2) @ alt2 -> pure (CWord c2)
+              #default @ alt3   -> pure (CNope)
+            (CNode b0)@_1 <- pure n1
+            pure b0
+        |]
+    let caseMinNodesExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv =
+              [ ("n0", livenessN0)
+              , ("n1", livenessN1)
+              , ("c0", deadVal)
+              , ("c1", liveVal)
+              , ("c2", deadVal)
+              , ("b0", liveVal)
+
+              , ("z0", liveVal)
+              , ("_1", nodeSet' [ (cNode, [dead, dead]) ])
+              , ("alt0", nodeSet' [ (cBool, [live, live]) ])
+              , ("alt1", deadNodeSet [ (cBool, 1) ])
+              , ("alt2", deadVal)
+              , ("alt3", deadVal)
+              ]
+          , _functionLv = mkFunctionLivenessMap []
+          }
+        livenessN0 = nodeSet [ (cBool, [live]) ]
+        livenessN1 = nodeSet [ (cNode, [live]) ]
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` caseMinNodesExpected
+
   it "case_nested" $ do
     let exp = [prog|
           grinMain =
