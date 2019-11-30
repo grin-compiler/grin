@@ -178,11 +178,9 @@ instance Convertible Exp New.Exp where
       | (Var var) <- val -> pure $ New.SUpdateF (convert ptr) (convert var)
     (SReturn val)  -> pure $ New.SReturnF (convert val)
     (SBlock exp)   -> pure $ New.SBlockF exp
-    -- TODO: to NAlt
     (Alt cpat exp) -> do
       altName <- deriveNewName "alt"
-      pure $ New.NAltF (convert cpat) (convert altName) exp
-    _ -> error "Conversion from Old to New has failed: unexpected AST pattern"
+      pure $ New.AltF (convert cpat) (convert altName) exp
 
 instance Convertible New.TagType TagType where
   convert = \case
@@ -275,9 +273,8 @@ instance Convertible New.Exp Exp where
   convert (New.SUpdate ptr var)    = SUpdate (convert ptr) (Var $ convert var)
   convert (New.SReturn val)        = SReturn (convert val)
   convert (New.SBlock exp)         = SBlock (convert exp)
-  convert (New.Alt cpat exp)       = Alt (convert cpat) (convert exp)
   -- TODO: This transformation is not sound if the body contains a reference to the alt name.
-  convert (New.NAlt cpat _ exp)    = Alt (convert cpat) (convert exp)
+  convert (New.Alt cpat _ exp)     = Alt (convert cpat) (convert exp)
 
 convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
