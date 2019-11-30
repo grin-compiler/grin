@@ -99,7 +99,6 @@ makeLenses ''BPat
 
 type SimpleExp = Exp
 type Alt = Exp
-type NAlt = Exp
 type Def = Exp
 type Program = Exp
 
@@ -117,8 +116,7 @@ data Exp
   | SUpdate     Name Name
   | SBlock      Exp
   -- Alt
-  | Alt CPat Exp
-  | NAlt CPat Name Exp
+  | Alt CPat Name Exp
   deriving (Generic, Data, NFData, Binary, Eq, Ord, Show)
 
 externals :: Exp -> [External]
@@ -137,14 +135,12 @@ deriving instance Ord a   => Ord  (ExpF a)
 pattern BoolPat b = LitPat (LBool b)
 
 _AltCPat :: Traversal' Exp CPat
-_AltCPat f (Alt p e)    = (`Alt` e) <$> f p
-_AltCPat f (NAlt p n e) = NAlt <$> f p <*> pure n <*> pure e
-_AltCPat _ other        = pure other
+_AltCPat f (Alt p n e) = Alt <$> f p <*> pure n <*> pure e
+_AltCPat _ other       = pure other
 
 _AltFCPat :: Traversal' (ExpF a) CPat
-_AltFCPat f (AltF p e)    = (`AltF` e) <$> f p
-_AltFCPat f (NAltF p n e) = NAltF <$> f p <*> pure n <*> pure e
-_AltFCPat _ other         = pure other
+_AltFCPat f (AltF p n e) = AltF <$> f p <*> pure n <*> pure e
+_AltFCPat _ other        = pure other
 
 _ValVar :: Traversal' Val Name
 _ValVar f (Var name) = Var <$> f name
