@@ -68,6 +68,7 @@ data Exp (role' :: Role) where
 
   Alt
     :: CPat         -- ^ Pattern to match against
+    -> Name         -- ^ Name of the alternative
     -> Exp 'Bind'   -- ^ Body of the alternative
     -> Exp 'Alt'
 
@@ -108,5 +109,5 @@ convertToExp = \case
   Fetch name          -> E.SFetch name
   Update lName nName  -> E.SUpdate lName nName
   Case name alts      -> E.ECase name (convertToExp <$> alts)
-  Alt cpat body       -> E.Alt cpat (convertToExp body)
+  Alt cpat name body  -> E.Alt cpat name (convertToExp body)
   Bind lhs bpat rhs   -> E.EBind (convertToExp lhs) bpat (convertToExp rhs)

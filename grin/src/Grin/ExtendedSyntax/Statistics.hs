@@ -62,8 +62,7 @@ statistics = cata $ \case
   SUpdateF p v -> mempty { sUpdate = 1, vars = Set.singleton p <> Set.singleton v }
   SBlockF  s   -> s <> mempty { sBlock  = 1 }
   -- Alt
-  AltF p s     -> s <> mempty { alt = 1, vars = foldNames Set.singleton p, tags = tagInCPat p }
-  NAltF p n s  -> s <> mempty { alt = 1, vars = foldNames Set.singleton p <> Set.singleton n, tags = tagInCPat p }
+  AltF p n s   -> s <> mempty { alt = 1, vars = foldNames Set.singleton p <> Set.singleton n, tags = tagInCPat p }
   -- general case
   e -> Data.Foldable.fold e
 

@@ -31,25 +31,26 @@ def = Def <$> try (L.indentGuard sc EQ pos1 *> var) <*> many var <* op "=" <*> (
 expr :: Pos -> Parser Exp
 expr i = L.indentGuard sc EQ i >>
   try ((\pat e b -> EBind e pat b) <$> try (bindingPat <* op "<-") <*> simpleExp i <*> expr i ) <|>
-  ifThenElse i <|>
   simpleExp i
 
-ifThenElse :: Pos -> Parser Exp
-ifThenElse i = do
-  kw "if"
-  b <- var
-  kw "then"
-  t <- (L.indentGuard sc GT i >>= expr)
-  L.indentGuard sc EQ i
-  kw "else"
-  e <- (L.indentGuard sc GT i >>= expr)
-  return $ ECase b [ Alt (LitPat (LBool True))  t
-                   , Alt (LitPat (LBool False)) e
-                   ]
+-- NOTE: This becomes deprecated with the introduction of named alternatives.
+-- TODO: Repalce ifs with case expressions in code examples.
+-- ifThenElse :: Pos -> Parser Exp
+-- ifThenElse i = do
+--   kw "if"
+--   b <- var
+--   kw "then"
+--   t <- (L.indentGuard sc GT i >>= expr)
+--   L.indentGuard sc EQ i
+--   kw "else"
+--   e <- (L.indentGuard sc GT i >>= expr)
+--   return $ ECase b [ Alt (LitPat (LBool True))  t
+--                    , Alt (LitPat (LBool False)) e
+--                    ]
 
 simpleExp :: Pos -> Parser SimpleExp
 simpleExp i = SReturn <$ kw "pure" <*> value <|>
-              ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . nAlternative) <|>
+              ECase <$ kw "case" <*> var <* kw "of" <*> (L.indentGuard sc GT i >>= some . alternative) <|>
               SStore <$ kw "store" <*> var <|>
               SFetch <$ kw "fetch" <*> var <|>
               SUpdate <$ kw "update" <*> var <*> var <|>
@@ -62,10 +63,7 @@ primNameOrDefName :: Parser Name
 primNameOrDefName = nMap ("_"<>) <$ char '_' <*> var <|> var
 
 alternative :: Pos -> Parser Alt
-alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
-
-nAlternative :: Pos -> Parser NAlt
-nAlternative i = NAlt <$> try (L.indentGuard sc EQ i *> altPat) <*> (op "@" *> var) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
+alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <*> (op "@" *> var) <* op "->" <*> (L.indentGuard sc GT i >>= expr)
 
 -- NOTE: The parser `value` already handles the parentheses around "complex" values,
 -- and we don't want to parenthesize variables, literals and units.
