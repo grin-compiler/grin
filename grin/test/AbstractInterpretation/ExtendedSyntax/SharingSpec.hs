@@ -82,7 +82,7 @@ spec = describe "Sharing analysis" $ do
             l0 <- store one
             two <- pure (CTwo l0)
             l1 <- store two
-            _1@(CTwo l2) <- fetch l1
+            (CTwo l2)@_1 <- fetch l1
             _2 <- fetch l2
             _2 <- fetch l2
             pure ()
@@ -119,15 +119,15 @@ testProgram = withPrimPrelude [prog|
     v.3 <- pure (Fsum y.4)
     t4 <- store v.3
     x.0 <- pure t4
-    p.0@(CInt r') <- eval $ x.0
+    (CInt r')@p.0 <- eval $ x.0
     x.1 <- pure r'
     _prim_int_print $ x.1
 
   upto m n =
     x.2 <- pure m
-    p.2@(CInt m') <- eval $ x.2
+    (CInt m')@p.2 <- eval $ x.2
     x.3 <- pure n
-    p.1@(CInt n') <- eval $ x.3
+    (CInt n')@p.1 <- eval $ x.3
     x.5 <- pure n'
     x.4 <- pure m'
     b' <- _prim_int_gt $ x.4 x.5
@@ -161,9 +161,9 @@ testProgram = withPrimPrelude [prog|
         pure v.8
       (CCons x xs) @ alt.3 ->
         x.9 <- pure x
-        p.4@(CInt x') <- eval $ x.9
+        (CInt x')@p.4 <- eval $ x.9
         x.10 <- pure xs
-        p.3@(CInt s') <- sum $ x.10
+        (CInt s')@p.3 <- sum $ x.10
         x.12 <- pure s'
         x.11 <- pure x'
         ax' <- _prim_int_add $ x.11 x.12
@@ -184,11 +184,11 @@ testProgram = withPrimPrelude [prog|
         x.14 <- pure b
         x.13 <- pure a
         w <- upto $ x.13 x.14
-        p.5@() <- update q w
+        ()@p.5 <- update q w
         pure w
       (Fsum c) @ alt.8 ->
         x.15 <- pure c
         z <- sum $ x.15
-        p.6@() <- update q z
+        ()@p.6 <- update q z
         pure z
   |]

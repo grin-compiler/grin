@@ -226,7 +226,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for v@(CTwo). Expected pattern of type: {CTwo[]}, but got: {COne[]}"]
+      lintErrors errors `shouldBe` ["Invalid pattern match for (CTwo)@v. Expected pattern of type: {CTwo[]}, but got: {COne[]}"]
 
     it "disregards variable patterns" $ do
       let program = [prog|
@@ -267,7 +267,7 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for v@(COne). Expected pattern of type: {COne[]}, but got: {COne[],CTwo[]}"]
+      lintErrors errors `shouldBe` ["Invalid pattern match for (COne)@v. Expected pattern of type: {COne[]}, but got: {COne[],CTwo[]}"]
 
   describe "Producer lint" $ do
     it "finds nodes in single return statment" $ do
