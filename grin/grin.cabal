@@ -145,6 +145,7 @@ library
     Transformations.ExtendedSyntax.GenerateEval
     Transformations.ExtendedSyntax.MangleNames
     Transformations.ExtendedSyntax.StaticSingleAssignment
+    Transformations.ExtendedSyntax.Optimising.CSE
 
     Transformations.BindNormalisation
     Transformations.CountVariableUse
