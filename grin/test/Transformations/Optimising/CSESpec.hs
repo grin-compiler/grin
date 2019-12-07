@@ -95,6 +95,23 @@ spec = do
         |]
       cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
+    it "store - fetch - update - fetch" $ do
+      let before = [expr|
+          p1 <- store (COne)
+          (COne) <- fetch p1
+          update p1 (CTwo)
+          n2 <- fetch p1
+          pure ()
+        |]
+      let after = [expr|
+          p1 <- store (COne)
+          (COne) <- pure (COne)
+          update p1 (CTwo)
+          n2 <- pure (CTwo)
+          pure ()
+        |]
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+
     it "store - update" $ do
       let before = [expr|
           p1 <- store (CInt 0)
@@ -150,6 +167,22 @@ spec = do
           (CInt i6) <- pure v1
           (CInt i7) <- pure (CInt i6)
           pure v2
+        |]
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+
+    it "node with variables" $ do
+      pendingWith "Now only pure constants are tracked"
+      let before = [expr|
+          n1 <- pure 0
+          v1 <- pure (CInt n1)
+          v2 <- pure (CInt n1)
+          pure ()
+        |]
+      let after = [expr|
+          n1 <- pure 0
+          v1 <- pure (CInt n1)
+          v2 <- pure v1
+          pure ()
         |]
       cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
