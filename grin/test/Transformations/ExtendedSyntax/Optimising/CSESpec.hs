@@ -1,15 +1,16 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Transformations.ExtendedSyntax.Optimising.CSESpec where
 
-import Transformations.Optimising.CSE
+import Transformations.ExtendedSyntax.Optimising.CSE
 
 import Test.Hspec
-import Grin.TH
-import Test.Test hiding (newVar)
-import Test.Assertions
-import Grin.TypeEnv
-import Grin.TypeCheck
-import Transformations.EffectMap
+
+import Grin.ExtendedSyntax.TH
+import Test.ExtendedSyntax.New.Test
+import Test.ExtendedSyntax.Assertions
+import Grin.ExtendedSyntax.TypeEnv
+import Grin.ExtendedSyntax.TypeCheck
+import Transformations.ExtendedSyntax.EffectMap
 
 
 runTests :: IO ()
