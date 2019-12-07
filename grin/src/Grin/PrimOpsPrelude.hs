@@ -13,27 +13,27 @@ import Grin.TH
 primPrelude :: Program
 primPrelude = [progConst|
 
-  primop effectful
-    _prim_int_print     :: T_Int64  -> T_Unit
+  ffi effectful
+    _prim_int_print     :: T_Int64 -> T_Unit
+    _prim_usleep        :: T_Int64 -> T_Unit
     _prim_string_print  :: T_String -> T_Unit
     _prim_read_string   :: T_String
-    _prim_usleep        :: T_Int64 -> T_Unit
     _prim_error         :: T_String -> T_Unit
-
-    -- FFI - TODO: Handle FFI appropiately
     _prim_ffi_file_eof  :: T_Int64 -> T_Int64
 
-  primop pure
+  -- Everything that handles Strings are FFI implemented now.
+  ffi pure
     -- String
     _prim_string_concat  :: T_String -> T_String -> T_String
     _prim_string_reverse :: T_String -> T_String
-    _prim_string_lt      :: T_String -> T_String -> T_Bool
-    _prim_string_eq      :: T_String -> T_String -> T_Bool
-    _prim_string_head    :: T_String -> T_Int64
+    _prim_string_lt      :: T_String -> T_String -> T_Int64
+    _prim_string_eq      :: T_String -> T_String -> T_Int64
+    _prim_string_head    :: T_String -> T_Int64 -- TODO: Change to Char
     _prim_string_tail    :: T_String -> T_String
     _prim_string_cons    :: T_Int64  -> T_String -> T_String
     _prim_string_len     :: T_String -> T_Int64
 
+  ffi pure
     -- Conversion
     _prim_int_str      :: T_Int64 -> T_String
     _prim_str_int      :: T_String -> T_Int64
@@ -41,11 +41,14 @@ primPrelude = [progConst|
     _prim_float_string :: T_Float -> T_String
     _prim_char_int     :: T_Char  -> T_Int64
 
+  primop pure
     -- Int
+    _prim_int_shr   :: T_Int64 -> T_Int64 -- TODO: Remove?
     _prim_int_add   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_sub   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_mul   :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_div   :: T_Int64 -> T_Int64 -> T_Int64
+    _prim_int_ashr  :: T_Int64 -> T_Int64 -> T_Int64
     _prim_int_eq    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_ne    :: T_Int64 -> T_Int64 -> T_Bool
     _prim_int_gt    :: T_Int64 -> T_Int64 -> T_Bool

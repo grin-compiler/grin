@@ -32,6 +32,7 @@ data Selector
   = NodeItem              Tag Int   -- node item index
   | ConditionAsSelector   Condition
   | AllFields
+  | EveryNthField         Int
   deriving (Eq, Ord, Show)
 
 newtype Tag = Tag Word32 deriving (Eq, Ord, Show, Generic, NFData)
@@ -41,12 +42,11 @@ type SimpleType = Int32 -- TODO: rename to a generic name; should not be related
 data Condition
   = NodeTypeExists    Tag
   | SimpleTypeExists  SimpleType
-  | NotIn             (Set Tag)
+  | AnyNotIn          (Set Tag)
   -- A field satisfies a predicate iff at least one of its possible values
   -- satisfy that predicate.
   -- NOTE: "non-deterministic" selector for Any?
   | Any               Predicate
-  | All               Predicate
   deriving (Eq, Ord, Show)
 
 data Predicate

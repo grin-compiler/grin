@@ -20,7 +20,7 @@ import Grin.TypeEnvDefs
 import qualified AbstractInterpretation.IR as IR
 import AbstractInterpretation.IR (Instruction(..), AbstractProgram(..), emptyAbstractProgram, AbstractMapping(..))
 import AbstractInterpretation.CreatedBy.CodeGenBase
-import AbstractInterpretation.HeapPointsTo.CodeGen (litToSimpleType, unitType) -- FIXME: why? remove, refactor
+import AbstractInterpretation.HeapPointsTo.CodeGen (litToSimpleType, unitType, codegenSimpleType) -- FIXME: why? remove, refactor
 import AbstractInterpretation.HeapPointsTo.Result (undefinedProducer) -- FIXME: why? remove, refactor
 
 data CByMapping
@@ -109,11 +109,67 @@ codeGenVal = \case
   Undefined t -> codeGenType codeGenSimpleType (codeGenNodeSetWith codeGenNodeTypeCBy) t
   val -> error $ "unsupported value " ++ show val
 
+typeTag :: Name -> Tag
+typeTag n = Tag F n -- FIXME: this is a hack
+
+projectType :: IR.Reg -> Ty -> CG [(Name, IR.Reg)]
+projectType argReg = \case
+  TySimple{}      -> pure []
+  TyVar name      -> pure [(name, argReg)]
+  TyCon name args -> do
+    r <- newReg
+    emit IR.Fetch {addressReg = argReg, dstReg = r}
+    irTag <- getTag $ typeTag name
+    fmap concat $ forM (zip [1..] args) $ \(idx, ty) -> do
+      r1 <- newReg
+      emit IR.Project {srcSelector = IR.NodeItem irTag idx, srcReg = r, dstReg = r1}
+      projectType r1 ty
+
+constructType :: [(Name, IR.Reg)] -> Ty -> CG IR.Reg
+constructType argMap = \case
+  TySimple simpleType -> do
+    r <- newReg
+    emit IR.Set {dstReg = r, constant = IR.CSimpleType (codegenSimpleType simpleType)}
+    pure r
+  TyVar name -> do
+    r <- newReg
+    mapM_ emit [IR.Move {srcReg = q, dstReg = r} | (n,q) <- argMap, n == name]
+    pure r
+  TyCon name args -> do
+    -- construct type node
+    valReg <- newReg
+    irTag <- getTag $ typeTag name
+    emit IR.Set {dstReg = valReg, constant = IR.CNodeType irTag (length args)}
+    emit IR.Set {dstReg = valReg, constant = IR.CNodeItem irTag 0 undefinedProducer}
+    -- fill type node componets
+    forM_ (zip [1..] args) $ \(idx, ty) -> do
+      q <- constructType argMap ty
+      emit IR.Extend
+        { srcReg      = q
+        , dstSelector = IR.NodeItem irTag idx
+        , dstReg      = valReg
+        }
+    -- store type node on abstract heap
+    loc <- newMem
+    r <- newReg
+    emit IR.Store {srcReg = valReg, address = loc}
+    emit IR.Set {dstReg = r, constant = IR.CHeapLocation loc}
+    pure r
+
+codeGenExternal :: External -> [Val] -> CG Result
+codeGenExternal External{..} args = do
+  valRegs <- mapM codeGenVal args
+  argMap <- concat <$> zipWithM projectType valRegs eArgsType
+  R <$> constructType argMap eRetType
+
 codeGen :: Exp -> (AbstractProgram, CByMapping)
 codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
   folder :: ExpF (Exp, CG Result) -> CG Result
   folder = \case
-    ProgramF exts defs -> (sequence_ . fmap snd $ defs) >> pure Z
+    ProgramF exts defs -> do
+      mapM_ addExternal exts
+      mapM_ snd defs
+      pure Z
 
     DefF name args (_,body) -> do
       (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
@@ -232,11 +288,11 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.NotIn tags
+                  { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
                   , srcReg = valReg
                   , dstReg = altScrutReg
                   }
-            emit IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
+            emit IR.If {condition = IR.AnyNotIn tags, srcReg = valReg, instructions = altInstructions}
 
           _ -> error $ "CBy does not support the following case pattern: " ++ show cpat
 
@@ -247,13 +303,35 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
 
     AltF cpat (_,exp) -> pure $ A cpat exp
 
-    SAppF name args -> do -- copy args to definition's variables ; read function result register
-      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
-      valRegs <- mapM codeGenVal args
-      zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
-      -- HINT: handle primop here because it does not have definition
-      when (isExternalName (externals e) name) $ mapM_ emit $ codeGenPrimOp name funResultReg funArgRegs
-      pure $ R funResultReg
+    SAppF name args -> getExternal name >>= \case
+      Just ext  -> do
+        res <- codeGenExternal ext args
+        let R r = res
+        -- HINT: workaround
+        -----------
+        -- copy args to definition's variables ; read function result register
+        (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+        valRegs <- mapM codeGenVal args
+        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
+        -- old prim codegen
+        let External{..} = ext
+            isTySimple TySimple{} = True
+            isTySimple _ = False
+        emit IR.Move {srcReg = r, dstReg = funResultReg}
+        when (isTySimple eRetType && all isTySimple eArgsType) $ do
+          zipWithM_ (\argReg (TySimple argTy) -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType (codegenSimpleType argTy)}) funArgRegs eArgsType
+
+        pure res
+
+        -----------
+
+      Nothing   -> do
+        -- copy args to definition's variables ; read function result register
+        (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+        valRegs <- mapM codeGenVal args
+        zipWithM_ (\src dst -> emit IR.Move {srcReg = src, dstReg = dst}) valRegs funArgRegs
+        pure $ R funResultReg
+
 
     SReturnF val -> R <$> codeGenVal val
 
@@ -280,83 +358,3 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       pure Z
 
     SBlockF (_,exp) -> exp
-
-codeGenPrimOp :: Name -> IR.Reg -> [IR.Reg] -> [Instruction]
-codeGenPrimOp name funResultReg funArgRegs = execWriter $ do
-  let emit :: Instruction -> Writer [Instruction] ()
-      emit a = tell [a]
-      op argTypes resultTy = do
-        emit IR.Set {dstReg = funResultReg, constant = IR.CSimpleType resultTy}
-        zipWithM_ (\argReg argTy -> emit IR.Set {dstReg = argReg, constant = IR.CSimpleType argTy}) funArgRegs argTypes
-
-      unit  = -1
-      int   = litToSimpleType $ LInt64 0
-      word  = litToSimpleType $ LWord64 0
-      float = litToSimpleType $ LFloat 0
-      bool  = litToSimpleType $ LBool False
-      string = litToSimpleType $ LString ""
-      char  = litToSimpleType $ LChar ' '
-
-
-  case name of
-    "_prim_int_print" -> op [int] unit
-    "_prim_string_print" -> op [string] unit
-    "_prim_read_string" -> op [] string
-    "_prim_usleep" -> op [int] unit
-    "_prim_error" -> op [string] unit
-
-    -- String
-    "_prim_string_concat"  -> op [string, string] string
-    "_prim_string_reverse" -> op [string] string
-    "_prim_string_lt"      -> op [string, string] bool
-    "_prim_string_eq"      -> op [string, string] bool
-    "_prim_string_head"    -> op [string] int
-    "_prim_string_tail"    -> op [string] string
-    "_prim_string_cons"    -> op [int, string] string
-    "_prim_string_len"     -> op [string] int
-
-    -- Conversion
-    "_prim_int_str"      -> op [int] string
-    "_prim_str_int"      -> op [string] int
-    "_prim_int_float"    -> op [int] float
-    "_prim_float_string" -> op [float] string
-    "_prim_char_int"     -> op [char] int
-    -- Int
-    "_prim_int_add"   -> op [int, int] int
-    "_prim_int_sub"   -> op [int, int] int
-    "_prim_int_mul"   -> op [int, int] int
-    "_prim_int_div"   -> op [int, int] int
-    "_prim_int_eq"    -> op [int, int] bool
-    "_prim_int_ne"    -> op [int, int] bool
-    "_prim_int_gt"    -> op [int, int] bool
-    "_prim_int_ge"    -> op [int, int] bool
-    "_prim_int_lt"    -> op [int, int] bool
-    "_prim_int_le"    -> op [int, int] bool
-    -- Word
-    "_prim_word_add"  -> op [word, word] word
-    "_prim_word_sub"  -> op [word, word] word
-    "_prim_word_mul"  -> op [word, word] word
-    "_prim_word_div"  -> op [word, word] word
-    "_prim_word_eq"   -> op [word, word] bool
-    "_prim_word_ne"   -> op [word, word] bool
-    "_prim_word_gt"   -> op [word, word] bool
-    "_prim_word_ge"   -> op [word, word] bool
-    "_prim_word_lt"   -> op [word, word] bool
-    "_prim_word_le"   -> op [word, word] bool
-    -- Float
-    "_prim_float_add" -> op [float, float] float
-    "_prim_float_sub" -> op [float, float] float
-    "_prim_float_mul" -> op [float, float] float
-    "_prim_float_div" -> op [float, float] float
-    "_prim_float_eq"  -> op [float, float] bool
-    "_prim_float_ne"  -> op [float, float] bool
-    "_prim_float_gt"  -> op [float, float] bool
-    "_prim_float_ge"  -> op [float, float] bool
-    "_prim_float_lt"  -> op [float, float] bool
-    "_prim_float_le"  -> op [float, float] bool
-    -- Bool
-    "_prim_bool_eq"   -> op [bool, bool] bool
-    "_prim_bool_ne"   -> op [bool, bool] bool
-    -- FFI - TODO: Handle FFI appropiatey
-    "_prim_ffi_file_eof" -> op [int] int
-    missing           -> error $ show missing

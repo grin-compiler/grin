@@ -1,0 +1,37 @@
+GHC/STG:
+  node layout and arity infromation is DATA (thunk meta-data)
+  i.e. partial application
+
+Boq GRIN:
+  node layout and arity is CODE (case expression in eval/apply function)
+
+NOTE:
+  stg data (info table/closure) is a convention for generic node encoding
+
+new static analysis:
+  stg DATA  -> grin NODE/CODE
+  generic   -> specialized
+
+  if stg DATA does not escapes from local compilation unit then it can be encoded as grin NODE
+
+  GOAL: the analysis must tell if a node value is visible via exported (public) functions
+
+NOTES:
+  how to represent node layout as data?
+  do we need new primops for metadata handling? / can grin naturally encode it?
+    A) boxed values
+        with efficient optimisations metadata can be encoded naturally and efficiently
+        required transformations:
+          - gibbon style packed representation
+          - untagging / unboxing
+          - garbage collector code must be optimised together with the code
+
+      PROBLEM:  to support incremental compilation the metadata format must follow a predefined convention
+      DECISION: NO, would not work
+
+    B) metadata primops
+
+QUESTION:
+  should GRIN perform runtime type checking of unknown function arguments?
+  A) YES ;  support dynamic languages ; similar to gradua typing
+  B) NO ;   requires explicit type annotation of unknown function application

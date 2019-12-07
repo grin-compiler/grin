@@ -11,6 +11,7 @@ import Lens.Micro.Platform
 import Data.Word
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Text (Text)
 import Data.Vector (Vector)
 
 import Grin.Grin as Grin
@@ -55,6 +56,8 @@ data Env
   , _envTempCounter       :: Int
   , _envTypeEnv           :: TypeEnv.TypeEnv
   , _envTagMap            :: Map Tag Constant
+  , _envStringMap         :: Map Text AST.Name -- Grin String Literal -> AST.Name
+  , _envStringCounter     :: Int
   }
 
 emptyEnv = Env
@@ -68,6 +71,8 @@ emptyEnv = Env
   , _envTempCounter       = 0
   , _envTypeEnv           = TypeEnv.emptyTypeEnv
   , _envTagMap            = mempty
+  , _envStringMap         = mempty
+  , _envStringCounter     = 0
   }
 
 concat <$> mapM makeLenses [''Env]

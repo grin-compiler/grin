@@ -1,0 +1,50 @@
+grinMain = n1 <- pure (CInt 1)
+           t1 <- store n1
+           n2 <- pure (CInt 10000)
+           t2 <- store n2
+           n3 <- pure (Fupto t1 t2)
+           t3 <- store n3
+           n4 <- pure (Flength t3)
+           t4 <- store n4
+           n5 <- eval t4
+           (CInt r') <- pure n5
+           _prim_int_print r'
+
+upto m n = n6 <- eval m
+           (CInt m') <- pure n6
+           n7 <- eval n
+           (CInt n') <- pure n7
+           b' <- _prim_int_gt m' n'
+           if b' then
+            n8 <- pure (CNil)
+            pure n8
+           else
+            m1' <- _prim_int_add m' 1
+            n9 <- pure (CInt m1')
+            m1 <- store n9
+            n10 <- pure (Fupto m1 n)
+            p <- store n10
+            n11 <- pure (CCons m p)
+            pure n11
+
+length l = l2 <- eval l
+           case l2 of
+             (CNil)       -> n12 <- pure (CInt 0)
+                             pure n12
+             (CCons x xs) -> n13 <- length xs
+                             (CInt l') <- pure n13
+                             len <- _prim_int_add l' 1
+                             n14 <- pure (CInt len)
+                             pure n14
+
+eval q = v <- fetch q
+         case v of
+          (CInt x'1)    -> pure v
+          (CNil)        -> pure v
+          (CCons y ys)  -> pure v
+          (Fupto a b)   -> w <- upto a b
+                           update q w
+                           pure w
+          (Flength c)   -> z <- length c
+                           update q z
+                           pure z

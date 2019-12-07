@@ -283,12 +283,12 @@ codeGenM = cata folder where
                 altScrutReg <- newReg
                 addReg name altScrutReg
                 emit IR.Project
-                  { srcSelector = IR.ConditionAsSelector $ IR.NotIn tags
+                  { srcSelector = IR.ConditionAsSelector $ IR.AnyNotIn tags
                   , srcReg = valReg
                   , dstReg = altScrutReg
                   }
             -- QUESTION: Redundant IF. Just for consistency?
-            emit IR.If {condition = IR.NotIn tags, srcReg = valReg, instructions = altInstructions}
+            emit IR.If {condition = IR.AnyNotIn tags, srcReg = valReg, instructions = altInstructions}
 
           _ -> error $ "HPT does not support the following case pattern: " ++ show cpat
 

@@ -54,8 +54,8 @@ http://b-studios.de/blog/2016/02/21/the-hitchhikers-guide-to-morphisms/
 
 ### Recursion schemes
 
-<img src="images/recursion-schemes-cheat-sheet.svg" style="max-width: 100%; max-height: 100vh; height: auto;">
+<img src="https://github.com/grin-compiler/grin/blob/master/images/recursion-schemes-cheat-sheet.svg" style="max-width: 100%; max-height: 100vh; height: auto;">
 
 ### Algebras
 
-<img src="images/algebras.svg" style="max-width: 100%; max-height: 100vh; height: auto;">
+<img src="https://github.com/grin-compiler/grin/blob/master/images/algebras.svg" style="max-width: 100%; max-height: 100vh; height: auto;">

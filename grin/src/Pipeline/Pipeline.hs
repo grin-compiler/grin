@@ -7,8 +7,11 @@ module Pipeline.Pipeline
   , Transformation(..)
   , EffectStep(..)
   , Path(..)
+  , RenderingOption(..)
   , pattern HPTPass
   , pattern PrintGrin
+  , pattern SimplePrintGrin
+  , pattern FullPrintGrin
   , pattern DeadCodeElimination
   , pipeline
   , optimize
@@ -29,11 +32,11 @@ import Pipeline.Eval
 import Grin.Grin
 import Grin.TypeEnv
 import Grin.TypeCheck
-import Grin.EffectMap
+import Grin.EffectMap hiding (Eff)
 import Pipeline.Optimizations
 import qualified Grin.Statistics as Statistics
 import Grin.Parse
-import Grin.Pretty(showWide)
+import Grin.Pretty(showWide, prettyProgram, RenderingOption(..))
 import Transformations.CountVariableUse
 import Transformations.GenerateEval
 import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
@@ -42,6 +45,7 @@ import Transformations.BindNormalisation
 import qualified Grin.Lint as Lint
 import Grin.PrettyLint
 import Transformations.Simplifying.SplitFetch
+import Transformations.Simplifying.BindingPatternSimplification
 import Transformations.Simplifying.CaseSimplification
 import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
 import Transformations.UnitPropagation
@@ -52,29 +56,34 @@ import Transformations.Names (ExpChanges(..))
 import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
 import Transformations.Simplifying.RegisterIntroduction
 import Transformations.Simplifying.ProducerNameIntroduction
-import qualified AbstractInterpretation.HeapPointsTo.Result as HPT
-import qualified AbstractInterpretation.CreatedBy.Readback as CBy
-import qualified AbstractInterpretation.CreatedBy.Result as CBy
-import qualified AbstractInterpretation.LiveVariable.Result as LVA
-import qualified AbstractInterpretation.Sharing.Result as Sharing
+import qualified AbstractInterpretation.HeapPointsTo.Result   as HPT
+import qualified AbstractInterpretation.CreatedBy.Readback    as CBy
+import qualified AbstractInterpretation.CreatedBy.Result      as CBy
+import qualified AbstractInterpretation.LiveVariable.Result   as LVA
+import qualified AbstractInterpretation.EffectTracking.Result as ET
+import qualified AbstractInterpretation.Sharing.Result        as Sharing
+import AbstractInterpretation.BinaryIR
 import AbstractInterpretation.OptimiseAbstractProgram
 import AbstractInterpretation.CreatedBy.Pretty
 import AbstractInterpretation.HeapPointsTo.Pretty
 import AbstractInterpretation.LiveVariable.Pretty
+import AbstractInterpretation.EffectTracking.Pretty
 import AbstractInterpretation.Sharing.Pretty
 import AbstractInterpretation.Sharing.CodeGen
 import AbstractInterpretation.Reduce (ComputerState, AbstractInterpretationResult(..), evalAbstractProgram)
 import qualified AbstractInterpretation.PrettyIR as IR
 import qualified AbstractInterpretation.IR as IR
-import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
-import qualified AbstractInterpretation.HeapPointsTo.CodeGenBase as HPT
-import qualified AbstractInterpretation.CreatedBy.CodeGen    as CBy
-import qualified AbstractInterpretation.LiveVariable.CodeGen as LVA
-import qualified AbstractInterpretation.Sharing.CodeGen      as Sharing
+import qualified AbstractInterpretation.HeapPointsTo.CodeGen         as HPT
+import qualified AbstractInterpretation.HeapPointsTo.CodeGenBase     as HPT
+import qualified AbstractInterpretation.CreatedBy.CodeGen            as CBy
+import qualified AbstractInterpretation.LiveVariable.CodeGen         as LVA
+import qualified AbstractInterpretation.EffectTracking.CodeGen       as ET
+import qualified AbstractInterpretation.EffectTracking.CodeGenBase   as ET
+import qualified AbstractInterpretation.Sharing.CodeGen              as Sharing
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
 import System.Directory
-import System.Process
+import qualified System.Process
 import Data.Bifunctor
 
 import qualified Data.Bimap as Bimap
@@ -107,12 +116,14 @@ import Data.Maybe (isNothing)
 import System.IO (BufferMode(..), hSetBuffering, stdout)
 import Data.Binary as Binary
 import Grin.Nametable as Nametable
+import qualified Data.ByteString.Lazy as LBS
 
 
 data Transformation
   -- Simplifying
   = RegisterIntroduction
   | ProducerNameIntroduction
+  | BindingPatternSimplification
   | Vectorisation
   | SplitFetch
   | CaseSimplification
@@ -162,6 +173,7 @@ data AbstractComputationStep
   = Compile
   | Optimise
   | PrintProgram
+  | SaveProgram String
   | RunPure
   | PrintResult
   deriving (Eq, Show)
@@ -176,16 +188,18 @@ data PipelineStep
   | HPT AbstractComputationStep
   | CBy AbstractComputationStep
   | LVA AbstractComputationStep
+  | ET  AbstractComputationStep
   | Sharing AbstractComputationStep
   | RunCByWithLVA -- TODO: Remove
   | Eff EffectStep
   | T Transformation
   | Pass [PipelineStep]
-  | PrintGrinH (Hidden (Doc -> Doc))
+  | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
   | PureEval
   | JITLLVM
   | PrintAST
-  | SaveLLVM Bool FilePath
+  | SaveLLVM Path
+  | SaveExecutable Bool Path -- Debug, Outputfile
   | SaveGrin Path
   | SaveBinary String
   | DebugTransformationH (Hidden (Exp -> Exp))
@@ -218,9 +232,17 @@ data Path
   | Rel FilePath
   deriving (Eq, Show)
 
-pattern PrintGrin :: (Doc -> Doc) -> PipelineStep
-pattern PrintGrin c <- PrintGrinH (H c)
-  where PrintGrin c =  PrintGrinH (H c)
+pattern PrintGrin :: RenderingOption -> (Doc -> Doc) -> PipelineStep
+pattern PrintGrin r c <- PrintGrinH r (H c)
+  where PrintGrin r c =  PrintGrinH r (H c)
+
+pattern SimplePrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern SimplePrintGrin c <- PrintGrinH Simple (H c)
+  where SimplePrintGrin c =  PrintGrinH Simple (H c)
+
+pattern FullPrintGrin :: (Doc -> Doc) -> PipelineStep
+pattern FullPrintGrin c <- PrintGrinH WithExternals (H c)
+  where FullPrintGrin c =  PrintGrinH WithExternals (H c)
 
 pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
@@ -235,6 +257,7 @@ data PipelineOpts = PipelineOpts
   , _poLintOnChange :: Bool
   , _poTypedLint :: Bool -- Run HPT before every lint
   , _poSaveBinary :: Bool
+  , _poCFiles :: [FilePath]
   }
 
 defaultOpts :: PipelineOpts
@@ -247,6 +270,7 @@ defaultOpts = PipelineOpts
   , _poLintOnChange = True
   , _poTypedLint    = False
   , _poSaveBinary   = False
+  , _poCFiles       = []
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -260,6 +284,8 @@ data PState = PState
     , _psCByResult      :: Maybe CBy.CByResult
     , _psLVAProgram     :: Maybe (IR.AbstractProgram, LVA.LVAMapping)
     , _psLVAResult      :: Maybe LVA.LVAResult
+    , _psETProgram      :: Maybe (IR.AbstractProgram, ET.ETMapping)
+    , _psETResult       :: Maybe ET.ETResult
     , _psSharingProgram :: Maybe (IR.AbstractProgram, Sharing.SharingMapping)
     , _psSharingResult  :: Maybe Sharing.SharingResult
     -- the type environment calculated by HPT
@@ -295,7 +321,6 @@ data TransformationFunc
   | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
   | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges))
   | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
-  | WithEffLVA     (LVA.LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
   | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
 
 -- TODO: Add n paramter for the transformations that use NameM
@@ -307,6 +332,7 @@ transformationFunc n = \case
   SplitFetch                      -> Plain (noNewNames . splitFetch)
   RegisterIntroduction            -> Plain (newNames . registerIntroductionI n) -- TODO
   ProducerNameIntroduction        -> Plain producerNameIntroduction
+  BindingPatternSimplification    -> Plain bindingPatternSimplification
   RightHoistFetch                 -> Plain (noNewNames . RHF.rightHoistFetch)
   -- misc
   MangleNames                     -> Plain (newNames . mangleNames) -- TODO
@@ -332,15 +358,15 @@ transformationFunc n = \case
   ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
   UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
-  NonSharedElimination            -> WithTypeEnvShr (noNewNames <$$$> nonSharedElimination)
-  DeadFunctionElimination         -> WithEffLVA (noNewNames <$$$$$> deadFunctionElimination)
-  DeadVariableElimination         -> WithEffLVA (noNewNames <$$$$$> deadVariableElimination)
+  NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
+  DeadFunctionElimination         -> WithLVA (noNewNames <$$$$> deadFunctionElimination)
+  DeadVariableElimination         -> WithLVA (noNewNames <$$$$> deadVariableElimination)
   DeadParameterElimination        -> WithLVA (noNewNames <$$$$> deadParameterElimination)
   DeadDataElimination             -> WithLVACBy deadDataElimination
   SparseCaseOptimisation          -> WithTypeEnv (noNewNames <$$$> sparseCaseOptimisation)
   where
-    noNewNames = flip (,) NoChange
-    newNames = flip (,) NewNames
+    noNewNames    = flip (,) NoChange
+    newNames      = flip (,) NewNames
 
 transformation :: Transformation -> PipelineM ()
 transformation t = do
@@ -349,6 +375,7 @@ transformation t = do
   e <- use psExp
   te <- fromMaybe (traceShow "empty type env is used" emptyTypeEnv) <$> use psTypeEnv
   em <- fromMaybe (traceShow "empty effect map is used" mempty) <$> use psEffectMap
+  et <- fromMaybe (traceShow "empty effect tracking result is used" mempty) <$> use psETResult
   cby <- fromMaybe (traceShow "empty created by result is used" CBy.emptyCByResult) <$> use psCByResult
   lva <- fromMaybe (traceShow "empty live variable result is used" LVA.emptyLVAResult) <$> use psLVAResult
   shr <- fromMaybe (traceShow "empty sharing result is used" Sharing.emptySharingResult) <$> use psSharingResult
@@ -358,7 +385,6 @@ transformation t = do
       WithTypeEnv    f -> f te e
       WithTypeEnvEff f -> Right $ f te em e
       WithLVA        f -> f lva te e
-      WithEffLVA     f -> f lva em te e
       WithLVACBy     f -> f lva cby te e
       WithTypeEnvShr f -> Right $ f shr te e
   psTransStep %= (+1)
@@ -384,6 +410,7 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram HPT.codeGen psHPTProgram
       Optimise      -> optimiseAbsProgWith psHPTProgram "HPT program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psHPTProgram
+      SaveProgram p -> saveAbstractProgram p psHPTProgram
       RunPure       -> runHPTPure
       PrintResult   -> printAnalysisResult psHPTResult
 
@@ -391,6 +418,7 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram CBy.codeGen psCByProgram
       Optimise      -> optimiseAbsProgWith psCByProgram "CBy program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psCByProgram
+      SaveProgram p -> saveAbstractProgram p psCByProgram
       RunPure       -> runCByPure
       PrintResult   -> printAnalysisResult psCByResult
 
@@ -398,8 +426,16 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram LVA.codeGen psLVAProgram
       Optimise      -> optimiseAbsProgWith psLVAProgram "LVA program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psLVAProgram
+      SaveProgram p -> saveAbstractProgram p psLVAProgram
       RunPure       -> runLVAPure
       PrintResult   -> printAnalysisResult psLVAResult
+
+    ET step -> case step of
+      Compile       -> compileAbstractProgram ET.codeGen psETProgram
+      Optimise      -> optimiseAbsProgWith psETProgram "ET program is not available to be optimized"
+      PrintProgram  -> printAbstractProgram psETProgram
+      RunPure       -> runETPure
+      PrintResult   -> printAnalysisResult psETResult
 
     RunCByWithLVA -> runCByWithLVAPure
 
@@ -407,6 +443,7 @@ pipelineStep p = do
       Compile       -> compileAbstractProgram Sharing.codeGen psSharingProgram
       Optimise      -> optimiseAbsProgWith psSharingProgram "Sharing program is not available to be optimized"
       PrintProgram  -> printAbstractProgram psSharingProgram
+      SaveProgram p -> saveAbstractProgram p psSharingProgram
       RunPure       -> runSharingPure
       PrintResult   -> printAnalysisResult psSharingResult
 
@@ -415,10 +452,11 @@ pipelineStep p = do
       PrintEffectMap  -> printEffectMap
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
-    PrintGrin d     -> printGrinM d
+    PrintGrin r d   -> printGrinM r d
     PureEval        -> pureEval
     JITLLVM         -> jitLLVM
-    SaveLLVM relPath path -> saveLLVM relPath path
+    SaveLLVM path   -> saveLLVM path
+    SaveExecutable dbg path -> saveExecutable dbg path
     SaveGrin path   -> saveGrin path
     SaveBinary name -> saveBinary name
     PrintAST        -> printAST
@@ -486,6 +524,17 @@ printAbstractProgram accessProg = do
   progM <- use accessProg
   mapM_ (printAbsProg . fst) progM
 
+saveAbstractProgram :: String -> (Lens' PState (Maybe (IR.AbstractProgram, a))) -> PipelineM ()
+saveAbstractProgram name accessProg = do
+  progM <- use accessProg
+  n <- use psSaveIdx
+  case progM of
+    Nothing   -> pure ()
+    Just (prog, mapping) -> do
+      outputDir <- view poOutputDir
+      let fname = printf "%03d.%s.dfbin" n name
+      liftIO $ LBS.writeFile (outputDir </> fname) $ encodeAbstractProgram prog
+
 printAnalysisResult :: Pretty res => (Lens' PState (Maybe res)) -> PipelineM ()
 printAnalysisResult accessRes = use accessRes >>= \case
   Nothing -> pure ()
@@ -544,6 +593,15 @@ runLVAPure = use psLVAProgram >>= \case
     pipelineLogIterations _airIter
     psLVAResult .= Just result
 
+runETPure :: PipelineM ()
+runETPure = use psETProgram >>= \case
+  Nothing -> psETResult .= Nothing
+  Just (etProgram, etMapping) -> do
+    let AbsIntResult{..} = evalAbstractProgram $ etProgram
+        result = ET.toETResult etMapping _airComp
+    pipelineLogIterations _airIter
+    psETResult .= Just result
+
 runSharingPureWith :: (Sharing.SharingMapping -> ComputerState -> Sharing.SharingResult) -> PipelineM ()
 runSharingPureWith toSharingResult = use psSharingProgram >>= \case
   Nothing -> psSharingResult .= Nothing
@@ -601,10 +659,10 @@ pureEval = do
     evalProgram PureReducer e
   pipelineLog $ show $ pretty val
 
-printGrinM :: (Doc -> Doc) -> PipelineM ()
-printGrinM color = do
-  e <- use psExp
-  pipelineLog $ showWide $ color $ pretty e
+printGrinM :: RenderingOption -> (Doc -> Doc) -> PipelineM ()
+printGrinM r color = do
+  p <- use psExp
+  pipelineLog $ showWide $ color $ prettyProgram r p
 
 jitLLVM :: PipelineM ()
 jitLLVM = do
@@ -635,23 +693,48 @@ saveBinary name = do
   let fname = printf "%03d.%s.binary" n name
   liftIO $ Binary.encodeFile (outputDir </> fname) ent
 
-saveLLVM :: Bool -> FilePath -> PipelineM ()
-saveLLVM relPath fname' = do
-  e <- use psExp
+relPath :: Path -> PipelineM String
+relPath path = do
   n <- use psSaveIdx
-  Just typeEnv <- use psTypeEnv
   o <- view poOutputDir
-  let fname = if relPath then o </> printf "%03d.%s" n fname' else fname'
-      code = CGLLVM.codeGen typeEnv e
-      llName = printf "%s.ll" fname
-      sName = printf "%s.s" fname
-  liftIO . void $ do
-    Text.putStrLn $ ppllvm code
-    putStrLn "* to LLVM *"
-    _ <- CGLLVM.toLLVM llName code
-    putStrLn "* LLVM X64 codegen *"
-    callCommand $ printf "opt-7 -O3 %s | llc-7 -o %s" llName sName
-    readFile sName >>= putStrLn
+  pure $ case path of
+    Abs fname -> fname
+    Rel fname -> o </> printf "%03d.%s" n fname
+
+callCommand :: String -> PipelineM ()
+callCommand cmd = do
+  pipelineLog $ "Call command:" ++ cmd
+  liftIO $ System.Process.callCommand cmd
+
+saveLLVM :: Path -> PipelineM ()
+saveLLVM path = do
+  e <- use psExp
+  pipelineStep HPTPass
+  Just typeEnv <- use psTypeEnv
+  fname <- relPath path
+  let code = CGLLVM.codeGen typeEnv e
+  let llName = printf "%s.ll" fname
+  let sName = printf "%s.s" fname
+  pipelineLog "* to LLVM *"
+  void $ liftIO $ CGLLVM.toLLVM llName code
+  pipelineLog"* LLVM X64 codegen *"
+  callCommand $ printf "opt-7 -O3 %s | llc-7 -o %s" llName (sName :: String)
+
+saveExecutable :: Bool -> Path -> PipelineM ()
+saveExecutable debugSymbols path = do
+  pipelineLog "* generate llvm x64 optcode *"
+  let grinOptCodePath = Rel "grin-opt-code"
+  pipelineStep $ SaveLLVM grinOptCodePath
+  grinOptCodeFile <- relPath grinOptCodePath
+  fname <- relPath path
+  pipelineLog "* generate executable *"
+  callCommand $ printf
+    ("llc-7 -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
+    grinOptCodeFile
+  cfg <- ask
+  callCommand $ printf
+    ("clang-7 -O3 %s %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
+    (intercalate " " $ _poCFiles cfg) grinOptCodeFile fname
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do
@@ -666,7 +749,10 @@ lintGrin mPhaseName = do
     pipelineStep $ HPT RunPure
   exp <- use psExp
   mTypeEnv <- use psTypeEnv
-  let lintExp@(_, errorMap) = Lint.lint mTypeEnv exp
+  -- By default we don't run the DDE related warnings. They should be enabled
+  -- when we do refactor on transformations to not to create non-DDE conforming
+  -- nodes, and they should be removed when we refactor the possible syntax.
+  let lintExp@(_, errorMap) = Lint.lint Lint.noDDEWarnings mTypeEnv exp
   psErrors .= (fmap Lint.message $ concat $ Map.elems errorMap)
 
   -- print errors
@@ -757,7 +843,8 @@ randomPipelineM seed = do
     runBasicAnalyses = mapM_ pipelineStep
       [ Sharing Compile
       , Sharing RunPure
-      , Eff CalcEffectMap
+      , ET Compile
+      , ET RunPure
       ]
 
     runCByLVA :: PipelineM ()
@@ -766,12 +853,15 @@ randomPipelineM seed = do
       , CBy RunPure
       , LVA Compile
       , LVA RunPure
-      , Eff CalcEffectMap
+      , ET Compile
+      , ET RunPure
       ]
 
     runNameIntro :: PipelineM ()
     runNameIntro = void . pipelineStep $ Pass
       [ T ProducerNameIntroduction
+      , T BindNormalisation
+      , T BindingPatternSimplification
       , T BindNormalisation
       ]
 
@@ -832,6 +922,8 @@ runPipeline o ta e m = do
       , _psCByResult      = Nothing
       , _psLVAProgram     = Nothing
       , _psLVAResult      = Nothing
+      , _psETProgram      = Nothing
+      , _psETResult       = Nothing
       , _psSharingResult  = Nothing
       , _psSharingProgram = Nothing
       , _psTypeEnv        = Nothing
@@ -962,6 +1054,8 @@ optimizeWithM pre trans post = do
               , SimpleDeadVariableElimination
               , ProducerNameIntroduction
               , BindNormalisation
+              , BindingPatternSimplification
+              , BindNormalisation
               , UnitPropagation
               ]
           , map T $ trans `intersect`
@@ -987,6 +1081,8 @@ invalidateAnalysisResults = do
   psCByResult      .= Nothing
   psLVAProgram     .= Nothing
   psLVAResult      .= Nothing
+  psETProgram      .= Nothing
+  psETResult       .= Nothing
   psSharingProgram .= Nothing
   psSharingResult  .= Nothing
   psTypeEnv        .= Nothing
@@ -1000,8 +1096,7 @@ runAnalysisFor t = do
     WithTypeEnv    _ -> [hpt]
     WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
-    WithEffLVA     _ -> [hpt, lva, cby, sharing, eff]
-    WithLVACBy     _ -> [hpt, lva, cby, sharing, eff]
+    WithLVACBy     _ -> [hpt,     cby, lva, sharing]
     WithTypeEnvShr _ -> [hpt, sharing]
   where
     analysis getter ann = do
@@ -1014,6 +1109,7 @@ runAnalysisFor t = do
     hpt = analysis psHPTResult HPT
     lva = analysis psLVAResult LVA
     cby = analysis psCByResult CBy
+    et  = analysis psETResult ET
     sharing = analysis psSharingResult Sharing
 
     eff :: PipelineM ()
@@ -1068,7 +1164,7 @@ defaultOptimizations =
   ]
 
 debugPipeline :: [PipelineStep] -> [PipelineStep]
-debugPipeline ps = [PrintGrin id] ++ ps ++ [PrintGrin id]
+debugPipeline ps = [SimplePrintGrin id] ++ ps ++ [SimplePrintGrin id]
 
 debugPipelineState :: PipelineM ()
 debugPipelineState = do
@@ -1083,6 +1179,8 @@ printingSteps =
   , CBy PrintResult
   , LVA PrintProgram
   , LVA PrintResult
+  , ET  PrintProgram
+  , ET  PrintResult
   , Sharing PrintProgram
   , Sharing PrintResult
   , PrintTypeEnv
@@ -1091,7 +1189,7 @@ printingSteps =
   , PrintErrors
   , PrintTypeAnnots
   , DebugPipelineState
-  , PrintGrin id
+  , SimplePrintGrin id
   ]
 
 isPrintingStep :: PipelineStep -> Bool

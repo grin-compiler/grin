@@ -78,6 +78,7 @@ external (External{..}) =
            <*> ty eRetType
            <*> mapM ty eArgsType
            <*> (pure eEffectful)
+           <*> (pure eKind)
 
 -- | Convert Names in the expression to Int identifiers and create
 -- an associated name table.
@@ -149,6 +150,7 @@ restore (exp, nt) = cata build exp where
              (rty eRetType)
              (map rty eArgsType)
              eEffectful
+             eKind
 
   rty :: Ty -> Ty
   rty = \case

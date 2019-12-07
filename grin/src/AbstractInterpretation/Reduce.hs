@@ -12,6 +12,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.Bimap as Bimap
 import qualified Data.Foldable
+import Data.Maybe
 import Data.Function (on)
 import GHC.Generics (Generic)
 import System.IO.Unsafe
@@ -126,15 +127,6 @@ conditionalMoveNodeSet (NodeSet srcTagMap) predicate dstNS@(NodeSet dstTagMap) =
       let filteredSrcNS = NodeSet $ Map.map (V.map (Set.filter (`notInRange` rng))) srcTagMap
       in mappend filteredSrcNS dstNS
 
--- NOTE: a ~ Tag
-tagPredicateCondition :: ((a          -> Bool) -> Set a -> Bool)
-                      -> (a -> Set a -> Bool)
-                      -> Map a b
-                      -> Bool
-tagPredicateCondition quantifier predicate tagMap =
-  let tags = Map.keysSet tagMap
-  in quantifier (`predicate` tags) tags
-
 -- Note the existential quantifier for the simpleTypes.
 -- A field only satisfies the predicate
 -- if it actually has a value inside it that satisfies the predicate.
@@ -162,28 +154,18 @@ evalInstruction = \case
       SimpleTypeExists ty -> do
         typeSet <- use $ selectReg srcReg.simpleType
         pure $ Set.member ty typeSet
-      NotIn tags -> do
+      AnyNotIn tags -> do
         tagMap <- use $ selectTagMap srcReg
         typeSet <- use $ selectReg srcReg.simpleType
         pure $ not (Set.null typeSet) || Data.Foldable.any (`Set.notMember` tags) (Map.keysSet tagMap)
-      All (TagIn tagSet) -> do
-        tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition all Set.member tagMap
-      All (TagNotIn tagSet) -> do
-        tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition all Set.notMember tagMap
       Any (TagIn tagSet) -> do
         tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition any Set.member tagMap
+        let tags = Map.keysSet tagMap
+        pure $ any (`Set.member` tagSet) tags
       Any (TagNotIn tagSet) -> do
         tagMap <- use $ selectTagMap srcReg
-        pure $ tagPredicateCondition any Set.notMember tagMap
-      All (ValueIn rng) -> do
-        val <- use $ selectReg srcReg
-        pure $ valPredicateCondition all (`inRange` rng) val
-      All (ValueNotIn rng) -> do
-        val <- use $ selectReg srcReg
-        pure $ valPredicateCondition all (`notInRange` rng) val
+        let tags = Map.keysSet tagMap
+        pure $ any (`Set.notMember` tagSet) tags
       Any (ValueIn rng) -> do
         val <- use $ selectReg srcReg
         pure $ valPredicateCondition any (`inRange` rng) val
@@ -209,11 +191,10 @@ evalInstruction = \case
         when (Set.member ty typeSet) $ do
           selectReg dstReg.simpleType %= (Set.insert ty)
 
-      NotIn tags -> do
-        value <- use $ selectReg srcReg
+      AnyNotIn tags -> do
         tagMap <- use $ selectTagMap srcReg
         typeSet <- use $ selectReg srcReg.simpleType
-        let filteredTagMap = Data.Foldable.foldr Map.delete tagMap tags
+        let filteredTagMap = Map.withoutKeys tagMap tags
         when (not (Set.null typeSet) || not (Map.null filteredTagMap)) $ do
           selectReg dstReg.nodeSet %= (mappend $ NodeSet filteredTagMap)
           selectReg dstReg.simpleType %= (mappend typeSet)
@@ -224,20 +205,20 @@ evalInstruction = \case
       let mergedFields = mconcat . (map Data.Foldable.fold) . Map.elems $ tagMap
       selectReg dstReg.simpleType %= (mappend mergedFields)
 
+    EveryNthField n -> do
+      tagMap <- use $ selectTagMap srcReg
+      let mergedNthFields = mconcat . mapMaybe (V.!? n) . Map.elems $ tagMap
+      selectReg dstReg.simpleType %= (mappend mergedNthFields)
+
   Extend {..} -> do
     -- TODO: support all selectors
     value <- use $ selectReg srcReg.simpleType
     case dstSelector of
       NodeItem tag itemIndex -> selectTagMap dstReg.at tag.non mempty.ix itemIndex %= (mappend value)
       AllFields -> selectTagMap dstReg %= (Map.map (V.map (mappend value)))
+      EveryNthField n -> selectTagMap dstReg %= (Map.map (over (ix n) (mappend value)))
       ConditionAsSelector cond -> case cond of
-        -- selects all fields/simpleType having at least one possible value satisfying the predicate
-        All (ValueIn    rng) -> do
-          selectReg dstReg.simpleType %= (mappendIf (any (`inRange` rng)) value)
-          selectTagMap dstReg %= Map.map (V.map (mappendIf (any (`inRange` rng)) value))
-        All (ValueNotIn rng) -> do
-          selectReg dstReg.simpleType %= (mappendIf (any (`notInRange` rng)) value)
-          selectTagMap dstReg %= Map.map (V.map (mappendIf (any (`notInRange` rng)) value))
+        _ -> pure () -- TODO
 
   Move {..} -> move srcReg dstReg
 

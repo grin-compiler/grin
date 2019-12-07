@@ -32,12 +32,18 @@ data Ty
   | TySimple  SimpleType
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
+data ExternalKind
+  = PrimOp -- ^ Implemented in the internal code generator
+  | FFI    -- ^ Implemented in C and linked during the linker phase
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
+
 data External
   = External
   { eName       :: Name
   , eRetType    :: Ty
   , eArgsType   :: [Ty]
   , eEffectful  :: Bool
+  , eKind       :: ExternalKind
   }
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
@@ -117,6 +123,7 @@ externals = \case
 -- * Binary instances
 
 deriving instance Binary Name
+deriving instance Binary ExternalKind
 deriving instance Binary External
 deriving instance Binary Ty
 deriving instance Binary SimpleType
@@ -142,6 +149,12 @@ deriving instance Ord a   => Ord  (ExpF a)
 pattern SFetch name = SFetchI name Nothing
 pattern SFetchF name = SFetchIF name Nothing
 
+pattern BoolPat b = LitPat (LBool b)
+
+_AltCPat :: Traversal' Exp CPat
+_AltCPat f (Alt p e) = (`Alt` e) <$> f p
+_AltCPat _ other     = pure other
+
 _AltFCPat :: Traversal' (ExpF a) CPat
 _AltFCPat f (AltF p e) = (`AltF` e) <$> f p
 _AltFCPat _ other      = pure other
@@ -157,6 +170,10 @@ _CPatLit _ other        = pure other
 _CPatDefault :: Traversal' CPat ()
 _CPatDefault f DefaultPat = const DefaultPat <$> f ()
 _CPatDefault _ other      = pure other
+
+_ValVar :: Traversal' Val Name
+_ValVar f (Var name) = Var <$> f name
+_ValVar _ other      = pure other
 
 _TyCon :: Traversal' Ty (Name, [Ty])
 _TyCon f (TyCon n ts) = uncurry TyCon <$> f (n, ts)

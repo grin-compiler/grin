@@ -24,3 +24,7 @@ output/
 *.agdai
 .output
 .grin-output/
+.vscode/
+*.out
+*.out.ll
+*.out.s

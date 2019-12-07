@@ -23,7 +23,13 @@ import Transformations.Util
 
 
 effectMap :: (TypeEnv, Exp) -> EffectMap
-effectMap (te, e) = EffectMap $ effectfulFunctions $ unMMap $ snd $ para buildEffectMap e where
+effectMap (te, e) = EffectMap $ withEffectfulExternals $ effectfulFunctions $ unMMap $ snd $ para buildEffectMap e where
+
+  withEffectfulExternals :: Map Name Effects -> Map Name Effects
+  withEffectfulExternals
+    | Program exts _ <- e
+    = Map.union $ Map.fromSet (\ext -> Effects (Set.singleton ext) mempty mempty) effectfulExternals
+    | otherwise = id
 
   effectfulExternals :: Set Name
   effectfulExternals = case e of

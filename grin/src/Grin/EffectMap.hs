@@ -20,8 +20,8 @@ import Lens.Micro.Platform
 
 import Grin.Grin
 
--- | Either the name of a function with return type of Unit,
--- or a list of heap locations updated by the function.
+-- | Contains the name of all the effectful primops used by the function,
+-- and a list of heap locations updated by it.
 data Effects
   = Effects
   { _effectfulPrimops :: Set Name

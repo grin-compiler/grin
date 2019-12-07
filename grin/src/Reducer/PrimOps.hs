@@ -14,14 +14,17 @@ import Foreign.C.String
 
 import Reducer.Base
 
+import Data.Bits (shift)
 import Data.Char (chr, ord)
 import Grin.Grin
 import Data.Map.Strict as Map
 import Data.String (fromString)
+import Data.Functor.Infix ((<$$>))
 import Data.Text as Text
 import Control.Monad.IO.Class
 
 import Control.Concurrent (threadDelay)
+import Data.Bits
 import System.IO (hIsEOF, stdin)
 import System.IO.Unsafe
 
@@ -29,7 +32,7 @@ C.include "<math.h>"
 C.include "<stdio.h>"
 
 -- primitive functions
-primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (print a) >> pure RT_Unit
+primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (putStr $ show a) >> pure RT_Unit
 primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (Text.unpack a)) >> pure RT_Unit
 primLiteralPrint ctx ps x = error $ Prelude.unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
 
@@ -53,15 +56,17 @@ evalPrimOp name params args = case name of
   "_prim_string_tail"    -> string_un_op string Text.tail
   "_prim_string_len"     -> string_un_op int (fromIntegral . Text.length)
   "_prim_string_concat"  -> string_bin_op string (\t1 t2 -> Text.concat [t1, t2])
-  "_prim_string_lt"      -> string_bin_op bool (<)
-  "_prim_string_eq"      -> string_bin_op bool (==)
+  "_prim_string_lt"      -> string_bin_op int (boolean 0 1 <$$> (<))
+  "_prim_string_eq"      -> string_bin_op int (boolean 0 1 <$$> (==))
   "_prim_string_cons"    -> string_cons
 
   -- Int
+  "_prim_int_shr"   -> int_un_op int (`shiftR` 1)
   "_prim_int_add"   -> int_bin_op int (+)
   "_prim_int_sub"   -> int_bin_op int (-)
   "_prim_int_mul"   -> int_bin_op int (*)
   "_prim_int_div"   -> int_bin_op int div
+  "_prim_int_ashr"  -> int_bin_op int (\v h -> shift v ((-1) * fromIntegral h))
   "_prim_int_eq"    -> int_bin_op bool (==)
   "_prim_int_ne"    -> int_bin_op bool (/=)
   "_prim_int_gt"    -> int_bin_op bool (>)
@@ -104,6 +109,10 @@ evalPrimOp name params args = case name of
   bool  x = pure . RT_Lit . LBool $ x
   string x = pure . RT_Lit . LString $ x
 --  char x = pure . RT_Lit . LChar $ x
+
+  int_un_op retTy fn = case args of
+    [RT_Lit (LInt64 a)] -> retTy $ fn a
+    _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_bin_op retTy fn = case args of
     [RT_Lit (LInt64 a), RT_Lit (LInt64 b)] -> retTy $ fn a b
@@ -172,3 +181,5 @@ evalPrimOp name params args = case name of
   primError = case args of
     [RT_Lit (LString msg)] -> liftIO (ioError $ userError $ Text.unpack msg) >> pure RT_Unit
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
+
+  boolean f t x = if x then t else f

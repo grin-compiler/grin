@@ -12,11 +12,13 @@ import qualified Data.Vector as Vec
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Set.Extra as Set
 
 import qualified Data.Foldable
 import Data.Functor.Foldable as Foldable
 
 import Lens.Micro
+import Lens.Micro.Extra
 import Lens.Micro.Platform
 
 import Control.Monad.Extra
@@ -26,10 +28,10 @@ import Control.Monad.Trans.Except
 import Grin.Grin
 import Grin.Pretty
 import Grin.TypeEnv
-import Grin.EffectMap
 import Transformations.Util
 import AbstractInterpretation.LiveVariable.Result as LVA
 
+-- TODO: clean up `analyzeCases` and the other remnants of the EffectMap
 
 data DeletedEntities = DeletedEntities
   { _deVariables :: Set Name
@@ -51,17 +53,21 @@ runTrf :: Trf a -> Either String a
 runTrf = flip evalState mempty . runExceptT
 
 -- P and F nodes are handled by Dead Data Elimination
-deadVariableElimination :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Either String Exp
-deadVariableElimination lvaResult effMap tyEnv
-  = runTrf . (deleteDeadBindings lvaResult effMap tyEnv >=> replaceDeletedVars tyEnv)
+deadVariableElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
+deadVariableElimination lvaResult tyEnv exp =
+  runTrf . (deleteDeadBindings lvaResult tyEnv >=> replaceDeletedVars tyEnv) $ exp
 
 {- NOTE: Fetches do not have to be handled separately,
    since producer name introduction guarantees
    that all bindings with a fetch LHS will have a Var PAT
    (handled by the last case in alg).
+
+   Side effects are only incorporated into the liveness analysis
+   if `EffectTracking` was run before LVA.
+   Otherwise all computations are considered pure.
 -}
-deleteDeadBindings :: LVAResult -> EffectMap -> TypeEnv -> Exp -> Trf Exp
-deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
+deleteDeadBindings :: LVAResult -> TypeEnv -> Exp -> Trf Exp
+deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     e@(EBindF SStore{} (Var p) rhs)
@@ -69,17 +75,22 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
         unless (isSingleton locs) (throwE $ multipleLocs p locs)
         pointerDead <- isVarDeadM p
         rmWhen pointerDead e rhs (Set.singleton p) (Set.fromList locs)
-    e@(EBindF (SApp f _) lpat rhs) -> do
-      let names = foldNamesVal Set.singleton lpat
-          hasNoSideEffect = not $ hasTrueSideEffect f effMap
-      funDead <- isFunDeadM f
-      rmWhen (funDead && hasNoSideEffect) e rhs names mempty
+    e@(EBindF (SApp f _) (Var v) rhs) | f `notElem` (map eName exts) -> do
+      {- NOTE: A live arg could mean there is an update inside the function.
+         Deleting this update usually has no effect on the code, but it is
+         not proven, that it will always keep the semantics.
+      -}
+      noLiveArgs <- noLiveArgsM f
+      varDead    <- isVarDeadM v
+      bindingHasNoEffect <- varHasNoSideEffectsM v
+      rmWhen (noLiveArgs && varDead && bindingHasNoEffect) e rhs (Set.singleton v) mempty
     e@(EBindF (SUpdate p v) Unit rhs) -> do
       varDead <- isVarDeadM p
       rmWhen varDead e rhs mempty mempty
     e@(EBindF _ (Var v) rhs) -> do
       varDead <- isVarDeadM v
-      rmWhen varDead e rhs (Set.singleton v) mempty
+      bindingHasNoEffect <- varHasNoSideEffectsM v
+      rmWhen (varDead && bindingHasNoEffect) e rhs (Set.singleton v) mempty
     e -> pure . embed $ e
 
   rmWhenAllDead :: ExpF Exp -> Exp -> Val -> Trf Exp
@@ -95,18 +106,25 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
                         pure modified
     | otherwise = pure . embed $ orig
 
+  varHasNoSideEffectsM :: Name -> Trf Bool
+  varHasNoSideEffectsM v = fmap (not . _hasEffect)
+                         . lookupExcept (varEffNotFound v) v
+                         . LVA._registerEff
+                         $ lvaResult
+
   isVarDeadM :: Name -> Trf Bool
   isVarDeadM v = fmap (not . isLive)
-                . lookupExcept (varLvNotFound v) v
-                . _register
-                $ lvaResult
-
-  isFunDeadM :: Name -> Trf Bool
-  isFunDeadM f = fmap isFunDead
-               . lookupExcept (funLvNotFound f) f
-               . LVA._function
+               . lookupExcept (varLvNotFound v) v
+               . LVA._registerLv
                $ lvaResult
 
+  noLiveArgsM :: Name -> Trf Bool
+  noLiveArgsM f = fmap (not . hasLiveArgs)
+                . lookupExcept (funLvNotFound f) f
+                . LVA._functionLv
+                $ lvaResult
+
+  varEffNotFound v = "DVE: Variable " ++ show (PP v) ++ " was not found in effect map"
   varLvNotFound v = "DVE: Variable " ++ show (PP v) ++ " was not found in liveness map"
   funLvNotFound f = "DVE: Function " ++ show (PP f) ++ " was not found in liveness map"
 
@@ -119,7 +137,6 @@ deleteDeadBindings lvaResult effMap tyEnv = cataM alg where
                      ++ "should always point to a single locationn, "
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
-
 
 -- This will not replace the occurences of a deleted pointer
 -- in fetches and in updates. But it does not matter,
