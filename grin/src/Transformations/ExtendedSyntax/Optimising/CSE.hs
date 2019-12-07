@@ -1,18 +1,22 @@
 {-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
-module Transformations.Optimising.CSE where
+module Transformations.ExtendedSyntax.Optimising.CSE where
 
 -- HINT: common sub-expression elimination
 
-import Text.Printf
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable as Foldable
-import Grin.Grin
-import Grin.TypeEnv
-import Grin.EffectMap
-import Transformations.Util
 
-import Debug.Trace
+import Text.Printf
+
+import Lens.Micro ((^.))
+import Lens.Micro.Extra (isn't)
+
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnv
+import Grin.ExtendedSyntax.EffectMap
+import Transformations.ExtendedSyntax.Util
+
 
 type Env = (Map SimpleExp SimpleExp)
 
@@ -23,24 +27,32 @@ commonSubExpressionElimination typeEnv effMap e = hylo skipUnit builder (mempty,
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, subst env -> exp) = case exp of
-    EBind leftExp lpat rightExp -> EBindF (env, leftExp) lpat (newEnv, rightExp) where
+    EBind leftExp bPat rightExp -> EBindF (env, leftExp) bPat (newEnv, rightExp) where
       newEnv = case leftExp of
         -- HINT: also save fetch (the inverse operation) for store and update
-        SUpdate name val              -> Map.insert (SFetch name) (SReturn val) env
-        SStore val | Var name <- lpat -> Map.insert (SFetch name) (SReturn val) extEnvKeepOld
+        SUpdate ptr var -> Map.insert (SFetch ptr) (SReturn (Var var)) env
+        SStore var
+          -- TODO: AsPat
+          | VarPat ptr <- bPat -> Map.insert (SFetch ptr) (SReturn (Var var)) extEnvKeepOld
         -- HINT: location parameters might be updated in the called function, so forget their content
         SApp defName args -> foldr
           Map.delete
           (if (hasTrueSideEffect defName effMap) then env else extEnvKeepOld)
-          [SFetch name | Var name <- args, isLocation name]
-        SReturn val | isConstant val  -> extEnvKeepOld
+          [SFetch var | var <- args, isLocation var]
+        SReturn val | isn't _Var val  -> extEnvKeepOld
         SFetch{}  -> extEnvKeepOld
         _         -> env
-      extEnvKeepOld = Map.insertWith (\new old -> old) leftExp (SReturn lpat) env
-    SUpdate name val | Just (SReturn fetchedVal) <- Map.lookup (SFetch name) env
-                     , fetchedVal == val
-                     -> SReturnF Unit
-    ECase val alts -> ECaseF val [(altEnv env val cpat, alt) | alt@(Alt cpat _) <- alts]
+
+      extEnvKeepOld = Map.insertWith (\new old -> old) leftExp (SReturn . Var $ bPat ^. _BPatVar) env
+
+    -- TODO: Investigate this. Will the fetched variable, and the variable to be updated with
+    -- always have the same name? If not, will copy propagation solve it?
+    SUpdate ptr var | Just (SReturn (Var fetchedVar)) <- Map.lookup (SFetch ptr) env
+                    , fetchedVar == var
+                    -> SReturnF Unit
+
+    ECase scrut alts -> ECaseF scrut [(altEnv env scrut cpat, alt) | alt@(Alt cpat _altName _) <- alts]
+
     _ -> (env,) <$> project exp
 
   isLocation :: Name -> Bool
@@ -48,19 +60,15 @@ commonSubExpressionElimination typeEnv effMap e = hylo skipUnit builder (mempty,
     T_SimpleType T_Location{} -> True
     _ -> False
 
-  altEnv :: Env -> Val -> CPat -> Env
-  altEnv env val cpat
-    | not (isConstant val)
-    = case cpat of
-      NodePat tag args  -> env -- When we use scrutinee variable already HPT will include all the
-                               -- possible values, instead of the matching one. As result it will
-                               -- overapproximate the values more than needed.
+  altEnv :: Env -> Name -> CPat -> Env
+  altEnv env scrut cpat = case cpat of
+    NodePat tag args  -> env -- When we use scrutinee variable already HPT will include all the
+                             -- possible values, instead of the matching one. As result it will
+                             -- overapproximate the values more than needed.
 
-                               -- NOTE: We could extend the env with [ SReturn (ConstTagNode tag args) -> SReturn val ]
-                               -- HPT would _not_ overapproximate the possible type of the variable,
-                               -- since it restricts the scrutinee to the alternative's domain
-      LitPat lit        -> Map.insertWith (\new old -> old) (SReturn (Lit lit)) (SReturn val) env
-      TagPat tag        -> Map.insertWith (\new old -> old) (SReturn (ValTag tag)) (SReturn val) env
-      DefaultPat        -> env
+                             -- NOTE: We could extend the env with [ SReturn (ConstTagNode tag args) -> SReturn val ]
+                             -- HPT would _not_ overapproximate the possible type of the variable,
+                             -- since it restricts the scrutinee to the alternative's domain
+    LitPat lit        -> Map.insertWith (\new old -> old) (SReturn (Lit lit)) (SReturn (Var scrut)) env
+    DefaultPat        -> env
 
-    | otherwise = env
