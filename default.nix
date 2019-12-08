@@ -16,6 +16,7 @@ hpkg.developPackage {
   };
   modifier = drv: hlib.addBuildTools drv [
     (import nix/llvm.nix {})
+    pkgs.clang_7
     pkgs.llvm_7
   ];
   returnShellEnv = false;
