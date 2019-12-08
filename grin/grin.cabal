@@ -166,7 +166,7 @@ library
     quickcheck-instances,
     neat-interpolation,
     template-haskell,
-    Diff,
+    Diff == 0.4.*,
     random,
     set-extra,
     deepseq,
