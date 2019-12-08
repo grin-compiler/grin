@@ -22,6 +22,18 @@ type Env = (Map SimpleExp SimpleExp)
 
 -- TODO: track if function parameters with location type can be updated in the called function to improve CSE
 
+{- TODO: remove skipUnit, it does nothing with the new syntax (SDVE will get rid of the unused unit-binds)
+   TODO: CSE could be taught to remember pattern binds:
+   (CInt k1)@n0 <- pure (CInt k0)
+   n1 <- pure (CInt k0)
+   n2 <- pure (CInt k1)
+
+   could be transformed to:
+
+   (CInt k1)@n0 <- pure (CInt k0)
+   n1 <- pure n0
+   n2 <- pure n0
+-}
 commonSubExpressionElimination :: TypeEnv -> EffectMap -> Exp -> Exp
 commonSubExpressionElimination typeEnv effMap e = hylo skipUnit builder (mempty, e) where
 
