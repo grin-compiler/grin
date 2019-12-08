@@ -239,6 +239,35 @@ spec = do
         |]
       (cseOptNoEff (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
 
+    it "case alternative, intended dead code rewriting" $ do
+      let before = [expr|
+          n1 <- pure (CFoo)
+          case n1 of
+            (CNode a1 b2) ->
+              n2 <- pure (CNode a1 b2)
+              pure n2
+            (CBox a2) ->
+              n3 <- pure (CBox a2)
+              pure (CFoo)
+            #default ->
+              n4 <- pure n1
+              pure n4
+        |]
+      let after = [expr|
+          n1 <- pure (CFoo)
+          case n1 of
+            (CNode a1 b2) ->
+              n2 <- pure (CNode a1 b2)
+              pure n2
+            (CBox a2) ->
+              n3 <- pure (CBox a2)
+              pure (CFoo)
+            #default ->
+              n4 <- pure n1
+              pure n4
+        |]
+      (cseOptNoEff (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
+
   it "no copy propagation of def arguments" $ do
     let before = [prog|
           fun a =
