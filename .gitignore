@@ -18,6 +18,7 @@ cabal.sandbox.config
 *.eventlog
 .stack-work/
 cabal.project.local
+cabal.project.local~
 .HTF/
 output/
 *.ibc
@@ -29,3 +30,4 @@ grin/.end-to-end-test/
 *.out
 *.out.ll
 *.out.s
+.ghc.environment.*
