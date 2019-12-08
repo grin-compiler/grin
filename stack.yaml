@@ -1,4 +1,4 @@
-resolver: nightly-2019-02-09
+resolver: lts-14.16
 
 # due to functor-infix
 allow-newer: true
