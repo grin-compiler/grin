@@ -1,8 +1,8 @@
 let
-  pinned = (import <nixpkgs> {}).fetchFromGitHub {
-    owner  = "NixOS";
-    repo   = "nixpkgs-channels";
-    rev    = "ffc604e55790dbf575187738e1c3778231e8f5a9";
-    sha256 = "1kw37ab6abkrjn65zhh0jcnfb3bzk1p14d178sp8489kn9gxy12v";
+  commit = "2adf2d615cf8f6c6be49a0e54dc9ebf551dcf70f";
+  pinned = builtins.fetchTarball {
+    name   = "nixpkgs-19.09";
+    url = "https://github.com/nixos/nixpkgs/archive/${commit}.tar.gz";
+    sha256 = "0w8zgj38di4ssw6s0bxdb9rgksqfszsa3304863xic4bzsvkql9b";
   };
 in import pinned {}

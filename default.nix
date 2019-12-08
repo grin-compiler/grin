@@ -12,6 +12,7 @@ hpkg.developPackage {
     llvm-hs = super.llvm-hs.override (oa: {
       llvm-config = pkgs.llvm_7;
     });
+    llvm-hs-pretty = hlib.unmarkBroken super.llvm-hs-pretty;
   };
   modifier = drv: hlib.addBuildTools drv [
     (import nix/llvm.nix {})
