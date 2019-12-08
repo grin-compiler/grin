@@ -128,10 +128,10 @@ parseProg :: Text -> Exp
 parseProg src = either (error . parseErrorPretty' src) id . parseGrin "" $ withoutTypeAnnots src
 
 parseDef :: Text -> Exp
-parseDef src = either (error . parseErrorPretty' src) id . runParser def "" $ withoutTypeAnnots src
+parseDef src = either (error . parseErrorPretty' src) id . runParser (def <* sc <* eof) "" $ withoutTypeAnnots src
 
 parseExpr :: Text -> Exp
-parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1) "" $ withoutTypeAnnots src
+parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1 <* sc <* eof) "" $ withoutTypeAnnots src
 
 
 withoutTypeAnnots :: Text -> Text
