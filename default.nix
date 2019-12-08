@@ -2,17 +2,18 @@
 
 let
   hlib = pkgs.haskell.lib;
-  hpkg = pkgs.haskell.packages.ghc844;
+  hpkg = pkgs.haskell.packages.ghc865;
+  llvm-hs = import ./nix/llvm-hs.nix;
 in
 
 hpkg.developPackage {
   root = ./grin;
   overrides = self: super: {
-    Diff = hlib.dontCheck super.Diff;
-    llvm-hs = super.llvm-hs.override (oa: {
+    llvm-hs = hlib.dontCheck (self.callCabal2nix "llvm-hs" "${llvm-hs}/llvm-hs" {
       llvm-config = pkgs.llvm_7;
     });
-    llvm-hs-pretty = hlib.unmarkBroken super.llvm-hs-pretty;
+    llvm-hs-pure = self.callCabal2nix "llvm-hs-pure" "${llvm-hs}/llvm-hs-pure" {};
+    llvm-hs-pretty = self.callPackage ./nix/llvm-hs-pretty.nix {};
   };
   modifier = drv: hlib.addBuildTools drv [
     (import nix/llvm.nix {})
