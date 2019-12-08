@@ -1,8 +1,8 @@
-{ pkgs ? import nix/pkgs.nix }:
+{ compiler ? "ghc865", pkgs ? import nix/pkgs.nix }:
 
 let
   hlib = pkgs.haskell.lib;
-  hpkg = pkgs.haskell.packages.ghc865;
+  hpkg = pkgs.haskell.packages."${compiler}";
   llvm-hs = import ./nix/llvm-hs.nix;
 in
 

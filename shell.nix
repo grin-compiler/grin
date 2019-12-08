@@ -1,7 +1,11 @@
 { pkgs ? import nix/pkgs.nix }:
 
-let grin = import ./. { inherit pkgs; };
-in pkgs.haskell.packages.ghc865.shellFor {
+let
+  compiler = "ghc865";
+  grin = import ./. { inherit compiler pkgs; };
+in
+
+pkgs.haskell.packages."${compiler}".shellFor {
   withHoogle = true;
   packages = p: [ grin ];
   inherit (grin.env) nativeBuildInputs;
