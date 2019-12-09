@@ -88,7 +88,7 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             x0 <- pure 0
             n0 <- pure (CInt x0)
-            (CInt x1)@_v <- pure n0
+            (CInt x1) @ _v <- pure n0
             _prim_int_print x1
       |]
     let variableAliasExpected = emptyLVAResult
@@ -108,9 +108,9 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             x0 <- pure 0
             n0 <- pure (CInt x0)
-            (CInt _v)@n1 <- pure n0
+            (CInt _v) @ n1 <- pure n0
             case n1 of
-              (CInt c0)@alt0 -> _prim_int_print c0
+              (CInt c0) @ alt0 -> _prim_int_print c0
       |]
     let variableAliasExpected = emptyLVAResult
           { _memory     = []
@@ -134,8 +134,8 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- pure (CBool z0)
             case n0 of
-              (CBool c0)@alt0 -> pure (CBool c0)
-              (CWord c1)@alt1 -> pure (CNode c1)
+              (CBool c0) @ alt0 -> pure (CBool c0)
+              (CWord c1) @ alt1 -> pure (CNode c1)
               #default@alt2   -> pure (CWord a0)
         |]
     let caseAnonymousExpected = emptyLVAResult
@@ -194,10 +194,10 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- pure (CBool z0)
             n1 <- case n0 of
-              (CBool c0)@alt0 -> pure (CNode c0)
-              (CWord c1)@alt1 -> pure (CWord c1)
+              (CBool c0) @ alt0 -> pure (CNode c0)
+              (CWord c1) @ alt1 -> pure (CWord c1)
               #default@alt2   -> pure (CNope)
-            (CNode b0)@_1 <- pure n1
+            (CNode b0) @ _1 <- pure n1
             pure b0
         |]
     let caseMinNodesExpected = emptyLVAResult
@@ -230,16 +230,16 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             case n0 of
-              (CBool c0)@alt0 ->
+              (CBool c0) @ alt0 ->
                 case n0 of
-                  (CBool c1)@alt1 -> pure (CBool c1)
-                  (CWord c2)@alt2 -> pure (CWord b0)
-                  (CNope c3)@alt3 -> pure (CNope c3)
-              (CWord c4)@alt3 ->
+                  (CBool c1) @ alt1 -> pure (CBool c1)
+                  (CWord c2) @ alt2 -> pure (CWord b0)
+                  (CNope c3) @ alt3 -> pure (CNope c3)
+              (CWord c4) @ alt3 ->
                 case n0 of
-                  (CBool c5)@alt4 -> pure (CBool b1)
-                  (CWord c6)@alt5 -> pure (CWord c4)
-                  (CNope c7)@alt6 -> pure (CNope c7)
+                  (CBool c5) @ alt4 -> pure (CBool b1)
+                  (CWord c6) @ alt5 -> pure (CWord c4)
+                  (CNope c7) @ alt6 -> pure (CNope c7)
           f x =
             z1 <- pure 0
             case x of
@@ -292,13 +292,13 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             case n0 of
-              (CInt  c0)@alt0 ->
-                (CInt b0)@_1 <- pure n0
+              (CInt  c0) @ alt0 ->
+                (CInt b0) @ _1 <- pure n0
                 pure b0
-              (CBool c1)@alt1 ->
+              (CBool c1) @ alt1 ->
                 pure c1
               #default@alt2 ->
-                (CWord b1)@_2 <- pure n0
+                (CWord b1) @ _2 <- pure n0
                 pure b1
 
           f x =
@@ -342,15 +342,15 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             n4 <- case n0 of
-              (CInt  c0)@alt0 ->
-                (CInt  b0)@_1 <- pure n0
+              (CInt  c0) @ alt0 ->
+                (CInt  b0) @ _1 <- pure n0
                 n1 <- f b0
                 pure n1
-              (CBool c1)@alt1 ->
+              (CBool c1) @ alt1 ->
                 n2 <- f c1
                 pure n2
               #default@alt2 ->
-                (CWord b1)@_2 <- pure n0
+                (CWord b1) @ _2 <- pure n0
                 n3 <- f b1
                 pure n3
             pure n4
@@ -437,7 +437,7 @@ spec = describe "Live Variable Analysis" $ do
                 pure n3
 
             case n4 of
-              (CInt c0)@alt2 -> pure z0
+              (CInt c0) @ alt2 -> pure z0
         |]
         deadTagsExpected = emptyLVAResult
           { _memory     = [ livenessN2, livenessN3 ]
@@ -477,13 +477,13 @@ spec = describe "Live Variable Analysis" $ do
             a1 <- pure 1
             n0 <- pure (CNode a0 a1)
             case n0 of
-              (CNode c0 c1)@alt0 ->
+              (CNode c0 c1) @ alt0 ->
                 n1 <- pure (CNode c0 c1)
                 f n1
 
           f x =
             case x of
-              (CNode c2 c3)@alt1 -> pure c3
+              (CNode c2 c3) @ alt1 -> pure c3
         |]
     let fieldsExpected = emptyLVAResult
           { _memory     = []
@@ -520,8 +520,8 @@ spec = describe "Live Variable Analysis" $ do
 
           f x =
             case x of
-              (CFoo c0)@alt0 -> pure c0
-              (CBar c1)@alt1 -> pure z0
+              (CFoo c0) @ alt0 -> pure c0
+              (CBar c1) @ alt1 -> pure z0
         |]
     let functionCall1Expected = emptyLVAResult
           { _memory     = []
@@ -549,7 +549,7 @@ spec = describe "Live Variable Analysis" $ do
   it "function_call_2" $ do
     let exp = [prog|
           grinMain =
-            (CTwo a1 b1)@_1 <- f
+            (CTwo a1 b1) @ _1 <- f
             n <- pure (COne a1)
             pure n
 
@@ -586,10 +586,10 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             z1 <- pure (CBool z0)
             p0 <- case z1 of
-              (CBool c1)@alt0 ->
+              (CBool c1) @ alt0 ->
                 z2 <- pure (CBool c1)
                 store z2
-            (CBool a1)@_1 <- fetch p0
+            (CBool a1) @ _1 <- fetch p0
             pure a1
         |]
     let heapCaseMinExpected = emptyLVAResult
@@ -616,20 +616,20 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             p0 <- case n0 of
-              (CWord c0)@alt0 ->
+              (CWord c0) @ alt0 ->
                 z1 <- pure (CWordH c0)
                 store z1
-              (CBool c1)@alt1 ->
+              (CBool c1) @ alt1 ->
                 z2 <- pure (CBoolH c1)
                 store z2
-              (CNope c2)@alt2 ->
+              (CNope c2) @ alt2 ->
                 z3 <- pure (CNopeH c2)
                 store z3
             n1 <- fetch p0
             case n1 of
-              (CWordH c3)@alt3 -> pure z0
-              (CBoolH c4)@alt4 -> pure c4
-              (CNopeH c5)@alt5 -> pure c5
+              (CWordH c3) @ alt3 -> pure z0
+              (CBoolH c4) @ alt4 -> pure c4
+              (CNopeH c5) @ alt5 -> pure c5
 
           f x =
             z4 <- pure 0
@@ -699,8 +699,8 @@ spec = describe "Live Variable Analysis" $ do
             z3 <- pure 0
             n <- fetch p0
             x <- case n of
-              (CNil c0)@alt0 -> pure z3
-              (COne c1)@alt1 -> pure z3
+              (CNil c0) @ alt0 -> pure z3
+              (COne c1) @ alt1 -> pure z3
               #default@alt2  -> pure z3
 
             pure x
@@ -743,9 +743,9 @@ spec = describe "Live Variable Analysis" $ do
             p0 <- store n0
             n1 <- pure (CCons a0 p0)
             r <- case n1 of
-              (CNil)@alt0 ->
+              (CNil) @ alt0 ->
                 pure (CNil)
-              (CCons x xs)@alt1 ->
+              (CCons x xs) @ alt1 ->
                 xs' <- fetch xs
                 pure xs'
             pure r
@@ -782,7 +782,7 @@ spec = describe "Live Variable Analysis" $ do
             n <- pure (CTwo z0 z1)
             p <- store n
             x <- fetch p
-            (CTwo a b)@_1 <- pure x
+            (CTwo a b) @ _1 <- pure x
             pure a
         |]
     let heapSimpleExpected = emptyLVAResult
@@ -820,10 +820,10 @@ spec = describe "Live Variable Analysis" $ do
             _1 <- update p0 n2
             n3 <- fetch p0
             case n3 of
-              (CBool c0)@alt2 -> pure c0
-              (CWord c1)@alt3 -> pure z0
-              (CNode c2)@alt4 -> pure c2
-              (CNope c3)@alt5 -> pure c3
+              (CBool c0) @ alt2 -> pure c0
+              (CWord c1) @ alt3 -> pure z0
+              (CNode c2) @ alt4 -> pure c2
+              (CNope c3) @ alt5 -> pure c3
         |]
     let heapUpdateComplexExpected = emptyLVAResult
           { _memory     = heapUpdateComplexExpectedHeap
@@ -875,10 +875,10 @@ spec = describe "Live Variable Analysis" $ do
             q0 <- g p0 n2
             n3 <- fetch p0
             case n3 of
-              (CBool c0)@alt0 -> pure c0
-              (CWord c1)@alt1 -> pure z0
-              (CNode c2)@alt2 -> pure c2
-              (CNope c3)@alt3 -> pure c3
+              (CBool c0) @ alt0 -> pure c0
+              (CWord c1) @ alt1 -> pure z0
+              (CNode c2) @ alt2 -> pure c2
+              (CNope c3) @ alt3 -> pure c3
 
           f x y z =
             z1 <- pure 0
@@ -948,9 +948,9 @@ spec = describe "Live Variable Analysis" $ do
             _1 <- update p0 n1
             n2 <- fetch p0
             case n2 of
-              (CBool c0)@alt0 -> pure c0
-              (CWord c1)@alt1 -> pure z0
-              (CNope c2)@alt2 -> pure c2
+              (CBool c0) @ alt0 -> pure c0
+              (CWord c1) @ alt1 -> pure z0
+              (CNope c2) @ alt2 -> pure c2
         |]
     let heapUpdateLocalExpected = emptyLVAResult
           { _memory     = heapUpdateLocalExpectedHeap
@@ -1027,7 +1027,7 @@ spec = describe "Live Variable Analysis" $ do
           grinMain =
             z0 <- pure 0
             y <- pure (CInt z0)
-            (CInt n)@_1 <- f y
+            (CInt n) @ _1 <- f y
             pure y
 
           f x = pure x
@@ -1085,8 +1085,8 @@ spec = describe "Live Variable Analysis" $ do
             a2 <- pure 2
             n0 <- f a0 a1 a2
             case n0 of
-              (CInt  c0)@alt0 -> pure c0
-              (CBool c1)@alt1 -> pure 5
+              (CInt  c0) @ alt0 -> pure c0
+              (CBool c1) @ alt1 -> pure 5
 
           f x y z =
             case x of
@@ -1128,8 +1128,8 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n0 <- f z0
             case n0 of
-              (COne c0 c1)@alt0 -> pure z0
-              (CTwo c2 c3)@alt1 -> pure c2
+              (COne c0 c1) @ alt0 -> pure z0
+              (CTwo c2 c3) @ alt1 -> pure c2
 
           f x =
             case x of
@@ -1293,7 +1293,7 @@ spec = describe "Live Variable Analysis" $ do
 
             z4 <- pure (#undefined :: #ptr)
             n2 <- pure (CCons z4 p0)
-            (CCons c0 c1)@_1 <- pure n2
+            (CCons c0 c1) @ _1 <- pure n2
             x1 <- fetch c0
             pure x1
         |]
@@ -1339,7 +1339,7 @@ spec = describe "Live Variable Analysis" $ do
             p0 <- store z0
             z1 <- pure (#undefined :: {0})
             n0 <- pure (CCons z1 p0)
-            (CCons c0 c1)@_1 <- pure n0
+            (CCons c0 c1) @ _1 <- pure n0
             x0 <- fetch c0
             pure x0
         |]
@@ -1424,13 +1424,13 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n <- pure (COne z0)
             y <- case n of
-              (COne c1)@alt0 ->
+              (COne c1) @ alt0 ->
                 zero <- pure 0
                 _prim_int_print zero
-              (CTwo c2)@alt1 ->
+              (CTwo c2) @ alt1 ->
                 asd <- pure #"asd"
                 _prim_string_print asd
-              (CFoo c3)@alt2 ->
+              (CFoo c3) @ alt2 ->
                 pure ()
             pure ()
         |]
@@ -1485,7 +1485,7 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n <- pure (COne z0)
             y <- case n of
-              (CFoo c2)@alt0 ->
+              (CFoo c2) @ alt0 ->
                 pure ()
               #default@alt1 ->
                 z1 <- pure 0
@@ -1540,7 +1540,7 @@ spec = describe "Live Variable Analysis" $ do
             _1 <- update p n2
             n3 <- fetch p
             y <- case n3 of
-              (CTwo c)@alt0 ->
+              (CTwo c) @ alt0 ->
                 z2 <- pure #"asd"
                 _prim_string_print z2
             pure ()
@@ -1606,12 +1606,12 @@ spec = describe "Live Variable Analysis" $ do
             z0 <- pure 0
             n <- pure (COne z0)
             y <- case n of
-              (COne c1)@alt0 ->
+              (COne c1) @ alt0 ->
                 f z0
-              (CTwo c2)@alt1 ->
+              (CTwo c2) @ alt1 ->
                 asd <- pure #"asd"
                 g asd
-              (CFoo c3)@alt2 ->
+              (CFoo c3) @ alt2 ->
                 h
             pure ()
 
@@ -1679,7 +1679,7 @@ spec = describe "Live Variable Analysis" $ do
                   z0 <- pure 0
                   x <- pure (CInt z0)
                   y <- case x of
-                    (CInt n)@alt0 ->
+                    (CInt n) @ alt0 ->
                       z <- case n of
                         #default@alt1 ->
                           _v <- _prim_int_print z0
