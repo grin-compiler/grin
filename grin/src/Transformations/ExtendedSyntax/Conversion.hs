@@ -28,9 +28,14 @@ import qualified Grin.ExtendedSyntax.Syntax as New
 import qualified Grin.ExtendedSyntax.SyntaxDefs as New
 import qualified Grin.ExtendedSyntax.TypeEnvDefs as New
 
+import Grin.TypeCheck
+
 import Transformations.Util
 import Transformations.Names
+import Transformations.EffectMap
 import Transformations.BindNormalisation
+import Transformations.Optimising.CopyPropagation
+import Transformations.Optimising.SimpleDeadVariableElimination
 import Transformations.Simplifying.ProducerNameIntroduction
 import Transformations.Simplifying.BindingPatternSimplification
 
@@ -257,15 +262,27 @@ convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
 
 nameEverything :: Exp -> Exp
-nameEverything = bindNormalisation
-               . nodeArgumentNaming
-               . bindNormalisation
-               . appArgumentNaming
-               . bindNormalisation
-               . fst . bindingPatternSimplification
-               . bindNormalisation
-               . fst . producerNameIntroduction
-               . bindNormalisation
+nameEverything
+  = sdve
+  . copyPropagation
+  . bindNormalisation
+  . nodeArgumentNaming
+  . bindNormalisation
+  . appArgumentNaming
+  . bindNormalisation
+  . fst . bindingPatternSimplification
+  . bindNormalisation
+  . fst . producerNameIntroduction
+  . bindNormalisation
+
+  where
+    -- SDVE that infers the type env and the effect map
+    sdve :: Exp -> Exp
+    sdve exp = let tyEnv  = inferTypeEnv exp
+                   effMap = effectMap (tyEnv, exp)
+               in simpleDeadVariableElimination tyEnv effMap exp
+
+
 
 appArgumentNaming :: Exp -> Exp
 appArgumentNaming e = fst . evalNameM e . cata alg $ e where
