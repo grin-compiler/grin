@@ -162,11 +162,11 @@ library
     hspec-core,
     extra,
     logict,
-    QuickCheck ==2.12.*,
+    QuickCheck ==2.13.*,
     quickcheck-instances,
     neat-interpolation,
     template-haskell,
-    Diff == 0.4.*,
+    Diff,
     random,
     set-extra,
     deepseq,
@@ -214,7 +214,7 @@ test-suite grin-test
                      , hspec
                      , hspec-core
                      , hspec-discover
-                     , QuickCheck ==2.12.*
+                     , QuickCheck ==2.13.*
                      , deepseq
                      , vector
                      , text
