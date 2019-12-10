@@ -280,7 +280,7 @@ spec = do
                 0 @ _4 ->
                   x0 <- pure (CInt z1)
                   pure x0
-                1  @ _ 5 ->
+                1 @ _5 ->
                   x1 <- pure (CBool z1)
                   pure x1
           |]
@@ -468,7 +468,7 @@ spec = do
       let exp = [prog|
             grinMain =
                 z0 <- pure 0
-                a2@a1 <- pure (CInt z0)
+                a2 @ a1 <- pure (CInt z0)
                 b1 <- pure a1
                 b2 <- pure a2
                 c1 <- pure b1
