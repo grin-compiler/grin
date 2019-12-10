@@ -15,6 +15,12 @@ import Transformations.Util
   NOTE:
     Do not propagate literal values because literals are not used for optimisations. (GRIN is not a supercompiler)
     Only propagates variables. It does not cause performance penalty, LLVM will optimise the code further.
+
+  TODO:
+    CUrrently, copy propagation does not remove the resulting dead bindings, SDVE does. However, SDVE needs interprocedural
+    information such as the type env (this can be removed) and the effect map. Maybe copy propagation should remove
+    the binding for which it already substituted the variable.
+
 -}
 
 type Env = (Map Val Val, Map Name Name)
