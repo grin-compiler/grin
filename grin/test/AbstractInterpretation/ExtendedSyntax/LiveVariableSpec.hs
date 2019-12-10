@@ -1180,9 +1180,9 @@ spec = describe "Live Variable Analysis" $ do
         x.4 <- pure n30
         b2 <- _prim_int_gt $ x.4 x.5
         case b2 of
-          #True@alt.0 ->
+          #True @ alt.0 ->
             pure n29
-          #False@alt.1 ->
+          #False @ alt.1 ->
             z3 <- pure 1
             x.7 <- pure z3
             x.6 <- pure n30
