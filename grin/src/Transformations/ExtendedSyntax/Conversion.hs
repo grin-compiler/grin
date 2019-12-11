@@ -5,7 +5,6 @@
 module Transformations.ExtendedSyntax.Conversion where
 
 import Data.String
-import Data.Text (Text(..))
 import Data.Functor.Foldable as Foldable
 
 import qualified Data.Map    as M
@@ -28,11 +27,8 @@ import qualified Grin.ExtendedSyntax.Syntax as New
 import qualified Grin.ExtendedSyntax.SyntaxDefs as New
 import qualified Grin.ExtendedSyntax.TypeEnvDefs as New
 
-import Grin.TypeCheck
-
 import Transformations.Util
 import Transformations.Names
-import Transformations.EffectMap
 import Transformations.BindNormalisation
 import Transformations.Optimising.CopyPropagation
 import Transformations.Optimising.SimpleDeadVariableElimination
@@ -261,10 +257,10 @@ instance Convertible New.Exp Exp where
 convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
 
+-- TODO: modify CopyPropagation such that it removes resulting dead bindings (see CopyPropagation.hs)
 nameEverything :: Exp -> Exp
 nameEverything
-  = sdve
-  . copyPropagation
+  = copyPropagation
   . bindNormalisation
   . nodeArgumentNaming
   . bindNormalisation
@@ -274,15 +270,6 @@ nameEverything
   . bindNormalisation
   . fst . producerNameIntroduction
   . bindNormalisation
-
-  where
-    -- SDVE that infers the type env and the effect map
-    sdve :: Exp -> Exp
-    sdve exp = let tyEnv  = inferTypeEnv exp
-                   effMap = effectMap (tyEnv, exp)
-               in simpleDeadVariableElimination tyEnv effMap exp
-
-
 
 appArgumentNaming :: Exp -> Exp
 appArgumentNaming e = fst . evalNameM e . cata alg $ e where
