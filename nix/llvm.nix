@@ -1,4 +1,4 @@
-{ pkgs ? import ./pkgs.nix }:
+{ pkgs ? import ./packages.nix {} }:
 
 pkgs.runCommand
   "llvm-7-links"
