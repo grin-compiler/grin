@@ -69,5 +69,8 @@ copyPropagation e = hylo folder builder (mempty, e) where
       | val == lpat
       , isConstant val
       -> rightExp
+    -- left unit law ; cleanup x <- pure y copies
+    EBindF (SReturn Var{}) Var{} rightExp
+      -> rightExp
 
     exp -> embed exp
