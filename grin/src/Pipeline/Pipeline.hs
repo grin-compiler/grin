@@ -82,6 +82,7 @@ import qualified AbstractInterpretation.EffectTracking.CodeGenBase   as ET
 import qualified AbstractInterpretation.Sharing.CodeGen              as Sharing
 import qualified Reducer.LLVM.CodeGen as CGLLVM
 import qualified Reducer.LLVM.JIT as JITLLVM
+import System.Environment ( lookupEnv )
 import System.Directory
 import qualified System.Process
 import Data.Bifunctor
@@ -718,23 +719,27 @@ saveLLVM path = do
   pipelineLog "* to LLVM *"
   void $ liftIO $ CGLLVM.toLLVM llName code
   pipelineLog"* LLVM X64 codegen *"
-  callCommand $ printf "opt-7 -O3 %s | llc-7 -o %s" llName (sName :: String)
+  llcExe <- liftIO $ fromMaybe "llc-7" <$> lookupEnv "GRIN_LLC"
+  optExe <- liftIO $ fromMaybe "opt-7" <$> lookupEnv "GRIN_OPT"
+  callCommand $ printf "%s -O3 %s | %s -o %s" optExe llName llcExe (sName :: String)
 
 saveExecutable :: Bool -> Path -> PipelineM ()
 saveExecutable debugSymbols path = do
   pipelineLog "* generate llvm x64 optcode *"
   let grinOptCodePath = Rel "grin-opt-code"
+  clangExe <- liftIO $ fromMaybe "clang-7" <$> lookupEnv "GRIN_CC"
+  llcExe <- liftIO $ fromMaybe "llc-7" <$> lookupEnv "GRIN_LLC"
   pipelineStep $ SaveLLVM grinOptCodePath
   grinOptCodeFile <- relPath grinOptCodePath
   fname <- relPath path
   pipelineLog "* generate executable *"
   callCommand $ printf
-    ("llc-7 -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
-    grinOptCodeFile
+    ("%s -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
+    llcExe grinOptCodeFile
   cfg <- ask
   callCommand $ printf
-    ("clang-7 -O3 %s %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
-    (intercalate " " $ _poCFiles cfg) grinOptCodeFile fname
+    ("%s -O3 %s %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
+    clangExe (intercalate " " $ _poCFiles cfg) grinOptCodeFile fname
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do
