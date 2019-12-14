@@ -131,7 +131,7 @@ library
     bimap,
     mtl,
     comonad,
-    megaparsec ==7.0.*,
+    megaparsec,
     pretty-show,
     vector,
     deepseq,
@@ -162,7 +162,7 @@ library
     hspec-core,
     extra,
     logict,
-    QuickCheck ==2.12.*,
+    QuickCheck,
     quickcheck-instances,
     neat-interpolation,
     template-haskell,
@@ -182,7 +182,7 @@ executable grin
                      , grin
                      , recursion-schemes
                      , ansi-wl-pprint
-                     , megaparsec ==7.0.*
+                     , megaparsec
                      , containers
                      , process
                      , pretty-show
@@ -214,7 +214,7 @@ test-suite grin-test
                      , hspec
                      , hspec-core
                      , hspec-discover
-                     , QuickCheck ==2.12.*
+                     , QuickCheck
                      , deepseq
                      , vector
                      , text

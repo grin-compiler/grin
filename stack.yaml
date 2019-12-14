@@ -10,8 +10,6 @@ extra-deps:
   - monad-gen-0.3.0.1
   - functor-infix-0.0.5
   - QuickCheck-GenT-0.2.0
-  - megaparsec-6.5.0
-  - neat-interpolation-0.3.2.2
   - set-extra-1.4.1
   - llvm-hs-pretty-0.6.1.0
   - system-posix-redirect-1.1.0.1
