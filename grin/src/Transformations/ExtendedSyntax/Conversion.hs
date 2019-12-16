@@ -260,8 +260,7 @@ convertToNew = convert . nameEverything
 -- TODO: modify CopyPropagation such that it removes resulting dead bindings (see CopyPropagation.hs)
 nameEverything :: Exp -> Exp
 nameEverything
-  = copyPropagation
-  . bindNormalisation
+  = bindNormalisation
   . nodeArgumentNaming
   . bindNormalisation
   . appArgumentNaming
