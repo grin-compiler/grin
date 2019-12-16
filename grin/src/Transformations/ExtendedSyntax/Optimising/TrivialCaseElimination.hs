@@ -2,13 +2,13 @@
 module Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination where
 
 import Data.Functor.Foldable as Foldable
-import Grin.Grin
-import Transformations.Util
+import Grin.ExtendedSyntax.Grin
+import Transformations.ExtendedSyntax.Util
 
 trivialCaseElimination :: Exp -> Exp
 trivialCaseElimination = ana builder where
   builder :: Exp -> ExpF Exp
   builder = \case
-    ECase val [Alt DefaultPat body] -> SBlockF body
-    ECase val [Alt cpat body]       -> SBlockF $ EBind (SReturn val)  (cpatToLPat cpat) body
+    ECase scrut [Alt DefaultPat _altName body] -> SBlockF body
+    ECase scrut [Alt cpat       _altName body] -> SBlockF $ EBind (SReturn (Var scrut)) (cPatToAsPat scrut cpat) body
     exp -> project exp
