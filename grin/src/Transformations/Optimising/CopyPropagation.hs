@@ -15,12 +15,6 @@ import Transformations.Util
   NOTE:
     Do not propagate literal values because literals are not used for optimisations. (GRIN is not a supercompiler)
     Only propagates variables. It does not cause performance penalty, LLVM will optimise the code further.
-
-  TODO:
-    CUrrently, copy propagation does not remove the resulting dead bindings, SDVE does. However, SDVE needs interprocedural
-    information such as the type env (this can be removed) and the effect map. Maybe copy propagation should remove
-    the binding for which it already substituted the variable.
-
 -}
 
 type Env = (Map Val Val, Map Name Name)
@@ -70,6 +64,13 @@ copyPropagation e = hylo folder builder (mempty, e) where
       , isConstant val
       -> rightExp
     -- left unit law ; cleanup x <- pure y copies
+    {- NOTE: This case could be handled by SDVE as well, however
+       performing it locally saves us an effect tracking analysis.
+       This is because here, we have more information about variable
+       bidnings. We know for sure that such copying bindings are not needed
+       since all the occurences of the left-hand side have been replaced with
+       the variable on the right-hand side.
+    -}
     EBindF (SReturn Var{}) Var{} rightExp
       -> rightExp
 
