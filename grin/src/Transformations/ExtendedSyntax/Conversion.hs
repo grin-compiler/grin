@@ -283,7 +283,8 @@ convertToNew = convert . nameEverything
 
 nameEverything :: Exp -> Exp
 nameEverything
-  = bindNormalisation
+  = copyPropagation
+  . bindNormalisation
   . nodeArgumentNaming
   . bindNormalisation
   . appArgumentNaming
