@@ -147,6 +147,8 @@ library
     Transformations.ExtendedSyntax.MangleNames
     Transformations.ExtendedSyntax.StaticSingleAssignment
     Transformations.ExtendedSyntax.Optimising.CSE
+    Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
+    Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
     Transformations.BindNormalisation
     Transformations.CountVariableUse
