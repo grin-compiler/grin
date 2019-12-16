@@ -6,8 +6,6 @@ module AbstractInterpretation.ExtendedSyntax.SharingSpec where
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import qualified Grin.TH as Old
-
 import Test.Hspec
 import Grin.ExtendedSyntax.Grin
 import Grin.ExtendedSyntax.TH
@@ -17,9 +15,6 @@ import Grin.ExtendedSyntax.PrimOpsPrelude
 import AbstractInterpretation.ExtendedSyntax.Reduce
 import AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen
 import AbstractInterpretation.ExtendedSyntax.Sharing.Result
-
-import Transformations.ExtendedSyntax.Conversion (convertToNew)
-
 
 
 runTests :: IO ()
@@ -87,7 +82,7 @@ spec = describe "Sharing analysis" $ do
             l0 <- store one
             two <- pure (CTwo l0)
             l1 <- store two
-            _1@(CTwo l2) <- fetch l1
+            (CTwo l2)@_1 <- fetch l1
             _2 <- fetch l2
             _2 <- fetch l2
             pure ()
@@ -107,43 +102,69 @@ calcSharingResult prog
   = shResult
 
 testProgram :: Exp
--- The syntax conversion preserves the abstract heap layout
-testProgram = withPrimPrelude . convertToNew $ [Old.prog|
-    grinMain = t1 <- store (CInt 1)
-               t2 <- store (CInt 10000)
-               t3 <- store (Fupto t1 t2)
-               t4 <- store (Fsum t3)
-               (CInt r') <- eval t4
-               _prim_int_print r'
+-- The syntax conversion preserves the abstarct heap layout
+testProgram = withPrimPrelude [prog|
+  grinMain =
+    y.0 <- pure 1
+    v.0 <- pure (CInt y.0)
+    t1  <- store v.0
+    y.1 <- pure 10000
+    v.1 <- pure (CInt y.1)
+    t2  <- store v.1
+    v.2 <- pure (Fupto t1 t2)
+    t3  <- store v.2
+    v.3 <- pure (Fsum t3)
+    t4  <- store v.3
+    (CInt r') @ p.0 <- eval $ t4
+    _prim_int_print $ r'
 
-    upto m n = (CInt m') <- eval m
-               (CInt n') <- eval n
-               b' <- _prim_int_gt m' n'
-               if b' then
-                pure (CNil)
-               else
-                m1' <- _prim_int_add m' 1
-                m1 <- store (CInt m1')
-                p <- store (Fupto m1 n)
-                pure (CCons m p)
+  upto m n =
+    (CInt m') @ p.2 <- eval $ m
+    (CInt n') @ p.1 <- eval $ n
+    b' <- _prim_int_gt $ m' n'
+    case b' of
+      #True @ alt.0 ->
+        v.4 <- pure (CNil)
+        pure v.4
+      #False @ alt.1 ->
+        x.7 <- pure 1
+        m1' <- _prim_int_add $ m' x.7
+        v.5 <- pure (CInt m1')
+        m1  <- store v.5
+        v.6 <- pure (Fupto m1 n)
+        p   <- store v.6
+        v.7 <- pure (CCons m p)
+        pure v.7
 
-    sum l = l2 <- eval l
-            case l2 of
-              (CNil)       -> pure (CInt 0)
-              (CCons x xs) -> (CInt x') <- eval x
-                              (CInt s') <- sum xs
-                              ax' <- _prim_int_add x' s'
-                              pure (CInt ax')
+  sum l =
+    l2 <- eval $ l
+    case l2 of
+      (CNil) @ alt.2 ->
+        y.10 <- pure 0
+        v.8  <- pure (CInt y.10)
+        pure v.8
+      (CCons x xs) @ alt.3 ->
+        (CInt x') @ p.4 <- eval $ x
+        (CInt s') @ p.3 <- sum $ xs
+        ax' <- _prim_int_add $ x' s'
+        v.9 <- pure (CInt ax')
+        pure v.9
 
-    eval q = v <- fetch q
-             case v of
-              (CInt x'1)    -> pure v
-              (CNil)        -> pure v
-              (CCons y ys)  -> pure v
-              (Fupto a b)   -> w <- upto a b
-                               update q w
-                               pure w
-              (Fsum c)      -> z <- sum c
-                               update q z
-                               pure z
+  eval q =
+    v <- fetch q
+    case v of
+      (CInt x'1) @ alt.4 ->
+        pure v
+      (CNil) @ alt.5 ->
+        pure v
+      (CCons y ys) @ alt.6 ->
+        pure v
+      (Fupto a b) @ alt.7 ->
+        w <- upto $ a b
+        () @ p.5 <- update q w
+        pure w
+      (Fsum c) @ alt.8 ->
+        z <- sum $ c
+        () @ p.6 <- update q z
+        pure z
   |]

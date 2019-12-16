@@ -16,6 +16,21 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   testExprContextE $ \ctx -> do
+    it "left unit law" $ do
+      let before = [expr|
+          a1 <- pure 1
+          a2 <- pure a1
+          a3 <- pure a2
+          pure a3
+        |]
+      let after = [expr|
+          a1 <- pure 1
+          a2 <- pure a1
+          a3 <- pure a1
+          pure a1
+        |]
+      copyPropagation (ctx before) `sameAs` (ctx after)
+
     it "simple value" $ do
       let before = [expr|
           a1 <- pure 1

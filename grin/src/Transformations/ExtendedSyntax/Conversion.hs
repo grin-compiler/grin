@@ -5,7 +5,6 @@
 module Transformations.ExtendedSyntax.Conversion where
 
 import Data.String
-import Data.Text (Text(..))
 import Data.Functor.Foldable as Foldable
 
 import qualified Data.Map    as M
@@ -31,6 +30,8 @@ import qualified Grin.ExtendedSyntax.TypeEnvDefs as New
 import Transformations.Util
 import Transformations.Names
 import Transformations.BindNormalisation
+import Transformations.Optimising.CopyPropagation
+import Transformations.Optimising.SimpleDeadVariableElimination
 import Transformations.Simplifying.ProducerNameIntroduction
 import Transformations.Simplifying.BindingPatternSimplification
 
@@ -256,15 +257,18 @@ instance Convertible New.Exp Exp where
 convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
 
+-- TODO: modify CopyPropagation such that it removes resulting dead bindings (see CopyPropagation.hs)
 nameEverything :: Exp -> Exp
-nameEverything = nodeArgumentNaming
-               . bindNormalisation
-               . appArgumentNaming
-               . bindNormalisation
-               . fst . bindingPatternSimplification
-               . bindNormalisation
-               . fst . producerNameIntroduction
-               . bindNormalisation
+nameEverything
+  = bindNormalisation
+  . nodeArgumentNaming
+  . bindNormalisation
+  . appArgumentNaming
+  . bindNormalisation
+  . fst . bindingPatternSimplification
+  . bindNormalisation
+  . fst . producerNameIntroduction
+  . bindNormalisation
 
 appArgumentNaming :: Exp -> Exp
 appArgumentNaming e = fst . evalNameM e . cata alg $ e where
@@ -284,7 +288,7 @@ appArgumentNaming e = fst . evalNameM e . cata alg $ e where
   newArgName :: NameM Name
   newArgName = deriveNewName "x"
 
--- NOTE: we can ssume tha Producer Name Introduction
+-- NOTE: we can assume that Producer Name Introduction
 -- & Binding Pattern Simplification has already been run
 -- ConstTagNodes can only appear in SReturns
 nodeArgumentNaming :: Exp -> Exp

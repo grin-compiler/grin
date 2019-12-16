@@ -63,7 +63,7 @@ spec = do
     it "as-pat-unit" $ do
       let before = [prog|
         grinMain =
-          v@() <- pure ()
+          ()@v <- pure ()
           pure v
         |]
       let after = Program []
@@ -75,7 +75,7 @@ spec = do
     it "as-pat-lit" $ do
       let before = [prog|
         grinMain =
-          v@5 <- pure ()
+          5@v <- pure ()
           pure v
         |]
       let after = Program []
@@ -87,7 +87,7 @@ spec = do
     it "as-pat-nullary-node" $ do
       let before = [prog|
         grinMain =
-          v@(CNil) <- pure ()
+          (CNil)@v <- pure ()
           pure v
         |]
       let after = Program []
@@ -99,7 +99,7 @@ spec = do
     it "as-pat-node" $ do
       let before = [prog|
         grinMain =
-          v@(CCons x xs) <- pure ()
+          (CCons x xs)@v <- pure ()
           pure v
         |]
       let after = Program []
@@ -111,7 +111,7 @@ spec = do
     it "case" $ do
       let before = [prog|
         test p =
-          _unit@() <- case p of
+          ()@_unit <- case p of
             #default @ _1 ->
               pure ()
           case p of
@@ -207,17 +207,45 @@ spec = do
             ]
       before `sameAs` after
 
+    it "block" $ do
+      let before = [prog|
+        grinMain =
+          a <- do
+            pure ()
+          pure ()
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SBlock $ SReturn Unit) (VarPat "a") (SReturn Unit)
+            ]
+      before `sameAs` after
+
+    it "nested block" $ do
+      let before = [prog|
+        grinMain =
+          a <- do
+            b <- do
+              pure ()
+            pure ()
+          pure ()
+        |]
+      let after = Program []
+            [ Def "grinMain" [] $
+                EBind (SBlock $ EBind (SBlock $ SReturn Unit) (VarPat "b") (SReturn Unit)) (VarPat "a") (SReturn Unit)
+            ]
+      before `sameAs` after
+
     xit "bind case on left hand side" $ do
       let before = [expr|
           x <-
             case y of
-              1 -> pure 2
+              1 @ _1 -> pure 2
           pure x
       |]
       let after =
             EBind
               (ECase "y"
-                [ Alt (LitPat (LInt64 1)) $ SReturn $ Lit $ LInt64 2
+                [ NAlt (LitPat (LInt64 1)) ("_1") $ SReturn $ Lit $ LInt64 2
                 ])
               (VarPat "x") $
             SReturn (Var "x")
@@ -297,7 +325,7 @@ spec = do
               #"" @ _1 -> pure 1
               #"a" @ _2 -> pure 2
               #default @ _3 -> pure 3
-            _x@#"a" <- pure v2
+            #"a" @ _x <- pure v2
             pure ()
         |]
     let after = Program []
@@ -322,7 +350,7 @@ spec = do
               #'b' @ _1 -> pure 1
               #'c' @ _2 -> pure 2
               #default @ _3 -> pure 3
-            _c@#'a' <- pure v2
+            #'a' @ _c <- pure v2
             pure ()
         |]
     let after = Program []

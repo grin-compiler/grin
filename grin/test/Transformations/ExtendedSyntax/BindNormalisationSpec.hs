@@ -93,7 +93,7 @@ spec = do
         x <- do
           do
             case p of
-              0 ->
+              0@_1 ->
                 p <- do
                   i1 <- pure 1
                   do
@@ -101,14 +101,14 @@ spec = do
                       pure 2
                     pure (CPair i1 i2)
                 pure p
-              #default ->
+              #default@_2 ->
                 j1 <- pure 1
                 j2 <- do
                   pure 2
                 pure (CPair j1 j2)
         do
           case x of
-            #default ->
+            #default@_3 ->
               do
                 do
                   pure x
@@ -116,17 +116,17 @@ spec = do
     let after = [prog|
       test4 p =
         x <- case p of
-          0 ->
+          0@_1 ->
             i1 <- pure 1
             i2 <- pure 2
             p <- pure (CPair i1 i2)
             pure p
-          #default ->
+          #default@_2 ->
             j1 <- pure 1
             j2 <- pure 2
             pure (CPair j1 j2)
         case x of
-          #default ->
+          #default@_3 ->
             pure x
       |]
     (bindNormalisation before) `sameAs` after

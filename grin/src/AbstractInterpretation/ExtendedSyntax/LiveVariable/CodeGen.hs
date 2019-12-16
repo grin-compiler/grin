@@ -398,7 +398,10 @@ codeGenM e = (cata folder >=> const setMainLive) e
 
     AltF cpat exp -> pure $ A cpat exp
     -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
-    NAltF cpat n exp -> pure $ A cpat exp
+    NAltF cpat n exp -> do
+      altNameReg <- newReg
+      addReg n altNameReg
+      pure $ A cpat exp
 
     SAppF name args -> do
       appReg  <- newReg

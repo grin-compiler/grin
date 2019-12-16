@@ -49,7 +49,7 @@ spec = do
             grinMain =
               k0 <- pure 0
               x0 <- pure (CInt k0)
-              x1@x2 <- pure x0
+              x2@x1 <- pure x0
 
               pure ()
           |]
@@ -77,7 +77,7 @@ spec = do
             grinMain =
               k0 <- pure 0
               x0 <- pure (CInt k0)
-              x1@(CInt k1) <- pure x0
+              (CInt k1)@x1 <- pure x0
               k2 <- _prim_int_add k0 k1
               _v <- _prim_int_print k2
               pure ()
@@ -106,20 +106,20 @@ spec = do
         grinMain =
           n <- pure 1
           m <- pure 2
-          _v@(CInt x) <- test n m
+          (CInt x)@_v <- test n m
           y <- pure x
           _prim_int_print y
 
         test a b =
           c <- _prim_int_add a b
           case c of
-                0 ->
+                0@_1 ->
                   k <- pure 100
                   pure (CInt k)
-                1 ->
+                1@_2 ->
                   e0 <- pure c
                   pure (CInt e0)
-                #default ->
+                #default@_3 ->
                   e1 <- pure c
                   pure (CInt e1)
         |]
@@ -137,6 +137,10 @@ spec = do
                 , ("m",   int64_t)
                 , ("k",   int64_t)
                 , ("_v",  T_NodeSet $ cnode_t "Int" [TypeEnv.T_Int64])
+
+                , ("_1", dead_t)
+                , ("_2", dead_t)
+                , ("_3", dead_t)
                 ]
             , TypeEnv._function = mconcat
                 [ fun_t "_prim_int_add" [int64_t, int64_t] int64_t
@@ -208,14 +212,14 @@ spec = do
             grinMain =
               k0 <- pure 0
               p0 <- case k0 of
-                0 ->
+                0@_1 ->
                   nil <- pure (CNil)
                   store nil
-                1 ->
+                1@_2 ->
                   pure (#undefined :: #ptr)
               n0 <- fetch p0
               n1 <- pure (#undefined :: {CNode[#ptr]})
-              _v@(CNode p1) <- pure n1
+              (CNode p1)@_v <- pure n1
               x0 <- fetch p1
               update p0 x0
           |]
@@ -236,6 +240,9 @@ spec = do
             , ("_v", tySetFromNodes nodeSetN1)
             , ("x0", tySetFromTypes [])
             , ("nil", tySetFromNodes nodeSetN0)
+
+            , ("_1", tySetFromTypes [])
+            , ("_2", tySetFromTypes [])
             ]
       (calcHPTResult exp) `shouldBe` expected
 

@@ -65,7 +65,7 @@ spec = do
             n <- pure (CNil)
             l <- store n
             case l of
-              #default -> pure ()
+              #default @ _1 -> pure ()
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint allWarnings (Just typeEnv) program
@@ -76,7 +76,7 @@ spec = do
           main =
             s <- pure #"string"
             case s of
-              #"string" -> pure ()
+              #"string" @ _1 -> pure ()
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint allWarnings (Just typeEnv) program
@@ -87,7 +87,7 @@ spec = do
           main =
             f <- pure 1.0
             case f of
-              1.0 -> pure ()
+              1.0 @ _1 -> pure ()
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint allWarnings (Just typeEnv) program
@@ -98,9 +98,9 @@ spec = do
           main =
             x <- pure (CNil)
             case x of
-              (CNil)     -> pure ()
-              (CFloat b) -> pure ()
-              (CNil)     -> pure ()
+              (CNil) @ _1     -> pure ()
+              (CFloat b) @ _2 -> pure ()
+              (CNil) @ _3     -> pure ()
         |]
       let (_,errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["case has overlapping node alternatives CNil"]
@@ -110,9 +110,9 @@ spec = do
           main =
             x <- pure 1
             case x of
-              1 -> pure ()
-              2 -> pure ()
-              1 -> pure ()
+              1 @ _1 -> pure ()
+              2 @ _2 -> pure ()
+              1 @ _3 -> pure ()
         |]
       let (_,errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["case has overlapping literal alternatives 1"]
@@ -128,8 +128,8 @@ spec = do
             _2 <- update l n2
             v <- fetch l
             case v of
-              (CZero) -> pure ()
-              (COne)  -> pure ()
+              (CZero) @ _3 -> pure ()
+              (COne) @ _4  -> pure ()
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint allWarnings (Just typeEnv) program
@@ -146,9 +146,9 @@ spec = do
             _2 <- update l n2
             v <- fetch l
             case v of
-              (CZero)  -> pure ()
-              (COne)   -> pure ()
-              #default -> pure ()
+              (CZero) @ _3  -> pure ()
+              (COne) @ _4   -> pure ()
+              #default @ _5 -> pure ()
         |]
       let typeEnv = inferTypeEnv program
       let (_,errors) = lint allWarnings (Just typeEnv) program
@@ -159,9 +159,9 @@ spec = do
             main =
               n <- pure 3
               case n of
-                #default -> pure ()
-                3 -> pure ()
-                #default -> pure ()
+                #default @ _1 -> pure ()
+                3 @ _2 -> pure ()
+                #default @ _3 -> pure ()
           |]
       let (_,errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["case has more than one default alternatives"]
@@ -221,20 +221,20 @@ spec = do
       let program = [prog|
           main =
             n <- pure (COne)
-            v@(CTwo) <- pure n
+            (CTwo) @ v <- pure n
             pure ()
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for v@((CTwo)). Expected pattern of type: {CTwo[]}, but got: {COne[]}"]
+      lintErrors errors `shouldBe` ["Invalid pattern match for (CTwo) @ v. Expected pattern of type: {CTwo[]}, but got: {COne[]}"]
 
     it "disregards variable patterns" $ do
       let program = [prog|
           main =
             n0 <- pure (COne)
             n1 <- case n0 of
-              (COne) -> pure n0
-              (CTwo) ->
+              (COne) @ _1 -> pure n0
+              (CTwo) @ _2 ->
                 a0 <- pure (CTwo)
                 pure a0
             pure ()
@@ -249,25 +249,25 @@ spec = do
           main =
             zero <- pure 0
             n0 <- case zero of
-              0 ->
+              0 @ _1 ->
                 n1 <- pure (COne)
                 pure n1
-              1 ->
+              1 @ _2 ->
                 n2 <- pure (CTwo)
                 pure n2
             -- NOTE: HPT would restrict the scrutinee here, and would find that it can only have type COne.
             -- However, the bottom-up typing approach used in the linter does not recognize this fact.
-            v@(COne) <- case n0 of
-              (COne) ->
+            (COne) @ v <- case n0 of
+              (COne) @ _3 ->
                 pure n0
-              (CTwo) ->
+              (CTwo) @ _4 ->
                 a0 <- pure (COne)
                 pure a0
             pure ()
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for v@((COne)). Expected pattern of type: {COne[]}, but got: {COne[],CTwo[]}"]
+      lintErrors errors `shouldBe` ["Invalid pattern match for (COne) @ v. Expected pattern of type: {COne[]}, but got: {COne[],CTwo[]}"]
 
   describe "Producer lint" $ do
     it "finds nodes in single return statment" $ do
@@ -294,7 +294,7 @@ spec = do
           grinMain =
             zero <- pure 0
             case zero of
-              0 -> pure (COne)
+              0 @ _1 -> pure (COne)
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
@@ -305,7 +305,7 @@ spec = do
           grinMain =
             zero <- pure 0
             case zero of
-              0 ->
+              0 @ _1 ->
                 n <- pure 0
                 pure (COne)
         |]
@@ -313,7 +313,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (COne)"]
 
-    -- QUESTION: Is this needed wit hthe new syntax? Undefined introduction is still an open question.
+    -- QUESTION: Is this needed with the new syntax? Undefined introduction is still an open question.
     -- this is optional, but makes DDE simpler
     xit "finds nodes LPat of a binding with a Fetch left-hand side" $ do
       let program = [prog|
@@ -325,4 +325,4 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["The result of Fetch can only be bound to a variable: v@((COne))"]
+      lintErrors errors `shouldBe` ["The result of Fetch can only be bound to a variable: v@(COne)"]

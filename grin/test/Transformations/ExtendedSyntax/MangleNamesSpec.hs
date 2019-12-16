@@ -32,22 +32,39 @@ spec = do
       |]
     (mangleNames before) `sameAs` after
 
+  it "as-pattern" $ do
+    let before = [prog|
+      grinMain =
+        n0 <- pure 5
+        n2@n1 <- pure n0
+        (CInt k)@v <- pure (CInt n0)
+        pure k
+      |]
+    let after = [prog|
+      name.0 =
+        name.1 <- pure 5
+        name.3@name.2 <- pure name.1
+        (CInt name.5)@name.4 <- pure (CInt name.1)
+        pure name.5
+      |]
+    (mangleNames before) `sameAs` after
+
   it "case" $ do
     let before = [prog|
       f x =
         n <- pure 5
         case x of
-          (COne a) -> pure a
-          (CTwo b) -> pure b
-          #default -> pure n
+          (COne a)@_1 -> pure a
+          (CTwo b)@_2 -> pure b
+          #default@_3 -> pure n
       |]
     let after = [prog|
       name.0 name.1 =
         name.2 <- pure 5
         case name.1 of
-          (COne name.3) -> pure name.3
-          (CTwo name.4) -> pure name.4
-          #default -> pure name.2
+          (COne name.3)@name.4 -> pure name.3
+          (CTwo name.5)@name.6 -> pure name.5
+          #default@name.7 -> pure name.2
       |]
     (mangleNames before) `sameAs` after
 
