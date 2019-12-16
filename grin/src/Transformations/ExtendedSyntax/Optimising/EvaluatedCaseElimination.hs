@@ -2,14 +2,15 @@
 module Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination where
 
 import Data.Functor.Foldable as Foldable
-import Grin.Grin
+import Grin.ExtendedSyntax.Grin
 
 evaluatedCaseElimination :: Exp -> Exp
 evaluatedCaseElimination = ana builder where
   builder :: Exp -> ExpF Exp
   builder = \case
-    ECase val alts | all (altBodyEQ $ SReturn val) alts -> SReturnF val
+    ECase scrut alts | all (altBodyEQ $ SReturn (Var scrut)) alts -> SReturnF (Var scrut)
     exp -> project exp
 
   altBodyEQ :: Exp -> Alt -> Bool
-  altBodyEQ exp (Alt _cpat body) = exp == body
+  altBodyEQ exp (Alt _cpat _altName body) = exp == body
+
