@@ -182,6 +182,7 @@ instance Convertible Exp New.Exp where
     (Alt cpat exp) -> do
       altName <- deriveNewName "alt"
       pure $ New.NAltF (convert cpat) (convert altName) exp
+    _ -> error "Conversion from Old to New has failed: unexpected AST pattern"
 
 instance Convertible New.TagType TagType where
   convert = \case
