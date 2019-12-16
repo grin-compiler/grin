@@ -270,19 +270,19 @@ spec = describe "Live Variable Analysis" $ do
             case n0 of
               (CBool c0) @ alt0 ->
                 case n0 of
-                  (CBool c1) @ alt1 -> pure (CBool c1)
-                  (CWord c2) @ alt2 -> pure (CWord b0)
-                  (CNope c3) @ alt3 -> pure (CNope c3)
-              (CWord c4) @ alt3 ->
+                  (CBool c1) @ alt01 -> pure (CBool c1)
+                  (CWord c2) @ alt02 -> pure (CWord b0)
+                  (CNope c3) @ alt03 -> pure (CNope c3)
+              (CWord c4) @ alt1 ->
                 case n0 of
-                  (CBool c5) @ alt4 -> pure (CBool b1)
-                  (CWord c6) @ alt5 -> pure (CWord c4)
-                  (CNope c7) @ alt6 -> pure (CNope c7)
+                  (CBool c5) @ alt11 -> pure (CBool b1)
+                  (CWord c6) @ alt12 -> pure (CWord c4)
+                  (CNope c7) @ alt13 -> pure (CNope c7)
           f x =
             z1 <- pure 0
             case x of
-              0@alt2 -> pure (CBool z1)
-              1@alt3 -> pure (CWord z1)
+              0 @ alt2 -> pure (CBool z1)
+              1 @ alt3 -> pure (CWord z1)
         |]
     let caseNestedExpected = emptyLVAResult
           { _memory     = []
