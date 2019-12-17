@@ -146,6 +146,7 @@ library
     Transformations.ExtendedSyntax.GenerateEval
     Transformations.ExtendedSyntax.MangleNames
     Transformations.ExtendedSyntax.StaticSingleAssignment
+    Transformations.ExtendedSyntax.Optimising.CopyPropagation
     Transformations.ExtendedSyntax.Optimising.CSE
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
