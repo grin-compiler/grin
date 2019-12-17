@@ -23,6 +23,7 @@ import System.FilePath.Posix
 import System.Posix.Redirect
 import System.Process
 import Test.Hspec.Core.Spec hiding (pending)
+import Text.Printf
 import qualified Data.Map as Map
 
 
@@ -104,7 +105,7 @@ evaluateEndToEndTest input params actionWith progressCallback = do
           then writeIORef result $ Result "" Success
           else do
             writeIORef result $ Result "" $ Failure Nothing $ Reason "End-to-end test started bisecting but it did not finish."
-            res <- bisect ".end-to-end-test" grinOut
+            res <- bisect ".end-to-end-test" (fromString testOut)
             writeIORef result res
     )
     (writeIORef result . Result "" . Failure Nothing . Error Nothing)
@@ -164,8 +165,10 @@ bisect directory expected = do
     -- The assumption is that min fails and max succeeds.
     reduceRange :: Map.Map Int FilePath -> ((Int,Bool),(Int,Bool)) -> m (Either ((Int,Bool),(Int,Bool)) Result)
     reduceRange fm ((mn,tn), (mx,tx))
-      | not tn && not tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and Max were failures. This could indicate different errors."
-      |     tn &&     tx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min and Max were success. This shouldn't have happened."
+      | not tn && not tx = pure $ Right $ Result "" $ Failure Nothing
+                                $ Reason $ printf "Min (%d) and Max (%d) were failures. This could indicate different errors." mn mx
+      |     tn &&     tx = pure $ Right $ Result "" $ Failure Nothing
+                                $ Reason $ printf "Min (%d) and Max (%d) were success. This shouldn't have happened." mn mx
       | mn > mx  = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min exceeded Max, something went really wrong."
       | mn == mx = pure $ Right $ Result "" $ Failure Nothing $ Reason "Min==Max this should have not happened."
       | mn + 1 == mx = case (tn, tx) of
