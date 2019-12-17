@@ -63,6 +63,7 @@ mapNamesCPat f = \case
   NodePat tag args  -> NodePat tag (map f args)
   cpat              -> cpat
 
+-- apply a function to all @Name@s in a @Val@
 mapNamesVal :: (Name -> Name) -> Val -> Val
 mapNamesVal f = \case
   ConstTagNode tag args -> ConstTagNode tag (map f args)
@@ -106,19 +107,19 @@ mapNameUseExp f = \case
 subst :: Ord a => Map a a -> a -> a
 subst env x = Map.findWithDefault x x env
 
--- variable reference substitution (non recursive)
+-- substitute all @Names@s in an @Exp@
 substVarRefExp :: Map Name Name -> Exp -> Exp
 substVarRefExp env = mapNameUseExp (subst env)
 
--- val name substitution (non recursive)
+-- substitute all @Names@s in a @Val@
 substNamesVal :: Map Name Name -> Val -> Val
 substNamesVal env = mapNamesVal (subst env)
 
--- val name substitution (non recursive)
+-- specialized version of @subst@ to @Val@s
 substValsVal :: Map Val Val -> Val -> Val
 substValsVal env = subst env
 
--- val substitution (non recursive)
+-- substitute all @Val@s in an @Exp@
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (subst env)
 
