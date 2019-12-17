@@ -8,8 +8,8 @@ import Data.Functor.Foldable as Foldable
 import Text.Printf
 import Lens.Micro.Extra
 
-import Grin.Grin
-import Transformations.Util
+import Grin.ExtendedSyntax.Grin
+import Transformations.ExtendedSyntax.Util
 
 {-
   NOTE:
@@ -17,61 +17,100 @@ import Transformations.Util
     Only propagates variables. It does not cause performance penalty, LLVM will optimise the code further.
 -}
 
-type Env = (Map Val Val, Map Name Name)
+-- (k,v) ~ the variable k has the original value v
+type OriginalValues = Map Name Val
+-- (k,v) ~ the variable k aliases to (is a copy of) v
+type Aliases        = Map Name Name
+
+type Env = (OriginalValues, Aliases)
 
 copyPropagation :: Exp -> Exp
 copyPropagation e = hylo folder builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
-  builder (env@(valEnv, nameEnv), exp) = let e = substVarRefExp nameEnv $ exp in case e of
+  builder (env@(origVals, aliases), exp) = let e = substVarRefExp aliases $ exp in case e of
     -- left unit law
-    EBind (SReturn val) lpat rightExp
-      | newEnv <- env `mappend` unify env val lpat
-      , reducedVal <- substNamesVal nameEnv val
-      , constVal <- subst valEnv reducedVal
-      -> case (lpat, constVal) of
-        (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
-          | lpatTag == valTag
-          , bindChain <- foldr (genBind env) rightExp $ zip valArgs lpatArgs
-          -> (newEnv,) <$> project (EBind (SReturn Unit) Unit bindChain)
-        _ -> (newEnv,) <$> project (genBind env (reducedVal, lpat) rightExp)
+    EBind (SReturn (Var valVar)) (VarPat patVar) rightExp
+      | origVar <- getAlias valVar aliases
+      -> let aliases' = Map.insert patVar origVar aliases
+             newEnv   = (origVals, aliases')
+         in SBlockF (newEnv, rightExp)  -- no skip in builder
+
+    -- left unit law
+    EBind (SReturn val) bpat@(VarPat patVar) rightExp
+      | isn't _Lit val
+      , valWithOrigVars <- substNamesVal aliases val
+      -> let origVals' = Map.insert patVar valWithOrigVars origVals
+             newEnv    = (origVals', aliases)
+         in (newEnv,) <$> project (EBind (SReturn valWithOrigVars) bpat rightExp)
+
+    -- left unit law + eliminate redundant rebinds
+    EBind (SReturn (Var valVar)) (AsPat patVar asPat) rightExp
+      | origVar <- getAlias valVar aliases
+      , origVal <- getOrigVal origVar origVals
+      , ConstTagNode patTag patArgs <- asPat
+      , ConstTagNode valTag valArgs <- origVal
+      , patTag == valTag
+      -> let aliases' = aliases <> (Map.fromList $ zip (patVar:patArgs) (origVar:valArgs))
+             newEnv   = (origVals, aliases')
+         in SBlockF (newEnv, rightExp)  -- no skip in builder
+
+    -- left unit law + eliminate redundant rebinds
+    EBind (SReturn val) (AsPat patVar asPat) rightExp
+      | isn't _Lit val
+      , valWithOrigVars <- substNamesVal aliases val
+      , ConstTagNode patTag patArgs <- asPat
+      , ConstTagNode valTag valArgs <- valWithOrigVars
+      , patTag == valTag
+      -> let origVals' = Map.insert patVar valWithOrigVars origVals
+             aliases'  = aliases <> (Map.fromList $ zip patArgs valArgs)
+             newEnv    = (origVals', aliases')
+         in (newEnv,) <$> project (EBind (SReturn val) (VarPat patVar) rightExp)
 
     _ -> (env,) <$> project e
 
-  unify :: Env -> Val -> LPat -> Env
-  unify env@(valEnv, nameEnv) (substNamesVal nameEnv -> val) lpat = case (lpat, val) of
-    (ConstTagNode lpatTag lpatArgs, ConstTagNode valTag valArgs)
-      | lpatTag == valTag         -> mconcat $ zipWith (unify env) valArgs lpatArgs
-    (Var lpatVar, Var valVar)     -> (mempty, Map.singleton lpatVar valVar)
-    (Var lpatVar, _)              -> (Map.singleton lpat val, mempty)
-    _ -> mempty -- LPat: unit, lit, tag
+  genBind :: (Val, BPat) -> Exp -> Exp
+  genBind (val, bpat) exp = EBind (SReturn val) bpat exp
 
-  genBind :: Env -> (Val, LPat) -> Exp -> Exp
-  genBind env@(valEnv, nameEnv) (val@(substValsVal valEnv -> constVal), lpat) exp = case lpat of
-    ValTag{}        -> EBind (SReturn constVal) lpat exp
-    Lit{}           -> EBind (SReturn constVal) lpat exp
-    _               -> EBind (SReturn val) lpat exp
-
-  -- QUESTION: does this belong here? or to dead variable elimination / constant propagation?
+  -- NOTE: This cleans up the left-over produced by the above transformation.
   folder :: ExpF Exp -> Exp
   folder = \case
     -- right unit law
-    EBindF leftExp lpat (SReturn val) | val == lpat, isn't _ValVar lpat -> leftExp
+    EBindF leftExp (VarPat patVar) (SReturn (Var valVar))
+      | patVar == valVar -> leftExp
 
-    -- left unit law ; cleanup matching constants
-    EBindF (SReturn val) lpat rightExp
-      | val == lpat
-      , isConstant val
-      -> rightExp
-    -- left unit law ; cleanup x <- pure y copies
-    {- NOTE: This case could be handled by SDVE as well, however
+    -- TODO: is this even needed?
+    -- <patVal> @ <var> <- pure <retVal>
+    -- where retVal is a basic value (lit or unit)
+    EBindF (SReturn retVal) (AsPat var patVal) rightExp
+      | isBasicValue retVal
+      , retVal == patVal
+      -> EBind (SReturn retVal) (VarPat var) rightExp
+
+    -- <patVal> @ <var> <- pure <retVal>
+    -- where retVal is a node
+    EBindF (SReturn retVal) (AsPat var patVal) rightExp
+      | ConstTagNode retTag _ <- retVal
+      , ConstTagNode patTag _ <- patVal
+      , retTag == patTag
+      -> EBind (SReturn retVal) (VarPat var) rightExp
+
+    {- left unit law ; cleanup x <- pure y copies
+
+       NOTE: This case could be handled by SDVE as well, however
        performing it locally saves us an effect tracking analysis.
        This is because here, we have more information about variable
        bidnings. We know for sure that such copying bindings are not needed
        since all the occurences of the left-hand side have been replaced with
        the variable on the right-hand side.
     -}
-    EBindF (SReturn Var{}) Var{} rightExp
+    EBindF (SReturn Var{}) VarPat{} rightExp
       -> rightExp
 
     exp -> embed exp
+
+getAlias :: Name -> Aliases -> Name
+getAlias var aliases = Map.findWithDefault var var aliases
+
+getOrigVal :: Name -> OriginalValues -> Val
+getOrigVal var origVals = Map.findWithDefault (Var var) var origVals
