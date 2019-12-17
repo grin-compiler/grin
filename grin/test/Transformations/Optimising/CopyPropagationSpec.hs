@@ -44,6 +44,19 @@ spec = do
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
 
+    it "does not propagate literal values" $ do
+      let before = [expr|
+          a1 <- pure 1
+          a2 <- pure 1
+          pure a2
+        |]
+      let after = [expr|
+          a1 <- pure 1
+          a2 <- pure 1
+          pure a2
+        |]
+      copyPropagation (ctx before) `sameAs` (ctx after)
+
     it "node value - node pattern" $ do
       let before = [expr|
           a1 <- pure 1
