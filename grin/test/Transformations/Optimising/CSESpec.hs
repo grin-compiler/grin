@@ -261,7 +261,8 @@ spec = do
               pure n2
             (CBox a2) ->
               n3 <- pure (CBox a2)
-              pure (CFoo)
+              -- NOTE: this rewrite is valid, since this alternative is dead anyways
+              pure n1
             #default ->
               n4 <- pure n1
               pure n4
