@@ -15,6 +15,13 @@ import Transformations.ExtendedSyntax.Util
   NOTE:
     Do not propagate literal values because literals are not used for optimisations. (GRIN is not a supercompiler)
     Only propagates variables. It does not cause performance penalty, LLVM will optimise the code further.
+
+    CopyPropagation neither does replace literal values with variables (storing the same value),
+    nor does it eliminate as-patterns matching a variables against a literal value (which is the same as the value stored by the variable).
+
+  TODO:
+    Is the as-pattern elimination handled by LLVM?
+    We will figure this out after implementing the LLVM codegen for as-patterns.
 -}
 
 -- (k,v) ~ the variable k has the original value v
@@ -75,11 +82,14 @@ copyPropagation e = hylo folder builder (mempty, e) where
   -- NOTE: This cleans up the left-over produced by the above transformation.
   folder :: ExpF Exp -> Exp
   folder = \case
-    -- right unit law
-    EBindF leftExp (VarPat patVar) (SReturn (Var valVar))
-      | patVar == valVar -> leftExp
+    EBindF lhs bpat (SBlock rhs)
+      -> EBind lhs bpat rhs
 
-    -- TODO: is this even needed?
+    -- NOTE: already handled in the builder
+    -- right unit law
+    -- EBindF leftExp (VarPat patVar) (SReturn (Var valVar))
+    --   | patVar == valVar -> leftExp
+
     -- <patVal> @ <var> <- pure <retVal>
     -- where retVal is a basic value (lit or unit)
     EBindF (SReturn retVal) (AsPat var patVal) rightExp
@@ -87,14 +97,16 @@ copyPropagation e = hylo folder builder (mempty, e) where
       , retVal == patVal
       -> EBind (SReturn retVal) (VarPat var) rightExp
 
+    -- NOTE: already handled in the builder
     -- <patVal> @ <var> <- pure <retVal>
     -- where retVal is a node
-    EBindF (SReturn retVal) (AsPat var patVal) rightExp
-      | ConstTagNode retTag _ <- retVal
-      , ConstTagNode patTag _ <- patVal
-      , retTag == patTag
-      -> EBind (SReturn retVal) (VarPat var) rightExp
+    -- EBindF (SReturn retVal) (AsPat var patVal) rightExp
+    --   | ConstTagNode retTag _ <- retVal
+    --   , ConstTagNode patTag _ <- patVal
+    --   , retTag == patTag
+    --   -> EBind (SReturn retVal) (VarPat var) rightExp
 
+    -- NOTE: already handled in the builder
     {- left unit law ; cleanup x <- pure y copies
 
        NOTE: This case could be handled by SDVE as well, however
@@ -104,8 +116,10 @@ copyPropagation e = hylo folder builder (mempty, e) where
        since all the occurences of the left-hand side have been replaced with
        the variable on the right-hand side.
     -}
-    EBindF (SReturn Var{}) VarPat{} rightExp
-      -> rightExp
+    -- EBindF (SReturn Var{}) VarPat{} rightExp
+    --   -> rightExp
+
+    SBlockF exp@SBlock{} -> exp
 
     exp -> embed exp
 
