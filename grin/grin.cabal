@@ -302,6 +302,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.MangleNamesSpec
                      Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
                      Transformations.ExtendedSyntax.Optimising.CSESpec
+                     Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
