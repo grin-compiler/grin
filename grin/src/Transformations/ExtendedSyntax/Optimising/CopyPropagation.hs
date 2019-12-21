@@ -32,7 +32,7 @@ type Aliases        = Map Name Name
 type Env = (OriginalValues, Aliases)
 
 copyPropagation :: Exp -> Exp
-copyPropagation e = hylo folder builder (mempty, e) where
+copyPropagation e = skipRhsBlocks $ hylo folder builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env@(origVals, aliases), exp) = let e = substVarRefExp aliases $ exp in case e of
@@ -82,14 +82,6 @@ copyPropagation e = hylo folder builder (mempty, e) where
   -- NOTE: This cleans up the left-over produced by the above transformation.
   folder :: ExpF Exp -> Exp
   folder = \case
-    EBindF lhs bpat (SBlock rhs)
-      -> EBind lhs bpat rhs
-
-    -- NOTE: already handled in the builder
-    -- right unit law
-    -- EBindF leftExp (VarPat patVar) (SReturn (Var valVar))
-    --   | patVar == valVar -> leftExp
-
     -- <patVal> @ <var> <- pure <retVal>
     -- where retVal is a basic value (lit or unit)
     EBindF (SReturn retVal) (AsPat var patVal) rightExp
@@ -97,31 +89,13 @@ copyPropagation e = hylo folder builder (mempty, e) where
       , retVal == patVal
       -> EBind (SReturn retVal) (VarPat var) rightExp
 
-    -- NOTE: already handled in the builder
-    -- <patVal> @ <var> <- pure <retVal>
-    -- where retVal is a node
-    -- EBindF (SReturn retVal) (AsPat var patVal) rightExp
-    --   | ConstTagNode retTag _ <- retVal
-    --   , ConstTagNode patTag _ <- patVal
-    --   , retTag == patTag
-    --   -> EBind (SReturn retVal) (VarPat var) rightExp
-
-    -- NOTE: already handled in the builder
-    {- left unit law ; cleanup x <- pure y copies
-
-       NOTE: This case could be handled by SDVE as well, however
-       performing it locally saves us an effect tracking analysis.
-       This is because here, we have more information about variable
-       bidnings. We know for sure that such copying bindings are not needed
-       since all the occurences of the left-hand side have been replaced with
-       the variable on the right-hand side.
-    -}
-    -- EBindF (SReturn Var{}) VarPat{} rightExp
-    --   -> rightExp
-
-    SBlockF exp@SBlock{} -> exp
-
     exp -> embed exp
+
+  skipRhsBlocks :: Exp -> Exp
+  skipRhsBlocks exp = flip cata exp $ \case
+    EBindF lhs bpat (SBlock rhs) -> EBind lhs bpat rhs
+    SBlockF exp@SBlock{}         -> exp
+    exp                          -> embed exp
 
 getAlias :: Name -> Aliases -> Name
 getAlias var aliases = Map.findWithDefault var var aliases
