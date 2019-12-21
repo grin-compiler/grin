@@ -22,6 +22,11 @@ import Transformations.ExtendedSyntax.Util
   TODO:
     Is the as-pattern elimination handled by LLVM?
     We will figure this out after implementing the LLVM codegen for as-patterns.
+
+  NOTE:
+    Anamorphisms don't let us to "skip" bindings. We circumvent this issue by replacing the binding with a block.
+    This will essentially skip the bind, since SBlockF is simply projected into SBlock. These extra (possibly nested)
+    blocks will be removed in the cata part of the hylo.
 -}
 
 -- (k,v) ~ the variable k has the original value v
@@ -32,7 +37,7 @@ type Aliases        = Map Name Name
 type Env = (OriginalValues, Aliases)
 
 copyPropagation :: Exp -> Exp
-copyPropagation e = skipRhsBlocks $ hylo folder builder (mempty, e) where
+copyPropagation e = hylo rmBlocks builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env@(origVals, aliases), exp) = let e = substVarRefExp aliases $ exp in case e of
@@ -41,9 +46,9 @@ copyPropagation e = skipRhsBlocks $ hylo folder builder (mempty, e) where
       | origVar <- getAlias valVar aliases
       -> let aliases' = Map.insert patVar origVar aliases
              newEnv   = (origVals, aliases')
-         in SBlockF (newEnv, rightExp)  -- no skip in builder
+         in SBlockF (newEnv, rightExp)
 
-    -- left unit law
+    -- rename lhs variables with their original aliases
     EBind (SReturn val) bpat@(VarPat patVar) rightExp
       | isn't _Lit val
       , valWithOrigVars <- substNamesVal aliases val
@@ -60,9 +65,10 @@ copyPropagation e = skipRhsBlocks $ hylo folder builder (mempty, e) where
       , patTag == valTag
       -> let aliases' = aliases <> (Map.fromList $ zip (patVar:patArgs) (origVar:valArgs))
              newEnv   = (origVals, aliases')
-         in SBlockF (newEnv, rightExp)  -- no skip in builder
+         in SBlockF (newEnv, rightExp)
 
-    -- left unit law + eliminate redundant rebinds
+    -- rename lhs variables with their original aliases
+    -- and eliminate redudant rebinds
     EBind (SReturn val) (AsPat patVar asPat) rightExp
       | isn't _Lit val
       , valWithOrigVars <- substNamesVal aliases val
@@ -74,25 +80,19 @@ copyPropagation e = skipRhsBlocks $ hylo folder builder (mempty, e) where
              newEnv    = (origVals', aliases')
          in (newEnv,) <$> project (EBind (SReturn val) (VarPat patVar) rightExp)
 
-    _ -> (env,) <$> project e
-
-  genBind :: (Val, BPat) -> Exp -> Exp
-  genBind (val, bpat) exp = EBind (SReturn val) bpat exp
-
-  -- NOTE: This cleans up the left-over produced by the above transformation.
-  folder :: ExpF Exp -> Exp
-  folder = \case
-    -- <patVal> @ <var> <- pure <retVal>
-    -- where retVal is a basic value (lit or unit)
-    EBindF (SReturn retVal) (AsPat var patVal) rightExp
+    -- simplifying as-patterns matching against the same basic value they bind
+    EBind (SReturn retVal) (AsPat var patVal) rightExp
       | isBasicValue retVal
       , retVal == patVal
-      -> EBind (SReturn retVal) (VarPat var) rightExp
+      -> (env,) <$> project (EBind (SReturn retVal) (VarPat var) rightExp)
 
-    exp -> embed exp
+    _ -> (env,) <$> project e
 
-  skipRhsBlocks :: Exp -> Exp
-  skipRhsBlocks exp = flip cata exp $ \case
+  -- NOTE: This cleans up the left-over produced by the above transformation.
+  -- It removes nested blocks, and blocks appearing on the left-hand side of a
+  -- binding. These are always safe to remove.
+  rmBlocks :: ExpF Exp -> Exp
+  rmBlocks = \case
     EBindF lhs bpat (SBlock rhs) -> EBind lhs bpat rhs
     SBlockF exp@SBlock{}         -> exp
     exp                          -> embed exp
