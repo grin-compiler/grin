@@ -44,7 +44,7 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
   builder :: Exp -> State Env (ExpF Exp)
   builder exp = do
     (origVals, aliases) <- get
-    -- this substitutes all the variables on this level with their original aliases
+    -- This substitutes all the variables on this level with their original aliases
     let exp' = substVarRefExp aliases $ exp
 
     case exp' of
@@ -56,7 +56,7 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
           put newEnv
           pure $ SBlockF rightExp
 
-      -- rename lhs variables with their original aliases
+      -- add the lhs value as an original value
       EBind (SReturn val) bpat@(VarPat patVar) rightExp
         | isn't _Lit val
         , valWithOrigVars <- substNamesVal aliases val -> do
@@ -77,7 +77,7 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
           put newEnv
           pure $ SBlockF rightExp
 
-      -- rename lhs variables with their original aliases
+      -- add the lhs value as an original value
       -- and eliminate redudant rebinds
       EBind (SReturn val) (AsPat patVar asPat) rightExp
         | isn't _Lit val
@@ -91,7 +91,7 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
           put newEnv
           pure $ project $ EBind (SReturn val) (VarPat patVar) rightExp
 
-      -- simplifying as-patterns matching against the same basic value they bind
+      -- simplify as-pattern matching against the same basic value it binds
       EBind (SReturn retVal) (AsPat var patVal) rightExp
         | isBasicValue retVal
         , retVal == patVal -> do
@@ -100,7 +100,7 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
       _ -> pure $ project exp'
 
   -- NOTE: This cleans up the left-over produced by the above transformation.
-  -- It removes nested blocks, and blocks appearing on the left-hand side of a
+  -- It removes nested blocks, and blocks appearing on the right-hand side of a
   -- binding. These are always safe to remove.
   rmBlocks :: ExpF Exp -> State Env Exp
   rmBlocks = \case
