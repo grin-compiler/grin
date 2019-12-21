@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
 module Transformations.ExtendedSyntax.Optimising.CopyPropagation where
 
+import Control.Monad.State
+
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable as Foldable
@@ -37,65 +39,73 @@ type Aliases        = Map Name Name
 type Env = (OriginalValues, Aliases)
 
 copyPropagation :: Exp -> Exp
-copyPropagation e = hylo rmBlocks builder (mempty, e) where
+copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
 
-  builder :: (Env, Exp) -> ExpF (Env, Exp)
-  builder (env@(origVals, aliases), exp) = let e = substVarRefExp aliases $ exp in case e of
-    -- left unit law
-    EBind (SReturn (Var valVar)) (VarPat patVar) rightExp
-      | origVar <- getAlias valVar aliases
-      -> let aliases' = Map.insert patVar origVar aliases
-             newEnv   = (origVals, aliases')
-         in SBlockF (newEnv, rightExp)
+  builder :: Exp -> State Env (ExpF Exp)
+  builder exp = do
+    (origVals, aliases) <- get
+    let exp' = substVarRefExp aliases $ exp
 
-    -- rename lhs variables with their original aliases
-    EBind (SReturn val) bpat@(VarPat patVar) rightExp
-      | isn't _Lit val
-      , valWithOrigVars <- substNamesVal aliases val
-      -> let origVals' = Map.insert patVar valWithOrigVars origVals
-             newEnv    = (origVals', aliases)
-         in (newEnv,) <$> project (EBind (SReturn valWithOrigVars) bpat rightExp)
+    case exp' of
+      -- left unit law
+      EBind (SReturn (Var valVar)) (VarPat patVar) rightExp
+        | origVar <- getAlias valVar aliases -> do
+          let aliases' = Map.insert patVar origVar aliases
+              newEnv   = (origVals, aliases')
+          put newEnv
+          pure $ SBlockF rightExp
 
-    -- left unit law + eliminate redundant rebinds
-    EBind (SReturn (Var valVar)) (AsPat patVar asPat) rightExp
-      | origVar <- getAlias valVar aliases
-      , origVal <- getOrigVal origVar origVals
-      , ConstTagNode patTag patArgs <- asPat
-      , ConstTagNode valTag valArgs <- origVal
-      , patTag == valTag
-      -> let aliases' = aliases <> (Map.fromList $ zip (patVar:patArgs) (origVar:valArgs))
-             newEnv   = (origVals, aliases')
-         in SBlockF (newEnv, rightExp)
+      -- rename lhs variables with their original aliases
+      EBind (SReturn val) bpat@(VarPat patVar) rightExp
+        | isn't _Lit val
+        , valWithOrigVars <- substNamesVal aliases val -> do
+           let origVals' = Map.insert patVar valWithOrigVars origVals
+               newEnv    = (origVals', aliases)
+           put newEnv
+           pure $ project $ EBind (SReturn valWithOrigVars) bpat rightExp
 
-    -- rename lhs variables with their original aliases
-    -- and eliminate redudant rebinds
-    EBind (SReturn val) (AsPat patVar asPat) rightExp
-      | isn't _Lit val
-      , valWithOrigVars <- substNamesVal aliases val
-      , ConstTagNode patTag patArgs <- asPat
-      , ConstTagNode valTag valArgs <- valWithOrigVars
-      , patTag == valTag
-      -> let origVals' = Map.insert patVar valWithOrigVars origVals
-             aliases'  = aliases <> (Map.fromList $ zip patArgs valArgs)
-             newEnv    = (origVals', aliases')
-         in (newEnv,) <$> project (EBind (SReturn val) (VarPat patVar) rightExp)
+      -- left unit law + eliminate redundant rebinds
+      EBind (SReturn (Var valVar)) (AsPat patVar asPat) rightExp
+        | origVar <- getAlias valVar aliases
+        , origVal <- getOrigVal origVar origVals
+        , ConstTagNode patTag patArgs <- asPat
+        , ConstTagNode valTag valArgs <- origVal
+        , patTag == valTag -> do
+          let aliases' = aliases <> (Map.fromList $ zip (patVar:patArgs) (origVar:valArgs))
+              newEnv   = (origVals, aliases')
+          put newEnv
+          pure $ SBlockF rightExp
 
-    -- simplifying as-patterns matching against the same basic value they bind
-    EBind (SReturn retVal) (AsPat var patVal) rightExp
-      | isBasicValue retVal
-      , retVal == patVal
-      -> (env,) <$> project (EBind (SReturn retVal) (VarPat var) rightExp)
+      -- rename lhs variables with their original aliases
+      -- and eliminate redudant rebinds
+      EBind (SReturn val) (AsPat patVar asPat) rightExp
+        | isn't _Lit val
+        , valWithOrigVars <- substNamesVal aliases val
+        , ConstTagNode patTag patArgs <- asPat
+        , ConstTagNode valTag valArgs <- valWithOrigVars
+        , patTag == valTag -> do
+          let origVals' = Map.insert patVar valWithOrigVars origVals
+              aliases'  = aliases <> (Map.fromList $ zip patArgs valArgs)
+              newEnv    = (origVals', aliases')
+          put newEnv
+          pure $ project $ EBind (SReturn val) (VarPat patVar) rightExp
 
-    _ -> (env,) <$> project e
+      -- simplifying as-patterns matching against the same basic value they bind
+      EBind (SReturn retVal) (AsPat var patVal) rightExp
+        | isBasicValue retVal
+        , retVal == patVal -> do
+          pure $ project $ EBind (SReturn retVal) (VarPat var) rightExp
+
+      _ -> pure $ project exp'
 
   -- NOTE: This cleans up the left-over produced by the above transformation.
   -- It removes nested blocks, and blocks appearing on the left-hand side of a
   -- binding. These are always safe to remove.
-  rmBlocks :: ExpF Exp -> Exp
+  rmBlocks :: ExpF Exp -> State Env Exp
   rmBlocks = \case
-    EBindF lhs bpat (SBlock rhs) -> EBind lhs bpat rhs
-    SBlockF exp@SBlock{}         -> exp
-    exp                          -> embed exp
+    EBindF lhs bpat (SBlock rhs) -> pure $ EBind lhs bpat rhs
+    SBlockF exp@SBlock{}         -> pure $ exp
+    exp                          -> pure $ embed exp
 
 getAlias :: Name -> Aliases -> Name
 getAlias var aliases = Map.findWithDefault var var aliases
