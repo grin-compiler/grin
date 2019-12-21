@@ -44,6 +44,7 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
   builder :: Exp -> State Env (ExpF Exp)
   builder exp = do
     (origVals, aliases) <- get
+    -- this substitutes all the variables on this level with their original aliases
     let exp' = substVarRefExp aliases $ exp
 
     case exp' of
