@@ -18,13 +18,16 @@ cabal.sandbox.config
 *.eventlog
 .stack-work/
 cabal.project.local
+cabal.project.local~
 .HTF/
 output/
 *.ibc
 *.agdai
 .output
 .grin-output/
+grin/.end-to-end-test/
 .vscode/
 *.out
 *.out.ll
 *.out.s
+.ghc.environment.*
