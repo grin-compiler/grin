@@ -272,6 +272,7 @@ test-suite grin-test
                      LintSpec
                      TestSpec
                      PipelineSpec
+                     PrettySpec
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
@@ -358,6 +359,7 @@ test-suite grin-end-to-end-test
                      LintSpec
                      TestSpec
                      PipelineSpec
+                     PrettySpec
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
