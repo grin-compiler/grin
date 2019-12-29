@@ -13,6 +13,7 @@ module Pipeline.Pipeline
   , pattern SimplePrintGrin
   , pattern FullPrintGrin
   , pattern DeadCodeElimination
+  , pattern PureEvalPlugin
   , pipeline
   , optimize
   , optimizeWith
@@ -118,7 +119,8 @@ import System.IO (BufferMode(..), hSetBuffering, stdout)
 import Data.Binary as Binary
 import Grin.Nametable as Nametable
 import qualified Data.ByteString.Lazy as LBS
-
+import Reducer.PrimOps (evalPrimOp)
+import Reducer.Pure (EvalPlugin(..))
 
 data Transformation
   -- Simplifying
@@ -197,6 +199,7 @@ data PipelineStep
   | Pass [PipelineStep]
   | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
   | PureEval
+  | PureEvalPluginH (Hidden (EvalPlugin Lit))
   | JITLLVM
   | PrintAST
   | SaveLLVM Path
@@ -248,6 +251,10 @@ pattern FullPrintGrin c <- PrintGrinH WithExternals (H c)
 pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
+
+pattern PureEvalPlugin :: (EvalPlugin Lit) -> PipelineStep
+pattern PureEvalPlugin t <- PureEvalPluginH (H t)
+  where PureEvalPlugin t =  PureEvalPluginH (H t)
 
 data PipelineOpts = PipelineOpts
   { _poOutputDir   :: FilePath
@@ -454,7 +461,8 @@ pipelineStep p = do
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
     PrintGrin r d   -> printGrinM r d
-    PureEval        -> pureEval
+    PureEval        -> pureEval (EvalPlugin evalPrimOp id)
+    PureEvalPlugin evalPlugin -> pureEval evalPlugin
     JITLLVM         -> jitLLVM
     SaveLLVM path   -> saveLLVM path
     SaveExecutable dbg path -> saveExecutable dbg path
@@ -652,12 +660,12 @@ statistics = do
   exp <- use psExp
   saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
-pureEval :: PipelineM ()
-pureEval = do
+pureEval :: EvalPlugin Lit -> PipelineM ()
+pureEval evalPlugin = do
   e <- use psExp
   val <- liftIO $ do
     hSetBuffering stdout NoBuffering
-    evalProgram PureReducer e
+    evalProgram (PureReducer evalPlugin) e
   pipelineLog $ show $ pretty val
 
 printGrinM :: RenderingOption -> (Doc -> Doc) -> PipelineM ()
@@ -738,7 +746,8 @@ saveExecutable debugSymbols path = do
     llcExe grinOptCodeFile
   cfg <- ask
   callCommand $ printf
-    ("%s -O3 %s %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
+    -- TODO: Support defining libraries for ffi and primops.
+    ("%s -lm -O3 %s %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
     clangExe (intercalate " " $ _poCFiles cfg) grinOptCodeFile fname
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()

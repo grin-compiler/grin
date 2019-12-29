@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
 module Pipeline.Eval where
 
 import qualified Data.Text.IO as Text
@@ -7,6 +9,7 @@ import Text.Megaparsec
 import Grin.Grin
 import Grin.TypeCheck
 import Grin.Parse
+import Grin.Pretty (Pretty)
 import Reducer.Base (RTVal)
 import qualified Reducer.IO
 import qualified Reducer.Pure
@@ -18,29 +21,14 @@ import AbstractInterpretation.Reduce (AbstractInterpretationResult(..), evalAbst
 
 
 
-data Reducer
-  = PureReducer
-  | IOReducer
-  | LLVMReducer
-  deriving (Eq, Show)
+data Reducer v where
+  PureReducer :: Reducer.Pure.ValueConstraints v
+              => Reducer.Pure.EvalPlugin v
+              -> Reducer v
+  IOReducer   :: Reducer Lit
 
--- TODO: Add Mode as a parameter?
-eval' :: Reducer -> String -> IO RTVal
-eval' reducer fname = do
-  content <- Text.readFile fname
-  case parseGrin fname content of
-    Left err -> error (errorBundlePretty err)
-    Right program ->
-      case reducer of
-        PureReducer -> Reducer.Pure.reduceFun program "grinMain"
-        IOReducer   -> Reducer.IO.reduceFun program "grinMain"
-        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
-          typeEnv   = either error id $ typeEnvFromHPTResult hptResult
-          hptResult = HPT.toHPTResult hptMapping ((_airComp . evalAbstractProgram) $ hptProgram)
-          (hptProgram, hptMapping) = HPT.codeGen program
-
-evalProgram :: Reducer -> Program -> IO RTVal
+evalProgram :: Reducer v -> Program -> IO (RTVal v)
 evalProgram reducer program =
   case reducer of
-    PureReducer -> Reducer.Pure.reduceFun program "grinMain"
-    IOReducer   -> Reducer.IO.reduceFun program "grinMain"
+    PureReducer evalPrimOp  -> Reducer.Pure.reduceFun evalPrimOp program "grinMain"
+    IOReducer               -> Reducer.IO.reduceFun program "grinMain"
