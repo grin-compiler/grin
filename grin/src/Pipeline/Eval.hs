@@ -1,6 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
 module Pipeline.Eval where
 
 import qualified Data.Text.IO as Text
@@ -9,7 +7,6 @@ import Text.Megaparsec
 import Grin.Grin
 import Grin.TypeCheck
 import Grin.Parse
-import Grin.Pretty (Pretty)
 import Reducer.Base (RTVal)
 import qualified Reducer.IO
 import qualified Reducer.Pure
@@ -21,13 +18,11 @@ import AbstractInterpretation.Reduce (AbstractInterpretationResult(..), evalAbst
 
 
 
-data Reducer v where
-  PureReducer :: Reducer.Pure.ValueConstraints v
-              => Reducer.Pure.EvalPlugin v
-              -> Reducer v
-  IOReducer   :: Reducer Lit
+data Reducer
+  = PureReducer Reducer.Pure.EvalPlugin
+  | IOReducer
 
-evalProgram :: Reducer v -> Program -> IO (RTVal v)
+evalProgram :: Reducer -> Program -> IO RTVal
 evalProgram reducer program =
   case reducer of
     PureReducer evalPrimOp  -> Reducer.Pure.reduceFun evalPrimOp program "grinMain"

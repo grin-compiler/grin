@@ -3,7 +3,7 @@
 
 module Reducer.LLVM.JIT where
 
-import Grin.Grin (Val(..), Lit)
+import Grin.Grin (Val(..))
 import Reducer.Base (RTVal(..))
 import Data.String
 
@@ -66,7 +66,7 @@ grinHeapSize :: Int
 grinHeapSize = 100 * 1024 * 1024
 
 -- IMPORTANT: JIT does not support FFI yet, only _prim_int_print and __runtime_error are hardwired
-eagerJit :: AST.Module -> String -> IO (RTVal Lit)
+eagerJit :: AST.Module -> String -> IO RTVal
 eagerJit amod mainName = do
   resolvers <- newIORef Map.empty
   withTestModule amod $ \mod ->

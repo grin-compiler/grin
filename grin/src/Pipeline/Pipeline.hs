@@ -199,7 +199,7 @@ data PipelineStep
   | Pass [PipelineStep]
   | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
   | PureEval
-  | PureEvalPluginH (Hidden (EvalPlugin Lit))
+  | PureEvalPluginH (Hidden EvalPlugin)
   | JITLLVM
   | PrintAST
   | SaveLLVM Path
@@ -252,7 +252,7 @@ pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
 
-pattern PureEvalPlugin :: (EvalPlugin Lit) -> PipelineStep
+pattern PureEvalPlugin :: EvalPlugin -> PipelineStep
 pattern PureEvalPlugin t <- PureEvalPluginH (H t)
   where PureEvalPlugin t =  PureEvalPluginH (H t)
 
@@ -461,7 +461,7 @@ pipelineStep p = do
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
     PrintGrin r d   -> printGrinM r d
-    PureEval        -> pureEval (EvalPlugin evalPrimOp id)
+    PureEval        -> pureEval (EvalPlugin evalPrimOp)
     PureEvalPlugin evalPlugin -> pureEval evalPlugin
     JITLLVM         -> jitLLVM
     SaveLLVM path   -> saveLLVM path
@@ -660,7 +660,7 @@ statistics = do
   exp <- use psExp
   saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
-pureEval :: EvalPlugin Lit -> PipelineM ()
+pureEval :: EvalPlugin -> PipelineM ()
 pureEval evalPlugin = do
   e <- use psExp
   val <- liftIO $ do

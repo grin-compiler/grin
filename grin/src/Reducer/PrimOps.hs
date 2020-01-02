@@ -37,7 +37,7 @@ primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (Text.unpack a)) >> p
 primLiteralPrint ctx ps x = error $ Prelude.unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
 
 
-evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal Lit] -> m (RTVal Lit)
+evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal] -> m RTVal
 evalPrimOp name params args = case name of
   "_prim_int_print"    -> primLiteralPrint "int"    params args
   "_prim_string_print" -> primLiteralPrint "string" params args

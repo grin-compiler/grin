@@ -21,7 +21,7 @@ import Grin.Grin
 
 -- models computer memory
 data IOStore = IOStore {
-    sVector :: IOVector (RTVal Lit)
+    sVector :: IOVector RTVal
   , sLast   :: IORef Int
   }
 
@@ -38,7 +38,7 @@ getStore :: GrinS IOStore
 getStore = get
 
 -- TODO: Resize
-insertStore :: RTVal Lit -> GrinS Int
+insertStore :: RTVal -> GrinS Int
 insertStore x = do
   (IOStore v l) <- getStore
   lift $ do
@@ -47,13 +47,13 @@ insertStore x = do
     writeIORef l (n + 1)
     pure n
 
-lookupStore :: Int -> GrinS (RTVal Lit)
+lookupStore :: Int -> GrinS RTVal
 lookupStore n = do
   (IOStore v _) <- getStore
   lift $ do
     Vector.read v n
 
-updateStore :: Int -> RTVal Lit -> GrinS ()
+updateStore :: Int -> RTVal -> GrinS ()
 updateStore n x = do
   (IOStore v _) <- getStore
   lift $ do
@@ -66,8 +66,7 @@ pprint exp = trace (f exp) exp where
     SBlock {} -> "Block"
     a -> show a
 
-
-evalExp :: [External] -> Env Lit -> Exp -> GrinS (RTVal Lit)
+evalExp :: [External] -> Env -> Exp -> GrinS RTVal
 evalExp exts env exp = case {-pprint-} exp of
   EBind op pat exp -> evalSimpleExp exts env op >>= \v -> evalExp exts (bindPat env v pat) exp
   ECase v alts ->
@@ -75,7 +74,7 @@ evalExp exts env exp = case {-pprint-} exp of
         defaultAlt  = if Prelude.length defaultAlts > 1
                         then error "multiple default case alternative"
                         else Prelude.take 1 defaultAlts
-    in case evalVal id env v of
+    in case evalVal env v of
       RT_ConstTagNode t l ->
                      let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
                          go a [] [] = a
@@ -87,10 +86,10 @@ evalExp exts env exp = case {-pprint-} exp of
       x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
   exp -> evalSimpleExp exts env exp
 
-evalSimpleExp :: [External] -> Env Lit -> SimpleExp -> GrinS (RTVal Lit)
+evalSimpleExp :: [External] -> Env -> SimpleExp -> GrinS RTVal
 evalSimpleExp exts env = \case
   SApp n a -> do
-              let args = map (evalVal id env) a
+              let args = map (evalVal env) a
                   go a [] [] = a
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                   go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
@@ -99,9 +98,9 @@ evalSimpleExp exts env = \case
                 else do
                   Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ unpackName n) n) <$> getProg
                   evalExp exts (go env vars args) body
-  SReturn v -> pure $ evalVal id env v
+  SReturn v -> pure $ evalVal env v
   SStore v -> do
-              let v' = evalVal id env v
+              let v' = evalVal env v
               l <- insertStore v'
               -- modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               pure $ RT_Loc l
@@ -110,14 +109,14 @@ evalSimpleExp exts env = \case
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
 --  | FetchI  Name Int -- fetch node component
   SUpdate n v -> do
-              let v' = evalVal id env v
+              let v' = evalVal env v
               case lookupEnv n env of
                 RT_Loc l -> updateStore l v' >> pure v'
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
   SBlock a -> evalExp exts env a
   x -> error $ "evalSimpleExp: " ++ show x
 
-reduceFun :: Program -> Name -> IO (RTVal Lit)
+reduceFun :: Program -> Name -> IO RTVal
 reduceFun (Program exts l) n = do
   store <- emptyStore1
   (val, _, _) <- runRWST (evalExp exts mempty e) m store
