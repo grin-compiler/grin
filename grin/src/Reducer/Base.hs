@@ -24,7 +24,6 @@ data RTVal
   | RT_Undefined
   deriving (Show, Eq, Ord)
 
-
 instance Pretty RTVal where
   pretty = \case
     RT_ConstTagNode tag args -> parens $ hsep (pretty tag : map pretty args)
@@ -53,12 +52,11 @@ bindPatMany _ vals lpats = error $ "bindPatMany - pattern mismatch: " ++ show (v
 bindPat :: Env -> RTVal -> LPat -> Env
 bindPat env !val lpat = case lpat of
   Var n -> case val of
-              RT_ValTag{}   -> Map.insert n val env
               RT_Unit       -> Map.insert n val env
               RT_Lit{}      -> Map.insert n val env
               RT_Loc{}      -> Map.insert n val env
               RT_Undefined  -> Map.insert n val env
-              _ -> Map.insert n val env -- WTF????
+              RT_ConstTagNode{} -> Map.insert n val env
               _ -> error $ "bindPat - illegal value: " ++ show val
   ConstTagNode ptag pargs -> case val of
                   RT_ConstTagNode vtag vargs | ptag == vtag -> bindPatMany env vargs pargs

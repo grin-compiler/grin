@@ -19,28 +19,11 @@ import AbstractInterpretation.Reduce (AbstractInterpretationResult(..), evalAbst
 
 
 data Reducer
-  = PureReducer
+  = PureReducer Reducer.Pure.EvalPlugin
   | IOReducer
-  | LLVMReducer
-  deriving (Eq, Show)
-
--- TODO: Add Mode as a parameter?
-eval' :: Reducer -> String -> IO RTVal
-eval' reducer fname = do
-  content <- Text.readFile fname
-  case parseGrin fname content of
-    Left err -> error (errorBundlePretty err)
-    Right program ->
-      case reducer of
-        PureReducer -> Reducer.Pure.reduceFun program "grinMain"
-        IOReducer   -> Reducer.IO.reduceFun program "grinMain"
-        LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
-          typeEnv   = either error id $ typeEnvFromHPTResult hptResult
-          hptResult = HPT.toHPTResult hptMapping ((_airComp . evalAbstractProgram) $ hptProgram)
-          (hptProgram, hptMapping) = HPT.codeGen program
 
 evalProgram :: Reducer -> Program -> IO RTVal
 evalProgram reducer program =
   case reducer of
-    PureReducer -> Reducer.Pure.reduceFun program "grinMain"
-    IOReducer   -> Reducer.IO.reduceFun program "grinMain"
+    PureReducer evalPrimOp  -> Reducer.Pure.reduceFun evalPrimOp program "grinMain"
+    IOReducer               -> Reducer.IO.reduceFun program "grinMain"

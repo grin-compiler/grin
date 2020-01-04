@@ -66,7 +66,6 @@ pprint exp = trace (f exp) exp where
     SBlock {} -> "Block"
     a -> show a
 
-
 evalExp :: [External] -> Env -> Exp -> GrinS RTVal
 evalExp exts env exp = case {-pprint-} exp of
   EBind op pat exp -> evalSimpleExp exts env op >>= \v -> evalExp exts (bindPat env v pat) exp
