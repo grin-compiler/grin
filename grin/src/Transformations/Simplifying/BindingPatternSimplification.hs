@@ -22,6 +22,11 @@ bindingPatternSimplification e = evalNameM e . cataM alg $ e where
   alg :: ExpF Exp -> NameM Exp
   alg = \case
 
+    -- NOTE: <pat> <- pure <var>
+    -- The above pattern does not need to be simplified.
+    EBindF lhs@(SReturn Var{}) pat rhs ->
+      pure $ EBind lhs pat rhs
+
     -- NOTE: binding to Unit?
     EBindF lhs pat rhs | isn't _ValVar pat -> do
       newVar <- fmap Var newNodeName

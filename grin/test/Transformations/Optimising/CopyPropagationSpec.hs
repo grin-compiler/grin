@@ -25,8 +25,6 @@ spec = do
         |]
       let after = [expr|
           a1 <- pure 1
-          a2 <- pure a1
-          a3 <- pure a1
           pure a1
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
@@ -41,8 +39,6 @@ spec = do
         |]
       let after = [expr|
           a1 <- pure 1
-          a2 <- pure a1
-          a3 <- pure a1
           case a1 of
             #default -> pure a1
         |]
@@ -61,11 +57,7 @@ spec = do
       let after = [expr|
           a1 <- pure 1
           n1 <- pure (CNode a1 0)
-          n2 <- pure n1
-          a2 <- pure a1
           b1 <- pure 0
-          b2 <- pure b1
-          a3 <- pure a1
           pure (CNode a1 b1)
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
@@ -84,7 +76,6 @@ spec = do
           a1 <- pure 1
           b1 <- pure 0
           n1 <- pure (CNode a1 b1)
-          a2 <- pure a1
           n2 <- pure (CNode a1 b1)
           case n2 of
             #default -> pure n2
@@ -119,7 +110,6 @@ spec = do
         |]
       let after = [expr|
           a1 <- pure 1
-          a2 <- pure a1
           0 <- pure 1
           pure a1
         |]

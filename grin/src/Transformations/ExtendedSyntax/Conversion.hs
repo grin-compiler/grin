@@ -125,9 +125,17 @@ instance Convertible Exp New.Exp where
   convert exp = fst $ evalNameM exp $ flip anaM exp $ \case
     (Program exts defs)  -> pure $ New.ProgramF (map convert exts) defs
     (Def name args body) -> pure $ New.DefF (convert name) (map convert args) body
-    {- NOTE: we assume Binding Pattern Simplification has been run
+
+    {- NOTE: We assume Binding Pattern Simplification has been run,
+       and the value has been given the name v.0. This is a special
+       case of the next program patterns. This one transforms the result
+       of Binding Pattern Simplification to a more concise form.
+
       v.0 <- pure <value>
       <non-var pat> <- pure v.0
+      <rhs2>
+
+      <non-var pat> @ v.0 <- pure <value>
       <rhs2>
     -}
     (EBind lhs1 (Var var) rhs1)
@@ -135,6 +143,22 @@ instance Convertible Exp New.Exp where
       , isn't _Var pat
       , var == var'
       -> pure $ New.EBindF lhs1 (New.AsPat (convert var) (convert pat)) rhs2
+    {- NOTE: In this case, v.0 has been defined earlier in the program.
+       This is a more general case that covers the one before as well.
+
+      v.0 <- pure <value>
+      <...>
+      <non-var pat> <- pure v.0
+      <rhs>
+
+      v.0 <- pure <value>
+      <...>
+      <non-var pat> @ a.0 <- pure v.0
+      <rhs>
+    -}
+    (EBind lhs pat rhs) | isn't _Var pat -> do
+      asPatName <- deriveNewName "a"
+      pure $ New.EBindF lhs (New.AsPat (convert asPatName) (convert pat)) rhs
     (EBind lhs (Var var) rhs)
       -> pure $ New.EBindF lhs (New.VarPat $ convert var) rhs
     (ECase scrut alts)
@@ -158,6 +182,7 @@ instance Convertible Exp New.Exp where
     (Alt cpat exp) -> do
       altName <- deriveNewName "alt"
       pure $ New.NAltF (convert cpat) (convert altName) exp
+    _ -> error "Conversion from Old to New has failed: unexpected AST pattern"
 
 instance Convertible New.TagType TagType where
   convert = \case
@@ -257,10 +282,10 @@ instance Convertible New.Exp Exp where
 convertToNew :: Exp -> New.Exp
 convertToNew = convert . nameEverything
 
--- TODO: modify CopyPropagation such that it removes resulting dead bindings (see CopyPropagation.hs)
 nameEverything :: Exp -> Exp
 nameEverything
-  = bindNormalisation
+  = copyPropagation
+  . bindNormalisation
   . nodeArgumentNaming
   . bindNormalisation
   . appArgumentNaming
