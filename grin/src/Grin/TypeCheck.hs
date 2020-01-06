@@ -1,31 +1,27 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell, OverloadedStrings #-}
 module Grin.TypeCheck where
 
-import Text.Printf
-
-import Data.Int
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Vector (Vector)
-import qualified Data.Vector as V
-
-import Control.Monad.Except
-import Lens.Micro.Platform
-
-import Grin.Grin (Tag, Exp, Name, packName)
-import Grin.Pretty
 import AbstractInterpretation.HeapPointsTo.Pretty
 import AbstractInterpretation.HeapPointsTo.Result as HPT
-import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
-
-import qualified Grin.TypeEnv as TypeEnv
-
 import AbstractInterpretation.Reduce (AbstractInterpretationResult(..))
-import qualified AbstractInterpretation.Reduce as R
-
+import Control.Monad.Except
 import Data.Bifunctor
+import Data.Int
+import Data.String (fromString)
+import Data.Map (Map)
+import Data.Set (Set)
+import Data.Vector (Vector)
+import Grin.Grin (Tag, Exp, Name, packName)
+import Grin.Pretty
+import Lens.Micro.Platform
+import Text.Printf
+
+import qualified AbstractInterpretation.HeapPointsTo.CodeGen as HPT
+import qualified AbstractInterpretation.Reduce as R
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.Vector as V
+import qualified Grin.TypeEnv as TypeEnv
 
 {-
   validate HPT result
@@ -85,7 +81,10 @@ typeEnvFromHPTResult hptResult = typeEnv where
       _ -> throwError $ printf "%s has illegal type of %s" (TypeEnv.unNM n) (show . pretty $ ts)
 
   convertFunction :: Name -> (TypeSet, Vector TypeSet) -> Either String (TypeEnv.Type, Vector TypeEnv.Type)
-  convertFunction name (ret, args) = (,) <$> convertTypeSet name ret <*> mapM (convertTypeSet name) args
+  convertFunction name (ret, args) =
+    (,) <$> convertTypeSet name ret
+        <*> mapM (\(i, a) -> convertTypeSet (TypeEnv.nMap (<> (fromString (" " ++ show i ++ ". arg"))) name) a)
+                 (V.indexed args)
 
   typeEnv :: Either String TypeEnv.TypeEnv
   typeEnv = TypeEnv.TypeEnv <$>
