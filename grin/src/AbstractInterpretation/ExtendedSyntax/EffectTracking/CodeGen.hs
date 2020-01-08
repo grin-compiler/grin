@@ -66,8 +66,8 @@ codeGenM = cata folder where
       let R rhsReg = rhs
 
       case bPat of
-        VarPat var   -> addReg var lhsReg
-        AsPat  var _ -> addReg var lhsReg
+        VarPat var     -> addReg var lhsReg
+        AsPat  _ _ var -> addReg var lhsReg
 
       emit IR.Move { srcReg = lhsReg, dstReg = rhsReg }
       pure $ R rhsReg

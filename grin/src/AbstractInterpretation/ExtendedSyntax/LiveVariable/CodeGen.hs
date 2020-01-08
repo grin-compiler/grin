@@ -237,16 +237,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
 
       case bPat of
         VarPat v -> mkRegsThenVarPatternDataFlow v
-        AsPat v Unit -> do
-          setBasicValLive lhsReg
-          mkRegsThenVarPatternDataFlow v
-        AsPat v Lit{} -> do
-          setBasicValLive lhsReg
-          mkRegsThenVarPatternDataFlow v
-        AsPat v1 (Var v2) -> do
-          mkRegsThenVarPatternDataFlow v1
-          mkRegsThenVarPatternDataFlow v2
-        AsPat v (ConstTagNode tag args) -> do
+        AsPat tag args v -> do
           irTag <- getTag tag
           setTagLive irTag lhsReg
           bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) -> do
