@@ -54,8 +54,9 @@ alternative i = Alt <$> try (L.indentGuard sc EQ i *> altPat) <*> (op "@" *> var
 -- and we don't want to parenthesize variables, literals and units.
 bindingPat :: Parser BPat
 bindingPat =
-  try (flip AsPat <$> value <*> (op "@" *> var)) <|>
-  VarPat <$> var
+  VarPat <$> var <|>
+  mkAsPat <$> parens ((,) <$> tag <*> many var) <*> (op "@" *> var)
+  where mkAsPat (tag, fields) var = AsPat tag fields var
 
 
 altPat :: Parser CPat
