@@ -26,7 +26,7 @@ instance FoldNames Val where
 instance FoldNames BPat where
   foldNames f = \case
     VarPat v     -> f v
-    AsPat t vs v -> f v <> foldNames (ConstTagNode t vs)
+    AsPat t vs v -> f v <> foldNames f (ConstTagNode t vs)
 
 
 instance FoldNames CPat where
