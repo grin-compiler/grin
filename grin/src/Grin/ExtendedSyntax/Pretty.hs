@@ -144,8 +144,8 @@ instance Pretty Lit where
 
 instance Pretty BPat where
   pretty = \case
-    VarPat v    -> pretty v
-    AsPat v pat -> pretty pat <+> pretty '@' <+> pretty v
+    VarPat v           -> pretty v
+    AsPat tag fields v -> pretty (ConstTagNode tag fields) <+> pretty '@' <+> pretty v
 
 instance Pretty CPat where
   pretty = \case
