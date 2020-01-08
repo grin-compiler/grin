@@ -72,8 +72,8 @@ mapNamesVal f = \case
 
 mapNamesBPat :: (Name -> Name) -> BPat -> BPat
 mapNamesBPat f = \case
-  VarPat v      -> VarPat (f v)
-  AsPat var val -> AsPat (f var) (mapNamesVal f val)
+  VarPat v         -> VarPat (f v)
+  AsPat tag vars v -> AsPat tag (map f vars) (f v)
 
 -- TODO: replace at use sites with
 -- mapValVal :: (Val -> Val) -> Val -> Val
@@ -130,7 +130,8 @@ cPatToVal = \case
   DefaultPat        -> Unit
 
 cPatToAsPat :: Name -> CPat -> BPat
-cPatToAsPat name cPat = AsPat name (cPatToVal cPat)
+cPatToAsPat name (NodePat tag args) = AsPat tag args name
+cPatToAsPat _ cPat = error $ "cPatToAsPat: cannot convert to as-pattern: " ++ show (PP cPat)
 
 -- monadic recursion schemes
 --  see: https://jtobin.io/monadic-recursion-schemes
