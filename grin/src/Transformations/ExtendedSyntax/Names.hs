@@ -126,7 +126,7 @@ mapNameDefExpM :: Monad m => (Name -> m Name) -> Exp -> m Exp
 mapNameDefExpM f = \case
   Def name args body          -> Def <$> f name <*> mapM f args <*> pure body
   EBind leftExp (VarPat var) rightExp -> do EBind leftExp <$> (VarPat <$> f var) <*> pure rightExp
-  EBind leftExp (AsPat var val) rightExp -> EBind leftExp <$> (AsPat <$> f var <*> mapNamesValM f val) <*> pure rightExp
+  EBind leftExp (AsPat tag args var) rightExp -> EBind leftExp <$> (AsPat tag <$> mapM f args <*> f var) <*> pure rightExp
   Alt cpat n body             -> Alt <$> mapNamesCPatM f cpat <*> f n <*> pure body
   exp                         -> pure exp
 
