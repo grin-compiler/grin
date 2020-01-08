@@ -67,7 +67,7 @@ statistics = cata $ \case
   e -> Data.Foldable.fold e
 
 tagInBPat :: BPat -> Set.Set Tag
-tagInBPat (AsPat var (ConstTagNode t _)) = Set.singleton t
+tagInBPat (AsPat t _ _) = Set.singleton t
 tagInBPat _ = mempty
 
 

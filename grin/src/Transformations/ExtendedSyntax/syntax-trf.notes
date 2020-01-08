@@ -1,0 +1,39 @@
+easy (without type env):
+  - DONE: evaluated case elimination
+  - DONE: trivial case elimination
+  - DONE: update elimination
+  - constant propagation
+
+
+easy (with type env):
+  - non-shared elimination
+  - DONE: CSE
+  - SDFE, SDVE, SDPE
+  - SCO
+  - DFE, DPE
+
+medium:
+  - case copy propagation
+  - copy propagation
+  - DVE
+  - dead data elimination
+
+moderate:
+  - case hoisting
+  - inlining
+
+hard:
+  - arity raising
+  - generalized unboxing
+
+DONE: investigate update elimination vs CSE
+
+Branches:
+
+  [x] 32-conversion-fix
+  [ ] 32-alt-remove-unnamed
+  [ ] 32-alt-analyses
+  [ ] 32-trf-cse
+  [ ] 32-trf-case-elims
+
+  [ ] 32-trf-copy-propagation

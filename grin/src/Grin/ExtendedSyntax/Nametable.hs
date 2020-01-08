@@ -86,7 +86,7 @@ convert = second (view nametable) . flip runState emptyNS . cata build where
     ProgramF es defs            -> Program <$> mapM external es <*> sequence defs
     DefF fn ps body             -> Def <$> (nameToIdx fn) <*> (mapM nameToIdx ps) <*> body
     EBindF l (VarPat v) r       -> EBind <$> l <*> (VarPat <$> nameToIdx v) <*> r
-    EBindF l (AsPat var val) r  -> EBind <$> l <*> (AsPat <$> nameToIdx var <*> value val) <*> r
+    EBindF l (AsPat t vars v) r -> EBind <$> l <*> (AsPat <$> tag t <*> mapM nameToIdx vars <*> nameToIdx v) <*> r
     ECaseF v alts               -> ECase <$> nameToIdx v <*> sequence alts
     SAppF v ps                  -> SApp <$> nameToIdx v <*> (mapM nameToIdx ps)
     SReturnF v                  -> SReturn <$> value v
@@ -107,7 +107,7 @@ restore (exp, nt) = cata build exp where
     ProgramF es defs           -> Program (map rexternal es) defs
     DefF fn ps body            -> Def (rname fn) (map rname ps) body
     EBindF l (VarPat v) r      -> EBind l (VarPat $ rname v) r
-    EBindF l (AsPat var val) r -> EBind l (AsPat (rname var) (rvalue val)) r
+    EBindF l (AsPat t vs v) r  -> EBind l (AsPat (rtag t) (map rname vs) (rname v)) r
     ECaseF v alts              -> ECase (rname v) alts
     SAppF v ps                 -> SApp (rname v) (map rname ps)
     SReturnF v                 -> SReturn (rvalue v)
