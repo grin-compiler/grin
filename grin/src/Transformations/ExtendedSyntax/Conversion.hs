@@ -110,10 +110,18 @@ instance Convertible CPat New.CPat where
     DefaultPat     -> New.DefaultPat
     TagPat _ -> error "convert: Tag patterns are not supported in the new syntax."
 
+oldNodeToNewNode :: Tag -> [Val] -> New.Val
+oldNodeToNewNode tag vals
+  | any (isn't _Var) vals = error $ "ConstTagNode " ++ show (PP $ ConstTagNode tag vals) ++ " has a non-variable argument."
+  | otherwise             = New.ConstTagNode (convert tag) (map (convert . view _Var) vals)
+
+oldNodeToAsPat :: Tag -> [Val] -> Name -> New.BPat
+oldNodeToAsPat tag args name
+  | New.ConstTagNode newTag newArgs <- oldNodeToNewNode tag args
+  = New.AsPat newTag newArgs (convert name)
+
 instance Convertible Val New.Val where
-  convert n@(ConstTagNode t vals)
-    | any (isn't _Var) [] = error $ "ConstTagNode " ++ show (PP n) ++ " has a non-variable argument."
-    | otherwise           = New.ConstTagNode (convert t) (map (convert . view _Var) vals)
+  convert (ConstTagNode t vals) = oldNodeToNewNode t vals
   convert v@(VarTagNode _ _) = error $ "Cannot transform VarTagNode to new syntax: " ++ show (PP v)
   convert v@(ValTag _)       = error $ "Cannot transform ValTag to new syntax: " ++ show (PP v)
   convert Unit          = New.Unit
@@ -132,33 +140,32 @@ instance Convertible Exp New.Exp where
        of Binding Pattern Simplification to a more concise form.
 
       v.0 <- pure <value>
-      <non-var pat> <- pure v.0
+      <node pat> <- pure v.0
       <rhs2>
 
-      <non-var pat> @ v.0 <- pure <value>
+      <node pat> @ v.0 <- pure <value>
       <rhs2>
     -}
     (EBind lhs1 (Var var) rhs1)
-      | EBind (SReturn (Var var')) pat rhs2 <- rhs1
-      , isn't _Var pat
+      | EBind (SReturn (Var var')) (ConstTagNode tag args) rhs2 <- rhs1
       , var == var'
-      -> pure $ New.EBindF lhs1 (New.AsPat (convert var) (convert pat)) rhs2
+      -> pure $ New.EBindF lhs1 (oldNodeToAsPat tag args var) rhs2
     {- NOTE: In this case, v.0 has been defined earlier in the program.
        This is a more general case that covers the one before as well.
 
       v.0 <- pure <value>
       <...>
-      <non-var pat> <- pure v.0
+      <node pat> <- pure v.0
       <rhs>
 
       v.0 <- pure <value>
       <...>
-      <non-var pat> @ a.0 <- pure v.0
+      <node pat> @ a.0 <- pure v.0
       <rhs>
     -}
-    (EBind lhs pat rhs) | isn't _Var pat -> do
+    (EBind lhs (ConstTagNode tag args) rhs) -> do
       asPatName <- deriveNewName "a"
-      pure $ New.EBindF lhs (New.AsPat (convert asPatName) (convert pat)) rhs
+      pure $ New.EBindF lhs (oldNodeToAsPat tag args asPatName) rhs
     (EBind lhs (Var var) rhs)
       -> pure $ New.EBindF lhs (New.VarPat $ convert var) rhs
     (ECase scrut alts)
@@ -262,9 +269,9 @@ instance Convertible New.Exp Exp where
   convert (New.Program exts defs)  = Program (map convert exts) (map convert defs)
   convert (New.Def name args body) = Def (convert name) (map convert args) (convert body)
   convert e@(New.EBind lhs pat rhs)
-    | (New.VarPat v)      <- pat = EBind (convert lhs) (Var $ convert v) (convert rhs)
-    | (New.AsPat  v pat') <- pat -- condition
-    , rhs' <- EBind (SReturn (Var $ convert v)) (convert pat') (convert rhs) -- helper
+    | (New.VarPat v)         <- pat = EBind (convert lhs) (Var $ convert v) (convert rhs)
+    | (New.AsPat tag args v) <- pat -- condition
+    , rhs' <- EBind (SReturn (Var $ convert v)) (ConstTagNode (convert tag) (map (Var . convert) args)) (convert rhs) -- helper
     = EBind (convert lhs) (Var $ convert v) rhs'
   convert e@(New.ECase scrut alts) = ECase (Var $ convert scrut) (map convert alts)
   convert (New.SApp f vars)        = SApp (convert f) $ map (Var . convert) vars
