@@ -150,7 +150,14 @@ instance Convertible Exp New.Exp where
       | EBind (SReturn (Var var')) (ConstTagNode tag args) rhs2 <- rhs1
       , var == var'
       -> pure $ New.EBindF lhs1 (oldNodeToAsPat tag args var) rhs2
-    {- NOTE:
+    {- NOTE: The following transformation can be done, because
+       unit and literal patterns are redundant. If the variable has
+       the same value as the pattern, then we can safely remove the
+       binding. If the variable holds some value different from the pattern,
+       then the program's behaviour is undefined, so we can do anything
+       with it.
+
+
       v.0 <- pure <value>
       <pat> <- pure v.0     -- pat is neither a node pat nor a var pat
       <rhs2>
