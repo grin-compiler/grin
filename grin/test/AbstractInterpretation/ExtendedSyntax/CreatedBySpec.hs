@@ -464,11 +464,12 @@ spec = do
           producerN0 = mkProducerSet [(cNil, ["n0"])]
       (calcProducers exp) `shouldBe` expected
 
-    it "variable as-patterns" $ do
+    it "variable copies" $ do
       let exp = [prog|
             grinMain =
                 z0 <- pure 0
-                a2 @ a1 <- pure (CInt z0)
+                a1 <- pure (CInt z0)
+                a2 <- pure a1
                 b1 <- pure a1
                 b2 <- pure a2
                 c1 <- pure b1
