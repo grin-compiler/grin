@@ -150,6 +150,18 @@ instance Convertible Exp New.Exp where
       | EBind (SReturn (Var var')) (ConstTagNode tag args) rhs2 <- rhs1
       , var == var'
       -> pure $ New.EBindF lhs1 (oldNodeToAsPat tag args var) rhs2
+    {- NOTE:
+      v.0 <- pure <value>
+      <pat> <- pure v.0     -- pat is neither a node pat nor a var pat
+      <rhs2>
+
+      v.0 <- pure <value>
+      <rhs2>
+    -}
+      | EBind (SReturn (Var var')) valPat rhs2 <- rhs1
+      , isn't _Var valPat
+      , var == var'
+      -> pure $ New.EBindF lhs1 (New.VarPat $ convert var) rhs2
     {- NOTE: In this case, v.0 has been defined earlier in the program.
        This is a more general case that covers the one before as well.
 
