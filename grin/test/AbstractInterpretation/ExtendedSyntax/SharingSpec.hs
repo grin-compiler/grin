@@ -84,7 +84,7 @@ spec = describe "Sharing analysis" $ do
             l1 <- store two
             (CTwo l2)@_1 <- fetch l1
             _2 <- fetch l2
-            _2 <- fetch l2
+            _3 <- fetch l2
             pure ()
         |]
     let result = calcSharedLocations code
