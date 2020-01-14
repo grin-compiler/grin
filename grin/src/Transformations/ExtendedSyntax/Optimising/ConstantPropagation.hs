@@ -1,10 +1,13 @@
 {-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
 module Transformations.ExtendedSyntax.Optimising.ConstantPropagation where
 
-import Text.Printf
+
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Data.Functor.Foldable as Foldable
+import Data.Functor.Foldable
+
+import Text.Printf
+
 import Grin.Grin
 import Transformations.Util
 
@@ -27,7 +30,7 @@ constantPropagation e = ana builder (mempty, e) where
           matchingAlts  = [alt | alt@(Alt cpat body) <- alts, match cpat constVal]
           defaultAlts   = [alt | alt@(Alt DefaultPat body) <- alts]
           -- HINT: use cpat as known value in the alternative ; bind cpat to val
-          altEnv cpat   = env `mappend` unify env (cpatToLPat cpat) val
+          altEnv cpat   = env `mappend` unify env val (cpatToLPat cpat)
       in case (known, matchingAlts, defaultAlts) of
         -- known scutinee, specific pattern
         (True, [Alt cpat body], _)        -> (env,) <$> SBlockF (EBind (SReturn constVal) (cpatToLPat cpat) body)
@@ -40,12 +43,12 @@ constantPropagation e = ana builder (mempty, e) where
         _ -> ECaseF val [(altEnv cpat, alt) | alt@(Alt cpat _) <- alts]
 
     -- track values
-    EBind (SReturn val) lpat rightExp -> (env `mappend` unify env val lpat,) <$> project exp
+    EBind (SReturn val) lpat rightExp -> (env `mappend` unify env lpat val,) <$> project exp
 
     _ -> (env,) <$> project exp
 
-  unify :: Env -> Val -> LPat -> Env
-  unify env (substValsVal env -> val) lpat = case (lpat, val) of
+  unify :: Env -> LPat -> Val -> Env
+  unify env lpat (substValsVal env -> val) = case (lpat, val) of
     (Var{}, ConstTagNode{})   -> Map.singleton lpat val
     (Var{}, Unit)             -> Map.singleton lpat val -- HINT: default pattern (minor hack)
     _                         -> mempty -- LPat: unit, lit, tag
