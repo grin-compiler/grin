@@ -37,10 +37,10 @@ constantPropagation e = ana builder (mempty, e) where
           altEnv cpat   = env `mappend` unify env scrut (cPatToVal cpat)
       in case (known, matchingAlts, defaultAlts) of
         -- known scutinee, specific pattern
-        (True, [Alt cpat name body], _)        -> (env,) <$> SBlockF (EBind (SReturn constVal) (cPatToAsPat cpat name) body)
+        (True, [Alt cpat name body], _)        -> (env,) <$> SBlockF (EBind (SReturn $ constVal) (cPatToAsPat cpat name) body)
 
         -- known scutinee, default pattern
-        (True, _, [Alt DefaultPat name body])  -> (env,) <$> SBlockF body
+        (True, _, [Alt DefaultPat name body])  -> (env,) <$> SBlockF (EBind (SReturn $ Var scrut) (VarPat name) body)
 
         -- unknown scutinee
         -- HINT: in each alternative set val value like it was matched
@@ -56,7 +56,8 @@ constantPropagation e = ana builder (mempty, e) where
     ConstTagNode{}  -> Map.singleton var val
     Unit            -> Map.singleton var val -- HINT: default pattern (minor hack)
     Var v           -> Map.singleton var (getValue v env)
-    _               -> error $ "ConstantPropagation/unify: unexpected value" ++ show (val) -- TODO: PP
+    Lit{}           -> mempty
+    _               -> error $ "ConstantPropagation/unify: unexpected value: " ++ show (val) -- TODO: PP
 
   isKnown :: Val -> Bool
   isKnown = \case
