@@ -6,60 +6,66 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Functor.Foldable
 
-import Text.Printf
+import Lens.Micro ((^.))
 
-import Grin.Grin
-import Transformations.Util
-
-type Env = Map Val Val
+import Grin.ExtendedSyntax.Grin
+import Transformations.ExtendedSyntax.Util
 
 {-
   HINT:
     propagates only tag values but not literals
     GRIN is not a supercompiler
+
+  NOTE:
+    We only need the tag information to simplify case expressions.
+    This means that Env could be a Name -> Tag mapping.
 -}
+
+type Env = Map Name Val
 
 constantPropagation :: Exp -> Exp
 constantPropagation e = ana builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, exp) = case exp of
-    ECase val alts ->
-      let constVal      = substValsVal env val
-          known         = isKnown constVal || Map.member val env
-          matchingAlts  = [alt | alt@(Alt cpat body) <- alts, match cpat constVal]
-          defaultAlts   = [alt | alt@(Alt DefaultPat body) <- alts]
+    ECase scrut alts -> -- val ~ scrut
+      let constVal      = getValue scrut env -- error "substValsVal env val"
+          known         = isKnown constVal || Map.member scrut env
+          matchingAlts  = [alt | alt@(Alt cpat name body) <- alts, match cpat constVal]
+          defaultAlts   = [alt | alt@(Alt DefaultPat name body) <- alts]
           -- HINT: use cpat as known value in the alternative ; bind cpat to val
-          altEnv cpat   = env `mappend` unify env val (cpatToLPat cpat)
+          altEnv cpat   = env `mappend` unify env scrut (cPatToVal cpat)
       in case (known, matchingAlts, defaultAlts) of
         -- known scutinee, specific pattern
-        (True, [Alt cpat body], _)        -> (env,) <$> SBlockF (EBind (SReturn constVal) (cpatToLPat cpat) body)
+        (True, [Alt cpat name body], _)        -> (env,) <$> SBlockF (EBind (SReturn constVal) (cPatToAsPat cpat name) body)
 
         -- known scutinee, default pattern
-        (True, _, [Alt DefaultPat body])  -> (env,) <$> SBlockF body
+        (True, _, [Alt DefaultPat name body])  -> (env,) <$> SBlockF body
 
         -- unknown scutinee
         -- HINT: in each alternative set val value like it was matched
-        _ -> ECaseF val [(altEnv cpat, alt) | alt@(Alt cpat _) <- alts]
+        _ -> ECaseF scrut [(altEnv cpat, alt) | alt@(Alt cpat name _) <- alts]
 
     -- track values
-    EBind (SReturn val) lpat rightExp -> (env `mappend` unify env lpat val,) <$> project exp
+    EBind (SReturn val) bPat rightExp -> (env `mappend` unify env (bPat ^. _BPatVar) val,) <$> project exp
 
     _ -> (env,) <$> project exp
 
-  unify :: Env -> LPat -> Val -> Env
-  unify env lpat (substValsVal env -> val) = case (lpat, val) of
-    (Var{}, ConstTagNode{})   -> Map.singleton lpat val
-    (Var{}, Unit)             -> Map.singleton lpat val -- HINT: default pattern (minor hack)
-    _                         -> mempty -- LPat: unit, lit, tag
+  unify :: Env -> Name -> Val -> Env
+  unify env var val = case val of
+    ConstTagNode{}  -> Map.singleton var val
+    Unit            -> Map.singleton var val -- HINT: default pattern (minor hack)
+    Var v           -> Map.singleton var (getValue v env)
+    _               -> error $ "ConstantPropagation/unify: unexpected value" ++ show (val) -- TODO: PP
 
   isKnown :: Val -> Bool
   isKnown = \case
     ConstTagNode{} -> True
-    ValTag{}       -> True
     _              -> False
 
   match :: CPat -> Val -> Bool
   match (NodePat tagA _) (ConstTagNode tagB _) = tagA == tagB
-  match (TagPat tagA)    (ValTag tagB)         = tagA == tagB
   match _ _ = False
+
+  getValue :: Name -> Env -> Val
+  getValue varName env = Map.findWithDefault (Var varName) varName env
