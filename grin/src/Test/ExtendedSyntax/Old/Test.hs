@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, LambdaCase, TypeApplications, StandaloneDeriving, RankNTypes #-}
-{-# LANGUAGE QuasiQuotes, ViewPatterns, OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes, ViewPatterns, OverloadedStrings, GeneralizedNewtypeDeriving #-}
 module Test.ExtendedSyntax.Old.Test where
 
 import Prelude hiding (GT)
@@ -41,6 +41,7 @@ import Data.List
 
 import Debug.Trace
 import Data.Text (pack)
+import Grin.Pretty (Pretty(..))
 import Grin.ExtendedSyntax.Pretty (PP(..))
 import Grin.TH
 import Grin.ExtendedSyntax.TypeEnv (TypeEnv, emptyTypeEnv)  -- NOTE: might become problematic later
@@ -941,3 +942,10 @@ instance Solve G.Prog where
 
 changed :: (Testable prop) => Exp -> Exp -> prop -> Property
 changed old new = cover (old /= new) 1 "Transformation has effect"
+
+
+newtype SemanticallyCorrectProgram = SC { correctProg :: Exp }
+  deriving (Eq, Ord, Show, Pretty)
+
+instance Arbitrary SemanticallyCorrectProgram where
+  arbitrary = SC <$> genProg
