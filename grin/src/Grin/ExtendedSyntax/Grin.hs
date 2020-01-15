@@ -54,6 +54,7 @@ _Lit :: Traversal' Val Lit
 _Lit f (Lit l) = Lit <$> f l
 _Lit _ rest    = pure rest
 
+-- NOTE: This will return NM "" for everyrhing that is not a Var
 _Var :: Traversal' Val Name
 _Var f (Var name) = Var <$> f name
 _Var _ rest       = pure rest
