@@ -309,6 +309,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.NonSharedEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisationSpec
                      Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
                      Transformations.Simplifying.RegisterIntroductionSpec
