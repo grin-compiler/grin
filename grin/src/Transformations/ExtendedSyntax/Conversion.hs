@@ -115,13 +115,26 @@ oldNodeToNewNode tag vals
   | any (isn't _Var) vals = error $ "ConstTagNode " ++ show (PP $ ConstTagNode tag vals) ++ " has a non-variable argument."
   | otherwise             = New.ConstTagNode (convert tag) (map (convert . view _Var) vals)
 
-oldNodeToAsPat :: Tag -> [Val] -> Name -> New.BPat
-oldNodeToAsPat tag args name
-  | New.ConstTagNode newTag newArgs <- oldNodeToNewNode tag args
-  = New.AsPat newTag newArgs (convert name)
+oldNodePatToAsPat :: Tag -> [Val] -> Name -> NameM New.BPat
+oldNodePatToAsPat tag args name = do
+  args' <- forM args $ \case
+    Var v -> pure $ convert v
+    {- NOTE: Unit and Lit patterns can be "skipped". If the variable holds
+       the same value as we are matching against, then it redundant. If it does
+       not, then the semantics of the program is undefined (so we can do anything with it).
+
+       Here we will just generate a variable pattern in place of literal and unit patterns.
+    -}
+    _ -> convert <$> deriveWildCard
+  let tag'  = convert tag
+      name' = convert name
+  pure $ New.AsPat tag' args' name'
 
 instance Convertible Val New.Val where
-  convert (ConstTagNode t vals) = oldNodeToNewNode t vals
+  -- NOTE: This should only be called for node values, but not for node patterns in LPats
+  convert (ConstTagNode tag vals)
+    | any (isn't _Var) vals = error $ "ConstTagNode " ++ show (PP $ ConstTagNode tag vals) ++ " has a non-variable argument."
+    | otherwise             = New.ConstTagNode (convert tag) (map (convert . view _Var) vals)
   convert v@(VarTagNode _ _) = error $ "Cannot transform VarTagNode to new syntax: " ++ show (PP v)
   convert v@(ValTag _)       = error $ "Cannot transform ValTag to new syntax: " ++ show (PP v)
   convert Unit          = New.Unit
@@ -149,7 +162,9 @@ instance Convertible Exp New.Exp where
     (EBind lhs1 (Var var) rhs1)
       | EBind (SReturn (Var var')) (ConstTagNode tag args) rhs2 <- rhs1
       , var == var'
-      -> pure $ New.EBindF lhs1 (oldNodeToAsPat tag args var) rhs2
+      -> do
+         newNodePat <- oldNodePatToAsPat tag args var
+         pure $ New.EBindF lhs1 newNodePat rhs2
     {- NOTE: The following transformation can be done, because
        unit and literal patterns are redundant. If the variable has
        the same value as the pattern, then we can safely remove the
@@ -179,14 +194,21 @@ instance Convertible Exp New.Exp where
 
       v.0 <- pure <value>
       <...>
-      <node pat> @ a.0 <- pure v.0
+      <node pat> @ a.0 <- pure v.0    -- a.0 is a fresh variable
       <rhs>
     -}
     (EBind lhs (ConstTagNode tag args) rhs) -> do
-      asPatName <- deriveNewName "a"
-      pure $ New.EBindF lhs (oldNodeToAsPat tag args asPatName) rhs
+      asPatName  <- deriveNewName "a"
+      newNodePat <- oldNodePatToAsPat tag args asPatName
+      pure $ New.EBindF lhs newNodePat rhs
     (EBind lhs (Var var) rhs)
       -> pure $ New.EBindF lhs (New.VarPat $ convert var) rhs
+    (EBind lhs pat@Lit{} rhs) -> do
+      patName <- deriveNewName "a"
+      pure $ New.EBindF lhs (New.VarPat $ convert patName) rhs
+    (EBind lhs pat@Unit rhs) -> do
+      patName <- deriveWildCard
+      pure $ New.EBindF lhs (New.VarPat $ convert patName) rhs
     (ECase scrut alts)
       | isn't _Var scrut   -> error $ "Non-variable pattern in case scrutinee: " ++ show (PP scrut)
       | (Var var) <- scrut -> pure $ New.ECaseF (convert var) alts
@@ -207,6 +229,7 @@ instance Convertible Exp New.Exp where
     (Alt cpat exp) -> do
       altName <- deriveNewName "alt"
       pure $ New.AltF (convert cpat) (convert altName) exp
+    e -> error $ "Cannot convert to new: " ++ show (PP e)
 
 instance Convertible New.TagType TagType where
   convert = \case
