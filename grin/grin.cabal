@@ -151,6 +151,7 @@ library
     Transformations.ExtendedSyntax.Optimising.CSE
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
     Transformations.ExtendedSyntax.Optimising.NonSharedElimination
+    Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisation
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
     Transformations.BindNormalisation
