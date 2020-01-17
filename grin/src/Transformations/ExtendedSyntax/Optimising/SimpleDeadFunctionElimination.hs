@@ -1,14 +1,18 @@
 {-# LANGUAGE LambdaCase, TupleSections, OverloadedStrings #-}
 module Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionElimination where
 
-import Text.Printf
+
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Functor.Foldable as Foldable
+
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Foldable
-import Grin.Grin
+
+import Text.Printf
+
+import Grin.ExtendedSyntax.Grin
 
 simpleDeadFunctionElimination :: Program -> Program
 simpleDeadFunctionElimination exp@(Program exts defs) = Program exts [def | def@(Def name _ _) <- defs, Set.member name liveDefs] where
