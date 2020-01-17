@@ -17,8 +17,9 @@ spec = do
   it "simple" $ do
     let before = [prog|
         grinMain =
-          funA 1
-          funB 2
+          x <- pure 1
+          funA x
+          funB x
 
         funA a = pure ()
         funB b = funC b
@@ -29,8 +30,9 @@ spec = do
       |]
     let after = [prog|
         grinMain =
-          funA 1
-          funB 2
+          x <- pure 1
+          funA x
+          funB x
 
         funA a = pure ()
         funB b = funC b
@@ -41,7 +43,8 @@ spec = do
   it "reference direction" $ do
     let before = [prog|
         grinMain =
-          funA 1
+          x <- pure 1
+          funA x
 
         funA b = funB b
         funB c = pure ()
@@ -51,7 +54,8 @@ spec = do
       |]
     let after = [prog|
         grinMain =
-          funA 1
+          x <- pure 1
+          funA x
 
         funA b = funB b
         funB c = pure ()
@@ -61,23 +65,26 @@ spec = do
   it "ignore unknown function" $ do
     let before = [prog|
         grinMain =
-          funA 1
-          funB 2
+          x <- pure 1
+          funA x
+          funB x
 
         deadFunA d = pure d
         deadFunB e = deadFunA e
       |]
     let after = [prog|
         grinMain =
-          funA 1
-          funB 2
+          x <- pure 1
+          funA x
+          funB x
       |]
     simpleDeadFunctionElimination before `sameAs` after
 
   it "dead clique" $ do
     let before = [prog|
         grinMain =
-          funA 1
+          x <- pure 1
+          funA x
 
         funA b = funB b
         funB c = pure ()
@@ -92,7 +99,8 @@ spec = do
       |]
     let after = [prog|
         grinMain =
-          funA 1
+          x <- pure 1
+          funA x
 
         funA b = funB b
         funB c = pure ()
