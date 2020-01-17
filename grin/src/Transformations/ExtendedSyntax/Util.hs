@@ -54,9 +54,8 @@ foldNameDefExpF :: (Monoid m) => (DefRole -> Name -> m) -> ExpF a -> m
 foldNameDefExpF f = \case
   DefF name args _      -> mconcat $ (f FunName name) : map (f FunParam) args
   EBindF _ bPat _       -> f BindVar (_bPatVar bPat)
-  AltF cpat _           -> foldNames (f AltVar) cpat
   -- QUESTION: What should be the alt name's DefRole? Now it is BindVar, because it rebinds the scrutinee.
-  NAltF cpat n _        -> f BindVar n <> foldNames (f AltVar) cpat
+  AltF cpat n _         -> f BindVar n <> foldNames (f AltVar) cpat
   _                     -> mempty
 
 mapNamesCPat :: (Name -> Name) -> CPat -> CPat
@@ -198,8 +197,7 @@ collectTagInfo = flip execState (TagInfo Map.empty) . cataM alg
     alg :: ExpF () -> State TagInfo ()
     alg = \case
       SReturnF val   -> goVal val
-      AltF cpat _    -> goCPat cpat
-      NAltF cpat _ _ -> goCPat cpat
+      AltF cpat _ _  -> goCPat cpat
       _              -> pure ()
 
     goVal :: Val -> State TagInfo ()

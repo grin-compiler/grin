@@ -20,13 +20,15 @@ genEval :: Set Name -> Name -> [Def] -> NameM Def
 genEval exclude evalName defs = do
   ptrName <- deriveNewName "p"
   valueName <- deriveNewName "v"
-  let defaultAlt = Alt DefaultPat . SReturn . Var $ valueName
+  defaultAltName <- deriveNewName "alt"
+  let defaultAlt = Alt DefaultPat defaultAltName . SReturn . Var $ valueName
       funAlt name args = do
         argNames <- replicateM (length args) $ deriveNewName "a"
         whnf <- deriveNewName "res"
         wildcard <- deriveWildCard
+        altName <- deriveNewName "alt"
         pure $
-          Alt (NodePat (Tag F name) argNames) $
+          Alt (NodePat (Tag F name) argNames) altName $
             EBind (SApp name $ argNames) (VarPat whnf) $
             EBind (SUpdate ptrName whnf) (VarPat wildcard) $
             SReturn $ Var whnf
@@ -43,8 +45,9 @@ genApply exclude applyName defs = do
   argName <- deriveNewName "x"
 
   let funAlt name arity missing = do
+        altName <- deriveNewName "alt"
         argNames <- replicateM (arity - missing) $ deriveNewName "a"
-        pure $ Alt (NodePat (Tag (P missing) name) argNames) $ if missing < 1 then error "genApply: internal error" else
+        pure $ Alt (NodePat (Tag (P missing) name) argNames) altName $ if missing < 1 then error "genApply: internal error" else
           if missing == 1
             then SApp name $ argNames ++ [argName]
             else SReturn $ ConstTagNode (Tag (P $ pred missing) name) $ argNames ++ [argName]

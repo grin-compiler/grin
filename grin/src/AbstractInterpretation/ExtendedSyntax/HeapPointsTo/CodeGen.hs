@@ -289,9 +289,8 @@ codeGenM = cata folder where
 
       pure $ R caseResultReg
 
-    AltF cpat exp -> pure $ A cpat exp
     -- NOTE: Currently, the names of the alternatives are ignored by the analysis.
-    NAltF cpat n exp -> do
+    AltF cpat n exp -> do
       altNameReg <- newReg
       addReg n altNameReg
       pure $ A cpat exp

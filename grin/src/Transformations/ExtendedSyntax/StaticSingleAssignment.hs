@@ -42,12 +42,19 @@ staticSingleAssignment e = flip evalState (mempty, 1) $
       subst' <- foldM (\s n -> snd <$> calcName (n, s)) subst (foldNames (:[]) v)
       pure $ EBindF (subst', lhs) (mapNamesBPat (substName' subst') v) (subst', rhs)
 
-    Alt (NodePat tag names) body -> do
+    Alt (NodePat tag names) name body -> do
       (names0, subst0) <- first reverse <$> foldM
         (\(names1, subst1) name1 -> first (:names1) <$> calcName (name1, subst1))
         ([], subst)
         names
-      pure $ AltF (NodePat tag names0) (subst0, body)
+      -- QUESTION: is this correct?
+      (name0, subst1) <- calcName (name, subst0)
+      pure $ AltF (NodePat tag names0) name0 (subst1, body)
+
+    -- QUESTION: is this correct?
+    Alt cpat name body -> do
+      (name0, subst0) <- calcName (name, subst)
+      pure $ AltF cpat name0 (subst0, body)
 
     -- Substituitions
     ECase       scrut alts -> pure $ ECaseF (substName scrut) $ ((,) subst) <$> alts

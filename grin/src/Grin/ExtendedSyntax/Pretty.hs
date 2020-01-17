@@ -118,8 +118,7 @@ prettyHighlightExternals externals exp = cata prettyExpAlgebra exp where
     SUpdateF name v         -> keywordR "update" <+> pretty name <+> pretty v
     SBlockF exp             -> text "do" <$$> indent 2 exp
     -- Alt
-    AltF cpat exp           -> pretty cpat <+> text "->" <$$> indent 2 exp
-    NAltF cpat scrut exp    -> pretty cpat <+> pretty '@' <+> pretty scrut <+> text "->" <$$> indent 2 exp
+    AltF cpat scrut exp     -> pretty cpat <+> pretty '@' <+> pretty scrut <+> text "->" <$$> indent 2 exp
 
 
 instance Pretty Exp where

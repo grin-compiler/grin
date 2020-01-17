@@ -120,8 +120,8 @@ spec = do
         |]
       let after = Program []
             [ Def "test"[ "p" ]
-              ( EBind ( ECase "p" [ NAlt DefaultPat "_1" ( SReturn Unit ) ] ) (AsPat "_unit" Unit)
-                ( ECase "p" [ NAlt DefaultPat "_2" ( SReturn (Var "p") ) ] )
+              ( EBind ( ECase "p" [ Alt DefaultPat "_1" ( SReturn Unit ) ] ) (AsPat "_unit" Unit)
+                ( ECase "p" [ Alt DefaultPat "_2" ( SReturn (Var "p") ) ] )
               )
             ]
       before `sameAs` after
@@ -178,14 +178,14 @@ spec = do
       let after = Program []
             [ Def "grinMain"[]
                 ( ECase "scrut"
-                    [ NAlt ( LitPat ( LFloat 13.1415 ) ) "_1" ( SReturn Unit )
-                    , NAlt ( LitPat ( LFloat 14.1415 ) ) "_2" ( SReturn Unit )
-                    , NAlt ( LitPat ( LFloat ( -14.1415 ) ) ) "_3" ( SReturn Unit )
-                    , NAlt ( LitPat ( LInt64 42 ) ) "_4" ( SReturn Unit )
-                    , NAlt ( LitPat ( LInt64 43 ) ) "_5" ( SReturn Unit )
-                    , NAlt ( LitPat ( LInt64 ( -42 ) ) ) "_6" ( SReturn Unit )
-                    , NAlt ( LitPat ( LWord64 64 ) ) "_7" ( SReturn Unit )
-                    , NAlt
+                    [ Alt ( LitPat ( LFloat 13.1415 ) ) "_1" ( SReturn Unit )
+                    , Alt ( LitPat ( LFloat 14.1415 ) ) "_2" ( SReturn Unit )
+                    , Alt ( LitPat ( LFloat ( -14.1415 ) ) ) "_3" ( SReturn Unit )
+                    , Alt ( LitPat ( LInt64 42 ) ) "_4" ( SReturn Unit )
+                    , Alt ( LitPat ( LInt64 43 ) ) "_5" ( SReturn Unit )
+                    , Alt ( LitPat ( LInt64 ( -42 ) ) ) "_6" ( SReturn Unit )
+                    , Alt ( LitPat ( LWord64 64 ) ) "_7" ( SReturn Unit )
+                    , Alt
                         ( NodePat
                             ( Tag
                                 { tagType = C
@@ -199,9 +199,9 @@ spec = do
                             , "a5"
                             ]
                         ) "_8" ( SReturn Unit )
-                    , NAlt DefaultPat "_9" ( SReturn Unit )
-                    , NAlt ( LitPat ( LBool True ) ) "_10" ( SReturn Unit )
-                    , NAlt ( LitPat ( LBool False ) ) "_11" ( SReturn Unit )
+                    , Alt DefaultPat "_9" ( SReturn Unit )
+                    , Alt ( LitPat ( LBool True ) ) "_10" ( SReturn Unit )
+                    , Alt ( LitPat ( LBool False ) ) "_11" ( SReturn Unit )
                     ]
                 )
             ]
@@ -245,7 +245,7 @@ spec = do
       let after =
             EBind
               (ECase "y"
-                [ NAlt (LitPat (LInt64 1)) ("_1") $ SReturn $ Lit $ LInt64 2
+                [ Alt (LitPat (LInt64 1)) ("_1") $ SReturn $ Lit $ LInt64 2
                 ])
               (VarPat "x") $
             SReturn (Var "x")
@@ -333,9 +333,9 @@ spec = do
             EBind (SReturn (Lit (LString ""))) (VarPat "v1") $
             EBind (SReturn (Lit (LString "a"))) (VarPat "v2") $
             EBind (ECase "v1" $
-              [NAlt (LitPat (LString "")) "_1" (SReturn (Lit (LInt64 1)))
-              ,NAlt (LitPat (LString "a")) "_2" (SReturn (Lit (LInt64 2)))
-              ,NAlt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
+              [Alt (LitPat (LString "")) "_1" (SReturn (Lit (LInt64 1)))
+              ,Alt (LitPat (LString "a")) "_2" (SReturn (Lit (LInt64 2)))
+              ,Alt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
               ]) (VarPat "v3") $
             EBind (SReturn $ Var "v2") (AsPat "_x" $ (Lit (LString "a"))) $
             SReturn Unit
@@ -357,9 +357,9 @@ spec = do
           [Def "grinMain" [] $
             EBind (SReturn (Lit (LChar 'a'))) (VarPat "v2") $
             EBind (ECase "v2" $
-              [NAlt (LitPat (LChar 'b')) "_1" (SReturn (Lit (LInt64 1)))
-              ,NAlt (LitPat (LChar 'c')) "_2" (SReturn (Lit (LInt64 2)))
-              ,NAlt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
+              [Alt (LitPat (LChar 'b')) "_1" (SReturn (Lit (LInt64 1)))
+              ,Alt (LitPat (LChar 'c')) "_2" (SReturn (Lit (LInt64 2)))
+              ,Alt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
               ]) (VarPat "v3") $
             EBind (SReturn $ Var "v2") (AsPat "_c" $ Lit (LChar 'a')) $
             SReturn Unit

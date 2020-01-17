@@ -51,5 +51,4 @@ prettyAnnExp exp = cata folder exp where
       SUpdateF ptr var        -> keywordR "update" <+> pretty ptr <+> pretty var
       SBlockF exp             -> text "do" <$$> indent 2 (pretty exp)
       -- Alt
-      AltF cpat exp           -> pretty cpat <+> text "->" <$$> indent 2 (pretty exp)
-      NAltF cpat n exp        -> pretty cpat <+> pretty '@' <+> pretty n <+> text "->" <$$> indent 2 (pretty exp)
+      AltF cpat n exp         -> pretty cpat <+> pretty '@' <+> pretty n <+> text "->" <$$> indent 2 (pretty exp)
