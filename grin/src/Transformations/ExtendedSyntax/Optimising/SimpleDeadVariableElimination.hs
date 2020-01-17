@@ -10,11 +10,12 @@ import Data.Monoid
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
 
+import Lens.Micro.Platform
+
 import Grin.Grin
 import Grin.TypeEnv
 import Grin.EffectMap
 import Transformations.Util
-import Lens.Micro.Platform
 
 
 -- TODO: Write for dead code elimination.???
@@ -33,8 +34,7 @@ simpleDeadVariableElimination typeEnv effMap e = cata folder e ^. _1 where
 
     exp@(EBindF (left, _, True) lpat right) -> embedExp exp
     exp@(EBindF (left, _, _) lpat right@(_, rightRef, _))
-      | lpat /= Unit
-      , vars <- foldNamesVal Set.singleton lpat       -- if all the variables
+      | vars <- foldNames Set.singleton lpat          -- if all the variables
       , all ((/=) unit_t . variableType typeEnv) vars -- which does not hol unit
       , all (flip Set.notMember rightRef) vars        -- and are not referred
       -> case left of

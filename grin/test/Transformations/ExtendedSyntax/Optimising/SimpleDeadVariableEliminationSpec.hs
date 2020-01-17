@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableEliminationSpec where
 
-import Transformations.Optimising.SimpleDeadVariableElimination
+import Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableElimination
 import Transformations.EffectMap
 import Grin.TypeCheck
 
@@ -20,7 +20,7 @@ spec :: Spec
 spec = do
   describe "bugs" $ do
     it "keep blocks" $ do
-      let before = [prog|
+      let before = withPrimPrelude [prog|
         grinMain =
           fun_main.0 <- pure (P1Main.main.closure.0)
           p.1.0 <- pure fun_main.0
@@ -35,7 +35,7 @@ spec = do
             _prim_int_print $ 12
             store (F"GHC.Tuple.()")
         |]
-      let after = [prog|
+      let after = withPrimPrelude [prog|
         grinMain =
           "unboxed.C\"GHC.Prim.Unit#\".0" <- do
             result_Main.main1.0.0.0 <- pure (P1Main.main1.closure.0)
@@ -128,7 +128,7 @@ spec = do
       dveExp `sameAs` after
 
     it "pure case" $ do
-      let before = [prog|
+      let before = withPrimPrelude [prog|
           grinMain =
             i1 <- pure 1
             n1 <- pure (CNode i1)
@@ -141,7 +141,7 @@ spec = do
               #default  -> pure 4
             pure 0
         |]
-      let after = [prog|
+      let after = withPrimPrelude [prog|
           grinMain =
             i1 <- pure 1
             _prim_int_print i1
@@ -153,7 +153,7 @@ spec = do
       dveExp `sameAs` after
 
     it "effectful case" $ do
-      let before = [prog|
+      let before = withPrimPrelude [prog|
           grinMain =
             i1 <- pure 1
             n1 <- pure (CNode i1)
@@ -166,7 +166,7 @@ spec = do
               #default  -> pure ()
             pure 0
         |]
-      let after = [prog|
+      let after = withPrimPrelude [prog|
           grinMain =
             i1 <- pure 1
             n1 <- pure (CNode i1)
@@ -183,7 +183,7 @@ spec = do
       dveExp `sameAs` after
 
     it "nested effectful case" $ do
-      let before = [prog|
+      let before = withPrimPrelude [prog|
           grinMain =
             i1 <- pure 1
             n1 <- pure (CNode i1)
@@ -201,7 +201,7 @@ spec = do
               #default -> pure ()
             pure 0
         |]
-      let after = [prog|
+      let after = withPrimPrelude [prog|
           grinMain =
             i1 <- pure 1
             n1 <- pure (CNode i1)
