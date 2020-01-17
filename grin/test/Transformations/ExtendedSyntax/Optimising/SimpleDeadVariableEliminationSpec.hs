@@ -49,7 +49,7 @@ spec = do
         |]
       let tyEnv   = inferTypeEnv before
           effMap  = effectMap (tyEnv, before)
-          dveExp  = simpleDeadVariableElimination tyEnv effMap before
+          dveExp  = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "do not remove effectful case" $ do
@@ -82,7 +82,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "do not remove effectful case 2" $ do
@@ -104,7 +104,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
 
@@ -124,7 +124,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "pure case" $ do
@@ -149,7 +149,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "effectful case" $ do
@@ -179,7 +179,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "nested effectful case" $ do
@@ -214,7 +214,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "node pattern" $ do
@@ -234,7 +234,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "pattern match" $ do
@@ -256,7 +256,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination tyEnv effMap before
+          dveExp = simpleDeadVariableElimination effMap before
       dveExp `sameAs` after
 
     describe "interprocedural DVE regression tests" $ do
@@ -299,5 +299,5 @@ spec = do
             |]
         let tyEnv = inferTypeEnv before
             effMap = effectMap (tyEnv, before)
-            dveExp = simpleDeadVariableElimination tyEnv effMap before
+            dveExp = simpleDeadVariableElimination effMap before
         dveExp `sameAs` after

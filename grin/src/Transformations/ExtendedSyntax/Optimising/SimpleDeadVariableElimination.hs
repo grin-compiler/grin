@@ -12,17 +12,16 @@ import qualified Data.Foldable
 
 import Lens.Micro.Platform
 
-import Grin.Grin
-import Grin.TypeEnv
-import Grin.EffectMap
-import Transformations.Util
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnv
+import Grin.ExtendedSyntax.EffectMap
+import Transformations.ExtendedSyntax.Util
 
 
--- TODO: Write for dead code elimination.???
--- TODO: Remove TypeEnv, consult EffectMap for side-effects, dont rely on unit return type
+-- TODO: consult EffectMap for side-effects
 -- QUESTION: should SDVE use any interprocedural information?
-simpleDeadVariableElimination :: TypeEnv -> EffectMap -> Exp -> Exp
-simpleDeadVariableElimination typeEnv effMap e = cata folder e ^. _1 where
+simpleDeadVariableElimination :: EffectMap -> Exp -> Exp
+simpleDeadVariableElimination effMap e = cata folder e ^. _1 where
 
   effectfulExternals :: Set Name
   effectfulExternals = case e of
@@ -32,11 +31,10 @@ simpleDeadVariableElimination typeEnv effMap e = cata folder e ^. _1 where
   folder :: ExpF (Exp, Set Name, Bool) -> (Exp, Set Name, Bool)
   folder = \case
 
-    exp@(EBindF (left, _, True) lpat right) -> embedExp exp
-    exp@(EBindF (left, _, _) lpat right@(_, rightRef, _))
-      | vars <- foldNames Set.singleton lpat          -- if all the variables
-      , all ((/=) unit_t . variableType typeEnv) vars -- which does not hol unit
-      , all (flip Set.notMember rightRef) vars        -- and are not referred
+    exp@(EBindF (left, _, True) bPat right) -> embedExp exp
+    exp@(EBindF (left, _, _) bPat right@(_, rightRef, _))
+      | vars <- foldNames Set.singleton bPat          -- if all the variables
+      , all (flip Set.notMember rightRef) vars        -- are not referred
       -> case left of
           SBlock{}  -> embedExp exp
           _         -> right
