@@ -44,6 +44,7 @@ foldNameUseExpF f = \case
   SReturnF val      -> foldNames f val
   SStoreF v         -> f v
   SUpdateF p v      -> f p <> f v
+  SFetchF p         -> f p
   _                 -> mempty
 
 data DefRole = FunName | FunParam | BindVar | AltVar
