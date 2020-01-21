@@ -1,16 +1,19 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Transformations.ExtendedSyntax.Optimising.CaseCopyPropagationSpec where
 
-import Transformations.Optimising.CaseCopyPropagation
-import Transformations.Names (ExpChanges(..))
+import Transformations.ExtendedSyntax.Optimising.CaseCopyPropagation
+
+import Data.Monoid
 
 import Test.Hspec
-import Grin.TH
-import Test.Test hiding (newVar)
-import Test.Assertions
-import Grin.TypeEnv
-import Data.Monoid
-import Grin.Pretty
+
+import Test.ExtendedSyntax.New.Test hiding (newVar)
+import Test.ExtendedSyntax.Assertions
+import Grin.ExtendedSyntax.TH
+import Grin.ExtendedSyntax.TypeEnv
+import Grin.ExtendedSyntax.Pretty
+import Transformations.ExtendedSyntax.Names (ExpChanges(..))
+
 
 ctxs :: [TestExpContext]
 ctxs =
@@ -18,14 +21,10 @@ ctxs =
   , lastBindR
   , firstAlt
   , middleAlt
---  , lastAlt
+  , lastAlt
   ]
 
---spec :: Spec
---spec = pure ()
 
-
--- TODO: Check parsing.
 spec :: Spec
 spec = testExprContextIn ctxs $ \ctx -> do
 
@@ -35,15 +34,16 @@ spec = testExprContextIn ctxs $ \ctx -> do
           (newVar "y'" int64_t) <>
           (newVar "x'" int64_t)
     let before = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- case v of
-              (Ffoo a) ->
+              (Ffoo a) @ alt0 ->
                 y' <- foo a
                 pure (CInt y')
-              (Fbar b) ->
+              (Fbar b) @ alt1 ->
                 z' <- bar b
                 pure (CInt z')
-              (CInt x') ->
+              (CInt x') @ alt2 ->
                 pure (CInt x')
             pure m0
           |]
@@ -51,16 +51,17 @@ spec = testExprContextIn ctxs $ \ctx -> do
     let teAfter = extend teBefore $
           newVar "v'" int64_t
     let after = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- do
               ccp.0 <- case v of
-                (Ffoo a) ->
+                (Ffoo a) @ alt0 ->
                   y' <- foo a
                   pure y'
-                (Fbar b) ->
+                (Fbar b) @ alt1 ->
                   z' <- bar b
                   pure z'
-                (CInt x') ->
+                (CInt x') @ alt2 ->
                   pure x'
               pure (CInt ccp.0)
             pure m0
@@ -76,37 +77,39 @@ spec = testExprContextIn ctxs $ \ctx -> do
           (newVar "y'" int64_t) <>
           (newVar "x'" int64_t)
     let before = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- do
               case v of
-                (Ffoo a) ->
+                (Ffoo a) @ alt0 ->
                   y' <- foo a
                   pure (CInt y')
-                (Fbar b) ->
+                (Fbar b) @ alt1 ->
                   z' <- bar b
                   pure (CFloat z')
-                (CInt x') ->
+                (CInt x') @ alt2 ->
                   pure (CInt x')
             pure m0
           |]
     let after = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- do
               case v of
-                (Ffoo a) ->
+                (Ffoo a) @ alt0 ->
                   y' <- foo a
                   pure (CInt y')
-                (Fbar b) ->
+                (Fbar b) @ alt1 ->
                   z' <- bar b
                   pure (CFloat z')
-                (CInt x') ->
+                (CInt x') @ alt2 ->
                   pure (CInt x')
             pure m0
           |]
     (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teBefore, after))), NoChange)
 
   it "Embedded good case" $ do
-    pendingWith "doesn't unbox outer case"
+    -- pendingWith "doesn't unbox outer case"
     let teBefore = create $
           (newVar "z'" int64_t) <>
           (newVar "y'" int64_t) <>
@@ -115,23 +118,24 @@ spec = testExprContextIn ctxs $ \ctx -> do
           (newVar "y1'" int64_t) <>
           (newVar "x1'" int64_t)
     let before = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- case v of
-              (Ffoo a) ->
+              (Ffoo a) @ alt0 ->
                 y' <- foo a
                 pure (CInt y')
-              (Fbar b) ->
+              (Fbar b) @ alt1 ->
                 z' <- bar b
                 pure (CInt z')
-              (CInt x') ->
+              (CInt x') @ alt2 ->
                 u1 <- case v1 of
-                  (Ffoo a1) ->
+                  (Ffoo a1) @ alt20 ->
                     y1' <- foo a1
                     pure (CInt y1')
-                  (Fbar b1) ->
+                  (Fbar b1) @ alt21 ->
                     z1' <- bar b1
                     pure (CInt z1')
-                  (CInt x1') ->
+                  (CInt x1') @ alt22 ->
                     pure (CInt x1')
                 pure (CInt x')
             pure m0
@@ -140,27 +144,30 @@ spec = testExprContextIn ctxs $ \ctx -> do
           newVar "v'" int64_t <>
           newVar "v1'" int64_t
     let after = [expr|
-            m0 <- store (CNone)
-            u  <- case v of
-              (Ffoo a) ->
-                y' <- foo a
-                pure (CInt y')
-              (Fbar b) ->
-                z' <- bar b
-                pure (CInt z')
-              (CInt x') ->
-                u1 <- do
-                  ccp.0 <- case v1 of
-                    (Ffoo a1) ->
-                      y1' <- foo a1
-                      pure y1'
-                    (Fbar b1) ->
-                      z1' <- bar b1
-                      pure z1'
-                    (CInt x1') ->
-                      pure x1'
-                  pure (CInt ccp.0)
-                pure (CInt x')
+            n0 <- pure (CNone)
+            m0 <- store n0
+            u  <- do
+              ccp.1 <- case v of
+                (Ffoo a) @ alt0 ->
+                  y' <- foo a
+                  pure y'
+                (Fbar b) @ alt1 ->
+                  z' <- bar b
+                  pure z'
+                (CInt x') @ alt2 ->
+                  u1 <- do
+                    ccp.0 <- case v1 of
+                      (Ffoo a1) @ alt20 ->
+                        y1' <- foo a1
+                        pure y1'
+                      (Fbar b1) @ alt21 ->
+                        z1' <- bar b1
+                        pure z1'
+                      (CInt x1') @ alt22 ->
+                        pure x1'
+                    pure (CInt ccp.0)
+                  pure x'
+              pure (CInt ccp.1)
             pure m0
           |]
     (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
@@ -174,24 +181,25 @@ spec = testExprContextIn ctxs $ \ctx -> do
           newVar "z1'" float_t <>
           newVar "x1'" int64_t
     let before = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- case v of
-              (Ffoo a)  ->
+              (Ffoo a) @ alt0 ->
                 y' <- foo a
                 pure (CInt y')
-              (Fbar b) ->
+              (Fbar b) @ alt1 ->
                 z' <- bar b
                 pure (CInt z')
-              (CInt x') ->
+              (CInt x') @ alt2 ->
                 u1 <- do
                   case v1 of
-                    (Ffoo a1) ->
+                    (Ffoo a1) @ alt20 ->
                       y1' <- foo a1
                       pure (CInt y1')
-                    (Fbar b1) ->
+                    (Fbar b1) @ alt21 ->
                       z1' <- bar b1
                       pure (CFloat z1')
-                    (CInt x1') ->
+                    (CInt x1') @ alt22 ->
                       pure (CInt x1')
                 pure (CInt x')
             pure m0
@@ -199,25 +207,26 @@ spec = testExprContextIn ctxs $ \ctx -> do
     let teAfter = extend teBefore $
           newVar "v'" int64_t
     let after = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- do
               ccp.0 <- case v of
-                (Ffoo a) ->
+                (Ffoo a) @ alt0 ->
                   y' <- foo a
                   pure y'
-                (Fbar b) ->
+                (Fbar b) @ alt1 ->
                   z' <- bar b
                   pure z'
-                (CInt x') ->
+                (CInt x') @ alt2 ->
                   u1 <- do
                     case v1 of
-                      (Ffoo a1) ->
+                      (Ffoo a1) @ alt20 ->
                         y1' <- foo a1
                         pure (CInt y1')
-                      (Fbar b1) ->
+                      (Fbar b1) @ alt21 ->
                         z1' <- bar b1
                         pure (CFloat z1')
-                      (CInt x1') ->
+                      (CInt x1') @ alt22 ->
                         pure (CInt x1')
                   pure x'
               pure (CInt ccp.0)
@@ -234,24 +243,25 @@ spec = testExprContextIn ctxs $ \ctx -> do
           newVar "z1'" int64_t <>
           newVar "x1'" int64_t
     let before = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- do
               case v of
-                (Ffoo a) ->
+                (Ffoo a) @ alt0 ->
                   y' <- foo a
                   pure (CInt y')
-                (Fbar b) ->
+                (Fbar b) @ alt1 ->
                   z' <- bar b
                   pure (CFloat z')
-                (CInt x') ->
+                (CInt x') @ alt2 ->
                   u1 <- case v1 of
-                    (Ffoo a1) ->
+                    (Ffoo a1) @ alt20 ->
                       y1' <- foo a1
                       pure (CInt y1')
-                    (Fbar b1) ->
+                    (Fbar b1) @ alt21 ->
                       z1' <- bar b1
                       pure (CInt z1')
-                    (CInt x1') ->
+                    (CInt x1') @ alt22 ->
                       pure (CInt x1')
                   pure (CInt x')
             pure m0
@@ -259,25 +269,26 @@ spec = testExprContextIn ctxs $ \ctx -> do
     let teAfter = extend teBefore $
           newVar "v1'" int64_t
     let after = [expr|
-            m0 <- store (CNone)
+            n0 <- pure (CNone)
+            m0 <- store n0
             u  <- do
               case v of
-                (Ffoo a) ->
+                (Ffoo a) @ alt0 ->
                   y' <- foo a
                   pure (CInt y')
-                (Fbar b) ->
+                (Fbar b) @ alt1 ->
                   z' <- bar b
                   pure (CFloat z')
-                (CInt x') ->
+                (CInt x') @ alt2 ->
                   u1 <- do
                     ccp.0 <- case v1 of
-                      (Ffoo a1) ->
+                      (Ffoo a1) @ alt20 ->
                         y1' <- foo a1
                         pure y1'
-                      (Fbar b1) ->
+                      (Fbar b1) @ alt21 ->
                         z1' <- bar b1
                         pure z1'
-                      (CInt x1') ->
+                      (CInt x1') @ alt22 ->
                         pure x1'
                     pure (CInt ccp.0)
                   pure (CInt x')
@@ -293,11 +304,12 @@ spec = testExprContextIn ctxs $ \ctx -> do
           [expr|
               l2 <- eval l
               case l2 of
-                (CNil) ->
-                  pure (CInt 0)
-                (CCons x xs) ->
-                  (CInt x') <- eval x
-                  (CInt s') <- sum xs
+                (CNil) @ alt0 ->
+                  k0 <- pure 0
+                  pure (CInt k0)
+                (CCons x xs) @ alt1 ->
+                  (CInt x') @ v0 <- eval x
+                  (CInt s') @ v1 <- sum xs
                   ax' <- _prim_int_add x' s'
                   pure (CInt ax')
           |]
@@ -307,11 +319,12 @@ spec = testExprContextIn ctxs $ \ctx -> do
           [expr|
               l2 <- eval l
               do ccp.0 <- case l2 of
-                   (CNil) ->
-                     pure 0
-                   (CCons x xs) ->
-                     (CInt x') <- eval x
-                     (CInt s') <- sum xs
+                   (CNil) @ alt0 ->
+                     k0 <- pure 0
+                     pure k0
+                   (CCons x xs) @ alt1 ->
+                     (CInt x') @ v0 <- eval x
+                     (CInt s') @ v1 <- sum xs
                      ax' <- _prim_int_add x' s'
                      pure ax'
                  pure (CInt ccp.0)
