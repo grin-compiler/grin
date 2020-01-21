@@ -71,7 +71,7 @@ collectUsedArguments fun args = cata collect where
 
 type DeadArgMap
   = Map
-    Name      -- Name  of the argument
+    Name      -- Name  of the function
     (Set Int) -- Index of dead argument
 
 simpleDeadParameterElimination :: Program -> Program
