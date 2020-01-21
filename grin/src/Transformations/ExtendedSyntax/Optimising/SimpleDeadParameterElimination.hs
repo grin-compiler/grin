@@ -2,15 +2,16 @@
 module Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterElimination where
 
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Maybe (mapMaybe)
+import qualified Data.Set as Set
+import qualified Data.Map as Map
 
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
-import Grin.Grin
-import Transformations.Util
+
+import Grin.ExtendedSyntax.Grin
+import Transformations.ExtendedSyntax.Util
 
 collectUsedNames :: Exp -> Set Name
 collectUsedNames = cata folder where
@@ -42,28 +43,32 @@ simpleDeadParameterElimination prog@(Program exts defs) = ana builder prog where
       | Just dead <- Map.lookup name deadArgMap
       -> SAppF name (removeDead dead args)
 
-    EBind leftExp lpat@ConstTagNode{} rightExp
-      -> EBindF leftExp (pruneVal lpat) rightExp
+    -- TODO: change this
+    EBind leftExp (AsPat tag args var) rightExp
+      | Tag kind tagName <- tag
+      , isPFtag kind
+      , Just deadIxs <- Map.lookup tagName deadArgMap
+      -> EBindF leftExp (AsPat tag (removeDead deadIxs args) var) rightExp
 
-    Alt cpat@NodePat{} body
-      -> AltF (pruneCPat cpat) body
+    Alt cpat@NodePat{} altName body
+      -> AltF (pruneCPat cpat) altName body
 
     exp -> project exp
 
   pruneVal :: Val -> Val
   pruneVal = \case
-    ConstTagNode tag@(Tag kind name) vals
+    ConstTagNode tag@(Tag kind name) args
       | isPFtag kind
       , Just dead <- Map.lookup name deadArgMap
-      -> ConstTagNode tag (removeDead dead vals)
+      -> ConstTagNode tag (removeDead dead args)
     val -> val
 
   pruneCPat :: CPat -> CPat
   pruneCPat = \case
     NodePat tag@(Tag kind name) vars
       | isPFtag kind
-      , Just dead <- Map.lookup name deadArgMap
-      -> NodePat tag (removeDead dead vars)
+      , Just deadIxs <- Map.lookup name deadArgMap
+      -> NodePat tag (removeDead deadIxs vars)
     cpat -> cpat
 
   isPFtag :: TagType -> Bool
