@@ -76,7 +76,7 @@ type CG = State CGState
 data Result
   = R IR.Reg
   | Z
-  | A CPat (CG Result)
+  | A CPat IR.Reg (CG Result)
 
 emit :: IR.Instruction -> CG ()
 emit inst = modify' $ \s@CGState{..} -> s {_sInstructions = inst : _sInstructions}
