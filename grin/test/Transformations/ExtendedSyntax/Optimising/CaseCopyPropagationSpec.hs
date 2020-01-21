@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Transformations.ExtendedSyntax.Optimising.CaseCopyPropagationSpec where
 
-import Transformations.ExtendedSyntax.Optimising.CaseCopyPropagation
+import Transformations.Optimising.CaseCopyPropagation
 import Transformations.Names (ExpChanges(..))
 
 import Test.Hspec
@@ -37,11 +37,14 @@ spec = testExprContextIn ctxs $ \ctx -> do
     let before = [expr|
             m0 <- store (CNone)
             u  <- case v of
-                    (Ffoo a)  -> y' <- foo a
-                                 pure (CInt y')
-                    (Fbar b)  -> z' <- bar b
-                                 pure (CInt z')
-                    (CInt x') -> pure (CInt x')
+              (Ffoo a) ->
+                y' <- foo a
+                pure (CInt y')
+              (Fbar b) ->
+                z' <- bar b
+                pure (CInt z')
+              (CInt x') ->
+                pure (CInt x')
             pure m0
           |]
 
@@ -51,11 +54,14 @@ spec = testExprContextIn ctxs $ \ctx -> do
             m0 <- store (CNone)
             u  <- do
               ccp.0 <- case v of
-                  (Ffoo a)  -> y' <- foo a
-                               pure y'
-                  (Fbar b)  -> z' <- bar b
-                               pure z'
-                  (CInt x') -> pure x'
+                (Ffoo a) ->
+                  y' <- foo a
+                  pure y'
+                (Fbar b) ->
+                  z' <- bar b
+                  pure z'
+                (CInt x') ->
+                  pure x'
               pure (CInt ccp.0)
             pure m0
           |]
@@ -73,27 +79,34 @@ spec = testExprContextIn ctxs $ \ctx -> do
             m0 <- store (CNone)
             u  <- do
               case v of
-                (Ffoo a)  -> y' <- foo a
-                             pure (CInt y')
-                (Fbar b)  -> z' <- bar b
-                             pure (CFloat z')
-                (CInt x') -> pure (CInt x')
+                (Ffoo a) ->
+                  y' <- foo a
+                  pure (CInt y')
+                (Fbar b) ->
+                  z' <- bar b
+                  pure (CFloat z')
+                (CInt x') ->
+                  pure (CInt x')
             pure m0
           |]
     let after = [expr|
             m0 <- store (CNone)
             u  <- do
               case v of
-                (Ffoo a)  -> y' <- foo a
-                             pure (CInt y')
-                (Fbar b)  -> z' <- bar b
-                             pure (CFloat z')
-                (CInt x') -> pure (CInt x')
+                (Ffoo a) ->
+                  y' <- foo a
+                  pure (CInt y')
+                (Fbar b) ->
+                  z' <- bar b
+                  pure (CFloat z')
+                (CInt x') ->
+                  pure (CInt x')
             pure m0
           |]
     (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teBefore, after))), NoChange)
 
-  xit "Embedded good case" $ do
+  it "Embedded good case" $ do
+    pendingWith "doesn't unbox outer case"
     let teBefore = create $
           (newVar "z'" int64_t) <>
           (newVar "y'" int64_t) <>
@@ -104,17 +117,23 @@ spec = testExprContextIn ctxs $ \ctx -> do
     let before = [expr|
             m0 <- store (CNone)
             u  <- case v of
-                    (Ffoo a)  -> y' <- foo a
-                                 pure (CInt y')
-                    (Fbar b)  -> z' <- bar b
-                                 pure (CInt z')
-                    (CInt x') -> u1 <- case v1 of
-                                         (Ffoo a1)  -> y1' <- foo a1
-                                                       pure (CInt y1')
-                                         (Fbar b1)  -> z1' <- bar b1
-                                                       pure (CInt z1')
-                                         (CInt x1') -> pure (CInt x1')
-                                 pure (CInt x')
+              (Ffoo a) ->
+                y' <- foo a
+                pure (CInt y')
+              (Fbar b) ->
+                z' <- bar b
+                pure (CInt z')
+              (CInt x') ->
+                u1 <- case v1 of
+                  (Ffoo a1) ->
+                    y1' <- foo a1
+                    pure (CInt y1')
+                  (Fbar b1) ->
+                    z1' <- bar b1
+                    pure (CInt z1')
+                  (CInt x1') ->
+                    pure (CInt x1')
+                pure (CInt x')
             pure m0
           |]
     let teAfter = extend teBefore $
@@ -123,19 +142,25 @@ spec = testExprContextIn ctxs $ \ctx -> do
     let after = [expr|
             m0 <- store (CNone)
             u  <- case v of
-                    (Ffoo a)  -> y' <- foo a
-                                 pure (CInt y')
-                    (Fbar b)  -> z' <- bar b
-                                 pure (CInt z')
-                    (CInt x') -> u1 <- do
-                                    ccp.0 <- case v1 of
-                                              (Ffoo a1)  -> y1' <- foo a1
-                                                            pure y1'
-                                              (Fbar b1)  -> z1' <- bar b1
-                                                            pure z1'
-                                              (CInt x1') -> pure x1'
-                                    pure (CInt ccp.0)
-                                  pure (CInt x')
+              (Ffoo a) ->
+                y' <- foo a
+                pure (CInt y')
+              (Fbar b) ->
+                z' <- bar b
+                pure (CInt z')
+              (CInt x') ->
+                u1 <- do
+                  ccp.0 <- case v1 of
+                    (Ffoo a1) ->
+                      y1' <- foo a1
+                      pure y1'
+                    (Fbar b1) ->
+                      z1' <- bar b1
+                      pure z1'
+                    (CInt x1') ->
+                      pure x1'
+                  pure (CInt ccp.0)
+                pure (CInt x')
             pure m0
           |]
     (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
@@ -151,18 +176,24 @@ spec = testExprContextIn ctxs $ \ctx -> do
     let before = [expr|
             m0 <- store (CNone)
             u  <- case v of
-                    (Ffoo a)  -> y' <- foo a
-                                 pure (CInt y')
-                    (Fbar b)  -> z' <- bar b
-                                 pure (CInt z')
-                    (CInt x') -> u1 <- do
-                                   case v1 of
-                                     (Ffoo a1)  -> y1' <- foo a1
-                                                   pure (CInt y1')
-                                     (Fbar b1)  -> z1' <- bar b1
-                                                   pure (CFloat z1')
-                                     (CInt x1') -> pure (CInt x1')
-                                 pure (CInt x')
+              (Ffoo a)  ->
+                y' <- foo a
+                pure (CInt y')
+              (Fbar b) ->
+                z' <- bar b
+                pure (CInt z')
+              (CInt x') ->
+                u1 <- do
+                  case v1 of
+                    (Ffoo a1) ->
+                      y1' <- foo a1
+                      pure (CInt y1')
+                    (Fbar b1) ->
+                      z1' <- bar b1
+                      pure (CFloat z1')
+                    (CInt x1') ->
+                      pure (CInt x1')
+                pure (CInt x')
             pure m0
           |]
     let teAfter = extend teBefore $
@@ -171,24 +202,30 @@ spec = testExprContextIn ctxs $ \ctx -> do
             m0 <- store (CNone)
             u  <- do
               ccp.0 <- case v of
-                        (Ffoo a)  -> y' <- foo a
-                                     pure y'
-                        (Fbar b)  -> z' <- bar b
-                                     pure z'
-                        (CInt x') -> u1 <- do
-                                       case v1 of
-                                         (Ffoo a1)  -> y1' <- foo a1
-                                                       pure (CInt y1')
-                                         (Fbar b1)  -> z1' <- bar b1
-                                                       pure (CFloat z1')
-                                         (CInt x1') -> pure (CInt x1')
-                                     pure x'
+                (Ffoo a) ->
+                  y' <- foo a
+                  pure y'
+                (Fbar b) ->
+                  z' <- bar b
+                  pure z'
+                (CInt x') ->
+                  u1 <- do
+                    case v1 of
+                      (Ffoo a1) ->
+                        y1' <- foo a1
+                        pure (CInt y1')
+                      (Fbar b1) ->
+                        z1' <- bar b1
+                        pure (CFloat z1')
+                      (CInt x1') ->
+                        pure (CInt x1')
+                  pure x'
               pure (CInt ccp.0)
             pure m0
           |]
     (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
 
-  it "Leave the outher, transform the inner" $ do
+  it "Leave the outer, transform the inner" $ do
     let teBefore = create $
           newVar "z'" float_t <>
           newVar "y'" int64_t <>
@@ -200,17 +237,23 @@ spec = testExprContextIn ctxs $ \ctx -> do
             m0 <- store (CNone)
             u  <- do
               case v of
-                (Ffoo a)  -> y' <- foo a
-                             pure (CInt y')
-                (Fbar b)  -> z' <- bar b
-                             pure (CFloat z')
-                (CInt x') -> u1 <- case v1 of
-                                     (Ffoo a1)  -> y1' <- foo a1
-                                                   pure (CInt y1')
-                                     (Fbar b1)  -> z1' <- bar b1
-                                                   pure (CInt z1')
-                                     (CInt x1') -> pure (CInt x1')
-                             pure (CInt x')
+                (Ffoo a) ->
+                  y' <- foo a
+                  pure (CInt y')
+                (Fbar b) ->
+                  z' <- bar b
+                  pure (CFloat z')
+                (CInt x') ->
+                  u1 <- case v1 of
+                    (Ffoo a1) ->
+                      y1' <- foo a1
+                      pure (CInt y1')
+                    (Fbar b1) ->
+                      z1' <- bar b1
+                      pure (CInt z1')
+                    (CInt x1') ->
+                      pure (CInt x1')
+                  pure (CInt x')
             pure m0
           |]
     let teAfter = extend teBefore $
@@ -219,36 +262,44 @@ spec = testExprContextIn ctxs $ \ctx -> do
             m0 <- store (CNone)
             u  <- do
               case v of
-                (Ffoo a)  -> y' <- foo a
-                             pure (CInt y')
-                (Fbar b)  -> z' <- bar b
-                             pure (CFloat z')
-                (CInt x') -> u1 <- do
-                               ccp.0 <- case v1 of
-                                         (Ffoo a1)  -> y1' <- foo a1
-                                                       pure y1'
-                                         (Fbar b1)  -> z1' <- bar b1
-                                                       pure z1'
-                                         (CInt x1') -> pure x1'
-                               pure (CInt ccp.0)
-                             pure (CInt x')
+                (Ffoo a) ->
+                  y' <- foo a
+                  pure (CInt y')
+                (Fbar b) ->
+                  z' <- bar b
+                  pure (CFloat z')
+                (CInt x') ->
+                  u1 <- do
+                    ccp.0 <- case v1 of
+                      (Ffoo a1) ->
+                        y1' <- foo a1
+                        pure y1'
+                      (Fbar b1) ->
+                        z1' <- bar b1
+                        pure z1'
+                      (CInt x1') ->
+                        pure x1'
+                    pure (CInt ccp.0)
+                  pure (CInt x')
             pure m0
           |]
 
     (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
 
-  xit "last expression is a case" $ do
+  it "last expression is a case" $ do
     let teBefore = create $
           newVar "ax'" int64_t
     let before =
           [expr|
               l2 <- eval l
               case l2 of
-                (CNil) -> pure (CInt 0)
-                (CCons x xs) -> (CInt x') <- eval x
-                                (CInt s') <- sum xs
-                                ax' <- _prim_int_add x' s'
-                                pure (CInt ax')
+                (CNil) ->
+                  pure (CInt 0)
+                (CCons x xs) ->
+                  (CInt x') <- eval x
+                  (CInt s') <- sum xs
+                  ax' <- _prim_int_add x' s'
+                  pure (CInt ax')
           |]
     let teAfter = extend teBefore $
           newVar "l2'" int64_t
@@ -256,12 +307,14 @@ spec = testExprContextIn ctxs $ \ctx -> do
           [expr|
               l2 <- eval l
               do ccp.0 <- case l2 of
-                           (CNil) -> pure 0
-                           (CCons x xs) -> (CInt x') <- eval x
-                                           (CInt s') <- sum xs
-                                           ax' <- _prim_int_add x' s'
-                                           pure ax'
-              pure (CInt ccp.0)
+                   (CNil) ->
+                     pure 0
+                   (CCons x xs) ->
+                     (CInt x') <- eval x
+                     (CInt s') <- sum xs
+                     ax' <- _prim_int_add x' s'
+                     pure ax'
+                 pure (CInt ccp.0)
           |]
     (caseCopyPropagation (snd (ctx (teBefore, before)))) `sameAs` ((snd (ctx (teAfter, after))), NewNames)
 
