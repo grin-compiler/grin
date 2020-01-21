@@ -56,6 +56,7 @@ rebindCases infoTable e = evalNameM e $ cataM alg e where
       -> do
         res <- deriveNewName "ccp"
         pure $ SBlock $ EBind case' (VarPat res) (SReturn $ ConstTagNode tag [res])
+    e -> pure $ embed e
 
   -- | Determine the common tag for a set of alternatives (if it exists).
   lookupCommonTag :: [Name] -> TagInfo
