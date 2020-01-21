@@ -79,14 +79,3 @@ commonTag :: [TagInfo] -> TagInfo
 commonTag (t : ts)
   | all (==t) ts = t
 commonTag _ = Unknown
-
--- TODO: remove these
-test1 = EBind (SReturn $ ConstTagNode (Tag C "Int") ["k0"]) (VarPat "n") $
-          SBlock $
-           SReturn $ ConstTagNode (Tag C "Int") ["k1"]
-
-test2 = EBind (SReturn $ ConstTagNode (Tag C "Int") ["k0"]) (VarPat "n") $
-          SBlock $
-            ECase "scrut" $
-              [ Alt DefaultPat "alt" $ SReturn $ ConstTagNode (Tag C "Int") ["k1"]
-              ]
