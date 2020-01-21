@@ -38,8 +38,8 @@ instance SameAs ETResult where
 -- instance SameAs ProducerGraph where
 --   sameAs found expected = (PP found) `shouldBe` (PP expected)
 
--- instance SameAs ExpChanges where
---   sameAs found expected = found `shouldBe` expected
+instance SameAs ExpChanges where
+  sameAs found expected = found `shouldBe` expected
 
 instance (SameAs a, SameAs b) => SameAs (a, b) where
   sameAs (f1, f2) (e1, e2) = do
