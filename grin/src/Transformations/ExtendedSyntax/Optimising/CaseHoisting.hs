@@ -14,10 +14,10 @@ import qualified Data.Set as Set
 import qualified Data.Vector as Vector
 import Data.Bifunctor (first)
 
-import Grin.Grin
-import Grin.TypeEnv
-import Transformations.Util
-import Transformations.Names
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnv
+import Transformations.ExtendedSyntax.Util
+import Transformations.ExtendedSyntax.Names
 
 {-
   IDEA:
@@ -29,7 +29,7 @@ getReturnTagSet typeEnv = cata folder where
   folder exp = case exp of
     EBindF _ _ ts -> ts
     SBlockF ts    -> ts
-    AltF _ ts     -> ts
+    AltF _ _ ts     -> ts
     ECaseF _ alts -> mconcat <$> sequence alts
 
     SReturnF val
@@ -40,7 +40,7 @@ getReturnTagSet typeEnv = cata folder where
       | T_NodeSet ns <- fst $ functionType typeEnv name
       -> Just (Map.keysSet ns)
 
-    SFetchIF name Nothing
+    SFetchF name
       | T_SimpleType (T_Location locs) <- variableType typeEnv name
       -> Just (mconcat [Map.keysSet (_location typeEnv Vector.! loc) | loc <- locs])
 
@@ -53,8 +53,8 @@ caseHoisting typeEnv exp = first fst $ evalNameM exp $ histoM folder exp where
   folder :: ExpF (Cofree ExpF (Exp, Set Name)) -> NameM (Exp, Set Name)
   folder exp = case exp of
     -- middle case
-    EBindF ((ECase val alts1, leftUse) :< _)  (Var lpatName)
-      (_ :< (EBindF ((ECase (Var varName) alts2, caseUse) :< _) lpat ((rightExp, rightUse) :< _)))
+    EBindF ((ECase val alts1, leftUse) :< _)  (VarPat lpatName)
+      (_ :< (EBindF ((ECase varName alts2, caseUse) :< _) lpat ((rightExp, rightUse) :< _)))
         | lpatName == varName
         , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
         , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
@@ -64,7 +64,7 @@ caseHoisting typeEnv exp = first fst $ evalNameM exp $ histoM folder exp where
           pure (EBind (ECase val hoistedAlts) lpat rightExp, Set.delete varName $ mconcat [leftUse, caseUse, rightUse])
 
     -- last case
-    EBindF ((ECase val alts1, leftUse) :< _) (Var lpatName) ((ECase (Var varName) alts2, rightUse) :< _)
+    EBindF ((ECase val alts1, leftUse) :< _) (VarPat lpatName) ((ECase varName alts2, rightUse) :< _)
         | lpatName == varName
         , Just alts1Types <- sequence $ map (getReturnTagSet typeEnv) alts1
         , Just matchList <- disjointMatch (zip alts1Types alts1) alts2
@@ -77,13 +77,13 @@ caseHoisting typeEnv exp = first fst $ evalNameM exp $ histoM folder exp where
          in pure (embed (fst . extract <$> exp), mconcat [useSub, useExp])
 
 hoistAlts :: Name -> (Alt, Alt) -> NameM Alt
-hoistAlts lpatName (Alt cpat1 alt1, Alt cpat2 alt2) = do
+hoistAlts lpatName (Alt cpat1 altName1 alt1, Alt cpat2 altName2 alt2) = do
   freshLPatName <- deriveNewName lpatName
   let nameMap = Map.singleton lpatName freshLPatName
   (freshAlt2, _) <- case cpat2 of
     DefaultPat  -> refreshNames nameMap alt2
-    _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (cpatToLPat cpat2) alt2
-  pure . Alt cpat1 $ EBind (SBlock alt1) (Var freshLPatName) freshAlt2
+    _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (VarPat altName2) alt2
+  pure . Alt cpat1 altName1 $ EBind (SBlock alt1) (VarPat freshLPatName) freshAlt2
 
 disjointMatch :: [(Set Tag, Alt)] -> [Alt] -> Maybe [(Alt, Alt)]
 disjointMatch tsAlts1 alts2
@@ -94,7 +94,7 @@ disjointMatch tsAlts1 alts2
 disjointMatch _ _ = Nothing
 
 groupByCPats :: Alt -> Maybe ([Alt], Map Tag Alt)
-groupByCPats alt@(Alt cpat _) = case cpat of
+groupByCPats alt@(Alt cpat _ _) = case cpat of
   DefaultPat    -> Just ([alt], mempty)
   NodePat tag _ -> Just ([], Map.singleton tag alt)
   _             -> Nothing
