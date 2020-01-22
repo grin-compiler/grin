@@ -80,9 +80,8 @@ hoistAlts :: Name -> (Alt, Alt) -> NameM Alt
 hoistAlts lpatName (Alt cpat1 altName1 alt1, Alt cpat2 altName2 alt2) = do
   freshLPatName <- deriveNewName lpatName
   let nameMap = Map.singleton lpatName freshLPatName
-  (freshAlt2, _) <- case cpat2 of
-    DefaultPat  -> refreshNames nameMap alt2
-    _           -> refreshNames nameMap $ EBind (SReturn $ Var freshLPatName) (VarPat altName2) alt2
+  (freshAlt2, _) <- refreshNames nameMap $
+    EBind (SReturn $ Var freshLPatName) (VarPat altName2) alt2
   pure . Alt cpat1 altName1 $ EBind (SBlock alt1) (VarPat freshLPatName) freshAlt2
 
 disjointMatch :: [(Set Tag, Alt)] -> [Alt] -> Maybe [(Alt, Alt)]
