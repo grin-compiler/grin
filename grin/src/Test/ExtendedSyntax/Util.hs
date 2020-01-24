@@ -5,11 +5,19 @@ module Test.ExtendedSyntax.Util where
 
 import System.FilePath
 
+import Data.Set (Set)
+import Data.Map (Map)
+import Data.Vector (Vector)
 import Data.Text (Text)
+
+import qualified Data.Set as Set
+import qualified Data.Map as Map
+import qualified Data.Vector as V
 import qualified Data.Text.IO as T (readFile)
 
 import Grin.ExtendedSyntax.Grin
 import Grin.ExtendedSyntax.Parse
+import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as HPT
 
 import Test.Hspec
 import Test.ExtendedSyntax.Assertions
@@ -55,6 +63,30 @@ cNope = Tag C "Nope"
 
 cNopeH :: Tag
 cNopeH = Tag C "NopeH"
+
+loc :: HPT.Loc -> TypeSet
+loc = tySetFromTypes . pure . HPT.T_Location
+
+unspecLoc :: TypeSet
+unspecLoc = tySetFromTypes [HPT.T_UnspecifiedLocation]
+
+mkNode :: [[HPT.SimpleType]] -> Vector (Set HPT.SimpleType)
+mkNode = V.fromList . map Set.fromList
+
+mkNodeSet :: [(Tag, [[HPT.SimpleType]])] -> NodeSet
+mkNodeSet = HPT.NodeSet . Map.fromList . map (\(t,v) -> (t,mkNode v))
+
+mkTySet :: [(Tag, [[HPT.SimpleType]])] -> TypeSet
+mkTySet = tySetFromNodeSet . mkNodeSet
+
+tySetFromNodeSet :: NodeSet -> TypeSet
+tySetFromNodeSet = TypeSet mempty
+
+tySetFromTypes :: [HPT.SimpleType] -> TypeSet
+tySetFromTypes = flip TypeSet mempty . Set.fromList
+
+mkSimpleMain :: HPT.SimpleType -> (TypeSet, Vector TypeSet)
+mkSimpleMain t = (tySetFromTypes [t], mempty)
 
 -- name ~ name of the test case, and also the grin source file
 mkBeforeAfterTestCase :: String ->

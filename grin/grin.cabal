@@ -137,6 +137,7 @@ library
     Test.ExtendedSyntax.Assertions
     Test.ExtendedSyntax.Old.Grammar
     Test.ExtendedSyntax.Old.Test
+    Test.ExtendedSyntax.New.Test
     Test.ExtendedSyntax.Util
 
     Transformations.ExtendedSyntax.BindNormalisation

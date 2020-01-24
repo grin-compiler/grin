@@ -105,5 +105,6 @@ concatPrograms prgs = Program (nub $ concat exts) (concat defs) where
 allowedSpecial :: String
 allowedSpecial = "._':!-"
 
+-- QUESTION: Should upper-case letters be allowed?
 allowedInitial :: String
 allowedInitial = "._" ++ ['a'..'z'] ++ ['A'..'Z']

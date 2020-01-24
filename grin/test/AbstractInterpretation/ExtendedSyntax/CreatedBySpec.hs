@@ -36,14 +36,6 @@ spec = do
       calcHPTResultWithCBy = _hptResult . calcCByResult
       mkProducerSet = ProducerSet . M.fromList . map (\(t,xs) -> (t,S.fromList xs))
       emptyProducerSet = mkProducerSet []
-      unspecLoc = tySetFromTypes [T_UnspecifiedLocation]
-      loc = tySetFromTypes . pure . T_Location
-      mkNode = V.fromList . map S.fromList
-      mkNodeSet = HPT.NodeSet . M.fromList . map (\(t,v) -> (t,mkNode v))
-      mkTySet = tySetFromNodeSet . mkNodeSet
-      tySetFromNodeSet = TypeSet mempty
-      tySetFromTypes = flip TypeSet mempty . S.fromList
-      mkSimpleMain t = (tySetFromTypes [t], mempty)
 
   describe "Created-By producers are calculated correctly for" $ do
     it "pures" $ do
