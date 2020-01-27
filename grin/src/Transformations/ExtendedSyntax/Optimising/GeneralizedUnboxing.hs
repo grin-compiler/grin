@@ -1,23 +1,20 @@
 {-# LANGUAGE LambdaCase, TupleSections, OverloadedStrings #-}
 module Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxing where
 
-import Text.Printf
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
 import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.Maybe
-import Data.List
-import Data.Function
-import Data.Functor.Foldable as Foldable
-import Data.Functor.Infix
 import Data.Vector (Vector)
-import qualified Data.Vector as Vector
-import Control.Applicative
+import Data.Map.Strict (Map)
+import Data.Function (fix)
+import Data.Bifunctor (second)
+import Data.Functor.Infix ((<$$>))
+import Data.Functor.Foldable as Foldable
+import Data.Maybe (catMaybes, mapMaybe, isJust)
+
 import Lens.Micro.Platform
-import Control.Monad.Writer
-import Control.Arrow
-import Debug.Trace
+
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import qualified Data.Vector as Vector
 
 import Transformations.Util (anaM, apoM)
 import Transformations.Names

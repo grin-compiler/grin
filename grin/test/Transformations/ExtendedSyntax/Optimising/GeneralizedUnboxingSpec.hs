@@ -2,18 +2,20 @@
 module Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxingSpec where
 
 import Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxing
-import Transformations.Names (ExpChanges(..))
 
 
-import Test.Hspec
-import Grin.Grin
-import Grin.TH
-import Test.Test hiding (newVar)
-import Test.Assertions
-import Grin.TypeEnv
 import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
 import qualified Data.Vector as Vector
+
+import Test.Hspec
+
+import Test.Test hiding (newVar)
+import Test.Assertions
+import Grin.Grin
+import Grin.TH
+import Grin.TypeEnv
+import Transformations.Names (ExpChanges(..))
 
 
 runTests :: IO ()
