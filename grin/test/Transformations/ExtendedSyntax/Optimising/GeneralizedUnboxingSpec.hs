@@ -10,12 +10,11 @@ import qualified Data.Vector as Vector
 
 import Test.Hspec
 
-import Test.Test hiding (newVar)
-import Test.Assertions
-import Grin.Grin
-import Grin.TH
-import Grin.TypeEnv
-import Transformations.Names (ExpChanges(..))
+import Test.ExtendedSyntax.Assertions
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TH
+import Grin.ExtendedSyntax.TypeEnv
+import Transformations.ExtendedSyntax.Names (ExpChanges(..))
 
 
 runTests :: IO ()
@@ -66,7 +65,9 @@ spec = do
               ]
           }
     let before = [prog|
-        test n = prim_int_add n 1
+        test n =
+          k0 <- pure 1
+          prim_int_add n k0
 
         foo a1 a2 a3 =
           b1 <- prim_int_add a1 a2
@@ -85,8 +86,8 @@ spec = do
         foo2C a1 a2 a3 =
           c1 <- prim_int_add a1 a2
           case c1 of
-            #default  -> pure c1
-            (CInt x1) -> foo c1 c1 a3
+            #default  @ alt1 -> pure c1
+            (CInt x1) @ alt2 -> foo c1 c1 a3
 
         foo3 a1 a2 a3 =
           c1 <- prim_int_add a1 a2
@@ -99,12 +100,14 @@ spec = do
           pure v
 
         foo5 a1 =
-          p <- store (CInt a1)
+          n0 <- pure (CInt a1)
+          p <- store n0
           fetch p
 
         bar =
-          n <- test 1
-          (CInt y') <- foo a1 a2 a3
+          k1 <- pure 1
+          n1 <- test k1
+          (CInt y') @ _0 <- foo a1 a2 a3
           test y'
       |]
     let teAfter = emptyTypeEnv
@@ -129,7 +132,9 @@ spec = do
               ]
           }
     let after = [prog|
-        test n = prim_int_add n 1
+        test n =
+          k0 <- pure 1
+          prim_int_add n k0
 
         foo.unboxed a1 a2 a3 =
           b1 <- prim_int_add a1 a2
@@ -148,11 +153,11 @@ spec = do
         foo2C.unboxed a1 a2 a3 =
           c1 <- prim_int_add a1 a2
           case c1 of
-            #default ->
+            #default @ alt1 ->
               do
-                (CInt unboxed.CInt.0) <- pure c1
+                (CInt unboxed.CInt.0) @ _1 <- pure c1
                 pure unboxed.CInt.0
-            (CInt x1) ->
+            (CInt x1) @ alt2 ->
               foo.unboxed c1 c1 a3
 
         foo3.unboxed a1 a2 a3 =
@@ -161,24 +166,26 @@ spec = do
             unboxed.CInt.4 <- foo.unboxed c1 c1 a3
             pure (CInt unboxed.CInt.4)
           do
-            (CInt unboxed.CInt.1) <- pure c2
+            (CInt unboxed.CInt.1) @ _2 <- pure c2
             pure unboxed.CInt.1
 
         foo4.unboxed a1 =
           v <- pure (CInt a1)
           do
-            (CInt unboxed.CInt.2) <- pure v
+            (CInt unboxed.CInt.2) @ _3 <- pure v
             pure unboxed.CInt.2
 
         foo5.unboxed a1 =
-          p <- store (CInt a1)
+          n0 <- pure (CInt a1)
+          p <- store n0
           do
-            (CInt unboxed.CInt.3) <- fetch p
+            (CInt unboxed.CInt.3) @ _4 <- fetch p
             pure unboxed.CInt.3
 
         bar =
-          n <- test 1
-          (CInt y') <- do
+          k1 <- pure 1
+          n1 <- test k1
+          (CInt y') @ _0 <- do
             unboxed.CInt.5 <- foo.unboxed a1 a2 a3
             pure (CInt unboxed.CInt.5)
           test y'
@@ -203,14 +210,16 @@ spec = do
           }
     let before = [prog|
         int_eq eq0 eq1 =
-          (CInt eq0_1) <- fetch eq0
-          (CInt eq1_1) <- fetch eq1
+          (CInt eq0_1) @ alt1 <- fetch eq0
+          (CInt eq1_1) @ alt2 <- fetch eq1
           eq2 <- _prim_int_eq eq0_1 eq1_1
           case eq2 of
-            #False ->
-              pure (CInt 0)
-            #True ->
-              pure (CInt 1)
+            #False @ alt3 ->
+              k0 <- pure 0
+              pure (CInt k0)
+            #True @ alt4 ->
+              k1 <- pure 1
+              pure (CInt k1)
       |]
     let teAfter = emptyTypeEnv
           { _function =
@@ -229,14 +238,16 @@ spec = do
           }
     let after = [prog|
         int_eq.unboxed eq0 eq1 =
-          (CInt eq0_1) <- fetch eq0
-          (CInt eq1_1) <- fetch eq1
+          (CInt eq0_1) @ alt1 <- fetch eq0
+          (CInt eq1_1) @ alt2 <- fetch eq1
           eq2 <- _prim_int_eq eq0_1 eq1_1
           case eq2 of
-            #False ->
-              pure 0
-            #True ->
-              pure 1
+            #False @ alt3 ->
+              k0 <- pure 0
+              pure k0
+            #True @ alt4 ->
+              k1 <- pure 1
+              pure k1
       |]
     generalizedUnboxing teBefore before `sameAs` (after, NewNames)
 
@@ -253,7 +264,9 @@ spec = do
               ]
           }
     let before = [prog|
-        test n = prim_int_add n 1
+        test n =
+          k0 <- pure 1
+          prim_int_add n k0
 
         foo a1 a2 a3 =
           b1 <- prim_int_add a1 a2
@@ -261,8 +274,9 @@ spec = do
           pure (CInt b2)
 
         bar =
-          n <- test 1
-          (CInt y') <- foo a1 a2 a3
+          k1 <- pure 1
+          n <- test k1
+          (CInt y') @ _1 <- foo a1 a2 a3
           test y'
       |]
     functionsToUnbox teBefore before `shouldBe` (Set.fromList ["foo"])
@@ -305,20 +319,25 @@ spec = do
           pure (CInt b2)
 
         outside4 =
-          pure ()
-          outside3 1
+          k0 <- pure ()
+          k1 <- pure 1
+          _1 <- pure k0
+          outside3 k2
 
         outside3 p1 =
           case p1 of
-            1 -> inside1 p1 p1 p1 -- :: CInt Int
-            2 -> outside2 p1      -- :: CNat Int
+            1 @ alt1 -> inside1 p1 p1 p1 -- :: CInt Int
+            2 @ alt2 -> outside2 p1      -- :: CNat Int
 
         outside2 p1 =
-          pure ()
+          k0 <- pure ()
+          k1 <- pure 1
+          _2 <- pure k0
           outside1 p1
 
         outside1 p1 =
-          y <- prim_int_add p1 1
+          k2 <- pure 1
+          y <- prim_int_add p1 k2
           x <- pure (CNat y)
           pure x
       |]
@@ -328,7 +347,8 @@ spec = do
     let fun = [def|
         fun x =
           l <- store x
-          tail 3
+          k0 <- pure 3
+          tail k0
       |]
     tailCalls fun `shouldBe` (Just ["tail"])
 
@@ -336,12 +356,15 @@ spec = do
     let fun = [def|
         fun x =
           l <- pure x
-          case 1 of
-            1 ->
-              x <- prim_int_add 1 2
+          k0 <- pure 1
+          case k0 of
+            1 @ alt1 ->
+              k1 <- pure 1
+              x <- prim_int_add k1 k1
               tail1 x
-            2 ->
-              x <- prim_int_add 2 3
+            2 @ alt2 ->
+              k2 <- pure 2
+              x <- prim_int_add k2 k2
               tail2 x
       |]
     tailCalls fun `shouldBe` (Just ["tail1", "tail2"])
@@ -350,13 +373,16 @@ spec = do
     let fun = [def|
         fun x =
           l <- store x
-          case 1 of
-            1 ->
-              x <- prim_int_add 1 2
+          k0 <- pure 1
+          case k0 of
+            1 @ alt1 ->
+              k1 <- pure 1
+              x <- prim_int_add k1 k1
               y <- tail x
               pure y
-            2 ->
-              x <- prim_int_add 2 3
+            2 @ alt2 ->
+              k2 <- pure 2
+              x <- prim_int_add k2 k2
               tail x
       |]
     tailCalls fun `shouldBe` (Just ["tail"])
@@ -365,7 +391,8 @@ spec = do
     let fun = [def|
         fun x =
           l <- store x
-          y <- tail 3
+          k0 <- pure 3
+          y <- tail k0
           pure x
       |]
     tailCalls fun `shouldBe` Nothing

@@ -16,12 +16,12 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Vector as Vector
 
-import Transformations.Util (anaM, apoM)
-import Transformations.Names
+import Transformations.ExtendedSyntax.Util (anaM, apoM)
+import Transformations.ExtendedSyntax.Names
 
-import Grin.Grin
-import Grin.TypeEnv
-import Grin.Pretty
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnv
+import Grin.ExtendedSyntax.Pretty
 
 
 generalizedUnboxing :: TypeEnv -> Exp -> (Exp, ExpChanges)
@@ -42,7 +42,7 @@ tailCalls = cata collect where
     DefF _ _ result   -> result
     EBindF _ _ result -> result
     ECaseF _ alts -> nonEmpty $ concat $ catMaybes alts
-    AltF _ result -> result
+    AltF _ _ result -> result
     SAppF f _     -> Just [f]
     e -> Nothing
 
@@ -133,7 +133,7 @@ transformReturns toUnbox te exp = apoM builder (Nothing, exp) where
     EBind lhs pat rhs -> pure $ EBindF (Left lhs) pat (Right (mTagType, rhs))
 
     -- Remove the tag from the value
-    SReturn (ConstTagNode tag [val]) -> pure $ SReturnF val
+    SReturn (ConstTagNode tag [arg]) -> pure $ SReturnF (Var arg)
 
     -- Rewrite a node variable
     simpleExp
@@ -143,7 +143,8 @@ transformReturns toUnbox te exp = apoM builder (Nothing, exp) where
       , Just (tag, typ) <- mTagType
       -> do
         freshName <- deriveNewName $ "unboxed." <> (showTS $ PP tag)
-        pure . SBlockF . Left $ EBind simpleExp (ConstTagNode tag [Var freshName]) (SReturn $ Var freshName)
+        asPatName <- deriveWildCard
+        pure . SBlockF . Left $ EBind simpleExp (AsPat tag [freshName] asPatName) (SReturn $ Var freshName)
 
     rest -> pure (Right . (,) mTagType <$> project rest)
 
@@ -152,7 +153,7 @@ transformReturns toUnbox te exp = apoM builder (Nothing, exp) where
   canUnbox = \case
     SApp n ps -> n `Set.notMember` toUnbox
     SReturn{} -> True
-    SFetchI{} -> True
+    SFetch{}  -> True
     _         -> False
 
 transformCalls :: Set Name -> TypeEnv -> Exp -> NameM Exp
@@ -181,6 +182,6 @@ transformCalls toUnbox typeEnv exp = anaM builderM (True, Nothing, exp) where
           else do
             freshName <- deriveNewName $ "unboxed." <> (showTS $ PP tag)
             pure . SBlockF . (isRightExp, mDefName,) $
-              EBind (SApp unboxedName params) (Var freshName) (SReturn $ ConstTagNode tag [Var freshName])
+              EBind (SApp unboxedName params) (VarPat freshName) (SReturn $ ConstTagNode tag [freshName])
 
     rest -> pure ((isRightExp, mDefName,) <$> project rest)
