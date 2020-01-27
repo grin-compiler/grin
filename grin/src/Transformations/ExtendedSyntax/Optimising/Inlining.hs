@@ -1,20 +1,20 @@
 {-# LANGUAGE LambdaCase, TupleSections, RecordWildCards, OverloadedStrings #-}
 module Transformations.ExtendedSyntax.Optimising.Inlining where
 
-import Debug.Trace
-import Text.Printf
 
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
-import Data.Functor.Foldable as Foldable
-import qualified Data.Foldable
-import Grin.Grin
-import Grin.TypeEnv
-import Transformations.Util
-import Transformations.Names
 import Data.Bifunctor (first)
+import Data.Functor.Foldable as Foldable
+
+import qualified Data.Set as Set
+import qualified Data.Map.Strict as Map
+import qualified Data.Foldable
+
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnv
+import Transformations.ExtendedSyntax.Util
+import Transformations.ExtendedSyntax.Names
 
 -- analysis
 
@@ -82,14 +82,14 @@ inlining functionsToInline typeEnv prog@(Program exts defs) = evalNameM prog $ a
 
     -- HINT: bind argument values to function's new arguments and append the body with the fresh names
     --       with this solution the name refreshing is just a name mapping and does not require a substitution map
-    SApp name argVals
+    SApp name args
       | Set.member name functionsToInline
       , Just def <- Map.lookup name defMap
       -> do
         freshDef <- refreshNames mempty def
         let (Def _ argNames funBody, nameMap) = freshDef
-        let bind (n,v) e = EBind (SReturn v) (Var n) e
-        pure . SBlockF . Left $ foldr bind funBody (zip argNames argVals)
+        let bind (n,v) e = EBind (SReturn v) (VarPat n) e
+        pure . SBlockF . Left $ foldr bind funBody . zip argNames . map Var $ args
 
     exp -> pure (Right <$> project exp)
 

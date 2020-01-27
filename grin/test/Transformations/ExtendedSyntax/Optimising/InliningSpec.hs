@@ -2,14 +2,14 @@
 module Transformations.ExtendedSyntax.Optimising.InliningSpec where
 
 import Transformations.ExtendedSyntax.Optimising.Inlining
-import Transformations.Names (ExpChanges(..))
 
 import qualified Data.Set as Set
+
 import Test.Hspec
-import Grin.TH
-import Test.Test hiding (newVar)
-import Test.Assertions
-import Grin.TypeCheck
+import Test.ExtendedSyntax.Assertions
+import Grin.ExtendedSyntax.TH
+import Grin.ExtendedSyntax.TypeCheck
+import Transformations.ExtendedSyntax.Names (ExpChanges(..))
 
 
 runTests :: IO ()
@@ -20,19 +20,21 @@ spec = do
   it "base case" $ do
     let before = [prog|
         grinMain =
-          x <- funA 22
-          y <- funA 55
+          k <- pure 0
+          x <- funA k
+          y <- funA k
           pure x
 
         funA i = pure i
       |]
     let after = [prog|
         grinMain =
+          k <- pure 0
           x <- do
-            i.0 <- pure 22
+            i.0 <- pure k
             pure i.0
           y <- do
-            i.1 <- pure 55
+            i.1 <- pure k
             pure i.1
           pure x
 
@@ -44,12 +46,14 @@ spec = do
   it "no-inline grinMain" $ do
     let before = [prog|
         grinMain =
-          x <- pure 22
+          k <- pure 0
+          x <- pure k
           pure x
       |]
     let after = [prog|
         grinMain =
-          x <- pure 22
+          k <- pure 0
+          x <- pure k
           pure x
       |]
     lateInlining (inferTypeEnv before) before `sameAs` (after, NoChange)
