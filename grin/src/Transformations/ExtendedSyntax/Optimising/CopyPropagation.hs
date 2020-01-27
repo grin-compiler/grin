@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, TupleSections, ViewPatterns #-}
 module Transformations.ExtendedSyntax.Optimising.CopyPropagation where
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
