@@ -23,8 +23,6 @@ import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
 import AbstractInterpretation.ExtendedSyntax.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
 import AbstractInterpretation.ExtendedSyntax.LiveVariable.CodeGenBase
 
-import AbstractInterpretation.ExtendedSyntax.EffectTracking.Result
-
 -- NOTE: For a live variable, we could store its type information.
 
 -- Live variable analysis program.
@@ -400,17 +398,20 @@ codeGenM e = (cata folder >=> const setMainLive) e
       argRegs <- mapM getReg args
 
       mExt <- getExternal name
+      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+      varPatternDataFlow appReg funResultReg
+
       case mExt of
         Nothing -> do -- regular function
-          (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
           -- no effect data-flow between formal and actual arguments
           zipWithM_ livenessDataFlow funArgRegs argRegs
           zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) argRegs funArgRegs
-
-          varPatternDataFlow appReg funResultReg
         Just ext | eEffectful ext -> do mapM_ setBasicValLive argRegs
+                                        mapM_ setBasicValLive funArgRegs
                                         setBasicValSideEffecting appReg
-                 | otherwise      -> do allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive argRegs
+                 | otherwise      -> do allArgsLive <- codeGenBlock_ $ do
+                                          mapM_ setBasicValLive argRegs
+                                          mapM_ setBasicValLive funArgRegs
                                         emit $ appReg `isLiveThen` allArgsLive
 
       pure $ R appReg
