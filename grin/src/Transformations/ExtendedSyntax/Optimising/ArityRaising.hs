@@ -1,19 +1,20 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 module Transformations.ExtendedSyntax.Optimising.ArityRaising where
 
-import Grin.Grin (packName, unpackName)
-import Grin.Syntax
-import Grin.TypeEnv
-import Data.Functor.Foldable
-
 import Data.List (nub)
-import Data.Maybe (fromJust, isJust, mapMaybe)
-import Data.Monoid
-import qualified Data.Set as Set; import Data.Set (Set)
-import qualified Data.Map.Strict as Map; import Data.Map (Map)
-import qualified Data.Vector as Vector; import Data.Vector (Vector)
+import Data.Maybe (fromJust, isJust, mapMaybe, catMaybes)
+import Data.Functor.Foldable
+import qualified Data.Set        as Set;    import Data.Set    (Set)
+import qualified Data.Map.Strict as Map;    import Data.Map    (Map)
+import qualified Data.Vector     as Vector; import Data.Vector (Vector)
+
 import Control.Monad.State.Strict
-import Transformations.Names (ExpChanges(..))
+
+import Grin.ExtendedSyntax.Grin (packName, unpackName)
+import Grin.ExtendedSyntax.Syntax
+import Grin.ExtendedSyntax.TypeEnv
+import Transformations.ExtendedSyntax.Names
+
 
 {-
 1. Select one function which has a parameter of a pointer to one constructor only.
@@ -72,22 +73,29 @@ instance Semigroup Phase1Data where
 instance Monoid Phase1Data where
   mempty = BodyData mempty mempty mempty
 
-variableInVar   = \case { Var n -> [n]; _ -> [] }
-variableInNode  = \case { ConstTagNode _ vs -> concatMap variableInVar vs; _ -> [] }
+variableInVar :: Val -> [Name]
+variableInVar (Var v) = [v]
+variableInVar _       = []
+
+variableInNode :: Val -> [Name]
+variableInNode (ConstTagNode _ vs) = vs
+variableInNode _ = []
+
+variableInNodes :: [Val] -> [Name]
 variableInNodes = concatMap variableInNode
 
 phase1 :: TypeEnv -> Exp -> ArityData
 phase1 te = pdArityData . cata collect where
   collect :: ExpF Phase1Data -> Phase1Data
   collect = \case
-    SAppF fn ps       -> mempty { bdFunCall = [ (fn, v) | Var v <- ps], bdOther = variableInNodes ps }
-    SFetchIF var _    -> mempty { bdFetch = Map.singleton var 1 }
-    SUpdateF var val  -> mempty { bdOther = [var] ++ variableInNode val ++ variableInVar val }
+    SAppF fn ps       -> mempty { bdFunCall = map (fn,) ps, bdOther = ps }
+    SFetchF var       -> mempty { bdFetch = Map.singleton var 1 }
+    SUpdateF ptr var  -> mempty { bdOther = [ptr, var] }
     SReturnF val -> mempty { bdOther = variableInNode val ++ variableInVar val }
-    SStoreF v  -> mempty { bdOther = variableInNode v ++ variableInVar v }
+    SStoreF v  -> mempty { bdOther = [v] }
     SBlockF ad -> ad
-    AltF _ ad  -> ad
-    ECaseF v alts    -> mconcat alts <> mempty { bdOther = variableInNode v ++ variableInVar v }
+    AltF _ _ ad  -> ad
+    ECaseF scrut alts    -> mconcat alts <> mempty { bdOther = [scrut] }
     EBindF lhs _ rhs -> lhs <> rhs
 
     -- Keep the parameters that are locations and points to a single node with at least one parameters
@@ -117,7 +125,10 @@ pointsToOneNode te var = case Map.lookup var (_variable te) of
     _ -> Nothing
   _ -> Nothing
 
-type VarM a = State Int a
+type VarM a = StateT Int NameM a
+
+evalVarM :: Int -> Exp -> VarM a -> a
+evalVarM n exp = fst . evalNameM exp . flip evalStateT n
 
 {-
 Phase2 and Phase3 can be implemented in one go.
@@ -130,7 +141,7 @@ Change only the functions which are in the ArityData map, left the others out.
 Use the original parameter name with new indices, thus we dont need a name generator.
 -}
 phase2 :: Int -> ArityData -> Exp -> Exp
-phase2 n arityData = flip evalState 0 . cata change where
+phase2 n arityData exp = evalVarM 0 exp $ cata change exp where
   fetchParNames :: Name -> Int -> Int -> [Name]
   fetchParNames nm idx i = (\j -> packName $ concat [unpackName nm,".",show n,".",show idx,".arity.",show j]) <$> [1..i]
 
@@ -159,11 +170,11 @@ phase2 n arityData = flip evalState 0 . cata change where
         from: fundef p1 pi pn
           to: fundef p1 pi1 pin pn
     -}
-    SFetchIF var idx
+    SFetchF var
       | Just (nth, (tag, ps)) <- Map.lookup var parameterInfo ->
-        pure $ SReturn (ConstTagNode tag (Var <$> newParNames var ps))
+        pure $ SReturn (ConstTagNode tag (newParNames var ps))
       | otherwise ->
-        pure $ SFetchI var idx
+        pure $ SFetch var
 
     SAppF f fps
       | Just aritedParams <- Map.lookup f arityData -> do
@@ -172,15 +183,16 @@ phase2 n arityData = flip evalState 0 . cata change where
             nsi = Map.fromList $ map (\(n,i,t) -> (n,t)) aritedParams
             psi = [1..] `zip` fps
             newPs = flip concatMap psi $ \case
-              (_, Var n) | Just (t, jth) <- Map.lookup n nsi -> Var <$> newParNames n jth
-              (i, Var n) | Just (t, jth) <- Map.lookup i qsi -> Var <$> fetchParNames n idx jth
-              (i, Undefined{}) | Just (_, jth) <- Map.lookup i qsi -> replicate jth (Undefined dead_t)
-              (_, other) -> [other]
-            fetches = flip mapMaybe psi $ \case
-              (_, Var n) | Just _ <- Map.lookup n nsi -> Nothing
-              (i, Var n) | Just (t, jth) <- Map.lookup i qsi ->
-                Just ((ConstTagNode t (Var <$> fetchParNames n idx jth)), SFetchI n Nothing)
-              _ -> Nothing
+              (_, n) | Just (t, jth) <- Map.lookup n nsi -> newParNames n jth
+              (i, n) | Just (t, jth) <- Map.lookup i qsi -> fetchParNames n idx jth
+              -- (i, Undefined{}) | Just (_, jth) <- Map.lookup i qsi -> replicate jth (Undefined dead_t)
+              -- (_, other) -> [other]
+        fetches <- fmap catMaybes $ forM psi $ \case
+          (_, n) | Just _ <- Map.lookup n nsi -> pure Nothing
+          (i, n) | Just (t, jth) <- Map.lookup i qsi -> do
+            asPatName <- lift deriveWildCard
+            pure $ Just (AsPat t (fetchParNames n idx jth) asPatName, SFetch n)
+          _ -> pure Nothing
         put (idx + 1)
         pure $ case fetches of
             [] -> SApp f newPs
