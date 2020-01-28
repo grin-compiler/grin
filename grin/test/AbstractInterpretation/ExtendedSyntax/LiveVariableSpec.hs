@@ -60,10 +60,31 @@ spec = describe "Live Variable Analysis" $ do
           , _registerLv = [ ("x", liveVal)
                           , ("y", deadVal)
                           ]
-          , _functionLv = mkFunctionLivenessMap []
+          , _functionLv = mkFunctionLivenessMap
+              [ ("_prim_int_print", fun (liveVal, [liveVal]))
+              ]
           }
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` variableAliasExpected
+
+  it "pure primop" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            x <- pure 0
+            y <- _prim_int_add x x
+            pure y
+      |]
+    let purePrimopExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("x", liveVal)
+                          , ("y", liveVal)
+                          ]
+          , _functionLv = mkFunctionLivenessMap
+              [ ("_prim_int_add", fun (liveVal, [liveVal, liveVal]))
+              ]
+          }
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` purePrimopExpected
 
   it "as_pattern_with_node_1" $ do
     let exp = withPrimPrelude [prog|
@@ -80,7 +101,9 @@ spec = describe "Live Variable Analysis" $ do
                           , ("n0", nodeSet [ (cInt, [live]) ])
                           , ("_v", deadNodeSet [ (cInt, 1) ])
                           ]
-          , _functionLv = mkFunctionLivenessMap []
+          , _functionLv = mkFunctionLivenessMap
+              [ ("_prim_int_print", fun (liveVal, [liveVal]))
+              ]
           }
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` variableAliasExpected
@@ -104,7 +127,9 @@ spec = describe "Live Variable Analysis" $ do
 
                           , ("alt0", deadNodeSet [ (cInt, 1) ])
                           ]
-          , _functionLv = mkFunctionLivenessMap []
+          , _functionLv = mkFunctionLivenessMap
+              [ ("_prim_int_print", fun (liveVal, [liveVal]))
+              ]
           }
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` variableAliasExpected
@@ -118,7 +143,7 @@ spec = describe "Live Variable Analysis" $ do
             case n0 of
               (CBool c0) @ alt0 -> pure (CBool c0)
               (CWord c1) @ alt1 -> pure (CNode c1)
-              #default@alt2   -> pure (CWord a0)
+              #default   @ alt2 -> pure (CWord a0)
         |]
     let caseAnonymousExpected = emptyLVAResult
           { _memory     = []
@@ -1119,47 +1144,6 @@ spec = describe "Live Variable Analysis" $ do
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` nodesSimpleExpected
 
-  it "nodes_tricky" $ do
-    pendingWith "illegal grin code: every node tag must have a single arity for the whole program"
-    let exp = [prog|
-          grinMain =
-            z0 <- pure 0
-            n0 <- f z0
-            case n0 of
-              (COne c0 c1) @ alt0 -> pure z0
-              (CTwo c2 c3) @ alt1 -> pure c2
-
-          f x =
-            case x of
-              0@alt2 -> pure (COne x)
-              1@alt3 -> pure (CTwo z0 x)
-        |]
-    let nodesTrickyExpected = emptyLVAResult
-          { _memory     = []
-          , _registerLv = nodesTrickyExpectedRegisters
-          , _functionLv = nodesTrickyExpectedFunctions
-          }
-        nodesTrickyExpectedRegisters =
-          [ ("n0", livenessN0)
-          , ("c0", deadVal)
-          , ("c1", deadVal)
-          , ("c2", liveVal)
-          , ("c3", deadVal)
-          , ("x",  liveVal)
-
-          , ("z0", liveVal)
-          , ("alt0", deadVal)
-          , ("alt1", deadVal)
-          , ("alt2", deadVal)
-          , ("alt3", deadVal)
-          ]
-        nodesTrickyExpectedFunctions = mkFunctionLivenessMap
-          [ ("f", fun (livenessN0, [liveVal])) ]
-        livenessN0 = nodeSet [ (cOne, [dead]), (cTwo, [live, dead]) ]
-        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
-    calculated `sameAs` nodesTrickyExpected
-
-  -- TODO: new syntax, no conversion
   it "sum_opt" $ do
     let exp = withPrimPrelude [prog|
       grinMain =
@@ -1232,6 +1216,9 @@ spec = describe "Live Variable Analysis" $ do
           ]
         sumOptExpectedFunctions = mkFunctionLivenessMap
           [ ("sum", fun (liveVal, [liveVal, liveVal, liveVal]))
+          , ("_prim_int_print", fun (liveVal, [liveVal]))
+          , ("_prim_int_add",   fun (liveVal, [liveVal, liveVal]))
+          , ("_prim_int_gt",    fun (liveVal, [liveVal, liveVal]))
           ]
 
         sumOptExpectedRegisterEffects =
@@ -1266,8 +1253,11 @@ spec = describe "Live Variable Analysis" $ do
           ]
 
         sumOptExpectedFunctionEffects =
-          [ ("sum",      noEffect)
-          , ("grinMain", hasEffect)
+          [ ("sum",             noEffect)
+          , ("grinMain",        hasEffect)
+          , ("_prim_int_print", noEffect)
+          , ("_prim_int_add",   noEffect)
+          , ("_prim_int_gt",    noEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1396,7 +1386,10 @@ spec = describe "Live Variable Analysis" $ do
           , ("alt1", deadVal)
           , ("alt2", deadVal)
           ]
-        expectedFunctionLiveness = mkFunctionLivenessMap []
+        expectedFunctionLiveness = mkFunctionLivenessMap
+          [ ("_prim_int_print", fun (deadVal, [liveVal]))
+          , ("_prim_string_print", fun (deadVal, [liveVal]))
+          ]
 
         expectedRegisterEffects =
           [ ("n",  noEffect)
@@ -1411,6 +1404,8 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
+          , ("_prim_int_print", noEffect)
+          , ("_prim_string_print", noEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1453,7 +1448,10 @@ spec = describe "Live Variable Analysis" $ do
           , ("alt1", deadVal)
           , ("alt2", deadVal)
           ]
-        expectedFunctionLiveness = mkFunctionLivenessMap []
+        expectedFunctionLiveness = mkFunctionLivenessMap
+          [ ("_prim_int_print", fun (deadVal, [liveVal]))
+          , ("_prim_string_print", fun (deadVal, [deadVal]))
+          ]
 
         expectedRegisterEffects =
           [ ("n",  noEffect)
@@ -1472,6 +1470,8 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
+          , ("_prim_int_print", noEffect)
+          , ("_prim_string_print", noEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1485,7 +1485,7 @@ spec = describe "Live Variable Analysis" $ do
             y <- case n of
               (CFoo c2) @ alt0 ->
                 pure ()
-              #default@alt1 ->
+              #default @ alt1 ->
                 z1 <- pure 0
                 _prim_int_print z1
             pure ()
@@ -1507,7 +1507,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("alt0", deadVal)
           , ("alt1", deadNodeSet [ (cOne, 1) ])
           ]
-        expectedFunctionLiveness = mkFunctionLivenessMap []
+        expectedFunctionLiveness = mkFunctionLivenessMap
+          [ ("_prim_int_print", fun (deadVal, [liveVal]))
+          ]
 
         expectedRegisterEffects =
           [ ("n",  noEffect)
@@ -1522,6 +1524,7 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
+          , ("_prim_int_print", noEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1574,7 +1577,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("alt0", deadNodeSet [ (cTwo, 1) ])
           ]
 
-        expectedFunctionLiveness = mkFunctionLivenessMap []
+        expectedFunctionLiveness = mkFunctionLivenessMap
+          [ ("_prim_string_print", fun (deadVal, [liveVal]))
+          ]
 
         expectedRegisterEffects =
           [ ("n1", noEffect)
@@ -1593,6 +1598,7 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
+          , ("_prim_string_print", noEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1643,6 +1649,8 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", fun (deadVal, [liveVal]))
           , ("g", fun (deadVal, [liveVal]))
           , ("h", fun (deadVal, []))
+          , ("_prim_int_print", fun (deadVal, [liveVal]))
+          , ("_prim_string_print", fun (deadVal, [liveVal]))
           ]
 
         expectedRegisterEffects =
@@ -1665,6 +1673,8 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", hasEffect)
           , ("g", hasEffect)
           , ("h", noEffect)
+          , ("_prim_int_print", noEffect)
+          , ("_prim_string_print", noEffect)
           , ("grinMain", hasEffect)
           ]
 
@@ -1703,7 +1713,9 @@ spec = describe "Live Variable Analysis" $ do
           , ("alt0", deadNodeSet [ (cInt, 1) ])
           , ("alt1", deadVal)
           ]
-        expectedFunctionLiveness = mkFunctionLivenessMap []
+        expectedFunctionLiveness = mkFunctionLivenessMap
+          [ ("_prim_int_print", fun (deadVal, [liveVal]))
+          ]
 
         expectedRegisterEffects =
           [ ("x", noEffect)
@@ -1719,6 +1731,7 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
+          , ("_prim_int_print", noEffect)
           ]
 
         calculated = calcLiveness exp
