@@ -1255,7 +1255,7 @@ spec = describe "Live Variable Analysis" $ do
         sumOptExpectedFunctionEffects =
           [ ("sum",             noEffect)
           , ("grinMain",        hasEffect)
-          , ("_prim_int_print", noEffect)
+          , ("_prim_int_print", hasEffect)
           , ("_prim_int_add",   noEffect)
           , ("_prim_int_gt",    noEffect)
           ]
@@ -1404,8 +1404,8 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
-          , ("_prim_int_print", noEffect)
-          , ("_prim_string_print", noEffect)
+          , ("_prim_int_print", hasEffect)
+          , ("_prim_string_print", hasEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1450,6 +1450,7 @@ spec = describe "Live Variable Analysis" $ do
           ]
         expectedFunctionLiveness = mkFunctionLivenessMap
           [ ("_prim_int_print", fun (deadVal, [liveVal]))
+          -- NOTE: the containing alternative is dead
           , ("_prim_string_print", fun (deadVal, [deadVal]))
           ]
 
@@ -1469,8 +1470,9 @@ spec = describe "Live Variable Analysis" $ do
           ]
 
         expectedFunctionEffects =
-          [ ("grinMain", hasEffect)
-          , ("_prim_int_print", noEffect)
+          [ ("grinMain",           hasEffect)
+          , ("_prim_int_print",    hasEffect)
+          -- NOTE: the containing alternative is dead
           , ("_prim_string_print", noEffect)
           ]
 
@@ -1524,7 +1526,7 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
-          , ("_prim_int_print", noEffect)
+          , ("_prim_int_print", hasEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1598,7 +1600,7 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
-          , ("_prim_string_print", noEffect)
+          , ("_prim_string_print", hasEffect)
           ]
 
         calculated = calcLiveness exp
@@ -1673,8 +1675,8 @@ spec = describe "Live Variable Analysis" $ do
           [ ("f", hasEffect)
           , ("g", hasEffect)
           , ("h", noEffect)
-          , ("_prim_int_print", noEffect)
-          , ("_prim_string_print", noEffect)
+          , ("_prim_int_print", hasEffect)
+          , ("_prim_string_print", hasEffect)
           , ("grinMain", hasEffect)
           ]
 
@@ -1731,7 +1733,7 @@ spec = describe "Live Variable Analysis" $ do
 
         expectedFunctionEffects =
           [ ("grinMain", hasEffect)
-          , ("_prim_int_print", noEffect)
+          , ("_prim_int_print", hasEffect)
           ]
 
         calculated = calcLiveness exp

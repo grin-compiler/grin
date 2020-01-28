@@ -409,6 +409,7 @@ codeGenM e = (cata folder >=> const setMainLive) e
         Just ext | eEffectful ext -> do mapM_ setBasicValLive argRegs
                                         mapM_ setBasicValLive funArgRegs
                                         setBasicValSideEffecting appReg
+                                        setBasicValSideEffecting funResultReg
                  | otherwise      -> do allArgsLive <- codeGenBlock_ $ do
                                           mapM_ setBasicValLive argRegs
                                           mapM_ setBasicValLive funArgRegs
