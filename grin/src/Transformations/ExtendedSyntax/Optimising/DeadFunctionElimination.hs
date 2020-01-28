@@ -23,11 +23,11 @@ import Control.Monad.Extra
 import Control.Monad.State
 import Control.Monad.Trans.Except
 
-import Grin.Grin
-import Grin.Pretty
-import Grin.TypeEnv
-import Transformations.Util
-import AbstractInterpretation.LiveVariable.Result as LVA
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.Pretty
+import Grin.ExtendedSyntax.TypeEnv
+import Transformations.ExtendedSyntax.Util
+import AbstractInterpretation.ExtendedSyntax.LiveVariable.Result as LVA
 
 
 type Trf = Except String
