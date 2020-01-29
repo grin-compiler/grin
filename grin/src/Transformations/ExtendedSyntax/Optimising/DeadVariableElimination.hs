@@ -32,6 +32,18 @@ import Transformations.Util
 import AbstractInterpretation.LiveVariable.Result as LVA
 
 
+{- NOTE: This transformation may no longer be needed.
+   DVE basically deletes all binding with a dead variable
+   pattern, then replaces all occurences of the variable
+   with undefined. Since the new syntax only permits variables
+   in place of variables, we can no longer substitute undefineds
+   in palce of dead variables (since undefined is a value).
+
+   This means all we can do, is replace the lhs of the binding
+   with "pure undefined", then run DPE and DDE, then run SDVE/CopyPropagation
+   iteratively until all dead bindings are removed.
+-}
+
 data DeletedEntities = DeletedEntities
   { _deVariables :: Set Name
   , _deLocations :: Set Int
