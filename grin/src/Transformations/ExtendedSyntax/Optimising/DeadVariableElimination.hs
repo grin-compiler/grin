@@ -31,13 +31,11 @@ import Grin.TypeEnv
 import Transformations.Util
 import AbstractInterpretation.LiveVariable.Result as LVA
 
--- TODO: clean up `analyzeCases` and the other remnants of the EffectMap
 
 data DeletedEntities = DeletedEntities
   { _deVariables :: Set Name
   , _deLocations :: Set Int
-  }
-  deriving (Eq, Ord, Show)
+  } deriving (Eq, Ord, Show)
 
 instance Monoid DeletedEntities where
   mempty = DeletedEntities mempty mempty
@@ -52,7 +50,7 @@ type Trf = ExceptT String (State DeletedEntities)
 runTrf :: Trf a -> Either String a
 runTrf = flip evalState mempty . runExceptT
 
--- P and F nodes are handled by Dead Data Elimination
+-- NOTE: P and F nodes are handled by Dead Data Elimination
 deadVariableElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
 deadVariableElimination lvaResult tyEnv exp =
   runTrf . (deleteDeadBindings lvaResult tyEnv >=> replaceDeletedVars tyEnv) $ exp
@@ -65,6 +63,8 @@ deadVariableElimination lvaResult tyEnv exp =
    Side effects are only incorporated into the liveness analysis
    if `EffectTracking` was run before LVA.
    Otherwise all computations are considered pure.
+
+   TODO: All computations should be considered effectful in the case of missing effect information.
 -}
 deleteDeadBindings :: LVAResult -> TypeEnv -> Exp -> Trf Exp
 deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
@@ -79,6 +79,12 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
       {- NOTE: A live arg could mean there is an update inside the function.
          Deleting this update usually has no effect on the code, but it is
          not proven, that it will always keep the semantics.
+
+         Since update can only originate from eval calls, deleting an
+         update only means that a thunk is not updated. It will be computed
+         again after another eval call. So if the GRIN code is generated according
+         to these semantincs (update only in eval), then the denotational semantics
+         of the program won't change in case of deleting an update.
       -}
       noLiveArgs <- noLiveArgsM f
       varDead    <- isVarDeadM v
@@ -138,7 +144,7 @@ deleteDeadBindings lvaResult tyEnv p@(Program exts _) = cataM alg p where
                      ++ "but " ++ show (PP p) ++ " points to multiple locations: "
                      ++ show (PP locs)
 
--- This will not replace the occurences of a deleted pointer
+-- NOTE: This will not replace the occurences of a deleted pointer
 -- in fetches and in updates. But it does not matter,
 -- since all of these fetches/updates are also dead, so they will be removed as well.
 replaceDeletedVars :: TypeEnv -> Exp -> Trf Exp

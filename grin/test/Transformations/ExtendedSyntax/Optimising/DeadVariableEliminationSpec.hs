@@ -8,7 +8,6 @@ import qualified Pipeline.Pipeline as P
 import Grin.TH
 import Test.Assertions
 
--- TODO: Also refactor the last expressions based on the convention (they should of the form: `pure <var>`)
 
 runTests :: IO ()
 runTests = hspec spec
