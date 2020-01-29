@@ -16,10 +16,10 @@ import Data.Functor.Foldable as Foldable
 
 import Control.Monad.Trans.Except
 
-import Grin.Grin
-import Grin.TypeEnvDefs
-import Transformations.Util
-import AbstractInterpretation.LiveVariable.Result as LVA
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnvDefs
+import Transformations.ExtendedSyntax.Util
+import AbstractInterpretation.ExtendedSyntax.LiveVariable.Result as LVA
 
 type Trf = Except String
 

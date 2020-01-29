@@ -1,22 +1,30 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 module Transformations.ExtendedSyntax.Optimising.DeadParameterEliminationSpec where
 
+import Transformations.ExtendedSyntax.Optimising.DeadParameterElimination (deadParameterElimination)
+
+import Data.Either
+
 import Test.Hspec
-import Test.Hspec.PipelineExample
-import Pipeline.Pipeline hiding (pipeline)
-import Grin.TH
+
+import Test.ExtendedSyntax.Assertions
+import Grin.ExtendedSyntax.TH
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.PrimOpsPrelude (withPrimPrelude)
+import Grin.ExtendedSyntax.TypeCheck (inferTypeEnv)
+import AbstractInterpretation.ExtendedSyntax.LiveVariableSpec (calcLiveness)
 
 
 runTests :: IO ()
 runTests = hspec spec
 
+dpe :: Exp -> Exp
+dpe e = either error id $
+  deadParameterElimination (calcLiveness e) (inferTypeEnv e) e
+
 spec :: Spec
 spec = do
   describe "Dead Parameter Elimination" $ do
-
-    let deadParameterEliminationPipeline =
-          [ T DeadParameterElimination
-          ]
 
     it "Fnode" $ do
       let before = [prog|
@@ -68,12 +76,13 @@ spec = do
                   update p w
                   pure w
           |]
-      pipelineSrc before after deadParameterEliminationPipeline
+      dpe before `sameAs` after
 
-    it "Pnode" $ pipeline
-      "dead-parameter-elimination/pnode_before.grin"
-      "dead-parameter-elimination/pnode_after.grin"
-      deadParameterEliminationPipeline
+    -- TODO: reenable
+    -- it "Pnode" $ pipeline
+    --   "dead-parameter-elimination/pnode_before.grin"
+    --   "dead-parameter-elimination/pnode_after.grin"
+    --   deadParameterEliminationPipeline
 
     it "Pnode opt" $ do
       let before = [prog|
@@ -131,7 +140,7 @@ spec = do
               (CInt n) <- y0'
               pure y0'
           |]
-      pipelineSrc before after deadParameterEliminationPipeline
+      dpe before `sameAs` after
 
     it "Simple" $ do
       let before = [prog|
@@ -153,7 +162,7 @@ spec = do
               z <- pure (#undefined :: T_Int64)
               f 0
           |]
-      pipelineSrc before after deadParameterEliminationPipeline
+      dpe before `sameAs` after
 
     it "Mutually recursive" $ do
       let before = [prog|
@@ -177,4 +186,4 @@ spec = do
               v <- pure (#undefined :: T_Int64)
               f
           |]
-      pipelineSrc before after deadParameterEliminationPipeline
+      dpe before `sameAs` after
