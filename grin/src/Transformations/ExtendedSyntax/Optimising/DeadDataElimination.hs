@@ -13,26 +13,21 @@ import Data.Maybe
 import Data.Functor.Foldable as Foldable
 
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Monad.Trans.Except
 
 import Lens.Micro
 
-import Grin.Grin
-import Grin.Pretty
-import Grin.TypeEnv
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.Pretty
+import Grin.ExtendedSyntax.TypeEnv
 
-import AbstractInterpretation.CreatedBy.Util
-import AbstractInterpretation.CreatedBy.Result
-import AbstractInterpretation.LiveVariable.Result
+import AbstractInterpretation.ExtendedSyntax.CreatedBy.Util
+import AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
+import AbstractInterpretation.ExtendedSyntax.LiveVariable.Result
 
-import Transformations.Util
-import Transformations.Names
-
-{-
- TODO: replace modify with modify'
-       is it more optimal?
--}
+import Transformations.ExtendedSyntax.Util
+import Transformations.ExtendedSyntax.Names
 
 
 -- (t,lv) -> t'
@@ -136,23 +131,12 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
 
   alg :: ExpF Exp -> Trf Exp
   alg = \case
-    ECaseF (Var v) alts -> do
-      alts' <- forM alts $ \case
-        Alt (NodePat t args) e -> do
-          (args',lv) <- deleteDeadFieldsM v t args
-          let deletedArgs = args \\ args'
-          e' <- bindToUndefineds tyEnv e deletedArgs
-          t' <- getTag t lv
-          pure $ Alt (NodePat t' args') e'
-        e -> pure e
-      pure $ ECase (Var v) alts'
-
-    EBindF lhs@(SReturn (Var v)) (ConstTagNode t args) rhs -> do
+    EBindF lhs@(SReturn (Var v)) (AsPat t args patName) rhs -> do
       (args',lv) <- deleteDeadFieldsM v t args
-      deletedArgs <- mapM fromVar (args \\ args')
+      let deletedArgs = (args \\ args')
       rhs' <- bindToUndefineds tyEnv rhs deletedArgs
       t' <- getTag t lv
-      pure $ EBind lhs (ConstTagNode t' args') rhs'
+      pure $ EBind lhs (AsPat t' args' patName) rhs'
 
     -- We need not to handle Fetch, because ProducerNameIntroduction
     -- already introduced names for bindings with Fetch left-hand sides.
@@ -177,10 +161,6 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
       liveness <- lookupWithDoubleKeyExcept (notFoundLiveness p t) p t gblLiveness
       pure $ Vec.toList liveness
 
-  fromVar :: Val -> Trf Name
-  fromVar (Var v) = pure v
-  fromVar x = throwE $ show x ++ " is not a variable."
-
 -- For each producer, it dummifies all locally unused fields.
 -- If the field is dead for all other producers in the same group,
 -- then it deletes the field.
@@ -194,18 +174,21 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
   -- if the variable was not analyzed (has type T_Dead), it will be skipped
   alg :: ExpF Exp -> Trf Exp
   alg = \case
-    e@(EBindF (SReturn (ConstTagNode t args)) (Var v) rhs)
+    -- TODO: investigate as-pat case
+    e@(EBindF (SReturn (ConstTagNode t args)) (VarPat v) rhs)
       | Just T_Dead <- tyEnv ^? variable . at v . _Just . _T_SimpleType
       -> pure . embed $ e
-    EBindF (SReturn (ConstTagNode t args)) (Var v) rhs -> do
+    -- TODO: investigate as-pat case
+    EBindF (SReturn (ConstTagNode t args)) (VarPat v) rhs -> do
       globalLiveness     <- globalLivenessM
       nodeLiveness       <- lookupNodeLivenessM v t lvaResult
       globalNodeLiveness <- lookupWithDoubleKeyExcept (notFoundLiveness v t) v t globalLiveness
       let indexedArgs = zip args [0..]
-      args' <- zipWithM (dummify v t) indexedArgs (Vec.toList nodeLiveness)
-      let args'' = zipFilter args' (Vec.toList globalNodeLiveness)
+      -- args' <- zipWithM (dummify v t) indexedArgs (Vec.toList nodeLiveness)
+      -- let args'' = zipFilter args' (Vec.toList globalNodeLiveness)
+      let args'' = error "todo"
       t' <- getTag t globalNodeLiveness
-      pure $ EBind (SReturn (ConstTagNode t' args'')) (Var v) rhs
+      pure $ EBind (SReturn (ConstTagNode t' args'')) (VarPat v) rhs
     e -> pure . embed $ e
 
   -- extracts the active producer grouping from the CByResult
@@ -221,6 +204,7 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
   globalLivenessM :: Trf GlobalLiveness
   globalLivenessM = calcGlobalLiveness lvaResult cbyResult prodGraph
 
+  -- TODO: not needed, replace with bindUndefineds (use fresh variables ...)
   -- If the node field is dead, it replaces it with #undefined :: <type>
   -- where <type> is looked up from the type env
   dummify :: Name -> Tag -> (Val,Int) -> Bool -> Trf Val
@@ -229,6 +213,7 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
     pure $ Undefined (T_SimpleType sty)
   dummify n t (arg,_) True  = pure arg
 
+  -- TODO: remove
   -- looks up a node variable's nth field's type for tag a ertain tag
   -- refers tyEnv in the global scope
   lookupFieldTypeM :: Name -> Tag -> Int -> Trf SimpleType
