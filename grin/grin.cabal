@@ -148,6 +148,7 @@ library
     Transformations.ExtendedSyntax.StaticSingleAssignment
     Transformations.ExtendedSyntax.Optimising.CopyPropagation
     Transformations.ExtendedSyntax.Optimising.CSE
+    Transformations.ExtendedSyntax.Optimising.DeadVariableElimination
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
@@ -303,6 +304,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
                      Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.CSESpec
+                     Transformations.ExtendedSyntax.Optimising.DeadVariableEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
