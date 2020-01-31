@@ -30,6 +30,7 @@ import Transformations.ExtendedSyntax.Util
 import Transformations.ExtendedSyntax.Names
 
 
+-- TODO: make NameM local (it's only used once in ddeFromProducers)
 -- (t,lv) -> t'
 -- we deleted the dead fields from a node with tag t with liveness lv
 -- then we introduced the new tag t' for this deleted node
@@ -89,10 +90,9 @@ type GlobalLiveness = Map Name (Map Tag (Vector Bool))
  NOTE: We will ignore undefined producers, since they should always be dead.
 -}
 calcGlobalLiveness :: LVAResult ->
-                      CByResult ->
                       ProducerGraph' ->
                       Trf GlobalLiveness
-calcGlobalLiveness lvaResult cbyResult (withoutUndefined -> prodGraph) =
+calcGlobalLiveness lvaResult (withoutUndefined -> prodGraph) =
   mapWithDoubleKeyM' mergeLivenessExcept prodGraph where
 
     -- map using only the keys
@@ -131,6 +131,17 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
 
   alg :: ExpF Exp -> Trf Exp
   alg = \case
+    ECaseF v alts -> do
+      alts' <- forM alts $ \case
+        Alt (NodePat t args) altName e -> do
+          (args',lv) <- deleteDeadFieldsM v t args
+          let deletedArgs = args \\ args'
+          e' <- bindToUndefineds tyEnv e deletedArgs
+          t' <- getTag t lv
+          pure $ Alt (NodePat t' args') altName e'
+        e -> pure e
+      pure $ ECase v alts'
+
     EBindF lhs@(SReturn (Var v)) (AsPat t args patName) rhs -> do
       (args',lv) <- deleteDeadFieldsM v t args
       let deletedArgs = (args \\ args')
@@ -163,13 +174,12 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
 
 -- For each producer, it dummifies all locally unused fields.
 -- If the field is dead for all other producers in the same group,
--- then it deletes the field.
+-- then it deletes that field.
 -- Whenever it deletes a field, it makes a new entry into a table.
 -- This table will be used to transform the consumers.
 ddeFromProducers :: LVAResult -> CByResult -> TypeEnv -> Exp -> Trf (Exp, GlobalLiveness)
 ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLivenessM where
 
-  -- dummifying all locally unused fields
   -- deleteing all globally unused fields
   -- if the variable was not analyzed (has type T_Dead), it will be skipped
   alg :: ExpF Exp -> Trf Exp
@@ -183,12 +193,11 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
       globalLiveness     <- globalLivenessM
       nodeLiveness       <- lookupNodeLivenessM v t lvaResult
       globalNodeLiveness <- lookupWithDoubleKeyExcept (notFoundLiveness v t) v t globalLiveness
-      let indexedArgs = zip args [0..]
-      -- args' <- zipWithM (dummify v t) indexedArgs (Vec.toList nodeLiveness)
-      -- let args'' = zipFilter args' (Vec.toList globalNodeLiveness)
-      let args'' = error "todo"
-      t' <- getTag t globalNodeLiveness
-      pure $ EBind (SReturn (ConstTagNode t' args'')) (VarPat v) rhs
+      typedNewArgs       <- typedFreshNames args
+      newTag             <- getTag t globalNodeLiveness -- could be the same as the old one
+      let liveNewArgs = zipFilter typedNewArgs (Vec.toList globalNodeLiveness)
+          bindSeq     = newNodeBindSeq newTag liveNewArgs
+      pure $ EBind (SBlock bindSeq) (VarPat v) rhs
     e -> pure . embed $ e
 
   -- extracts the active producer grouping from the CByResult
@@ -202,37 +211,31 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
     Active activeProdGraph -> fromProducerGraph activeProdGraph
 
   globalLivenessM :: Trf GlobalLiveness
-  globalLivenessM = calcGlobalLiveness lvaResult cbyResult prodGraph
+  globalLivenessM = calcGlobalLiveness lvaResult prodGraph
 
-  -- TODO: not needed, replace with bindUndefineds (use fresh variables ...)
-  -- If the node field is dead, it replaces it with #undefined :: <type>
-  -- where <type> is looked up from the type env
-  dummify :: Name -> Tag -> (Val,Int) -> Bool -> Trf Val
-  dummify n t (_,idx) False = do
-    sty <- lookupFieldTypeM n t idx
-    pure $ Undefined (T_SimpleType sty)
-  dummify n t (arg,_) True  = pure arg
+  -- NOTE: uses tyEnv from outer scope
+  -- | Given a list of names, it looks up their types
+  -- and pairs them with fresh new names.
+  typedFreshNames :: [Name] -> Trf [(Name, Type)]
+  typedFreshNames ns = forM ns $ \v -> do
+    v' <- lift $ lift $ deriveNewName v
+    ty <- lookupExcept (notFoundInTyEnv v) v (_variable tyEnv)
+    let ty' = simplifyType ty
+    pure (v', ty')
 
-  -- TODO: remove
-  -- looks up a node variable's nth field's type for tag a ertain tag
-  -- refers tyEnv in the global scope
-  lookupFieldTypeM :: Name -> Tag -> Int -> Trf SimpleType
-  lookupFieldTypeM v tag idx = do
-    let varTypes = _variable tyEnv
-    ty <- lookupExcept (notFoundInTyEnv v) v varTypes
-    case ty of
-      T_NodeSet ns -> do
-        simpleTys <- lookupExcept (tag `notFoundInTySetFor` v) tag ns
-        let fieldTy = simpleTys Vec.!? idx
-        case fieldTy of
-          Just sty -> pure sty
-          Nothing  -> throwE $
-            "Invalid field index (" ++ show idx ++ ") " ++
-            "for variable " ++ show (PP v) ++ " " ++
-            "with tag " ++ show (PP tag)
-      _ -> throwE $ "Variable " ++ show (PP v) ++ " does not have a node type set"
+  -- | Constructs a binding sequence which first
+  -- binds the typed undefineds to the given names,
+  -- then returns a node with those arguments.
+  newNodeBindSeq :: Tag -> [(Name, Type)] -> Exp
+  newNodeBindSeq tag typedArgs =
+    foldl rebindToUndefined returnNewNode typedArgs where
 
+    returnNewNode :: Exp
+    returnNewNode = SReturn (ConstTagNode tag (fst <$> typedArgs))
 
+    rebindToUndefined :: Exp -> (Name, Type) -> Exp
+    rebindToUndefined rhs (v, ty) =
+      EBind (SReturn (Undefined ty)) (VarPat v) rhs
 
 notFoundInPMap :: Pretty a => a -> String
 notFoundInPMap v = notFoundIn "Variable" (PP v) "producer map"
