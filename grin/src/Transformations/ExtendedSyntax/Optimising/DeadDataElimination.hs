@@ -193,11 +193,19 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
       globalLiveness     <- globalLivenessM
       nodeLiveness       <- lookupNodeLivenessM v t lvaResult
       globalNodeLiveness <- lookupWithDoubleKeyExcept (notFoundLiveness v t) v t globalLiveness
-      typedNewArgs       <- typedFreshNames args
+      let onlyDummifiable   = \locallyLive globallyLive -> not locallyLive && globallyLive
+          onlyDummifiables  = Vec.zipWith onlyDummifiable nodeLiveness globalNodeLiveness
+          toBeDummified     = zipFilter (zip [0..] args) (Vec.toList onlyDummifiables)
+          toBeDummifiedIxs  = fst <$> toBeDummified
+          toBeDummifiedArgs = snd <$> toBeDummified
+      typedDummifiedArgs <- typedFreshNames toBeDummifiedArgs
       newTag             <- getTag t globalNodeLiveness -- could be the same as the old one
-      let liveNewArgs = zipFilter typedNewArgs (Vec.toList globalNodeLiveness)
-          bindSeq     = newNodeBindSeq newTag liveNewArgs
-      pure $ EBind (SBlock bindSeq) (VarPat v) rhs
+      let argsVec          = Vec.fromList args
+          indexedNewArgs   = Vec.fromList . zip toBeDummifiedIxs . map fst $ typedDummifiedArgs
+          newArgs          = Vec.toList $ Vec.update argsVec indexedNewArgs
+          liveNewArgs      = zipFilter newArgs (Vec.toList globalNodeLiveness)
+          returnNewNode    = SReturn (ConstTagNode newTag liveNewArgs)
+      pure $ typedDummifiedArgs `areBoundThen` EBind returnNewNode (VarPat v) rhs
     e -> pure . embed $ e
 
   -- extracts the active producer grouping from the CByResult
@@ -223,15 +231,16 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
     let ty' = simplifyType ty
     pure (v', ty')
 
+  -- TODO: comment
   -- | Constructs a binding sequence which first
   -- binds the typed undefineds to the given names,
   -- then returns a node with those arguments.
-  newNodeBindSeq :: Tag -> [(Name, Type)] -> Exp
-  newNodeBindSeq tag typedArgs =
-    foldl rebindToUndefined returnNewNode typedArgs where
+  areBoundThen :: [(Name, Type)] -> Exp -> Exp
+  areBoundThen typedDummifiedArgs cont =
+    foldl rebindToUndefined cont typedDummifiedArgs where
 
-    returnNewNode :: Exp
-    returnNewNode = SReturn (ConstTagNode tag (fst <$> typedArgs))
+    -- returnNewNode :: Exp
+    -- returnNewNode = SReturn (ConstTagNode tag allArgs)
 
     rebindToUndefined :: Exp -> (Name, Type) -> Exp
     rebindToUndefined rhs (v, ty) =
