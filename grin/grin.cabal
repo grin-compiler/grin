@@ -157,6 +157,7 @@ library
     Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableElimination
     Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionElimination
     Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterElimination
+    Transformations.ExtendedSyntax.Optimising.Inlining
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
     Transformations.BindNormalisation
@@ -319,6 +320,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.InliningSpec
                      Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
                      Transformations.Simplifying.RegisterIntroductionSpec
