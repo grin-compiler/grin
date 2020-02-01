@@ -98,8 +98,8 @@ spec = describe "Live Variable Analysis" $ do
           { _memory     = []
           , _registerLv = [ ("x0", liveVal)
                           , ("x1", liveVal)
-                          , ("n0", nodeSet [ (cInt, [live]) ])
-                          , ("_v", deadNodeSet [ (cInt, 1) ])
+                          , ("n0", nodeSet  [ (cInt, [live]) ])
+                          , ("_v", nodeSet' [ (cInt, [dead, live]) ])
                           ]
           , _functionLv = mkFunctionLivenessMap
               [ ("_prim_int_print", fun (liveVal, [liveVal]))
@@ -172,9 +172,9 @@ spec = describe "Live Variable Analysis" $ do
             d <- pure 0
             e <- pure 0
             case a of
-              0@alt0 -> pure b
-              1@alt1 -> pure c
-              2@alt2 -> pure d
+              0 @ alt0 -> pure b
+              1 @ alt1 -> pure c
+              2 @ alt2 -> pure d
         |]
     let caseMinLitExpected = emptyLVAResult
           { _memory     = []
@@ -194,7 +194,6 @@ spec = describe "Live Variable Analysis" $ do
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` caseMinLitExpected
 
-  -- QUESTION: is the liveness of _1 correct?
   it "case_min_nodes" $ do
     let exp = [prog|
           grinMain =
@@ -217,7 +216,7 @@ spec = describe "Live Variable Analysis" $ do
               , ("b0", liveVal)
 
               , ("z0", liveVal)
-              , ("_1", nodeSet' [ (cNode, [dead, dead]) ])
+              , ("_1", nodeSet' [ (cNode, [dead, live]) ])
               , ("alt0", deadNodeSet [ (cBool, 1) ])
               , ("alt1", deadVal)
               , ("alt2", deadVal)
@@ -240,7 +239,7 @@ spec = describe "Live Variable Analysis" $ do
                   (CBool c1) @ alt1 -> pure (CNode c1)
               (CWord c2) @ alt2 -> pure (CWord c2)
               #default @ alt3   -> pure (CNope)
-            (CNode b0)@_1 <- pure n1
+            (CNode b0) @ _1 <- pure n1
             pure b0
         |]
     let caseMinNodesExpected = emptyLVAResult
@@ -254,7 +253,7 @@ spec = describe "Live Variable Analysis" $ do
               , ("b0", liveVal)
 
               , ("z0", liveVal)
-              , ("_1", nodeSet' [ (cNode, [dead, dead]) ])
+              , ("_1", nodeSet' [ (cNode, [dead, live]) ])
               , ("alt0", nodeSet' [ (cBool, [live, live]) ])
               , ("alt1", deadNodeSet [ (cBool, 1) ])
               , ("alt2", deadVal)
@@ -368,8 +367,8 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", liveVal)
-          , ("_1", nodeSet' [ (cInt,  [dead, dead]) ])
-          , ("_2", nodeSet' [ (cWord, [dead, dead]) ])
+          , ("_1", nodeSet' [ (cInt,  [dead, live]) ])
+          , ("_2", nodeSet' [ (cWord, [dead, live]) ])
           , ("alt0", deadNodeSet [ (cInt, 1) ])
           , ("alt1", deadVal)
           , ("alt2", deadNodeSet [ (cWord, 1) ])
@@ -395,7 +394,7 @@ spec = describe "Live Variable Analysis" $ do
               (CBool c1) @ alt1 ->
                 n2 <- f c1
                 pure n2
-              #default@alt2 ->
+              #default @ alt2 ->
                 (CWord b1) @ _2 <- pure n0
                 n3 <- f b1
                 pure n3
@@ -404,9 +403,9 @@ spec = describe "Live Variable Analysis" $ do
           f x =
             z1 <- pure 0
             case x of
-              0@alt3 -> pure (CInt  z1)
-              1@alt4 -> pure (CBool z1)
-              2@alt5 -> pure (CWord z1)
+              0 @ alt3 -> pure (CInt  z1)
+              1 @ alt4 -> pure (CBool z1)
+              2 @ alt5 -> pure (CWord z1)
         |]
         caseRestrictedNodesExpected = emptyLVAResult
           { _memory     = []
@@ -427,8 +426,8 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", liveVal)
-          , ("_1", nodeSet' [ (cInt,  [dead, dead]) ])
-          , ("_2", nodeSet' [ (cWord, [dead, dead]) ])
+          , ("_1", nodeSet' [ (cInt,  [dead, live]) ])
+          , ("_2", nodeSet' [ (cWord, [dead, live]) ])
           , ("alt0", deadNodeSet [ (cInt,  1) ])
           , ("alt1", deadNodeSet [ (cBool, 1) ])
           , ("alt2", deadNodeSet [ (cWord, 1) ])
@@ -616,7 +615,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("b1", deadVal)
           , ("n",  livenessN)
 
-          , ("_1", nodeSet' [(cTwo, [dead, dead, dead])] )
+          , ("_1", nodeSet' [(cTwo, [dead, live, dead])] )
           ]
         livenessN = nodeSet [ (cOne, [live]) ]
         functionCall2ExpectedFunctions =
@@ -647,7 +646,7 @@ spec = describe "Live Variable Analysis" $ do
                           , ("z0", liveVal)
                           , ("z1", nodeSet  [ (cBool, [live]) ])
                           , ("z2", nodeSet  [ (cBool, [live]) ])
-                          , ("_1", nodeSet' [ (cBool, [dead, dead]) ])
+                          , ("_1", nodeSet' [ (cBool, [dead, live]) ])
                           , ("alt0", deadNodeSet [ (cBool, 1) ])
                           ]
           , _functionLv = mkFunctionLivenessMap []
@@ -846,7 +845,7 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", liveVal)
           , ("z1", deadVal)
-          , ("_1", nodeSet' [ (cTwo, [dead, dead, dead]) ])
+          , ("_1", nodeSet' [ (cTwo, [dead, live, dead]) ])
           ]
         livenessN = nodeSet $ [ (cTwo, [live, dead]) ]
         livenessX = livenessN
@@ -1310,7 +1309,7 @@ spec = describe "Live Variable Analysis" $ do
           , ("z2", cConsDead)
           , ("z3", deadVal)
           , ("z4", liveVal)
-          , ("_1", cConsDead)
+          , ("_1", nodeSet' [ (cCons, [dead, live, dead]) ])
           ]
         livenessN0 = cConsDead
         livenessN1 = cConsDead
@@ -1345,7 +1344,7 @@ spec = describe "Live Variable Analysis" $ do
 
           , ("z0", cNilLiveness)
           , ("z1", liveLoc)
-          , ("_1", deadNodeSet [ (cCons, 2) ])
+          , ("_1", nodeSet' [ (cCons, [dead, live, dead]) ])
           ]
         undefinedWithLocInfoExpectedFunctions =
           [ ("grinMain", fun (cNilLiveness, [])) ]
