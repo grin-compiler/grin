@@ -150,6 +150,7 @@ library
     Transformations.ExtendedSyntax.Optimising.ConstantPropagation
     Transformations.ExtendedSyntax.Optimising.CSE
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
+    Transformations.ExtendedSyntax.Optimising.NonSharedElimination
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
     Transformations.BindNormalisation
@@ -305,6 +306,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.CSESpec
                      Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.NonSharedEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
                      Transformations.Simplifying.RegisterIntroductionSpec
