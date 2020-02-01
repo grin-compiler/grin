@@ -118,6 +118,7 @@ library
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
+    Reducer.ExtendedSyntax.Base
     Reducer.Base
     Reducer.IO
     Reducer.LLVM.Base
