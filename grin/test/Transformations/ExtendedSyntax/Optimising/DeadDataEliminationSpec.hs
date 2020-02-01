@@ -56,7 +56,27 @@ spec = do
           |]
       dde before `sameAs` after
 
-    it "As-Pattern Simple" $ do
+    it "As-Pattern Simple 1" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0 <- pure (CInt a0)
+              (CInt b1) @ n1 <- pure n0
+              (CInt b2) @ n2 <- pure n0
+              pure b2
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0 <- pure (CInt a0)
+              (CInt b1) @ n1 <- pure n0
+              (CInt b2) @ n2 <- pure n0
+              pure b2
+          |]
+      dde before `sameAs` after
+
+    it "As-Pattern Simple 2" $ do
       let before = [prog|
             grinMain =
               a0 <- pure 0
@@ -71,6 +91,157 @@ spec = do
               (CInt b0) @ n0 <- pure (CInt a0)
               (CInt b1) @ n1 <- pure n0
               pure b0
+          |]
+      dde before `sameAs` after
+
+    it "As-Pattern Deletable" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              (CInt b0) @ n0 <- pure (CInt a0)
+              (CInt b1) @ n1 <- pure n0
+              pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              (CInt.0) @ n0 <- pure (CInt.0)
+              b0 <- pure (#undefined :: T_Int64)
+              (CInt.0) @ n1 <- pure n0
+              b1 <- pure (#undefined :: T_Int64)
+              pure 0
+          |]
+      dde before `sameAs` after
+
+    it "As-Pattern Fetch" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0 <- pure (CInt a0)
+              p0 <- store n0
+              (CInt a1) @ n1 <- fetch p0
+              case n0 of
+                (CInt a2) @ alt1 -> pure a2
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0 <- pure (CInt a0)
+              p0 <- store n0
+              (CInt a1) @ n1 <- fetch p0
+              case n0 of
+                (CInt a2) @ alt1 -> pure a2
+          |]
+      dde before `sameAs` after
+
+    it "Case Consumers" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0' <- pure (CInt a0)
+              case n0' of
+                (CInt a1) @ n0 ->
+                  case n0 of
+                    (CInt a2) @ alt1 -> pure a2
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0' <- pure (CInt a0)
+              case n0' of
+                (CInt a1) @ n0 ->
+                  case n0 of
+                    (CInt a2) @ alt1 -> pure a2
+          |]
+      dde before `sameAs` after
+
+    it "Case Consumers Dummifiable" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+
+              -- two producers
+              n0 <- pure (CThree a0 a1 a2)
+              n1 <- pure (CThree a3 a4 a5)
+
+              -- n01 has producers: n0, n1
+              s0 <- pure 0
+              n01 <- case s0 of
+                0 @ alt1 -> pure n0
+                1 @ alt2 -> pure n1
+
+              -- consumers
+              case n0 of
+                (CThree b0 b1 b2) @ _1 ->
+                  case n01 of
+                    (CThree c0 c1 c2) @ _2 ->
+                      case n1 of
+                        (CThree d0 d1 d2) @ _3 ->
+                          pure (CLive b0 c1 d2)
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              a1 <- pure 0
+              a2 <- pure 0
+              a3 <- pure 0
+              a4 <- pure 0
+              a5 <- pure 0
+
+              -- two producers
+              a2.0 <- pure (#undefined :: T_Int64)
+              n0 <- pure (CThree a0 a1 a2.0)
+              a3.0 <- pure (#undefined :: T_Int64)
+              n1 <- pure (CThree a3.0 a4 a5)
+
+              -- n01 has producers: n0, n1
+              s0 <- pure 0
+              n01 <- case s0 of
+                0 @ alt1 -> pure n0
+                1 @ alt2 -> pure n1
+
+              -- consumers
+              case n0 of
+                (CThree b0 b1 b2) @ _1 ->
+                  case n01 of
+                    (CThree c0 c1 c2) @ _2 ->
+                      case n1 of
+                        (CThree d0 d1 d2) @ _3 ->
+                          pure (CLive b0 c1 d2)
+          |]
+      dde before `sameAs` after
+
+    it "Case Consumers Deletable" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0' <- pure (CInt a0)
+              case n0' of
+                (CInt a1) @ n0 ->
+                  case n0 of
+                    (CInt a2) @ alt1 -> pure 0
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              n0' <- pure (CInt.0)
+              case n0' of
+                (CInt.0) @ n0 ->
+                  a1 <- pure (#undefined :: T_Int64)
+                  case n0 of
+                    (CInt.0) @ alt1 ->
+                      a2 <- pure (#undefined :: T_Int64)
+                      pure 0
           |]
       dde before `sameAs` after
 
@@ -462,7 +633,7 @@ spec = do
 
             foo x0 y0 z0 =
               y0' <- fetch y0
-              (CInt n) @ _4 <- y0'
+              (CInt n) @ _4 <- pure y0'
               pure y0'
           |]
 
@@ -499,7 +670,7 @@ spec = do
 
             foo x0 y0 z0 =
               y0' <- fetch y0
-              (CInt n) @ _4 <- y0'
+              (CInt n) @ _4 <- pure y0'
               pure y0'
           |]
       dde before `sameAs` after
