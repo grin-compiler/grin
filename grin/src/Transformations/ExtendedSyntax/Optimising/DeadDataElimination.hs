@@ -142,15 +142,13 @@ ddeFromConsumers cbyResult tyEnv (e, gblLiveness) = cataM alg e where
         e -> pure e
       pure $ ECase v alts'
 
-    EBindF lhs@(SReturn (Var v)) (AsPat t args patName) rhs -> do
+    EBindF lhs (AsPat t args v) rhs -> do
       (args',lv) <- deleteDeadFieldsM v t args
       let deletedArgs = (args \\ args')
       rhs' <- bindToUndefineds tyEnv rhs deletedArgs
       t' <- getTag t lv
-      pure $ EBind lhs (AsPat t' args' patName) rhs'
+      pure $ EBind lhs (AsPat t' args' v) rhs'
 
-    -- We need not to handle Fetch, because ProducerNameIntroduction
-    -- already introduced names for bindings with Fetch left-hand sides.
     e -> pure . embed $ e
 
   deleteDeadFieldsM :: Name -> Tag -> [a] -> Trf ([a], Vector Bool)
@@ -185,11 +183,11 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
   alg :: ExpF Exp -> Trf Exp
   alg = \case
     -- TODO: investigate as-pat case
-    e@(EBindF (SReturn (ConstTagNode t args)) (VarPat v) rhs)
+    e@(EBindF (SReturn (ConstTagNode t args)) bPat@(_bPatVar -> v) rhs)
       | Just T_Dead <- tyEnv ^? variable . at v . _Just . _T_SimpleType
       -> pure . embed $ e
     -- TODO: investigate as-pat case
-    EBindF (SReturn (ConstTagNode t args)) (VarPat v) rhs -> do
+    EBindF (SReturn (ConstTagNode t args)) bPat@(_bPatVar -> v) rhs -> do
       globalLiveness     <- globalLivenessM
       nodeLiveness       <- lookupNodeLivenessM v t lvaResult
       globalNodeLiveness <- lookupWithDoubleKeyExcept (notFoundLiveness v t) v t globalLiveness
@@ -205,7 +203,7 @@ ddeFromProducers lvaResult cbyResult tyEnv e = (,) <$> cataM alg e <*> globalLiv
           newArgs          = Vec.toList $ Vec.update argsVec indexedNewArgs
           liveNewArgs      = zipFilter newArgs (Vec.toList globalNodeLiveness)
           returnNewNode    = SReturn (ConstTagNode newTag liveNewArgs)
-      pure $ typedDummifiedArgs `areBoundThen` EBind returnNewNode (VarPat v) rhs
+      pure $ typedDummifiedArgs `areBoundThen` EBind returnNewNode bPat rhs
     e -> pure . embed $ e
 
   -- extracts the active producer grouping from the CByResult
