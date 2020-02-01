@@ -56,6 +56,24 @@ spec = do
           |]
       dde before `sameAs` after
 
+    it "As-Pattern Simple" $ do
+      let before = [prog|
+            grinMain =
+              a0 <- pure 0
+              (CInt b0) @ n0 <- pure (CInt a0)
+              (CInt b1) @ n1 <- pure n0
+              pure b0
+          |]
+
+      let after = [prog|
+            grinMain =
+              a0 <- pure 0
+              (CInt b0) @ n0 <- pure (CInt a0)
+              (CInt b1) @ n1 <- pure n0
+              pure b0
+          |]
+      dde before `sameAs` after
+
     it "Multiple fields" $ do
       let before = withPrimPrelude [prog|
             grinMain =
