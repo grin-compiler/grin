@@ -153,6 +153,7 @@ library
     Transformations.ExtendedSyntax.Optimising.ConstantPropagation
     Transformations.ExtendedSyntax.Optimising.CSE
     Transformations.ExtendedSyntax.Optimising.DeadParameterElimination
+    Transformations.ExtendedSyntax.Optimising.DeadFunctionElimination
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
     Transformations.ExtendedSyntax.Optimising.NonSharedElimination
     Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisation
@@ -318,6 +319,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.Optimising.ArityRaisingSpec
                      Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.CSESpec
+                     Transformations.ExtendedSyntax.Optimising.DeadFunctionEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.NonSharedEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisationSpec
