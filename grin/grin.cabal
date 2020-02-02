@@ -389,6 +389,8 @@ test-suite grin-test
                      AbstractInterpretation.SharingSpec
                      AbstractInterpretation.CreatedBySpec
                      Test.Hspec.PipelineExample
+
+                     Reducer.ExtendedSyntax.BaseSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
