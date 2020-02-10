@@ -198,8 +198,8 @@ data PipelineStep
   | T Transformation
   | Pass [PipelineStep]
   | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
-  | PureEval
-  | PureEvalPluginH (Hidden EvalPlugin)
+  | PureEval Bool
+  | PureEvalPluginH (Hidden EvalPlugin) Bool
   | JITLLVM
   | PrintAST
   | SaveLLVM Path
@@ -252,9 +252,9 @@ pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
 
-pattern PureEvalPlugin :: EvalPlugin -> PipelineStep
-pattern PureEvalPlugin t <- PureEvalPluginH (H t)
-  where PureEvalPlugin t =  PureEvalPluginH (H t)
+pattern PureEvalPlugin :: EvalPlugin -> Bool -> PipelineStep
+pattern PureEvalPlugin t b <- PureEvalPluginH (H t) b
+  where PureEvalPlugin t b =  PureEvalPluginH (H t) b
 
 data PipelineOpts = PipelineOpts
   { _poOutputDir   :: FilePath
@@ -461,8 +461,6 @@ pipelineStep p = do
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
     PrintGrin r d   -> printGrinM r d
-    PureEval        -> pureEval (EvalPlugin evalPrimOp)
-    PureEvalPlugin evalPlugin -> pureEval evalPlugin
     JITLLVM         -> jitLLVM
     SaveLLVM path   -> saveLLVM path
     SaveExecutable dbg path -> saveExecutable dbg path
@@ -480,6 +478,8 @@ pipelineStep p = do
       errors <- use psErrors
       pipelineLog $ unlines $ "errors:" : errors
     DebugPipelineState -> debugPipelineState
+    PureEval                  showStatistics -> pureEval (EvalPlugin evalPrimOp) showStatistics
+    PureEvalPlugin evalPlugin showStatistics -> pureEval evalPlugin showStatistics
   after <- use psExp
   let eff = if before == after then None else ExpChanged
       showMS :: Rational -> String
@@ -660,12 +660,13 @@ statistics = do
   exp <- use psExp
   saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
-pureEval :: EvalPlugin -> PipelineM ()
-pureEval evalPlugin = do
+pureEval :: EvalPlugin -> Bool -> PipelineM ()
+pureEval evalPlugin showStatistics = do
   e <- use psExp
-  val <- liftIO $ do
+  (val, stat) <- liftIO $ do
     hSetBuffering stdout NoBuffering
     evalProgram (PureReducer evalPlugin) e
+  when showStatistics $ pipelineLog $ show $ pretty stat
   pipelineLog $ show $ pretty val
 
 printGrinM :: RenderingOption -> (Doc -> Doc) -> PipelineM ()

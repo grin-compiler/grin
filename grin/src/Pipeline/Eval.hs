@@ -7,7 +7,7 @@ import Text.Megaparsec
 import Grin.Grin
 import Grin.TypeCheck
 import Grin.Parse
-import Reducer.Base (RTVal)
+import Reducer.Base (RTVal, Statistics)
 import qualified Reducer.IO
 import qualified Reducer.Pure
 import qualified Reducer.LLVM.JIT as LLVM
@@ -22,7 +22,7 @@ data Reducer
   = PureReducer Reducer.Pure.EvalPlugin
   | IOReducer
 
-evalProgram :: Reducer -> Program -> IO RTVal
+evalProgram :: Reducer -> Program -> IO (RTVal, Maybe Statistics)
 evalProgram reducer program =
   case reducer of
     PureReducer evalPrimOp  -> Reducer.Pure.reduceFun evalPrimOp program "grinMain"
