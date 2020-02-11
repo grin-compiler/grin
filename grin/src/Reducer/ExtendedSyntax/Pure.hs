@@ -8,14 +8,15 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
+import Data.Foldable (fold)
 import Control.Monad.State
 import Control.Monad.Reader
 import Text.Printf
 
-import Reducer.Base
-import Reducer.PrimOps
-import Grin.Grin
-import Grin.Pretty
+import Reducer.ExtendedSyntax.Base
+import Reducer.ExtendedSyntax.PrimOps
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.Pretty
 
 prettyDebug :: Pretty a => a -> String
 prettyDebug = show . plain . pretty
@@ -45,28 +46,27 @@ evalSimpleExp exts env s = do
     void $ liftIO $ getLine
   case s of
     SApp n a -> do
-                let args = map (evalVal env) a
-                    go a [] [] = a
-                    go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                    go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (prettyDebug x) (prettyDebug y)
-                if isExternalName exts n
-                  then evalPrimOp n a args
-                  else do
-                    Def _ vars body <- reader $ Map.findWithDefault (error $ printf "unknown function: %s" n) n
-                    evalExp exts (go env vars args) body
+      let args = map (evalVar env) a
+          go a [] [] = a
+          go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
+          go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (prettyDebug x) (prettyDebug y)
+      if isExternalName exts n
+        then evalPrimOp n a args
+        else do
+          Def _ vars body <- reader $ Map.findWithDefault (error $ printf "unknown function: %s" n) n
+          evalExp exts (go env vars args) body
     SReturn v -> pure $ evalVal env v
     SStore v -> do
                 l <- gets storeSize
-                let v' = evalVal env v
+                let v' = evalVar env v
                 modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
                 pure $ RT_Loc l
-    SFetchI n index -> case lookupEnv n env of
-                RT_Loc l -> gets $ (selectNodeItem index . lookupStore l)
+    SFetch ptr -> case evalVar env ptr of
+                RT_Loc l -> gets $ lookupStore l
                 x -> error $ printf "evalSimpleExp - Fetch expected location, got: %s" (prettyDebug x)
-  --  | FetchI  Name Int -- fetch node component
     SUpdate n v -> do
-                let v' = evalVal env v
-                case lookupEnv n env of
+                let v' = evalVar env v
+                case evalVar env n of
                   RT_Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
                               False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
                               True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> pure RT_Unit
@@ -84,25 +84,29 @@ evalExp exts env = \case
     when debug $ do
       liftIO $ putStrLn $ unwords [show pat,":=",show v]
     evalExp exts (bindPat env v pat) exp
-  ECase v alts ->
-    let defaultAlts = [exp | Alt DefaultPat exp <- alts]
+  ECase scrut alts -> do
+    let defaultAlts = [exp | Alt DefaultPat _ exp <- alts]
         defaultAlt  = if length defaultAlts > 1
                         then error "multiple default case alternative"
                         else take 1 defaultAlts
-    in case evalVal env v of
+
+        altNames      = [ name | Alt _ name _ <- alts ]
+        scrutVal      = evalVar env scrut
+        boundAltNames = fold $ map (`Map.singleton` scrutVal) altNames
+        env'          = env <> boundAltNames
+    case scrutVal of
       RT_ConstTagNode t l ->
-                     let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error (printf "evalExp - missing Case Node alternative for: %s" (prettyDebug t))
-                         go a [] [] = a
-                         go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                         go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
-                     in  evalExp
-                            exts
-                            (case vars of -- TODO: Better error check: If not default then parameters must match
-                              [] -> {-defualt-} env
-                              _  -> go env vars l)
-                            exp
-      RT_ValTag t -> evalExp exts env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error (printf "evalExp - missing Case Tag alternative for: %s" (prettyDebug t))
-      RT_Lit l    -> evalExp exts env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
+        let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) _ exp <- alts, a == t] ++ map ([],) defaultAlt ++ error (printf "evalExp - missing Case Node alternative for: %s" (prettyDebug t))
+            go a [] [] = a
+            go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
+            go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
+        in  evalExp
+              exts
+              (case vars of -- TODO: Better error check: If not default then parameters must match
+                [] -> {-default-} env'
+                _  -> go env' vars l)
+              exp
+      RT_Lit l -> evalExp exts env $ head $ [exp | Alt (LitPat a) _ exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp exts env exp
 
