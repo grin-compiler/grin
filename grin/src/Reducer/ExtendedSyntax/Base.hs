@@ -51,14 +51,14 @@ bindPat env !val bPat = case bPat of
       -> env' <> newVars
     _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val ++ " vs " ++ show (PP p)
 
-lookupEnv :: Name -> Env -> RTVal
-lookupEnv n env = Map.findWithDefault (error $ "missing variable: " ++ unpackName n) n env
+evalVar :: Env -> Name -> RTVal
+evalVar env n = Map.findWithDefault (error $ "missing variable: " ++ unpackName n) n env
 
 evalVal :: Env -> Val -> RTVal
 evalVal env = \case
   Lit lit          -> RT_Lit lit
-  Var n            -> lookupEnv n env
-  ConstTagNode t a -> RT_ConstTagNode t $ map (`lookupEnv` env) a
+  Var n            -> evalVar env n
+  ConstTagNode t a -> RT_ConstTagNode t $ map (evalVar env) a
   Unit             -> RT_Unit
   Undefined t      -> RT_Undefined
   x -> error $ "evalVal: " ++ show x

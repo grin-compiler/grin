@@ -12,11 +12,9 @@ import qualified Language.C.Inline.Unsafe as CU
 import Foreign.Marshal.Alloc
 import Foreign.C.String
 
-import Reducer.Base
 
 import Data.Bits (shift)
 import Data.Char (chr, ord)
-import Grin.Grin
 import Data.Map.Strict as Map
 import Data.String (fromString)
 import Data.Functor.Infix ((<$$>))
@@ -28,6 +26,9 @@ import Data.Bits
 import System.IO (hIsEOF, stdin)
 import System.IO.Unsafe
 
+import Grin.ExtendedSyntax.Grin
+import Reducer.ExtendedSyntax.Base
+
 C.include "<math.h>"
 C.include "<stdio.h>"
 
@@ -37,7 +38,7 @@ primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (Text.unpack a)) >> p
 primLiteralPrint ctx ps x = error $ Prelude.unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
 
 
-evalPrimOp :: MonadIO m => Name -> [Val] -> [RTVal] -> m RTVal
+evalPrimOp :: MonadIO m => Name -> [Name] -> [RTVal] -> m RTVal
 evalPrimOp name params args = case name of
   "_prim_int_print"    -> primLiteralPrint "int"    params args
   "_prim_string_print" -> primLiteralPrint "string" params args
