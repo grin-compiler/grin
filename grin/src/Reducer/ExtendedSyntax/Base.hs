@@ -48,7 +48,7 @@ bindPat env !val bPat = case bPat of
       | tag == vtag
       , env' <- Map.insert var val env
       , newVars <- fold $ zipWith Map.singleton args vargs
-      -> env' <> newVars
+      -> newVars <> env'
     _ -> error $ "bindPat - illegal value for ConstTagNode: " ++ show val ++ " vs " ++ show (PP p)
 
 evalVar :: Env -> Name -> RTVal
@@ -61,4 +61,3 @@ evalVal env = \case
   ConstTagNode t a -> RT_ConstTagNode t $ map (evalVar env) a
   Unit             -> RT_Unit
   Undefined t      -> RT_Undefined
-  x -> error $ "evalVal: " ++ show x

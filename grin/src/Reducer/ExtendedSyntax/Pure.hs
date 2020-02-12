@@ -93,7 +93,7 @@ evalExp exts env = \case
         altNames      = [ name | Alt _ name _ <- alts ]
         scrutVal      = evalVar env scrut
         boundAltNames = fold $ map (`Map.singleton` scrutVal) altNames
-        env'          = env <> boundAltNames
+        env'          = boundAltNames <> env
     case scrutVal of
       RT_ConstTagNode t l ->
         let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) _ exp <- alts, a == t] ++ map ([],) defaultAlt ++ error (printf "evalExp - missing Case Node alternative for: %s" (prettyDebug t))
@@ -106,7 +106,7 @@ evalExp exts env = \case
                 [] -> {-default-} env'
                 _  -> go env' vars l)
               exp
-      RT_Lit l -> evalExp exts env $ head $ [exp | Alt (LitPat a) _ exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
+      RT_Lit l -> evalExp exts env' $ head $ [exp | Alt (LitPat a) _ exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp exts env exp
 
