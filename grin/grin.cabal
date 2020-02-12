@@ -129,6 +129,7 @@ library
     Reducer.PrimOps
     Reducer.Pure
     Reducer.ExtendedSyntax.LLVM.Base
+    Reducer.ExtendedSyntax.LLVM.InferType
     Test.Assertions
     Test.Check
     Test.Grammar
