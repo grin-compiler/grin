@@ -9,12 +9,9 @@ import qualified Data.Map as Map
 
 import Test.Hspec
 
-import Test.ExtendedSyntax.Assertions
 import Grin.ExtendedSyntax.TH
 import Grin.ExtendedSyntax.Syntax
-import Grin.ExtendedSyntax.TypeEnvDefs
 import Grin.ExtendedSyntax.PrimOpsPrelude
-import Grin.ExtendedSyntax.Pretty (KeyValueMap(..))
 
 runTests :: IO ()
 runTests = hspec spec
@@ -36,6 +33,30 @@ spec = do
               #False @ alt2 -> pure 0
         |]
         reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 7)
+
+    describe "as-patterns" $ do
+      it "pure" $ do
+        let program = withPrimPrelude [prog|
+          grinMain =
+            k0 <- pure 0
+            v0 <- pure (CInt k0)
+            (CInt k1) @ v1 <- pure v0
+            (CInt k2) @ _1 <- pure v1
+            pure k2
+        |]
+        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 0)
+
+      it "fetch" $ do
+        let program = withPrimPrelude [prog|
+          grinMain =
+            k0 <- pure 0
+            v0 <- pure (CInt k0)
+            p0 <- store v0
+            (CInt k1) @ v1 <- fetch p0
+            (CInt k2) @ _1 <- pure v1
+            pure k2
+        |]
+        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 0)
 
     describe "case expressions" $ do
       it "literal scrutinee" $ do
