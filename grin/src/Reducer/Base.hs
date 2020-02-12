@@ -1,13 +1,15 @@
 {-# LANGUAGE LambdaCase, TupleSections, BangPatterns #-}
 module Reducer.Base where
 
+import Data.IntMap.Strict (IntMap)
 import Data.Map (Map)
-import qualified Data.Map as Map
-
-import Text.PrettyPrint.ANSI.Leijen
-
 import Grin.Grin
 import Grin.Pretty
+import Text.PrettyPrint.ANSI.Leijen
+
+import qualified Data.Map as Map
+import qualified Data.IntMap.Strict as IntMap
+
 
 -- models cpu registers
 type Env = Map Name RTVal
@@ -34,6 +36,23 @@ instance Pretty RTVal where
     RT_Var name   -> pretty name
     RT_Loc a      -> keyword "loc" <+> int a
     RT_Undefined  -> keyword "undefined"
+
+data Statistics
+  = Statistics
+  { storeFetched :: !(IntMap Int)
+  , storeUpdated :: !(IntMap Int)
+  }
+
+emptyStatistics = Statistics mempty mempty
+
+instance Pretty Statistics where
+  pretty (Statistics f u) =
+    vsep
+      [ text "Fetched:"
+      , indent 4 $ prettyKeyValue $ IntMap.toList $ IntMap.filter (>0) f
+      , text "Updated:"
+      , indent 4 $ prettyKeyValue $ IntMap.toList $ IntMap.filter (>0) u
+      ]
 
 keyword :: String -> Doc
 keyword = yellow . text

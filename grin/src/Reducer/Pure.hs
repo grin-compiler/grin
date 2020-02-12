@@ -26,8 +26,8 @@ prettyDebug = show . plain . pretty
 -- models computer memory
 data StoreMap
   = StoreMap
-  { storeMap  :: IntMap RTVal
-  , storeSize :: !Int
+  { storeMap      :: !(IntMap RTVal)
+  , storeSize     :: !Int
   }
 
 emptyStore = StoreMap mempty 0
@@ -42,7 +42,7 @@ data Context = Context
   , ctxExternals  :: [External]
   , ctxEvalPlugin :: EvalPlugin
   }
-type GrinM a = ReaderT Context (StateT StoreMap IO) a
+type GrinM a = ReaderT Context (StateT (StoreMap, Statistics) IO) a
 
 lookupStore :: Int -> StoreMap -> RTVal
 lookupStore i s = IntMap.findWithDefault (error $ printf "missing location: %d" i) i $ storeMap s
@@ -71,20 +71,31 @@ evalSimpleExp env s = do
                     evalExp (go env vars args) body
     SReturn v -> pure $ evalVal env v
     SStore v -> do
-                l <- gets storeSize
+                l <- gets (storeSize . fst)
                 let v' = evalVal env v
-                modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
+                modify' (\(StoreMap m s, Statistics f u) ->
+                            ( StoreMap (IntMap.insert l v' m) (s+1)
+                            , Statistics (IntMap.insert l 0 f) (IntMap.insert l 0 u)
+                            ))
                 pure $ RT_Loc l
     SFetchI n index -> case lookupEnv n env of
-                RT_Loc l -> gets $ (selectNodeItem index . lookupStore l)
+                RT_Loc l -> do
+                  modify' (\(heap, Statistics f u) ->
+                              (heap, Statistics (IntMap.adjust (+1) l f) u))
+                  gets $ (selectNodeItem index . lookupStore l . fst)
                 x -> error $ printf "evalSimpleExp - Fetch expected location, got: %s" (prettyDebug x)
   --  | FetchI  Name Int -- fetch node component
     SUpdate n v -> do
                 let v' = evalVal env v
                 case lookupEnv n env of
-                  RT_Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
-                              False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
-                              True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> pure RT_Unit
+                  RT_Loc l -> do
+                    (StoreMap m _, _) <- get
+                    case IntMap.member l m of
+                      False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
+                      True -> do
+                        modify' (\(StoreMap m s, Statistics f u) ->
+                          (StoreMap (IntMap.insert l v' m) s, Statistics f (IntMap.adjust (+1) l u)))
+                        pure RT_Unit
                   x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (prettyDebug x)
     SBlock a -> evalExp env a
 
@@ -120,10 +131,13 @@ evalExp env = \case
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp env exp
 
-reduceFun :: EvalPlugin -> Program -> Name -> IO RTVal
-reduceFun evalPrimOp (Program exts l) n = evalStateT (runReaderT (evalExp mempty e) context) emptyStore where
-  context@(Context m _ _) = Context (Map.fromList [(n,d) | d@(Def n _ _) <- l]) exts evalPrimOp
-  e = case Map.lookup n m of
-        Nothing -> error $ printf "missing function: %s" n
-        Just (Def _ [] a) -> a
-        _ -> error $ printf "function %s has arguments" n
+reduceFun :: EvalPlugin -> Program -> Name -> IO (RTVal, Maybe Statistics)
+reduceFun evalPrimOp (Program exts l) n = do
+    (v, (_, s)) <- runStateT (runReaderT (evalExp mempty e) context) (emptyStore, emptyStatistics)
+    pure (v, Just s)
+  where
+    context@(Context m _ _) = Context (Map.fromList [(n,d) | d@(Def n _ _) <- l]) exts evalPrimOp
+    e = case Map.lookup n m of
+          Nothing -> error $ printf "missing function: %s" n
+          Just (Def _ [] a) -> a
+          _ -> error $ printf "function %s has arguments" n

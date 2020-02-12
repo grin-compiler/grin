@@ -121,7 +121,8 @@ pipelineOpts =
   <|> flg (Pass [Sharing Compile, Sharing Optimise, Sharing RunPure]) "sharing-opt" "Compiles, optimizes and runs the sharing analysis"
   <|> flg  (Pass [LVA Compile, CBy Compile, RunCByWithLVA]) "cby-with-lva" "Compiles the live variable and created-by analyses, then runs the created-by analysis using the LVA result"
   <|> flg DeadCodeElimination "dce" "Dead Code Elimination"
-  <|> flg PureEval "eval" "Evaluate the grin program (pure)"
+  <|> flg (PureEval False) "eval" "Evaluate the grin program (pure)"
+  <|> (PureEval <$> (option auto (mconcat [long "eval-with-statistics", help "Evaluate the grin program (pure) and render heap statistics."])))
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
   <|> (SaveExecutable False . Abs <$> (strOption (mconcat [short 'o', long "save-elf", help "Save an executable ELF"])))
