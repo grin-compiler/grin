@@ -122,6 +122,7 @@ library
     Reducer.ExtendedSyntax.IO
     Reducer.ExtendedSyntax.Pure
     Reducer.ExtendedSyntax.PrimOps
+    Reducer.ExtendedSyntax.LLVM.JIT
     Reducer.Base
     Reducer.IO
     Reducer.LLVM.Base
