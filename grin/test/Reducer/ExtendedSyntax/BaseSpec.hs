@@ -83,3 +83,18 @@ spec = do
           expected = KV $ initEnv <> Map.fromList [(varName, nodeRtVal), (argName, argRtVal)]
 
       result `sameAs` expected
+
+    it "interprets scoped as-patterns correctly" $ do
+      let varName    = "v"
+          argName    = "a"
+          tag        = Tag C "Float"
+          argRtVal   = RT_Lit $ LFloat 0
+          argRtVal'  = RT_Lit $ LFloat 42
+          nodeRtVal  = RT_ConstTagNode tag [argRtVal]
+          nodeRtVal' = RT_ConstTagNode tag [argRtVal']
+          initEnv    = Map.singleton "a" nodeRtVal
+
+      let result   = KV $ bindPat initEnv nodeRtVal' (AsPat tag [argName] varName)
+          expected = KV $ Map.fromList [(varName, nodeRtVal'), (argName, argRtVal')] <> initEnv
+
+      result `sameAs` expected
