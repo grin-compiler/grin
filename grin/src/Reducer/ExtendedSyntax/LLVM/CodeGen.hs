@@ -44,14 +44,14 @@ import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Short as BSShort
 
-import Grin.Grin as Grin
-import Grin.Pretty
-import Grin.TypeEnv hiding (Type, typeOfVal)
-import qualified Grin.TypeEnv as TypeEnv
-import Reducer.LLVM.Base
-import Reducer.LLVM.PrimOps
-import Reducer.LLVM.TypeGen
-import Reducer.LLVM.InferType
+import Grin.ExtendedSyntax.Grin as Grin
+import Grin.ExtendedSyntax.Pretty
+import Grin.ExtendedSyntax.TypeEnv hiding (Type, typeOfVal)
+import qualified Grin.ExtendedSyntax.TypeEnv as TypeEnv
+import Reducer.ExtendedSyntax.LLVM.Base
+import Reducer.ExtendedSyntax.LLVM.PrimOps
+import Reducer.ExtendedSyntax.LLVM.TypeGen
+import Reducer.ExtendedSyntax.LLVM.InferType
 
 
 
@@ -84,11 +84,19 @@ strName str = do
       envStringMap %= Map.insert str n
       pure n
 
+codeGenVar :: Grin.Name -> CG Operand
+codeGenVar var = do
+  Map.lookup var <$> gets _constantMap >>= \case
+    -- QUESTION: what is this?
+    Nothing -> do
+      ty <- getVarType var
+      pure $ LocalReference (cgLLVMType ty) (mkNameG var)
+    Just operand -> pure operand
+
 codeGenVal :: Val -> CG Operand
 codeGenVal val = case val of
-  -- TODO: var tag node support
   ConstTagNode tag args -> do
-    opArgs <- mapM codeGenVal args
+    opArgs <- mapM codeGenVar args
 
     valT <- typeOfVal val
     let T_NodeSet ns = valT
@@ -115,16 +123,9 @@ codeGenVal val = case val of
           }
     foldM build agg0 $ zip opArgs $ V.toList $ Map.findWithDefault undefined tag tuMapping
 
-  ValTag tag  -> ConstantOperand <$> getTagId tag
   Unit        -> pure unit
   Lit lit     -> ConstantOperand <$> codeGenLit lit
-  Var name    -> do
-                  Map.lookup name <$> gets _constantMap >>= \case
-                    -- QUESTION: what is this?
-                    Nothing -> do
-                      ty <- getVarType name
-                      pure $ LocalReference (cgLLVMType ty) (mkNameG name)
-                    Just operand  -> pure operand
+  Var name    -> codeGenVar name
 
   Undefined t -> pure . ConstantOperand . Undef . cgLLVMType. toCGType $ t
 
@@ -132,14 +133,12 @@ codeGenVal val = case val of
 
 getCPatConstant :: CPat -> CG Constant
 getCPatConstant = \case
-  TagPat  tag       -> getTagId tag
   LitPat  lit       -> codeGenLit lit
   NodePat tag args  -> getTagId tag
   DefaultPat        -> pure C.TokenNone
 
 getCPatName :: CPat -> Grin.Name
 getCPatName = \case
-  TagPat  tag   -> tagName tag
   LitPat  lit   -> case lit of
     LInt64 v  -> "int_" <> showTS v
     LWord64 v -> "word_" <> showTS v
@@ -213,37 +212,37 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
       O (toCGType ty) <$> codeGenVal val
     SBlockF a -> snd $ a
 
-    EBindF (leftExp, leftResultM) lpat (_,rightResultM) -> do
-      leftResult <- case (leftExp, lpat) of
+    EBindF (leftExp, leftResultM) bpat (_,rightResultM) -> do
+      leftResult <- case (leftExp, bpat) of
         -- FIXME: this is an ugly hack to compile SStore ; because it requires the binder name to for type lookup
-        (SStore val, Var name) -> do
+        -- QUESTION: can't we just use the type of var here? (varT <- (typeOfVar >=> toCGType) var)
+        (SStore var, VarPat name) -> do
           varT <- getVarType name
           nodeLocation <- codeGenIncreaseHeapPointer varT
-          codeGenStoreNode val nodeLocation -- TODO
+          codeGenStoreNode var nodeLocation -- TODO
           pure $ O locationCGType nodeLocation
 
+        -- TODO: AsPat
         -- normal case ; this should be the only case here normally
         _ -> leftResultM
-      case lpat of
-          VarTagNode{} -> error $ printf "TODO: codegen not implemented %s" (show $ pretty lpat)
-          ConstTagNode tag args -> do
+      case bpat of
+          -- TODO: asVarName
+          AsPat tag args asVarName -> do
             (cgTy,operand) <- getOperand ("node_" <> showTS (PP tag)) leftResult
             let mapping = tuMapping $ cgTaggedUnion cgTy
             -- bind node pattern variables
-            forM_ (zip (V.toList $ Map.findWithDefault undefined tag mapping) args) $ \(TUIndex{..}, arg) -> case arg of
-              Var argName -> do
-                let indices = [1 + tuStructIndex, tuArrayIndex]
-                emit [(mkNameG argName) := AST.ExtractValue {aggregate = operand, indices' = indices, metadata = []}]
-              _ -> pure ()
-          Var name -> do
+            forM_ (zip (V.toList $ Map.findWithDefault undefined tag mapping) args) $ \(TUIndex{..}, arg) -> do
+              let indices = [1 + tuStructIndex, tuArrayIndex]
+              emit [(mkNameG arg) := AST.ExtractValue {aggregate = operand, indices' = indices, metadata = []}]
+          VarPat name -> do
             getOperand name leftResult >>= addConstant name . snd
           _ -> getOperand "tmp" leftResult >> pure ()
       rightResultM
 
     SAppF name args -> do
       (retType, argTypes) <- getFunctionType name
-      operands <- mapM codeGenVal args
-      operandsTypes <- mapM (fmap toCGType . typeOfVal) args
+      operands <- mapM codeGenVar args
+      operandsTypes <- mapM (fmap toCGType . typeOfVar) args
       -- convert values to function argument type
       convertedArgs <- sequence $ zipWith3 codeGenValueConversion operandsTypes operands argTypes
       let findExternalName :: TypeEnv.Name -> Maybe External
@@ -267,16 +266,17 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
             , metadata            = []
             }
 
-    AltF _ a -> snd a
+    -- TODO: altName
+    AltF _ altName a -> snd a
 
-    ECaseF val alts -> typeOfVal val >>= \case -- distinct implementation for tagged unions and simple types
+    ECaseF scrut alts -> typeOfVar scrut >>= \case -- distinct implementation for tagged unions and simple types
       T_SimpleType{} -> do
-        opVal <- codeGenVal val
+        opVal <- codeGenVar scrut
         codeGenCase opVal alts $ \_ -> pure ()
 
       T_NodeSet nodeSet -> do
-        tuVal <- codeGenVal val
-        tagVal <- codeGenExtractTag tuVal
+        tuScrut <- codeGenVar scrut
+        tagVal <- codeGenExtractTag tuScrut
         let valTU = taggedUnion nodeSet
         codeGenCase tagVal alts $ \case
           NodePat tag args -> case Map.lookup tag $ tuMapping valTU of
@@ -286,7 +286,7 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
               -- bind cpat variables
               forM_ (zip args $ V.toList mapping) $ \(argName, TUIndex{..}) -> do
                 let indices = [1 + tuStructIndex, tuArrayIndex]
-                emit [(mkNameG argName) := AST.ExtractValue {aggregate = tuVal, indices' = indices, metadata = []}]
+                emit [(mkNameG argName) := AST.ExtractValue {aggregate = tuScrut, indices' = indices, metadata = []}]
           DefaultPat -> pure ()
           _ -> error "not implemented"
 
@@ -336,7 +336,7 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
       mapM registerPrimFunLib exts
       sequence_ (map snd defs) >> pure (O unitCGType unit)
 
-    SFetchIF name Nothing -> do
+    SFetchF name -> do
       -- load tag
       tagAddress <- codeGenVal $ Var name
       tagVal <- codeGenLocalVar "tag" tagLLVMType $ Load
@@ -368,25 +368,25 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
           }
         (resultCGType,) <$> copyTaggedUnion nodeVal nodeTU resultTU
 
-    SUpdateF name val -> do
+    SUpdateF name var -> do
       nodeLocation <- codeGenVal $ Var name
-      codeGenStoreNode val nodeLocation
+      codeGenStoreNode var nodeLocation
       pure $ O unitCGType unit
 
-    SStoreF val -> do
-      valTy <- typeOfVal val
-      nodeLocation <- codeGenIncreaseHeapPointer $ toCGType valTy
-      codeGenStoreNode val nodeLocation
+    SStoreF var -> do
+      varTy <- typeOfVar var
+      nodeLocation <- codeGenIncreaseHeapPointer $ toCGType varTy
+      codeGenStoreNode var nodeLocation
       pure $ O locationCGType nodeLocation
 
     expF -> error $ printf "missing codegen for:\n%s" (show $ pretty $ embed $ fmap fst expF)
 
-codeGenStoreNode :: Val -> Operand -> CG ()
-codeGenStoreNode val nodeLocation = do
-  tuVal <- codeGenVal val
+codeGenStoreNode :: Grin.Name -> Operand -> CG ()
+codeGenStoreNode var nodeLocation = do
+  tuVal <- codeGenVar var
   tagVal <- codeGenExtractTag tuVal
-  valT <- typeOfVal val
-  let T_NodeSet nodeSet = valT
+  varT <- typeOfVar var
+  let T_NodeSet nodeSet = varT
 
   let valueTU = taggedUnion nodeSet
   codeGenTagSwitch tagVal nodeSet $ \tag items -> do
@@ -418,13 +418,15 @@ codeGenCase opVal alts bindingGen = do
   curBlockName <- gets _currentBlockName
 
   let isDefault = \case
-        (Alt DefaultPat _, _) -> True
+        -- TODO: altName, does it even matter here?
+        (Alt DefaultPat _ altName, _) -> True
         _ -> False
       (defaultAlts, normalAlts) = List.partition isDefault alts
   when (length defaultAlts > 1) $ fail "multiple default patterns"
   let orderedAlts = defaultAlts ++ normalAlts
 
-  (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM orderedAlts $ \(Alt cpat _, altBody) -> do
+  -- TODO: altName, does it even matter here?
+  (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM orderedAlts $ \(Alt cpat _ _altName, altBody) -> do
     altCPatVal <- getCPatConstant cpat
     altEntryBlock <- uniqueName ("block." <> getCPatName cpat)
     activeBlock altEntryBlock
@@ -477,9 +479,8 @@ codeGenTagSwitch tagVal nodeSet tagAltGen | Map.size nodeSet > 1 = do
   curBlockName <- gets _currentBlockName
 
   (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM possibleNodes $ \(tag, items) -> do
-    let cpat = TagPat tag
-    altEntryBlock <- uniqueName ("block." <> getCPatName cpat)
-    altCPatVal <- getCPatConstant cpat
+    altEntryBlock <- uniqueName ("block." <> tagName tag)
+    altCPatVal <- getTagId tag
     activeBlock altEntryBlock
 
     (altCGTy, altOp) <- tagAltGen tag items
