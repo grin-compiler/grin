@@ -394,6 +394,7 @@ test-suite grin-test
                      Test.Hspec.PipelineExample
 
                      Reducer.ExtendedSyntax.BaseSpec
+                     Reducer.ExtendedSyntax.IOSpec
                      Reducer.ExtendedSyntax.PureSpec
   default-language:    Haskell2010
 
