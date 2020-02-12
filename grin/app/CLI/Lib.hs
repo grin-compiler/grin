@@ -199,7 +199,7 @@ options args = do
             , long "c-file"
             , help "The path for the runtime implementation in C"]))
       <*> switch (mconcat
-            [ long "continue-on-lint"
+            [ long "continue-on-failed-lint"
             , help "Do not fail on lint errors"
             ])
 
