@@ -119,6 +119,7 @@ library
     Pipeline.Optimizations
     Pipeline.Pipeline
     Reducer.ExtendedSyntax.Base
+    Reducer.ExtendedSyntax.IO
     Reducer.ExtendedSyntax.Pure
     Reducer.ExtendedSyntax.PrimOps
     Reducer.Base
