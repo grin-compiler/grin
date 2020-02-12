@@ -4,20 +4,17 @@ module Reducer.ExtendedSyntax.IO (reduceFun) where
 
 import Debug.Trace
 
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.IntMap.Strict (IntMap)
-import qualified Data.IntMap.Strict as IntMap
-import Control.Monad.State
-import Control.Monad.Reader
-
-import Data.Vector.Mutable as Vector
-import Data.IORef
 import Control.Monad.RWS.Strict hiding (Alt)
 
-import Reducer.Base
-import Reducer.PrimOps
-import Grin.Grin
+import Data.Foldable (fold)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Vector.Mutable as Vector
+import Data.IORef
+
+import Reducer.ExtendedSyntax.Base
+import Reducer.ExtendedSyntax.PrimOps
+import Grin.ExtendedSyntax.Grin
 
 -- models computer memory
 data IOStore = IOStore
@@ -70,27 +67,32 @@ pprint exp = trace (f exp) exp where
 evalExp :: [External] -> Env -> Exp -> GrinS RTVal
 evalExp exts env exp = case {-pprint-} exp of
   EBind op pat exp -> evalSimpleExp exts env op >>= \v -> evalExp exts (bindPat env v pat) exp
-  ECase v alts ->
-    let defaultAlts = [exp | Alt DefaultPat exp <- alts]
+  -- TODO:
+  ECase scrut alts ->
+    let defaultAlts = [exp | Alt DefaultPat _ exp <- alts]
         defaultAlt  = if Prelude.length defaultAlts > 1
                         then error "multiple default case alternative"
                         else Prelude.take 1 defaultAlts
-    in case evalVal env v of
+
+        altNames      = [ name | Alt _ name _ <- alts ]
+        scrutVal      = evalVar env scrut
+        boundAltNames = fold $ map (`Map.singleton` scrutVal) altNames
+        env'          = boundAltNames <> env
+    in case evalVar env scrut of
       RT_ConstTagNode t l ->
-                     let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) exp <- alts, a == t] ++ map ([],) defaultAlt ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
-                         go a [] [] = a
-                         go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                         go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
-                     in  evalExp exts (go env vars l) exp
-      RT_ValTag t -> evalExp exts env $ head $ [exp | Alt (TagPat a) exp <- alts, a == t] ++ defaultAlt ++ error ("evalExp - missing Case Tag alternative for: " ++ show t)
-      RT_Lit l    -> evalExp exts env $ head $ [exp | Alt (LitPat a) exp <- alts, a == l] ++ defaultAlt ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
+        let (vars,exp) = head $ [(b,exp) | Alt (NodePat a b) _ exp <- alts, a == t] ++ map ([],) defaultAlt ++ error ("evalExp - missing Case Node alternative for: " ++ show t)
+            go a [] [] = a
+            go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
+            go _ x y = error $ "invalid pattern and constructor: " ++ show (t,x,y)
+        in  evalExp exts (go env' vars l) exp
+      RT_Lit l    -> evalExp exts env' $ head $ [exp | Alt (LitPat a) _ exp <- alts, a == l] ++ defaultAlt ++ error ("evalExp - missing Case Lit alternative for: " ++ show l)
       x -> error $ "evalExp - invalid Case dispatch value: " ++ show x
   exp -> evalSimpleExp exts env exp
 
 evalSimpleExp :: [External] -> Env -> SimpleExp -> GrinS RTVal
 evalSimpleExp exts env = \case
   SApp n a -> do
-              let args = map (evalVal env) a
+              let args = map (evalVar env) a
                   go a [] [] = a
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                   go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
@@ -101,17 +103,17 @@ evalSimpleExp exts env = \case
                   evalExp exts (go env vars args) body
   SReturn v -> pure $ evalVal env v
   SStore v -> do
-              let v' = evalVal env v
+              let v' = evalVar env v
               l <- insertStore v'
               -- modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
               pure $ RT_Loc l
-  SFetchI n index -> case lookupEnv n env of
-              RT_Loc l -> selectNodeItem index <$> lookupStore l
+  SFetch ptr -> case evalVar env ptr of
+              RT_Loc l -> lookupStore l
               x -> error $ "evalSimpleExp - Fetch expected location, got: " ++ show x
 --  | FetchI  Name Int -- fetch node component
-  SUpdate n v -> do
-              let v' = evalVal env v
-              case lookupEnv n env of
+  SUpdate ptr var -> do
+              let v' = evalVar env var
+              case evalVar env ptr of
                 RT_Loc l -> updateStore l v' >> pure v'
                 x -> error $ "evalSimpleExp - Update expected location, got: " ++ show x
   SBlock a -> evalExp exts env a
