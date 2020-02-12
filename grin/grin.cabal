@@ -130,6 +130,7 @@ library
     Reducer.Pure
     Reducer.ExtendedSyntax.LLVM.Base
     Reducer.ExtendedSyntax.LLVM.InferType
+    Reducer.ExtendedSyntax.LLVM.TypeGen
     Test.Assertions
     Test.Check
     Test.Grammar
