@@ -773,19 +773,16 @@ lintGrin mPhaseName = do
   -- print errors
   errors <- use psErrors
   unless (Prelude.null errors) $ void $ do
-    failOnLintError <- view poFailOnLint
-    when failOnLintError $ void $ do
-      pipelineLog $ show $ prettyLintExp lintExp
-      pipelineStep $ HPT PrintResult
     case mPhaseName of
       Just phaseName  -> pipelineLog $ printf "error after %s:\n%s" phaseName (unlines errors)
       Nothing         -> pipelineLog $ printf "error:\n%s" (unlines errors)
     saveTransformationInfo "Lint" $ prettyLintExp lintExp
     mHptResult <- use psHPTResult
     saveTransformationInfo "HPT-Result" mHptResult
+    failOnLintError <- view poFailOnLint
     when failOnLintError $ do
       -- FIXME: reenable after: undefined support ; transformation to inject default alts for pattern match errors
-      -- liftIO $ die "illegal code"
+      liftIO $ die "illegal code"
       pure ()
 
 -- confluence testing

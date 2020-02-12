@@ -32,6 +32,7 @@ data Options = Options
   , optLoadBinary :: Bool
   , optSaveBinary :: Bool
   , optCFiles     :: [FilePath]
+  , optDontFailOnLint :: Bool
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -197,6 +198,10 @@ options args = do
             [ short 'C'
             , long "c-file"
             , help "The path for the runtime implementation in C"]))
+      <*> switch (mconcat
+            [ long "continue-on-failed-lint"
+            , help "Do not fail on lint errors"
+            ])
 
 mainWithArgs :: [String] -> IO ()
 mainWithArgs args = do
@@ -210,6 +215,7 @@ mainWithArgs args = do
     loadBinary
     saveBinary
     cFiles
+    continueOnLint
     <- options args
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
@@ -221,7 +227,7 @@ mainWithArgs args = do
         pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
     let opts = defaultOpts
                 { _poOutputDir = outputDir
-                , _poFailOnLint = True
+                , _poFailOnLint = not continueOnLint
                 , _poLogging = not quiet
                 , _poSaveBinary = saveBinary
                 , _poCFiles = cFiles

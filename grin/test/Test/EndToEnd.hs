@@ -88,6 +88,7 @@ evaluateEndToEndTest input params actionWith progressCallback = do
         let compArgs =
               [ "--output-dir=.end-to-end-test"
               , "--quiet"
+              , "--continue-on-failed-lint"
               , "--save-binary-intermed"
               , "--optimize"
               , "--save-elf=end-to-end-test.bin"
@@ -143,6 +144,7 @@ instance BisectM IO where
           , "--quiet"
           , "--load-binary"
           , "--eval"
+          , "--continue-on-failed-lint"
           ]
     (grinOut, ()) <- redirectStdout $ mainWithArgs compArgs
     pure $ grinOut == exp
