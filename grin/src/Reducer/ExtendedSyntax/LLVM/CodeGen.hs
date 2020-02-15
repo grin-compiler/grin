@@ -213,22 +213,22 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
     SBlockF a -> snd $ a
 
     EBindF (leftExp, leftResultM) bpat (_,rightResultM) -> do
-      leftResult <- case (leftExp, bpat) of
+      leftResult <- case leftExp of
         -- FIXME: this is an ugly hack to compile SStore ; because it requires the binder name to for type lookup
         -- QUESTION: can't we just use the type of var here? (varT <- (typeOfVar >=> toCGType) var)
-        (SStore var, VarPat name) -> do
-          varT <- getVarType name
+        SStore var -> do
+          let varName = _bPatVar bpat
+          varT <- getVarType varName
           nodeLocation <- codeGenIncreaseHeapPointer varT
           codeGenStoreNode var nodeLocation -- TODO
           pure $ O locationCGType nodeLocation
 
-        -- TODO: AsPat
         -- normal case ; this should be the only case here normally
         _ -> leftResultM
       case bpat of
-          -- TODO: asVarName
           AsPat tag args asVarName -> do
             (cgTy,operand) <- getOperand ("node_" <> showTS (PP tag)) leftResult
+            addConstant asVarName operand
             let mapping = tuMapping $ cgTaggedUnion cgTy
             -- bind node pattern variables
             forM_ (zip (V.toList $ Map.findWithDefault undefined tag mapping) args) $ \(TUIndex{..}, arg) -> do
@@ -266,8 +266,7 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
             , metadata            = []
             }
 
-    -- TODO: altName
-    AltF _ altName a -> snd a
+    AltF _ _ a -> snd a
 
     ECaseF scrut alts -> typeOfVar scrut >>= \case -- distinct implementation for tagged unions and simple types
       T_SimpleType{} -> do
@@ -418,14 +417,15 @@ codeGenCase opVal alts bindingGen = do
   curBlockName <- gets _currentBlockName
 
   let isDefault = \case
-        -- TODO: altName, does it even matter here?
-        (Alt DefaultPat _ altName, _) -> True
+        (Alt DefaultPat _ _, _) -> True
         _ -> False
       (defaultAlts, normalAlts) = List.partition isDefault alts
+      altNames = [ altName | Alt _ altName _ <- map fst alts ]
   when (length defaultAlts > 1) $ fail "multiple default patterns"
   let orderedAlts = defaultAlts ++ normalAlts
 
-  -- TODO: altName, does it even matter here?
+  mapM_ (flip addConstant opVal) altNames
+
   (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM orderedAlts $ \(Alt cpat _ _altName, altBody) -> do
     altCPatVal <- getCPatConstant cpat
     altEntryBlock <- uniqueName ("block." <> getCPatName cpat)
