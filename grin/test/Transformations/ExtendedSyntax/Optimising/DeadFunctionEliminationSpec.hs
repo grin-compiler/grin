@@ -17,7 +17,7 @@ spec = do
     let before = [prog|
         grinMain =
           x <- pure 1
-          funA x
+          _1 <- funA x
           funB x
 
         funA a = pure ()
@@ -30,7 +30,7 @@ spec = do
     let after = [prog|
         grinMain =
           x <- pure 1
-          funA x
+          _1 <- funA x
           funB x
 
         funA a = pure ()
@@ -65,7 +65,7 @@ spec = do
     let before = [prog|
         grinMain =
           x <- pure 1
-          funA x
+          _1 <- funA x
           funB x
 
         deadFunA d = pure d
@@ -74,7 +74,7 @@ spec = do
     let after = [prog|
         grinMain =
           x <- pure 1
-          funA x
+          _1 <- funA x
           funB x
       |]
     deadFunctionElimination before `sameAs` after
