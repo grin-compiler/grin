@@ -79,13 +79,68 @@ spec = describe "Sharing analysis" $ do
     let code = [prog|
           main =
             one <- pure (COne)
-            l0 <- store one
+            l0  <- store one
             two <- pure (CTwo l0)
-            l1 <- store two
-            (CTwo l2)@_1 <- fetch l1
+            l1  <- store two
+            (CTwo l2) @ _1 <- fetch l1
             _2 <- fetch l2
             _3 <- fetch l2
             pure ()
+        |]
+    let result = calcSharedLocations code
+    let expected = Set.fromList [0]
+    result `shouldBe` expected
+
+  it "finds location inside shared node" $ do
+    let code = [prog|
+          grinMain =
+            n1 <- pure (COne)
+            n2 <- pure (CTwo)
+            p1 <- store n1
+            n3 <- pure (CPtr p1)
+            (CPtr p2) @ _1 <- pure n3
+            (CPtr p3) @ _2 <- pure n3
+            v1 <- fetch p2
+            _3 <- update p2 n2
+            v2 <- fetch p3
+            pure ()
+        |]
+    let result = calcSharedLocations code
+    let expected = Set.fromList [0]
+    result `shouldBe` expected
+
+  it "finds locations shared via as-pattern aliases" $ do
+    let code = [prog|
+          grinMain =
+            n1 <- pure (COne)
+            n2 <- pure (CTwo)
+            p1 <- store n1
+            n3 <- pure (CPtr p1)
+            (CPtr p2) @ n4 <- pure n3
+            (CPtr p3) @ _1 <- pure n4
+            v1 <- fetch p2
+            _2 <- update p2 n2
+            v2 <- fetch p3
+            pure ()
+        |]
+    let result = calcSharedLocations code
+    let expected = Set.fromList [0]
+    result `shouldBe` expected
+
+  it "shared case scrutinee" $ do
+    let code = [prog|
+          grinMain =
+            n1 <- pure (COne)
+            n2 <- pure (CTwo)
+            p1 <- store n1
+            n3 <- pure (CPtr p1)
+            case n3 of
+              (CPtr p2) @ n4 ->
+                (CPtr p3) @ _1 <- pure n4
+                v1 <- fetch p2
+                _2 <- update p2 n2
+                v2 <- fetch p3
+                pure ()
         |]
     let result = calcSharedLocations code
     let expected = Set.fromList [0]
