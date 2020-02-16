@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableElimination where
+module Transformations.ExtendedSyntax.Optimising.DeadVariableElimination where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -19,9 +19,9 @@ import Transformations.ExtendedSyntax.Util
 
 
 -- TODO: consult EffectMap for side-effects
--- QUESTION: should SDVE use any interprocedural information?
-simpleDeadVariableElimination :: EffectMap -> Exp -> Exp
-simpleDeadVariableElimination effMap e = cata folder e ^. _1 where
+-- QUESTION: should DVE use any interprocedural information?
+deadVariableElimination :: EffectMap -> Exp -> Exp
+deadVariableElimination effMap e = cata folder e ^. _1 where
 
   effectfulExternals :: Set Name
   effectfulExternals = case e of

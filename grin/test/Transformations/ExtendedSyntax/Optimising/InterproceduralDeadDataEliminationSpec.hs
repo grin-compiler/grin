@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
-module Transformations.ExtendedSyntax.Optimising.DeadDataEliminationSpec where
+module Transformations.ExtendedSyntax.Optimising.InterproceduralDeadDataEliminationSpec where
 
-import Transformations.ExtendedSyntax.Optimising.DeadDataElimination
+import Transformations.ExtendedSyntax.Optimising.InterproceduralDeadDataElimination
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -25,7 +25,7 @@ runTests = hspec spec
 
 dde :: Exp -> Exp
 dde e = fst $ either error id $
-  deadDataElimination (calcLiveness e) (calcCByResult e) (inferTypeEnv e) e
+  interproceduralDeadDataElimination (calcLiveness e) (calcCByResult e) (inferTypeEnv e) e
 
 spec :: Spec
 spec = do
