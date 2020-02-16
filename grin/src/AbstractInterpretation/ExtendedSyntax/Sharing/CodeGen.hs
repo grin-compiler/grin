@@ -82,23 +82,32 @@ calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>
     seen v = Map.singleton v 1
 
 calcSharedLocationsPure :: TypeEnv -> Exp -> Set Loc
-calcSharedLocationsPure TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) origShVarLocs where
-  nonLinearVars = calcNonLinearNonUpdateLocVariables e
-  shVarTypes    = Set.mapMaybe (`Map.lookup` _variable) $ nonLinearVars
-  origShVarLocs = onlyLocations . onlySimpleTys $ shVarTypes
+calcSharedLocationsPure TypeEnv{..} exp = converge (==) (foldMap fetchLoc) rootLocs where
+  rootLocs :: Set Loc
+  rootLocs = Set.fromList
+           . concatMap reachableLocs
+           . toList
+           . calcNonLinearNonUpdateLocVariables
+           $ exp
 
-  onlySimpleTys :: Set Type -> Set SimpleType
-  onlySimpleTys tys = Set.fromList [ sty | T_SimpleType sty <- Set.toList tys ]
+  fetchLoc :: Loc -> Set Loc
+  fetchLoc i = Set.fromList $ i : locsFromNodeSet (_location ! i)
 
-  onlyLocations :: Set SimpleType -> Set Loc
-  onlyLocations stys = Set.fromList $ concat [ ls | T_Location ls <- Set.toList stys ]
+  -- collects all the locations that might be reached directly from a given variable
+  reachableLocs :: Name -> [Loc]
+  reachableLocs var = locsFromTy $ fromJust $ Map.lookup var _variable
 
-  fetchLocs :: Loc -> Set Loc
-  fetchLocs l = onlyLocations . fieldsFromNodeSet . fromMaybe (error msg) . (Vec.!?) _location $ l
-    where msg = "Sharing: Invalid heap index: " ++ show l
+  locsFromSTy :: SimpleType -> [Loc]
+  locsFromSTy sty = (sty ^. locations)
 
-  fieldsFromNodeSet :: NodeSet -> Set SimpleType
-  fieldsFromNodeSet = Set.fromList . concatMap Vec.toList . Map.elems
+  locsFromNodeSet :: NodeSet -> [Loc]
+  locsFromNodeSet = concatMap locsFromSTy
+                  . concatMap toList
+                  . Map.elems
+
+  locsFromTy :: Type -> [Loc]
+  locsFromTy (T_SimpleType sty) = locsFromSTy sty
+  locsFromTy (T_NodeSet ns)     = locsFromNodeSet ns
 
 
 sharingCodeGen :: Reg -> Exp -> CG ()
