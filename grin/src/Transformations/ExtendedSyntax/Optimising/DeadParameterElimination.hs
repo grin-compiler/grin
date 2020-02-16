@@ -1,53 +1,78 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 module Transformations.ExtendedSyntax.Optimising.DeadParameterElimination where
 
 import Data.Set (Set)
 import Data.Map (Map)
-import Data.Vector (Vector)
-
+import Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import qualified Data.Vector as Vec
 
-import Data.List
-
-import qualified Data.Foldable
 import Data.Functor.Foldable as Foldable
-
-import Control.Monad.Trans.Except
+import qualified Data.Foldable
 
 import Grin.ExtendedSyntax.Grin
-import Grin.ExtendedSyntax.TypeEnvDefs
 import Transformations.ExtendedSyntax.Util
-import AbstractInterpretation.ExtendedSyntax.LiveVariable.Result as LVA
 
-type Trf = Except String
+collectUsedNames :: Exp -> Set Name
+collectUsedNames = cata folder where
+  folder exp = foldNameUseExpF Set.singleton exp `mappend` Data.Foldable.fold exp
 
-runTrf :: Trf a -> Either String a
-runTrf = runExcept
+deadParameterElimination :: Program -> Program
+deadParameterElimination prog@(Program exts defs) = ana builder prog where
+  deadArgMap :: Map Name (Set Int)
+  deadArgMap = mconcat $ mapMaybe deadArgsInDef defs
 
--- P and F nodes are handled by Dead Data Elimination
-deadParameterElimination :: LVAResult -> TypeEnv -> Exp -> Either String Exp
-deadParameterElimination lvaResult tyEnv = runTrf . cataM alg where
-  alg :: ExpF Exp -> Trf Exp
-  alg = \case
-    DefF f args body -> do
-      liveArgs <- onlyLiveArgs f args
-      let deletedArgs = args \\ liveArgs
-      body' <- bindToUndefineds tyEnv body deletedArgs
-      return $ Def f liveArgs body'
-    SAppF f args -> do
-      liveArgs <- onlyLiveArgs f args
-      return $ SApp f liveArgs
-    e -> pure . embed $ e
+  deadArgsInDef :: Def -> Maybe (Map Name (Set Int))
+  deadArgsInDef def@(Def name args _)
+    | usedNames       <- collectUsedNames def
+    , deadArgIndices  <- Set.fromList . map fst . filter (flip Set.notMember usedNames . snd) $ zip [0..] args
+    = if null deadArgIndices
+        then Nothing
+        else Just $ Map.singleton name deadArgIndices
 
-  onlyLiveArgs :: Name -> [a] -> Trf [a]
-  onlyLiveArgs f args = do
-    argsLv <- lookupArgLivenessM f lvaResult
-    return $ zipFilter args (Vec.toList argsLv)
+  removeDead :: Set Int -> [a] -> [a]
+  removeDead dead args = [arg | (idx, arg) <- zip [0..] args, Set.notMember idx dead]
 
-lookupArgLivenessM :: Name -> LVAResult -> Trf (Vector Bool)
-lookupArgLivenessM f LVAResult{..} = do
-  let funNotFound = "Function " ++ show f ++ " was not found in liveness analysis result"
-  (_,argLv) <- lookupExcept funNotFound f _functionLv
-  return $ Vec.map isLive argLv
+  builder :: Exp -> ExpF Exp
+  builder e = case mapValsExp pruneVal e of
+    Def name args body
+      | Just dead <- Map.lookup name deadArgMap
+      -> DefF name (removeDead dead args) body
+
+    SApp name args
+      | Just dead <- Map.lookup name deadArgMap
+      -> SAppF name (removeDead dead args)
+
+    -- TODO: change this
+    EBind leftExp (AsPat tag args var) rightExp
+      | Tag kind tagName <- tag
+      , isPFtag kind
+      , Just deadIxs <- Map.lookup tagName deadArgMap
+      -> EBindF leftExp (AsPat tag (removeDead deadIxs args) var) rightExp
+
+    Alt cpat@NodePat{} altName body
+      -> AltF (pruneCPat cpat) altName body
+
+    exp -> project exp
+
+  pruneVal :: Val -> Val
+  pruneVal = \case
+    ConstTagNode tag@(Tag kind name) args
+      | isPFtag kind
+      , Just dead <- Map.lookup name deadArgMap
+      -> ConstTagNode tag (removeDead dead args)
+    val -> val
+
+  pruneCPat :: CPat -> CPat
+  pruneCPat = \case
+    NodePat tag@(Tag kind name) vars
+      | isPFtag kind
+      , Just deadIxs <- Map.lookup name deadArgMap
+      -> NodePat tag (removeDead deadIxs vars)
+    cpat -> cpat
+
+  isPFtag :: TagType -> Bool
+  isPFtag = \case
+    F{} -> True
+    P{} -> True
+    _   -> False

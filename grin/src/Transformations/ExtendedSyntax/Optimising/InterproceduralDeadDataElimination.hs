@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, ViewPatterns #-}
-module Transformations.ExtendedSyntax.Optimising.DeadDataElimination where
+module Transformations.ExtendedSyntax.Optimising.InterproceduralDeadDataElimination where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -56,8 +56,8 @@ getTag t@(Tag ty n) lv = do
       return t'
 
 
-deadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either String (Exp, ExpChanges)
-deadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
+interproceduralDeadDataElimination :: LVAResult -> CByResult -> TypeEnv ->  Exp -> Either String (Exp, ExpChanges)
+interproceduralDeadDataElimination lvaResult cbyResult tyEnv e = execTrf e $
   ddeFromProducers lvaResult cbyResult tyEnv e >>= ddeFromConsumers cbyResult tyEnv
 
 

@@ -1,147 +1,107 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Transformations.ExtendedSyntax.Optimising.DeadFunctionEliminationSpec where
 
-import Transformations.ExtendedSyntax.Optimising.DeadFunctionElimination (deadFunctionElimination)
-
-import Data.Either (fromRight)
+import Transformations.ExtendedSyntax.Optimising.DeadFunctionElimination
 
 import Test.Hspec
-
-import Test.ExtendedSyntax.Assertions
 import Grin.ExtendedSyntax.TH
-import Grin.ExtendedSyntax.Grin
-import Grin.ExtendedSyntax.PrimOpsPrelude (withPrimPrelude)
-import Grin.ExtendedSyntax.TypeCheck (inferTypeEnv)
-import AbstractInterpretation.ExtendedSyntax.LiveVariableSpec (calcLiveness)
+import Test.ExtendedSyntax.Assertions
 
 
 runTests :: IO ()
 runTests = hspec spec
 
-dfe :: Exp -> Exp
-dfe e = either error id $
-  deadFunctionElimination (calcLiveness e) (inferTypeEnv e) e
-
 spec :: Spec
 spec = do
-  describe "Dead Function Elimination" $ do
+  it "simple" $ do
+    let before = [prog|
+        grinMain =
+          x <- pure 1
+          _1 <- funA x
+          funB x
 
-    it "app_side_effect_1" $ do
-      let before = [prog|
-            grinMain =
-              k0 <- pure 0
-              n0 <- pure (CInt k0)
-              p0 <- store n0
-              y0 <- f p0
-              y1 <- fetch p0
-              pure y1
+        funA a = pure ()
+        funB b = funC b
+        funC c = pure ()
 
-            f p =
-              k1 <- pure 1
-              n1 <- pure (CInt k1)
-              _1 <- update p n1
-              pure 0
-          |]
+        deadFunA d = pure d
+        deadFunB e = deadFunA e
+      |]
+    let after = [prog|
+        grinMain =
+          x <- pure 1
+          _1 <- funA x
+          funB x
 
-      let after = [prog|
-            grinMain =
-              k0 <- pure 0
-              n0 <- pure (CInt k0)
-              p0 <- store n0
-              y0 <- f p0
-              y1 <- fetch p0
-              pure y1
+        funA a = pure ()
+        funB b = funC b
+        funC c = pure ()
+      |]
+    deadFunctionElimination before `sameAs` after
 
-            f p =
-              k1 <- pure 1
-              n1 <- pure (CInt k1)
-              _1 <- update p n1
-              pure 0
-          |]
-      dfe before `sameAs` after
+  it "reference direction" $ do
+    let before = [prog|
+        grinMain =
+          x <- pure 1
+          funA x
 
-    it "mutually_recursive" $ do
-      let before = [prog|
-            grinMain = pure 0
-            f x = g x
-            g y = f y
-          |]
+        funA b = funB b
+        funB c = pure ()
 
-      let after = [prog|
-            grinMain = pure 0
-          |]
-      dfe before `sameAs` after
+        deadFunA d = funA d
+        deadFunB e = deadFunA e
+      |]
+    let after = [prog|
+        grinMain =
+          x <- pure 1
+          funA x
 
-    it "replace_node" $ do
-      let before = [prog|
-            grinMain =
-              k0 <- pure 0
-              n0 <- f k0
-              pure 0
+        funA b = funB b
+        funB c = pure ()
+      |]
+    deadFunctionElimination before `sameAs` after
 
-            f x =
-              k1 <- pure 1
-              n1 <- pure (CInt k1)
-              p <- store n1
-              pure (CNode p)
-          |]
+  it "ignore unknown function" $ do
+    let before = [prog|
+        grinMain =
+          x <- pure 1
+          _1 <- funA x
+          funB x
 
-      let after = [prog|
-            grinMain =
-              k0 <- pure 0
-              n0 <- pure (#undefined :: {CNode[#ptr]})
-              pure 0
-          |]
-      dfe before `sameAs` after
+        deadFunA d = pure d
+        deadFunB e = deadFunA e
+      |]
+    let after = [prog|
+        grinMain =
+          x <- pure 1
+          _1 <- funA x
+          funB x
+      |]
+    deadFunctionElimination before `sameAs` after
 
-    it "replace_simple_type" $ do
-      let before = [prog|
-            grinMain =
-              k0 <- pure 0
-              y0 <- f k0
-              pure 0
+  it "dead clique" $ do
+    let before = [prog|
+        grinMain =
+          x <- pure 1
+          funA x
 
-            f x = pure x
-          |]
+        funA b = funB b
+        funB c = pure ()
 
-      let after = [prog|
-            grinMain =
-              k0 <- pure 0
-              y0 <- pure (#undefined :: T_Int64)
-              pure 0
-          |]
-      dfe before `sameAs` after
+        deadFunA d =
+          v1 <- funA d
+          deadFunB d
 
-    it "simple" $ do
-      let before = [prog|
-            grinMain = pure 0
+        deadFunB e =
+          v2 <- funA d
+          deadFunA e
+      |]
+    let after = [prog|
+        grinMain =
+          x <- pure 1
+          funA x
 
-            f x = pure x
-          |]
-
-      let after = [prog|
-            grinMain = pure 0
-          |]
-      dfe before `sameAs` after
-
-    it "true_side_effect_min" $ do
-      let before = withPrimPrelude [prog|
-            grinMain =
-              result_main <- Main.main1 $
-              pure ()
-
-            Main.main1 =
-              k0 <- pure 0
-              _prim_int_print $ k0
-          |]
-
-      let after = withPrimPrelude [prog|
-            grinMain =
-              result_main <- Main.main1 $
-              pure ()
-
-            Main.main1 =
-              k0 <- pure 0
-              _prim_int_print $ k0
-          |]
-      dfe before `sameAs` after
+        funA b = funB b
+        funB c = pure ()
+      |]
+    deadFunctionElimination before `sameAs` after
