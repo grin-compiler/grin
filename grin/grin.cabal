@@ -117,6 +117,7 @@ library
     Grin.ExtendedSyntax.GADT
     Pipeline.ExtendedSyntax.Eval
     Pipeline.ExtendedSyntax.Optimizations
+    Pipeline.ExtendedSyntax.Pipeline
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
