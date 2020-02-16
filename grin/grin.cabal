@@ -115,6 +115,7 @@ library
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
     Grin.ExtendedSyntax.GADT
+    Pipeline.ExtendedSyntax.Eval
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
