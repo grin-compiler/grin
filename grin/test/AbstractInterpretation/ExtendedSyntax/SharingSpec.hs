@@ -24,7 +24,7 @@ spec :: Spec
 spec = describe "Sharing analysis" $ do
   it "has not changed for sum simple." $ do
     let result = calcSharedLocations testProgram
-    let expected = Set.fromList [0,1,4,5]
+    let expected = Set.fromList [0,1,2,4,5]
     result `shouldBe` expected
 
   it "finds non-transitive shared locations" $ do
