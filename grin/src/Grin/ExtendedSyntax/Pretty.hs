@@ -15,6 +15,7 @@ module Grin.ExtendedSyntax.Pretty
   , showName
   , showWidth
   , showWide
+  , KeyValueMap(..)
   ) where
 
 import Data.Char
@@ -227,3 +228,9 @@ prettyFunction (name, (ret, args)) = pretty name <> align (encloseSep (text " ::
 
 prettyLocSet :: Set Loc -> Doc
 prettyLocSet = semiBraces . map (cyan . int) . Set.toList
+
+newtype KeyValueMap k v = KV (Map k v)
+  deriving (Eq, Ord, Show)
+
+instance (Pretty k, Pretty v) => Pretty (KeyValueMap k v) where
+  pretty (KV m) = prettyKeyValue $ Map.toList m
