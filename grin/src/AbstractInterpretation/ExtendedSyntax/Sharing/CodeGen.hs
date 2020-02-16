@@ -13,8 +13,8 @@ import qualified Data.Vector as Vec
 import qualified Data.Set.Extra as Set
 
 import Data.Maybe
-import Data.Foldable
-import Data.Functor.Foldable
+import Data.Foldable (fold, toList)
+import Data.Functor.Foldable (cata)
 
 import Lens.Micro.Platform
 
@@ -54,6 +54,15 @@ data SharingMapping = SharingMapping
 
 concat <$> mapM makeLenses [''SharingMapping]
 
+newtype OccurenceMap = OM { toRegularMap :: Map Name Int }
+  deriving (Eq, Ord, Show)
+
+instance Semigroup OccurenceMap where
+  (<>) (OM lhs) (OM rhs) = OM $ Map.unionWith (+) lhs rhs
+
+instance Monoid OccurenceMap where
+  mempty = OM mempty
+
 -- | Calc non linear variables, ignores variables that are used in update locations
 -- This is an important difference, if a variable would become non-linear due to
 -- being subject to an update, that would make the sharing analysis incorrect.
@@ -61,25 +70,32 @@ concat <$> mapM makeLenses [''SharingMapping]
 -- linear if it is subject to an update more than once. But that could not happen, thus the only
 -- introdcution of new updates comes from inlining eval.
 calcNonLinearNonUpdateLocVariables :: Exp -> Set Name
-calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
-  where
-    union = Map.unionsWith (+)
+calcNonLinearNonUpdateLocVariables = Map.keysSet . Map.filter (1<) . toRegularMap . cata alg where
+  alg :: ExpF OccurenceMap -> OccurenceMap
+  alg = \case
+    ECaseF scrut alts -> seen scrut <> mconcat alts
+    SAppF _f args     -> foldMap seen args
+    SStoreF var       -> seen var
+    SFetchF var       -> seen var
+    -- TODO: is var need to be counted here?
+    SUpdateF _ptr var -> seen var
+    SReturnF val      -> case val of
+      ConstTagNode _tag args -> foldMap seen args
+      Var v -> seen v
+      _ -> mempty
 
-    collect :: ExpF (Map Name Int) -> Map Name Int
-    collect = \case
-      ECaseF scrut alts -> union (seen scrut : alts)
-      SStoreF var -> seen var
-      SFetchF var -> seen var
-      SUpdateF p var -> seen var
-      SReturnF val -> case val of
-        Var v               -> seen v
-        ConstTagNode _ args -> union $ map seen args
-        _                   -> mempty
-      SAppF _ ps -> union $ fmap seen ps
-      rest -> Data.Foldable.foldr (Map.unionWith (+)) mempty rest
+    {- TODO: This is a hotfix for now. As-patterns, and case alternative names
+       introduce aliases. Ideally, these aliases would be connected to their origin
+       and tracked by the analysis. For now, if the alias is used anywhere,
+       we will mark it as non-linear. This is a safe approximation.
+    -}
+    EBindF lhs (AsPat _tag _args asVarName) rhs -> seen asVarName <> lhs <> rhs
+    AltF _pat altName altBody -> seen altName <> altBody
 
-    seen :: Name -> Map Name Int
-    seen v = Map.singleton v 1
+    exp -> fold exp
+
+  seen :: Name -> OccurenceMap
+  seen x = OM $ Map.singleton x 1
 
 calcSharedLocationsPure :: TypeEnv -> Exp -> Set Loc
 calcSharedLocationsPure TypeEnv{..} exp = converge (==) (foldMap fetchLoc) rootLocs where
