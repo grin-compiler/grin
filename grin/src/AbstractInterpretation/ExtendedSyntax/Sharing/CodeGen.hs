@@ -5,7 +5,7 @@ import Control.Monad.State
 
 import Data.Set (Set)
 import Data.Map (Map)
-import Data.Vector (Vector)
+import Data.Vector (Vector, (!))
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.Vector as Vec
@@ -118,18 +118,21 @@ sharingCodeGen shReg e = do
     -- this will copy node field info as well, but we will only use "simpleType" info
     emit $ copyStructureWithPtrInfo nonLinearVarReg shReg
 
-  mergedFields    <- newReg
-  pointsToNodeReg <- newReg
+  -- Collect all potential pointers in shared node fields
+  -- into the simple type part of the register.
+  -- This will collect non-location simple types as well, but we will ignore them.
+  emit IR.Project
+    { srcReg      = shReg
+    , srcSelector = IR.AllFields
+    , dstReg      = shReg
+    }
+  -- Fetch all the values from the shared locations
+  -- into the sime type part of the register.
+  -- This will collect non-location simple types as well, but we will ignore them.
   emit IR.Fetch
     { addressReg = shReg
-    , dstReg     = pointsToNodeReg
+    , dstReg     = shReg
     }
-  emit IR.Project
-    { srcReg      = pointsToNodeReg
-    , srcSelector = IR.AllFields
-    , dstReg      = mergedFields
-    }
-  emit $ copyStructureWithPtrInfo mergedFields shReg
   where
     nonLinearVars = calcNonLinearNonUpdateLocVariables e
 
