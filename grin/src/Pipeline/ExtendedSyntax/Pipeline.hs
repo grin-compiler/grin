@@ -12,7 +12,7 @@ module Pipeline.ExtendedSyntax.Pipeline
   , pattern PrintGrin
   , pattern SimplePrintGrin
   , pattern FullPrintGrin
-  , pattern DeadCodeElimination
+  , pattern InterproceduralDeadCodeElimination
   , pipeline
   , optimize
   , optimizeWith
@@ -73,6 +73,8 @@ import qualified AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGenBas
 import qualified AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen              as Sharing
 import qualified Reducer.ExtendedSyntax.LLVM.CodeGen as CGLLVM
 import qualified Reducer.ExtendedSyntax.LLVM.JIT as JITLLVM
+import Grin.ExtendedSyntax.Nametable as Nametable
+
 import System.Directory
 import qualified System.Process
 import Data.Bifunctor
@@ -106,7 +108,6 @@ import Data.Functor.Infix
 import Data.Maybe (isNothing)
 import System.IO (BufferMode(..), hSetBuffering, stdout)
 import Data.Binary as Binary
-import Grin.Nametable as Nametable
 import qualified Data.ByteString.Lazy as LBS
 
 
@@ -296,8 +297,9 @@ _ExpChanged _ rest       = pure rest
 data TransformationFunc
   = Plain          (Exp -> (Exp, ExpChanges))
   | WithTypeEnv    (TypeEnv -> Exp -> Either String (Exp, ExpChanges))
+  | WithEff        (EffectMap -> Exp -> (Exp, ExpChanges))
+  | WithShr        (Sharing.SharingResult -> Exp -> (Exp, ExpChanges))
   | WithTypeEnvEff (TypeEnv -> EffectMap -> Exp -> (Exp, ExpChanges))
-  | WithTypeEnvShr (Sharing.SharingResult -> TypeEnv -> Exp -> (Exp, ExpChanges))
   | WithLVA        (LVA.LVAResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
   | WithLVACBy     (LVA.LVAResult -> CBy.CByResult -> TypeEnv -> Exp -> Either String (Exp, ExpChanges))
 
@@ -316,7 +318,7 @@ transformationFunc n = \case
   ConstantPropagation             -> Plain (noNewNames . constantPropagation) -- TODO
   DeadFunctionElimination         -> Plain (noNewNames . deadFunctionElimination)
   DeadParameterElimination        -> Plain (noNewNames . deadParameterElimination)
-  DeadVariableElimination         -> WithTypeEnvEff (noNewNames <$$$> deadVariableElimination)
+  DeadVariableElimination         -> WithEff (noNewNames <$$> deadVariableElimination)
   InlineEval                      -> WithTypeEnv (Right <$$> inlineEval)
   InlineApply                     -> WithTypeEnv (Right <$$> inlineApply)
   InlineBuiltins                  -> WithTypeEnv (Right <$$> inlineBuiltins)
@@ -326,7 +328,7 @@ transformationFunc n = \case
   GeneralizedUnboxing             -> WithTypeEnv (Right <$$> generalizedUnboxing)
   ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
-  NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
+  NonSharedElimination            -> WithShr nonSharedElimination
   InterproceduralDeadFunctionElimination         -> WithLVA (noNewNames <$$$$> interproceduralDeadFunctionElimination)
   InterproceduralDeadParameterElimination        -> WithLVA (noNewNames <$$$$> interproceduralDeadParameterElimination)
   InterproceduralDeadDataElimination             -> WithLVACBy interproceduralDeadDataElimination
@@ -350,10 +352,11 @@ transformation t = do
     case transformationFunc n t of
       Plain          f -> Right $ f e
       WithTypeEnv    f -> f te e
+      WithEff        f -> Right $ f em e
+      WithShr        f -> Right $ f shr e
       WithTypeEnvEff f -> Right $ f te em e
       WithLVA        f -> f lva te e
       WithLVACBy     f -> f lva cby te e
-      WithTypeEnvShr f -> Right $ f shr te e
   psTransStep %= (+1)
   where
     onExp (e, changes) = do
@@ -1047,10 +1050,10 @@ runAnalysisFor t = do
   sequence_ $ case transformationFunc n t of
     Plain          _ -> []
     WithTypeEnv    _ -> [hpt]
+    WithEff        _ -> [eff]
     WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
     WithLVACBy     _ -> [hpt,     cby, lva, sharing]
-    WithTypeEnvShr _ -> [hpt, sharing]
   where
     analysis getter ann = do
       r <- use getter
