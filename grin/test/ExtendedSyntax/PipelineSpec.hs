@@ -1,15 +1,12 @@
 module ExtendedSyntax.PipelineSpec where
 
 import Data.Functor.Infix ((<$$>))
-import Data.List ((\\), nub)
+import Data.List (nub)
+
 import Test.Hspec
 import Test.QuickCheck
-import Test.QuickCheck.Monadic
-import Pipeline.Pipeline
-import Test.Test
-import Pipeline.Eval
-import Grin.Pretty
-import Debug.Trace
+
+import Pipeline.ExtendedSyntax.Pipeline
 
 
 runTests :: IO ()
@@ -18,7 +15,7 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   it "Exploratory testing on random program and random pipeline" $ do
-    pending
+    pendingWith "commented out due type error"
     -- NOTE: commented out due type error
     {-
     property $
@@ -45,10 +42,5 @@ shrinkPipeline (printast:chpt:hpt:rest) = ([printast, chpt, hpt]++) <$> shrinkLi
 transformations :: Gen [Transformation]
 transformations = do
   ts <- shuffle [toEnum 0 .. ]
-  fmap nub $ listOf1 $ elements (ts \\ knownIssues)
+  fmap nub $ listOf1 $ elements ts
 
-knownIssues :: [Transformation]
-knownIssues =
-  [ Vectorisation        -- Needs maintained HTP results
-  , RegisterIntroduction -- Memory leak
-  ]
