@@ -28,60 +28,51 @@ import Text.Pretty.Simple (pPrint)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>), (</>), (<$$>))
 import qualified Text.Show.Pretty as PP
 
-import Pipeline.Eval
-import Grin.Grin
-import Grin.TypeEnv
-import Grin.TypeCheck
-import Grin.EffectMap hiding (Eff)
-import Pipeline.Optimizations
-import qualified Grin.Statistics as Statistics
-import Grin.Parse
-import Grin.Pretty(showWide, prettyProgram, RenderingOption(..))
-import Transformations.CountVariableUse
-import Transformations.GenerateEval
-import qualified Transformations.Simplifying.Vectorisation2 as Vectorisation2
-import Transformations.Simplifying.Vectorisation
-import Transformations.BindNormalisation
-import qualified Grin.Lint as Lint
-import Grin.PrettyLint
-import Transformations.Simplifying.SplitFetch
-import Transformations.Simplifying.BindingPatternSimplification
-import Transformations.Simplifying.CaseSimplification
-import Transformations.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
-import Transformations.UnitPropagation
-import Transformations.MangleNames
-import Transformations.EffectMap
-import Transformations.StaticSingleAssignment
-import Transformations.Names (ExpChanges(..))
-import qualified Transformations.Simplifying.RightHoistFetch2 as RHF
-import Transformations.Simplifying.RegisterIntroduction
-import Transformations.Simplifying.ProducerNameIntroduction
-import qualified AbstractInterpretation.HeapPointsTo.Result   as HPT
-import qualified AbstractInterpretation.CreatedBy.Readback    as CBy
-import qualified AbstractInterpretation.CreatedBy.Result      as CBy
-import qualified AbstractInterpretation.LiveVariable.Result   as LVA
-import qualified AbstractInterpretation.EffectTracking.Result as ET
-import qualified AbstractInterpretation.Sharing.Result        as Sharing
-import AbstractInterpretation.BinaryIR
-import AbstractInterpretation.OptimiseAbstractProgram
-import AbstractInterpretation.CreatedBy.Pretty
-import AbstractInterpretation.HeapPointsTo.Pretty
-import AbstractInterpretation.LiveVariable.Pretty
-import AbstractInterpretation.EffectTracking.Pretty
-import AbstractInterpretation.Sharing.Pretty
-import AbstractInterpretation.Sharing.CodeGen
-import AbstractInterpretation.Reduce (ComputerState, AbstractInterpretationResult(..), evalAbstractProgram)
-import qualified AbstractInterpretation.PrettyIR as IR
-import qualified AbstractInterpretation.IR as IR
-import qualified AbstractInterpretation.HeapPointsTo.CodeGen         as HPT
-import qualified AbstractInterpretation.HeapPointsTo.CodeGenBase     as HPT
-import qualified AbstractInterpretation.CreatedBy.CodeGen            as CBy
-import qualified AbstractInterpretation.LiveVariable.CodeGen         as LVA
-import qualified AbstractInterpretation.EffectTracking.CodeGen       as ET
-import qualified AbstractInterpretation.EffectTracking.CodeGenBase   as ET
-import qualified AbstractInterpretation.Sharing.CodeGen              as Sharing
-import qualified Reducer.LLVM.CodeGen as CGLLVM
-import qualified Reducer.LLVM.JIT as JITLLVM
+import Pipeline.ExtendedSyntax.Eval
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.TypeEnv
+import Grin.ExtendedSyntax.TypeCheck
+import Grin.ExtendedSyntax.EffectMap hiding (Eff)
+import Pipeline.ExtendedSyntax.Optimizations
+import qualified Grin.ExtendedSyntax.Statistics as Statistics
+import Grin.ExtendedSyntax.Parse
+import Grin.ExtendedSyntax.Pretty(showWide, prettyProgram, RenderingOption(..))
+import Transformations.ExtendedSyntax.CountVariableUse
+import Transformations.ExtendedSyntax.GenerateEval
+import Transformations.ExtendedSyntax.BindNormalisation
+import qualified Grin.ExtendedSyntax.Lint as Lint
+import Grin.ExtendedSyntax.PrettyLint
+import Transformations.ExtendedSyntax.Optimising.Inlining (inlineEval, inlineApply, inlineBuiltins)
+import Transformations.ExtendedSyntax.MangleNames
+import Transformations.ExtendedSyntax.EffectMap
+import Transformations.ExtendedSyntax.StaticSingleAssignment
+import Transformations.ExtendedSyntax.Names (ExpChanges(..))
+import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result   as HPT
+import qualified AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback    as CBy
+import qualified AbstractInterpretation.ExtendedSyntax.CreatedBy.Result      as CBy
+import qualified AbstractInterpretation.ExtendedSyntax.LiveVariable.Result   as LVA
+import qualified AbstractInterpretation.ExtendedSyntax.EffectTracking.Result as ET
+import qualified AbstractInterpretation.ExtendedSyntax.Sharing.Result        as Sharing
+import AbstractInterpretation.ExtendedSyntax.BinaryIR
+import AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgram
+import AbstractInterpretation.ExtendedSyntax.CreatedBy.Pretty
+import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
+import AbstractInterpretation.ExtendedSyntax.LiveVariable.Pretty
+import AbstractInterpretation.ExtendedSyntax.EffectTracking.Pretty
+import AbstractInterpretation.ExtendedSyntax.Sharing.Pretty
+import AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen
+import AbstractInterpretation.ExtendedSyntax.Reduce (ComputerState, AbstractInterpretationResult(..), evalAbstractProgram)
+import qualified AbstractInterpretation.ExtendedSyntax.PrettyIR as IR
+import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
+import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen         as HPT
+import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase     as HPT
+import qualified AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGen            as CBy
+import qualified AbstractInterpretation.ExtendedSyntax.LiveVariable.CodeGen         as LVA
+import qualified AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGen       as ET
+import qualified AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGenBase   as ET
+import qualified AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen              as Sharing
+import qualified Reducer.ExtendedSyntax.LLVM.CodeGen as CGLLVM
+import qualified Reducer.ExtendedSyntax.LLVM.JIT as JITLLVM
 import System.Directory
 import qualified System.Process
 import Data.Bifunctor
@@ -121,38 +112,27 @@ import qualified Data.ByteString.Lazy as LBS
 
 data Transformation
   -- Simplifying
-  = RegisterIntroduction
-  | ProducerNameIntroduction
-  | BindingPatternSimplification
-  | Vectorisation
-  | SplitFetch
-  | CaseSimplification
-  | RightHoistFetch
-  | InlineEval
+  = InlineEval
   | InlineApply
   | InlineBuiltins
   -- Misc
   | GenerateEval
   | BindNormalisation
-  | ConstantFolding
-  | UnitPropagation
   | MangleNames
   | StaticSingleAssignment
   -- Optimizations
   | EvaluatedCaseElimination
   | TrivialCaseElimination
   | SparseCaseOptimisation
-  | UpdateElimination
   | NonSharedElimination
   | CopyPropagation
   | ConstantPropagation
-  | DeadDataElimination
+  | InterproceduralDeadDataElimination
+  | InterproceduralDeadFunctionElimination
+  | InterproceduralDeadParameterElimination
   | DeadFunctionElimination
-  | DeadParameterElimination
   | DeadVariableElimination
-  | SimpleDeadFunctionElimination
-  | SimpleDeadVariableElimination
-  | SimpleDeadParameterElimination
+  | DeadParameterElimination
   | CommonSubExpressionElimination
   | CaseCopyPropagation
   | CaseHoisting
@@ -213,12 +193,12 @@ data PipelineStep
   | DebugPipelineState
   deriving (Eq, Show)
 
-pattern DeadCodeElimination :: PipelineStep
-pattern DeadCodeElimination = Pass
-  [ T DeadFunctionElimination
-  , T DeadDataElimination
-  , T DeadVariableElimination
-  , T DeadParameterElimination
+-- TODO: maybe we will need DVE & CopyPropgation here as well
+pattern InterproceduralDeadCodeElimination :: PipelineStep
+pattern InterproceduralDeadCodeElimination = Pass
+  [ T InterproceduralDeadFunctionElimination
+  , T InterproceduralDeadDataElimination
+  , T InterproceduralDeadParameterElimination
   ]
 
 pattern HPTPass :: PipelineStep
@@ -324,28 +304,19 @@ data TransformationFunc
 -- TODO: Add n paramter for the transformations that use NameM
 transformationFunc :: Int -> Transformation -> TransformationFunc
 transformationFunc n = \case
-  Vectorisation                   -> WithTypeEnv (newNames <$$> Right <$$> Vectorisation2.vectorisation)
   GenerateEval                    -> Plain generateEval
-  CaseSimplification              -> Plain (noNewNames . caseSimplification)
-  SplitFetch                      -> Plain (noNewNames . splitFetch)
-  RegisterIntroduction            -> Plain (newNames . registerIntroductionI n) -- TODO
-  ProducerNameIntroduction        -> Plain producerNameIntroduction
-  BindingPatternSimplification    -> Plain bindingPatternSimplification
-  RightHoistFetch                 -> Plain (noNewNames . RHF.rightHoistFetch)
   -- misc
   MangleNames                     -> Plain (newNames . mangleNames) -- TODO
   StaticSingleAssignment          -> Plain (newNames . staticSingleAssignment) -- TODO
   BindNormalisation               -> Plain (noNewNames . bindNormalisation)
-  ConstantFolding                 -> Plain (newNames . constantFolding)
   -- optimising
   EvaluatedCaseElimination        -> Plain (noNewNames . evaluatedCaseElimination)
   TrivialCaseElimination          -> Plain (noNewNames . trivialCaseElimination)
-  UpdateElimination               -> Plain (noNewNames . updateElimination)
   CopyPropagation                 -> Plain (noNewNames . copyPropagation) -- TODO
   ConstantPropagation             -> Plain (noNewNames . constantPropagation) -- TODO
-  SimpleDeadFunctionElimination   -> Plain (noNewNames . simpleDeadFunctionElimination)
-  SimpleDeadParameterElimination  -> Plain (noNewNames . simpleDeadParameterElimination)
-  SimpleDeadVariableElimination   -> WithTypeEnvEff (noNewNames <$$$> simpleDeadVariableElimination)
+  DeadFunctionElimination         -> Plain (noNewNames . deadFunctionElimination)
+  DeadParameterElimination        -> Plain (noNewNames . deadParameterElimination)
+  DeadVariableElimination         -> WithTypeEnvEff (noNewNames <$$$> deadVariableElimination)
   InlineEval                      -> WithTypeEnv (Right <$$> inlineEval)
   InlineApply                     -> WithTypeEnv (Right <$$> inlineApply)
   InlineBuiltins                  -> WithTypeEnv (Right <$$> inlineBuiltins)
@@ -355,12 +326,10 @@ transformationFunc n = \case
   GeneralizedUnboxing             -> WithTypeEnv (Right <$$> generalizedUnboxing)
   ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
-  UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
   NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
-  DeadFunctionElimination         -> WithLVA (noNewNames <$$$$> deadFunctionElimination)
-  DeadVariableElimination         -> WithLVA (noNewNames <$$$$> deadVariableElimination)
-  DeadParameterElimination        -> WithLVA (noNewNames <$$$$> deadParameterElimination)
-  DeadDataElimination             -> WithLVACBy deadDataElimination
+  InterproceduralDeadFunctionElimination         -> WithLVA (noNewNames <$$$$> interproceduralDeadFunctionElimination)
+  InterproceduralDeadParameterElimination        -> WithLVA (noNewNames <$$$$> interproceduralDeadParameterElimination)
+  InterproceduralDeadDataElimination             -> WithLVACBy interproceduralDeadDataElimination
   SparseCaseOptimisation          -> WithTypeEnv (noNewNames <$$$> sparseCaseOptimisation)
   where
     noNewNames    = flip (,) NoChange
@@ -811,22 +780,18 @@ randomPipelineM seed = do
     transformationWhitelist :: [Transformation]
     transformationWhitelist =
         -- Misc
-        [ UnitPropagation
-        -- Optimizations
-        , EvaluatedCaseElimination
+        [ EvaluatedCaseElimination
         , TrivialCaseElimination
         , SparseCaseOptimisation
-        , UpdateElimination
         , NonSharedElimination
         , CopyPropagation
         , ConstantPropagation
-        , SimpleDeadFunctionElimination
-        , SimpleDeadParameterElimination
-        , SimpleDeadVariableElimination
         , DeadFunctionElimination
-        , DeadDataElimination
-        , DeadVariableElimination
         , DeadParameterElimination
+        , DeadVariableElimination
+        , InterproceduralDeadFunctionElimination
+        , InterproceduralDeadDataElimination
+        , InterproceduralDeadParameterElimination
         , CommonSubExpressionElimination
         , CaseCopyPropagation
         , CaseHoisting
@@ -853,11 +818,10 @@ randomPipelineM seed = do
       , ET RunPure
       ]
 
+    -- TODO: no longer needed
     runNameIntro :: PipelineM ()
     runNameIntro = void . pipelineStep $ Pass
-      [ T ProducerNameIntroduction
-      , T BindNormalisation
-      , T BindingPatternSimplification
+      [ T BindNormalisation
       , T BindNormalisation
       ]
 
@@ -865,15 +829,15 @@ randomPipelineM seed = do
     runCleanup :: PipelineM ()
     runCleanup = void . pipelineStep $ Pass
       [ T CopyPropagation
-      , T SimpleDeadVariableElimination
+      , T DeadVariableElimination
       ]
 
     needsCByLVA :: Transformation -> Bool
     needsCByLVA = \case
-      DeadFunctionElimination -> True
-      DeadDataElimination -> True
+      InterproceduralDeadFunctionElimination -> True
+      InterproceduralDeadDataElimination -> True
       DeadVariableElimination -> True
-      DeadParameterElimination -> True
+      InterproceduralDeadParameterElimination -> True
       _ -> False
 
     needsCleanup :: Transformation -> Bool
@@ -990,11 +954,10 @@ optimizeWithM pre trans post = do
     phase1 = phaseLoop False $ trans `intersect`
       [ EvaluatedCaseElimination
       , TrivialCaseElimination
-      , UpdateElimination
       , CopyPropagation
       , ConstantPropagation
-      , SimpleDeadFunctionElimination
-      , SimpleDeadParameterElimination
+      , DeadFunctionElimination
+      , DeadParameterElimination
       , CaseCopyPropagation
       ]
 
@@ -1007,13 +970,12 @@ optimizeWithM pre trans post = do
       , GeneralizedUnboxing
       , ArityRaising
       , LateInlining
-      , UnitPropagation
       , SparseCaseOptimisation
       ]
 
     -- HPT and Sharing/Eff is required
     phase3 = phaseLoop False $ trans `intersect`
-      [ SimpleDeadVariableElimination
+      [ DeadVariableElimination
       , CommonSubExpressionElimination
       , NonSharedElimination
       ]
@@ -1021,9 +983,9 @@ optimizeWithM pre trans post = do
     -- HPT LVA CBy is required
     -- Only run this phase when interprocedural transformations are required.
     phase4 = if (null (trans `intersect`
-                  [ DeadDataElimination
-                  , DeadFunctionElimination
-                  , DeadParameterElimination
+                  [ InterproceduralDeadDataElimination
+                  , InterproceduralDeadFunctionElimination
+                  , InterproceduralDeadParameterElimination
                   , DeadVariableElimination
                   ]))
       then pure False
@@ -1047,24 +1009,19 @@ optimizeWithM pre trans post = do
         steps = concat
           [ map T
               [ CopyPropagation
-              , SimpleDeadVariableElimination
-              , ProducerNameIntroduction
+              , DeadVariableElimination
               , BindNormalisation
-              , BindingPatternSimplification
               , BindNormalisation
-              , UnitPropagation
               ]
           , map T $ trans `intersect`
-              [ DeadFunctionElimination
-              , DeadDataElimination
-              , DeadVariableElimination
-              , DeadParameterElimination
+              [ InterproceduralDeadFunctionElimination
+              , InterproceduralDeadDataElimination
+              , InterproceduralDeadParameterElimination
               ]
           , map T
               [ CopyPropagation
-              , SimpleDeadVariableElimination
+              , DeadVariableElimination
               , BindNormalisation
-              , UnitPropagation
               ]
           ]
 
@@ -1141,12 +1098,11 @@ defaultOptimizations :: [Transformation]
 defaultOptimizations =
   [ InlineEval
   , SparseCaseOptimisation
-  , SimpleDeadFunctionElimination
-  , SimpleDeadParameterElimination
-  , SimpleDeadVariableElimination
+  , DeadFunctionElimination
+  , DeadParameterElimination
+  , DeadVariableElimination
   , EvaluatedCaseElimination
   , TrivialCaseElimination
-  , UpdateElimination
   , NonSharedElimination
   , CopyPropagation
   , ConstantPropagation
