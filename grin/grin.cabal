@@ -382,6 +382,7 @@ test-suite grin-test
                      Transformations.BindNormalisationSpec
                      Transformations.ConfluenceSpec
                      Transformations.MangleNamesSpec
+                     Samples.ExtendedSyntax.SumListSpec
                      Samples.SumListSpec
                      Samples.ArityFullRemoveSpec
                      LintSpec
