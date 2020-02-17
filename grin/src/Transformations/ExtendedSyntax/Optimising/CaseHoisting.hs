@@ -15,6 +15,7 @@ import qualified Data.Vector as Vector
 import Data.Bifunctor (first)
 
 import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.Pretty
 import Grin.ExtendedSyntax.TypeEnv
 import Transformations.ExtendedSyntax.Util
 import Transformations.ExtendedSyntax.Names
@@ -80,8 +81,12 @@ hoistAlts :: Name -> (Alt, Alt) -> NameM Alt
 hoistAlts lpatName (Alt cpat1 altName1 alt1, Alt cpat2 altName2 alt2) = do
   freshLPatName <- deriveNewName lpatName
   let nameMap = Map.singleton lpatName freshLPatName
-  (freshAlt2, _) <- refreshNames nameMap $
-    EBind (SReturn $ Var freshLPatName) (VarPat altName2) alt2
+  (freshAlt2, _) <- case cpat2 of
+    DefaultPat -> refreshNames nameMap $
+      EBind (SReturn $ Var freshLPatName) (VarPat altName2) alt2
+    NodePat tag args -> refreshNames nameMap $
+      EBind (SReturn $ Var freshLPatName) (AsPat tag args altName2) alt2
+    LitPat _ -> error $ "CaseHoisting does not support literal CPats: " ++ show (PP altName2)
   pure . Alt cpat1 altName1 $ EBind (SBlock alt1) (VarPat freshLPatName) freshAlt2
 
 disjointMatch :: [(Set Tag, Alt)] -> [Alt] -> Maybe [(Alt, Alt)]
