@@ -1050,10 +1050,12 @@ runAnalysisFor t = do
   sequence_ $ case transformationFunc n t of
     Plain          _ -> []
     WithTypeEnv    _ -> [hpt]
-    WithEff        _ -> [eff]
+    -- TODO: EffectMap is deprecated, use EffectTracking, it does not need a type environment
+    WithEff        _ -> [hpt, eff]
+    WithShr        _ -> [sharing]
     WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
-    WithLVACBy     _ -> [hpt,     cby, lva, sharing]
+    WithLVACBy     _ -> [hpt, cby, lva, sharing]
   where
     analysis getter ann = do
       r <- use getter
