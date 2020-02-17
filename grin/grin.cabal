@@ -328,6 +328,7 @@ test-suite grin-test
                      ExtendedSyntax.PrimOpsSpec
                      ExtendedSyntax.TestSpec
                      Transformations.ExtendedSyntax.BindNormalisationSpec
+                     Transformations.ExtendedSyntax.ConfluenceSpec
                      Transformations.ExtendedSyntax.ConversionSpec
                      Transformations.ExtendedSyntax.MangleNamesSpec
                      Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
