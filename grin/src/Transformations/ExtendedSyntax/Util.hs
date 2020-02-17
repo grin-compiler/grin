@@ -47,6 +47,8 @@ foldNameUseExpF f = \case
   SFetchF p         -> f p
   _                 -> mempty
 
+-- TODO: In the entire codebase, only FunName is used.
+-- By used, I mean its value is consumed/pattern-matched on.
 data DefRole = FunName | FunParam | BindVar | AltVar
   deriving (Eq, Show)
 
@@ -54,7 +56,9 @@ data DefRole = FunName | FunParam | BindVar | AltVar
 foldNameDefExpF :: (Monoid m) => (DefRole -> Name -> m) -> ExpF a -> m
 foldNameDefExpF f = \case
   DefF name args _      -> mconcat $ (f FunName name) : map (f FunParam) args
-  EBindF _ bPat _       -> f BindVar (_bPatVar bPat)
+  EBindF _ bPat _       -> case bPat of
+    VarPat v                  -> f BindVar v
+    AsPat _tag args asVarName -> f BindVar asVarName <> foldMap (f BindVar) args
   -- QUESTION: What should be the alt name's DefRole? Now it is BindVar, because it rebinds the scrutinee.
   AltF cpat n _         -> f BindVar n <> foldNames (f AltVar) cpat
   _                     -> mempty
