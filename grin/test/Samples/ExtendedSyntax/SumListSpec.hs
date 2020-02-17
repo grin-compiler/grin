@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
 module Samples.ExtendedSyntax.SumListSpec where
 
-import Pipeline.Pipeline
+import Pipeline.ExtendedSyntax.Pipeline
 
 import Test.Hspec
-import Grin.TH
-import Test.Test hiding (newVar)
-import Test.Assertions
+
+import Grin.ExtendedSyntax.TH
+import Grin.ExtendedSyntax.PrimOpsPrelude
+import Test.ExtendedSyntax.Assertions
 
 runTests :: IO ()
 runTests = hspec spec
@@ -14,69 +15,86 @@ runTests = hspec spec
 spec :: Spec
 spec = do
   -- TODO: Reenable before merge
-  xit "lazy list sum - half pipeline" $ do
-    let before = [prog|
-        grinMain =
-          p1 <- store (CInt 0)
-          p2 <- store (CInt 1)
-          p3 <- store (CInt 1000)
-          p4 <- store (Fupto p2 p3)
-          p5 <- store (Fsum p1 p4)
-          (Fsum p15 p16) <- fetch p5
-          n13' <- sum p15 p16
-          _prim_int_print n13'
+  it "lazy list sum - half pipeline" $ do
+    let before = withPrimPrelude [prog|
+          grinMain =
+            y.0 <- pure 1
+            v.0 <- pure (CInt y.0)
+            t1  <- store v.0
+            y.1 <- pure 10000
+            v.1 <- pure (CInt y.1)
+            t2  <- store v.1
+            v.2 <- pure (Fupto t1 t2)
+            t3  <- store v.2
+            v.3 <- pure (Fsum t3)
+            t4  <- store v.3
+            (CInt r') @ p.0 <- eval $ t4
+            _prim_int_print $ r'
 
-        sum p10 p11 =
-          (Fupto p17 p18) <- fetch p11
-          p6 <- pure p17
-          p7 <- pure p18
-          (CInt n2') <- fetch p6
-          (CInt n3') <- fetch p7
-          b1' <- _prim_int_gt n2' n3'
-          do
-            case b1' of
-              #True ->
-                v10_1 <- pure (CNil)
-                case v10_1 of
-                  (CNil) ->
-                    (CInt n14') <- fetch p10
-                    pure n14'
-                  (CCons p12 p13) ->
-                    (CInt n5') <- fetch p10
-                    (CInt n6') <- fetch p12
-                    n7' <- _prim_int_add n5' n6'
-                    p14 <- store (CInt n7')
-                    sum p14 p13
-              #False ->
-                n4' <- _prim_int_add n2' 1
-                p8 <- store (CInt n4')
-                p9 <- store (Fupto p8 p7)
-                v10_2 <- pure (CCons p6 p9)
-                case v10_2 of
-                  (CNil) ->
-                    (CInt n14'_2) <- fetch p10
-                    pure n14'_2
-                  (CCons p12_2 p13_2) ->
-                    (CInt n5'_2) <- fetch p10
-                    (CInt n6'_2) <- fetch p12_2
-                    n7'_2 <- _prim_int_add n5'_2 n6'_2
-                    p14_2 <- store (CInt n7'_2)
-                    sum p14_2 p13_2
+          upto m n =
+            (CInt m') @ p.2 <- eval $ m
+            (CInt n') @ p.1 <- eval $ n
+            b' <- _prim_int_gt $ m' n'
+            case b' of
+              #True @ alt.0 ->
+                v.4 <- pure (CNil)
+                pure v.4
+              #False @ alt.1 ->
+                x.7 <- pure 1
+                m1' <- _prim_int_add $ m' x.7
+                v.5 <- pure (CInt m1')
+                m1  <- store v.5
+                v.6 <- pure (Fupto m1 n)
+                p   <- store v.6
+                v.7 <- pure (CCons m p)
+                pure v.7
+
+          sum l =
+            l2 <- eval $ l
+            case l2 of
+              (CNil) @ alt.2 ->
+                y.10 <- pure 0
+                v.8  <- pure (CInt y.10)
+                pure v.8
+              (CCons x xs) @ alt.3 ->
+                (CInt x') @ p.4 <- eval $ x
+                (CInt s') @ p.3 <- sum $ xs
+                ax' <- _prim_int_add $ x' s'
+                v.9 <- pure (CInt ax')
+                pure v.9
+
+          eval q =
+            v <- fetch q
+            case v of
+              (CInt x'1) @ alt.4 ->
+                pure v
+              (CNil) @ alt.5 ->
+                pure v
+              (CCons y ys) @ alt.6 ->
+                pure v
+              (Fupto a b) @ alt.7 ->
+                w <- upto $ a b
+                p.5 <- update q w
+                pure w
+              (Fsum c) @ alt.8 ->
+                z <- sum $ c
+                p.6 <- update q z
+                pure z
       |]
     let after = [prog|
-        grinMain =
-          n13' <- sum 0 1 1000
-          _prim_int_print n13'
+        -- grinMain =
+        --   n13' <- sum 0 1 1000
+        --   _prim_int_print n13'
 
-        sum p10 p111 p112 =
-          b1' <- _prim_int_gt p111 p112
-          case b1' of
-            #True ->
-              pure p10
-            #False ->
-              n4' <- _prim_int_add p111 1
-              n7'_2 <- _prim_int_add p10 p111
-              sum n7'_2 n4' p112
+        -- sum p10 p111 p112 =
+        --   b1' <- _prim_int_gt p111 p112
+        --   case b1' of
+        --     #True ->
+        --       pure p10
+        --     #False ->
+        --       n4' <- _prim_int_add p111 1
+        --       n7'_2 <- _prim_int_add p10 p111
+        --       sum n7'_2 n4' p112
       |]
     let steps = map T
           [ BindNormalisation
@@ -84,13 +102,13 @@ spec = do
           , BindNormalisation
           , CommonSubExpressionElimination
           , CopyPropagation
-          , SimpleDeadVariableElimination
+          , DeadVariableElimination
           , ArityRaising
           , CopyPropagation
-          , SimpleDeadVariableElimination
+          , DeadVariableElimination
           , ArityRaising
           , CopyPropagation
-          , SimpleDeadVariableElimination
+          , DeadVariableElimination
           ]
 
     transformed <- pipeline defaultOpts Nothing before steps
