@@ -14,8 +14,7 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  -- TODO: Reenable before merge
-  it "lazy list sum - half pipeline" $ do
+  it "lazy list sum - fully optimize" $ do
     let before = withPrimPrelude [prog|
           grinMain =
             y.0 <- pure 1
@@ -81,35 +80,28 @@ spec = do
                 p.6 <- update q z
                 pure z
       |]
-    let after = [prog|
-        -- grinMain =
-        --   n13' <- sum 0 1 1000
-        --   _prim_int_print n13'
+    let after = withPrimPrelude [prog|
+          grinMain =
+            y.0 <- pure 1
+            y.1 <- pure 10000
+            unboxed.CInt.2 <- sum.unboxed $ y.0 y.1
+            _prim_int_print $ unboxed.CInt.2
 
-        -- sum p10 p111 p112 =
-        --   b1' <- _prim_int_gt p111 p112
-        --   case b1' of
-        --     #True ->
-        --       pure p10
-        --     #False ->
-        --       n4' <- _prim_int_add p111 1
-        --       n7'_2 <- _prim_int_add p10 p111
-        --       sum n7'_2 n4' p112
+          sum.unboxed l.75.arity.1.207.arity.1 l.75.arity.2.265.arity.1 =
+            b'.0 <- _prim_int_gt $ l.75.arity.1.207.arity.1 l.75.arity.2.265.arity.1
+            case b'.0 of
+              #True @ alt.0.0 ->
+                y.10.0 <- pure 0
+                pure y.10.0
+              #False @ alt.1.0 ->
+                x.7.0 <- pure 1
+                m1'.0 <- _prim_int_add $ l.75.arity.1.207.arity.1 x.7.0
+                unboxed.CInt.3.0 <- sum.unboxed $ m1'.0 l.75.arity.2.265.arity.1
+                ax'.0 <- _prim_int_add $ l.75.arity.1.207.arity.1 unboxed.CInt.3.0
+                pure ax'.0
       |]
-    let steps = map T
-          [ BindNormalisation
-          , ConstantPropagation
-          , BindNormalisation
-          , CommonSubExpressionElimination
-          , CopyPropagation
-          , DeadVariableElimination
-          , ArityRaising
-          , CopyPropagation
-          , DeadVariableElimination
-          , ArityRaising
-          , CopyPropagation
-          , DeadVariableElimination
-          ]
+
+    let steps = [ Optimize ]
 
     transformed <- pipeline defaultOpts Nothing before steps
     transformed `sameAs` after
