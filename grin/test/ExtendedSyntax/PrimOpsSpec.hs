@@ -17,7 +17,8 @@ C.include "<stdio.h>"
 -- TODO: Once, we merge the syntax tranformation PR,
 -- remove the extra ".." from here. It is needed now
 -- because of the nested directory structure.
-C.include "../../prim_ops.c"
+-- TODO: Once merged, use "../../prim_ops.c"
+C.include "../../prim_ops.h"
 
 spec :: Spec
 spec = do
