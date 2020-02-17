@@ -27,6 +27,46 @@ spec = do
     let tyEnv = inferTypeEnv testProgBefore
     arityRaising 0 tyEnv testProgBefore `sameAs` (testProgAfter, NewNames)
 
+  it "raises what can be raised, does not raise what cannot be reaised" $ do
+    let before = [prog|
+          grinMain =
+            k0 <- pure 0
+            k1 <- pure 0
+            n0 <- pure (CPair k0 k0)
+            n1 <- pure (CInt k1)
+            p1 <- store n0
+            p2 <- store n1
+            foo p1 p2
+
+          foo r q =
+            q' <- fetch q
+            r' <- fetch r
+            _0 <- pure r'
+            _1 <- pure q
+            foo r q
+    |]
+    let after = [prog|
+          grinMain =
+            k0 <- pure 0
+            k1 <- pure 0
+            n0 <- pure (CPair k0 k0)
+            n1 <- pure (CInt k1)
+            p1 <- store n0
+            p2 <- store n1
+            do
+              (CPair p1.0.0.arity.1 p1.0.0.arity.2) @ _2 <- fetch p1
+              foo $ p1.0.0.arity.1 p1.0.0.arity.2 p2
+
+          foo r.0.arity.1 r.0.arity.2 q =
+            q' <- fetch q
+            r' <- pure (CPair r.0.arity.1 r.0.arity.2)
+            _0 <- pure r'
+            _1 <- pure q
+            foo $ r.0.arity.1 r.0.arity.2 q
+        |]
+    let tyEnv = inferTypeEnv before
+    arityRaising 0 tyEnv before `sameAs` (after, NewNames)
+
 testProgBefore :: Exp
 testProgBefore = [prog|
 grinMain =
