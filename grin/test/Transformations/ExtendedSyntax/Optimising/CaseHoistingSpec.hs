@@ -16,7 +16,7 @@ runTests = hspec spec
 
 spec :: Spec
 spec = do
-  it "last case" $ do
+  it "last case 1" $ do
     let before = [prog|
           grinMain =
             v <- pure (CNil)
@@ -34,17 +34,81 @@ spec = do
               (CNil) @ alt1 ->
                 u.0 <- do
                   pure (CNil)
-                alt3.0 <- pure u.0
+                (CNil) @ alt3.0 <- pure u.0
                 pure alt3.0
               (CCons a1 b1) @ alt2 ->
                 u.1 <- do
                   pure (CCons a1 b1)
-                alt4.0 <- pure u.1
+                (CCons a2.0 b2.0) @ alt4.0 <- pure u.1
                 pure (CNil)
       |]
     caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
 
-  it "middle case" $ do
+  it "last case 2" $ do
+    let before = [prog|
+          grinMain =
+            v <- pure (CNil)
+            u <- case v of
+              (CNil) @ alt1 ->
+                pure (CNil)
+              (CCons a1 b1) @ alt2 ->
+                pure (CCons a1 b1)
+            case u of
+              (CNil) @ alt3 ->
+                pure alt3
+              (CCons a2 b2) @ alt4 ->
+                pure (CCons a2 b2)
+      |]
+    let after = [prog|
+          grinMain =
+            v <- pure (CNil)
+            case v of
+              (CNil) @ alt1 ->
+                u.0 <- do
+                  pure (CNil)
+                (CNil) @ alt3.0 <- pure u.0
+                pure alt3.0
+              (CCons a1 b1) @ alt2 ->
+                u.1 <- do
+                  pure (CCons a1 b1)
+                (CCons a2.0 b2.0) @ alt4.0 <- pure u.1
+                pure (CCons a2.0 b2.0)
+      |]
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
+
+  it "middle case 1" $ do
+    let before = [prog|
+          grinMain =
+            v <- pure (CNil)
+            u <- case v of
+              (CNil) @ alt1 ->
+                pure (CNil)
+              (CCons a1 b1) @ alt2 ->
+                pure (CCons a1 b1)
+            r <- case u of
+              (CNil) @ alt3 -> pure 1
+              (CCons a2 b2) @ alt4 -> pure 2
+            pure r
+      |]
+    let after = [prog|
+          grinMain =
+            v <- pure (CNil)
+            r <- case v of
+              (CNil) @ alt1 ->
+                u.0 <- do
+                  pure (CNil)
+                (CNil) @ alt3.0 <- pure u.0
+                pure 1
+              (CCons a1 b1) @ alt2 ->
+                u.1 <- do
+                  pure (CCons a1 b1)
+                (CCons a2.0 b2.0) @ alt4.0 <- pure u.1
+                pure 2
+            pure r
+      |]
+    caseHoisting (inferTypeEnv before) before `sameAs` (after, NewNames)
+
+  it "middle case 2" $ do
     let before = [prog|
           grinMain =
             v <- pure (CNil)
@@ -63,12 +127,12 @@ spec = do
               (CNil) @ alt1 ->
                 u.0 <- do
                   pure (CNil)
-                alt3.0 <- pure u.0
+                (CNil) @ alt3.0 <- pure u.0
                 pure 1
               (CCons a1 b1) @ alt2 ->
                 u.1 <- do
                   pure (CCons a1 b1)
-                alt4.0 <- pure u.1
+                (CCons a2.0 b2.0) @ alt4.0 <- pure u.1
                 pure 2
             pure r
       |]
@@ -93,7 +157,7 @@ spec = do
               (CNil) @ alt1 ->
                 u.0 <- do
                   pure (CNil)
-                alt3.0 <- pure u.0
+                (CNil) @ alt3.0 <- pure u.0
                 pure (CNil)
               (CCons a1 b1) @ alt2 ->
                 u.1 <- do
@@ -130,7 +194,7 @@ spec = do
               0 @ alt1 ->
                 u.0 <- do
                   pure (CNil)
-                alt3.0 <- pure u.0
+                (CNil) @ alt3.0 <- pure u.0
                 pure (CEmpty)
               1 @ alt2 ->
                 u.1 <- do
