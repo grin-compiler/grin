@@ -112,6 +112,26 @@ spec = describe "Live Variable Analysis" $ do
     let exp = withPrimPrelude [prog|
           grinMain =
             x0 <- pure 0
+            (CInt x1) @ _v <- pure (CInt x0)
+            _prim_int_print x1
+      |]
+    let variableAliasExpected = emptyLVAResult
+          { _memory     = []
+          , _registerLv = [ ("x0", liveVal)
+                          , ("x1", liveVal)
+                          , ("_v", nodeSet' [ (cInt, [dead, live]) ])
+                          ]
+          , _functionLv = mkFunctionLivenessMap
+              [ ("_prim_int_print", fun (liveVal, [liveVal]))
+              ]
+          }
+        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
+    calculated `sameAs` variableAliasExpected
+
+  it "as_pattern_with_node_3" $ do
+    let exp = withPrimPrelude [prog|
+          grinMain =
+            x0 <- pure 0
             n0 <- pure (CInt x0)
             (CInt _v) @ n1 <- pure n0
             case n1 of
