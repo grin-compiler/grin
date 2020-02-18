@@ -752,7 +752,6 @@ randomPipeline seed opts exp
 randomPipelineM :: StdGen -> PipelineM [Transformation]
 randomPipelineM seed = do
   liftIO $ setStdGen seed
-  runBasicAnalyses
   go transformationWhitelist []
   where
     go :: [Transformation] -> [Transformation] -> PipelineM [Transformation]
@@ -764,25 +763,15 @@ randomPipelineM seed = do
     go available res = do
       exp <- use psExp
       t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
-      eff <- if needsCByLVA t
-        then do
-          runNameIntro
-          runCByLVA
-          pipelineStep (T t)
-          runCleanup
-          exp' <- use psExp
-          pure $ if exp == exp' then None else ExpChanged
-        else pipelineStep (T t)
+      eff <- pipelineStep (T t)
       case eff of
         None -> go (available Data.List.\\ [t]) res
         ExpChanged -> do
           lintGrin . Just $ show t
-          runBasicAnalyses
           go transformationWhitelist (t:res)
 
     transformationWhitelist :: [Transformation]
     transformationWhitelist =
-        -- Misc
         [ EvaluatedCaseElimination
         , TrivialCaseElimination
         , SparseCaseOptimisation
@@ -802,49 +791,6 @@ randomPipelineM seed = do
         , ArityRaising
         , LateInlining
         ]
-
-    runBasicAnalyses :: PipelineM ()
-    runBasicAnalyses = mapM_ pipelineStep
-      [ Sharing Compile
-      , Sharing RunPure
-      , ET Compile
-      , ET RunPure
-      ]
-
-    runCByLVA :: PipelineM ()
-    runCByLVA = mapM_ pipelineStep
-      [ CBy Compile
-      , CBy RunPure
-      , LVA Compile
-      , LVA RunPure
-      , ET Compile
-      , ET RunPure
-      ]
-
-    -- TODO: no longer needed
-    runNameIntro :: PipelineM ()
-    runNameIntro = void . pipelineStep $ Pass
-      [ T BindNormalisation
-      , T BindNormalisation
-      ]
-
-    -- cleanup after producer name intro
-    runCleanup :: PipelineM ()
-    runCleanup = void . pipelineStep $ Pass
-      [ T CopyPropagation
-      , T DeadVariableElimination
-      ]
-
-    needsCByLVA :: Transformation -> Bool
-    needsCByLVA = \case
-      InterproceduralDeadFunctionElimination -> True
-      InterproceduralDeadDataElimination -> True
-      DeadVariableElimination -> True
-      InterproceduralDeadParameterElimination -> True
-      _ -> False
-
-    needsCleanup :: Transformation -> Bool
-    needsCleanup = needsCByLVA
 
 confluenceTest :: PipelineM ()
 confluenceTest = do
@@ -985,11 +931,17 @@ optimizeWithM pre trans post = do
 
     -- HPT LVA CBy is required
     -- Only run this phase when interprocedural transformations are required.
-    phase4 = if (null (trans `intersect`
+    phase4 = phaseLoop False $ trans `intersect`
+      [ InterproceduralDeadDataElimination
+      , InterproceduralDeadFunctionElimination
+      , InterproceduralDeadParameterElimination
+      ]
+
+    -- TODO: remove
+    oldPhase4 = if (null (trans `intersect`
                   [ InterproceduralDeadDataElimination
                   , InterproceduralDeadFunctionElimination
                   , InterproceduralDeadParameterElimination
-                  , DeadVariableElimination
                   ]))
       then pure False
       else phase4Loop False
@@ -1013,7 +965,6 @@ optimizeWithM pre trans post = do
           [ map T
               [ CopyPropagation
               , DeadVariableElimination
-              , BindNormalisation
               , BindNormalisation
               ]
           , map T $ trans `intersect`
@@ -1055,7 +1006,7 @@ runAnalysisFor t = do
     WithShr        _ -> [sharing]
     WithTypeEnvEff _ -> [hpt, eff]
     WithLVA        _ -> [hpt, lva]
-    WithLVACBy     _ -> [hpt, cby, lva, sharing]
+    WithLVACBy     _ -> [hpt, cby, lva]
   where
     analysis getter ann = do
       r <- use getter
