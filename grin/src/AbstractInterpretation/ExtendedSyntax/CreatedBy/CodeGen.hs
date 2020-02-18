@@ -227,6 +227,7 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       case lhsRes of
         Z -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show (PP $ ConstTagNode tag args)
         R r -> do
+          -- TODO: handle blocks here as well
           case lhs of
             SReturn val | producesNode val -> do
               addReg var r
