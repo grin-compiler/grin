@@ -5,7 +5,7 @@ import Control.Monad.State
 
 import Data.Set (Set)
 import Data.Map (Map)
-import Data.Vector (Vector)
+import Data.Vector (Vector, (!))
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.Vector as Vec
@@ -13,8 +13,8 @@ import qualified Data.Vector as Vec
 import qualified Data.Set.Extra as Set
 
 import Data.Maybe
-import Data.Foldable
-import Data.Functor.Foldable
+import Data.Foldable (fold, toList)
+import Data.Functor.Foldable (cata)
 
 import Lens.Micro.Platform
 
@@ -54,6 +54,15 @@ data SharingMapping = SharingMapping
 
 concat <$> mapM makeLenses [''SharingMapping]
 
+newtype OccurenceMap = OM { toRegularMap :: Map Name Int }
+  deriving (Eq, Ord, Show)
+
+instance Semigroup OccurenceMap where
+  (<>) (OM lhs) (OM rhs) = OM $ Map.unionWith (+) lhs rhs
+
+instance Monoid OccurenceMap where
+  mempty = OM mempty
+
 -- | Calc non linear variables, ignores variables that are used in update locations
 -- This is an important difference, if a variable would become non-linear due to
 -- being subject to an update, that would make the sharing analysis incorrect.
@@ -61,44 +70,60 @@ concat <$> mapM makeLenses [''SharingMapping]
 -- linear if it is subject to an update more than once. But that could not happen, thus the only
 -- introdcution of new updates comes from inlining eval.
 calcNonLinearNonUpdateLocVariables :: Exp -> Set Name
-calcNonLinearNonUpdateLocVariables exp = Set.fromList $ Map.keys $ Map.filter (>1) $ cata collect exp
-  where
-    union = Map.unionsWith (+)
+calcNonLinearNonUpdateLocVariables = Map.keysSet . Map.filter (1<) . toRegularMap . cata alg where
+  alg :: ExpF OccurenceMap -> OccurenceMap
+  alg = \case
+    ECaseF scrut alts -> seen scrut <> mconcat alts
+    SAppF _f args     -> foldMap seen args
+    SStoreF var       -> seen var
+    SFetchF var       -> seen var
+    -- TODO: is var need to be counted here?
+    SUpdateF _ptr var -> seen var
+    SReturnF val      -> case val of
+      ConstTagNode _tag args -> foldMap seen args
+      Var v -> seen v
+      _ -> mempty
 
-    collect :: ExpF (Map Name Int) -> Map Name Int
-    collect = \case
-      ECaseF scrut alts -> union (seen scrut : alts)
-      SStoreF var -> seen var
-      SFetchF var -> seen var
-      SUpdateF p var -> seen var
-      SReturnF val -> case val of
-        Var v               -> seen v
-        ConstTagNode _ args -> union $ map seen args
-        _                   -> mempty
-      SAppF _ ps -> union $ fmap seen ps
-      rest -> Data.Foldable.foldr (Map.unionWith (+)) mempty rest
+    {- TODO: This is a hotfix for now. As-patterns, and case alternative names
+       introduce aliases. Ideally, these aliases would be connected to their origin
+       and tracked by the analysis. For now, if the alias is used anywhere,
+       we will mark it as non-linear. This is a safe approximation.
+    -}
+    EBindF lhs (AsPat _tag _args asVarName) rhs -> seen asVarName <> lhs <> rhs
+    AltF _pat altName altBody -> seen altName <> altBody
 
-    seen :: Name -> Map Name Int
-    seen v = Map.singleton v 1
+    exp -> fold exp
+
+  seen :: Name -> OccurenceMap
+  seen x = OM $ Map.singleton x 1
 
 calcSharedLocationsPure :: TypeEnv -> Exp -> Set Loc
-calcSharedLocationsPure TypeEnv{..} e = converge (==) (Set.concatMap fetchLocs) origShVarLocs where
-  nonLinearVars = calcNonLinearNonUpdateLocVariables e
-  shVarTypes    = Set.mapMaybe (`Map.lookup` _variable) $ nonLinearVars
-  origShVarLocs = onlyLocations . onlySimpleTys $ shVarTypes
+calcSharedLocationsPure TypeEnv{..} exp = converge (==) (foldMap fetchLoc) rootLocs where
+  rootLocs :: Set Loc
+  rootLocs = Set.fromList
+           . concatMap reachableLocs
+           . toList
+           . calcNonLinearNonUpdateLocVariables
+           $ exp
 
-  onlySimpleTys :: Set Type -> Set SimpleType
-  onlySimpleTys tys = Set.fromList [ sty | T_SimpleType sty <- Set.toList tys ]
+  fetchLoc :: Loc -> Set Loc
+  fetchLoc i = Set.fromList $ i : locsFromNodeSet (_location ! i)
 
-  onlyLocations :: Set SimpleType -> Set Loc
-  onlyLocations stys = Set.fromList $ concat [ ls | T_Location ls <- Set.toList stys ]
+  -- collects all the locations that might be reached directly from a given variable
+  reachableLocs :: Name -> [Loc]
+  reachableLocs var = locsFromTy $ fromJust $ Map.lookup var _variable
 
-  fetchLocs :: Loc -> Set Loc
-  fetchLocs l = onlyLocations . fieldsFromNodeSet . fromMaybe (error msg) . (Vec.!?) _location $ l
-    where msg = "Sharing: Invalid heap index: " ++ show l
+  locsFromSTy :: SimpleType -> [Loc]
+  locsFromSTy sty = (sty ^. locations)
 
-  fieldsFromNodeSet :: NodeSet -> Set SimpleType
-  fieldsFromNodeSet = Set.fromList . concatMap Vec.toList . Map.elems
+  locsFromNodeSet :: NodeSet -> [Loc]
+  locsFromNodeSet = concatMap locsFromSTy
+                  . concatMap toList
+                  . Map.elems
+
+  locsFromTy :: Type -> [Loc]
+  locsFromTy (T_SimpleType sty) = locsFromSTy sty
+  locsFromTy (T_NodeSet ns)     = locsFromNodeSet ns
 
 
 sharingCodeGen :: Reg -> Exp -> CG ()
@@ -109,18 +134,21 @@ sharingCodeGen shReg e = do
     -- this will copy node field info as well, but we will only use "simpleType" info
     emit $ copyStructureWithPtrInfo nonLinearVarReg shReg
 
-  mergedFields    <- newReg
-  pointsToNodeReg <- newReg
+  -- Collect all potential pointers in shared node fields
+  -- into the simple type part of the register.
+  -- This will collect non-location simple types as well, but we will ignore them.
+  emit IR.Project
+    { srcReg      = shReg
+    , srcSelector = IR.AllFields
+    , dstReg      = shReg
+    }
+  -- Fetch all the values from the shared locations
+  -- into the sime type part of the register.
+  -- This will collect non-location simple types as well, but we will ignore them.
   emit IR.Fetch
     { addressReg = shReg
-    , dstReg     = pointsToNodeReg
+    , dstReg     = shReg
     }
-  emit IR.Project
-    { srcReg      = pointsToNodeReg
-    , srcSelector = IR.AllFields
-    , dstReg      = mergedFields
-    }
-  emit $ copyStructureWithPtrInfo mergedFields shReg
   where
     nonLinearVars = calcNonLinearNonUpdateLocVariables e
 
