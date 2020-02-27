@@ -91,7 +91,7 @@ spec = describe "Sharing analysis" $ do
     let expected = Set.fromList [0]
     result `shouldBe` expected
 
-  it "finds location inside shared node" $ do
+  it "finds location inside shared node - simple" $ do
     let code = [prog|
           grinMain =
             n1 <- pure (COne)
@@ -104,6 +104,42 @@ spec = describe "Sharing analysis" $ do
             _3 <- update p2 n2
             v2 <- fetch p3
             pure ()
+        |]
+    let result = calcSharedLocations code
+    let expected = Set.fromList [0]
+    result `shouldBe` expected
+
+  it "finds location inside shared node - realistic" $ do
+    let code = [prog|
+          grinMain =
+            n1 <- pure (FFoo)
+            p1 <- store n1
+            n3 <- pure (CPtr p1)
+            (CPtr p2) @ _0 <- pure n3
+            (CPtr p3) @ _1 <- pure n3
+            v1 <- eval1 p2
+            v2 <- eval2 p3
+            pure ()
+
+          eval1 q.1 =
+            r.1 <- fetch q.1
+            case r.1 of
+              (CTwo) @ alt1.1 ->
+                pure r.1
+              (FFoo) @ alt2.1 ->
+                z.1 <- pure (CTwo)
+                _2.1 <- update q.1 z.1
+                pure z.1
+
+          eval2 q.2 =
+            r.2 <- fetch q.2
+            case r.2 of
+              (CTwo) @ alt1.2 ->
+                pure r.2
+              (FFoo) @ alt2.2 ->
+                z.2 <- pure (CTwo)
+                _2.2 <- update q.2 z.2
+                pure z.2
         |]
     let result = calcSharedLocations code
     let expected = Set.fromList [0]
@@ -209,11 +245,11 @@ testProgram = withPrimPrelude [prog|
     v <- fetch q
     case v of
       (CInt x'1) @ alt.4 ->
-        pure v
+        pure (CInt x'1)
       (CNil) @ alt.5 ->
-        pure v
+        pure (CNil)
       (CCons y ys) @ alt.6 ->
-        pure v
+        pure (CCons y ys)
       (Fupto a b) @ alt.7 ->
         w <- upto $ a b
         p.5 <- update q w
