@@ -22,18 +22,18 @@ genEval exclude evalName defs = do
   valueName <- deriveNewName "v"
   defaultAltName <- deriveNewName "alt"
   let defaultAlt = Alt DefaultPat defaultAltName . SReturn . Var $ valueName
-      funAlt name args = do
+      funAlt funName args = do
         argNames <- replicateM (length args) $ deriveNewName "a"
         whnf <- deriveNewName "res"
         wildcard <- deriveWildCard
         altName <- deriveNewName "alt"
         pure $
-          Alt (NodePat (Tag F name) argNames) altName $
-            EBind (SApp name $ argNames) (VarPat whnf) $
+          Alt (NodePat (Tag F funName) argNames) altName $
+            EBind (SApp funName $ argNames) (VarPat whnf) $
             EBind (SUpdate ptrName whnf) (VarPat wildcard) $
             SReturn $ Var whnf
 
-  alts <- sequence [funAlt name args | Def name args _ <- defs, Set.notMember name exclude]
+  alts <- sequence [funAlt funName args | Def funName args _ <- defs, Set.notMember funName exclude]
   pure $
     Def evalName [ptrName] $
       EBind (SFetch ptrName) (VarPat valueName) $
