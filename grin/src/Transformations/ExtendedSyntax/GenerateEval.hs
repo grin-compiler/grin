@@ -21,7 +21,7 @@ genEval exclude evalName defs = do
   ptrName <- deriveNewName "p"
   valueName <- deriveNewName "v"
   defaultAltName <- deriveNewName "alt"
-  let defaultAlt = Alt DefaultPat defaultAltName . SReturn . Var $ valueName
+  let defaultAlt = Alt DefaultPat defaultAltName . SReturn . Var $ defaultAlt
       funAlt funName args = do
         argNames <- replicateM (length args) $ deriveNewName "a"
         whnf <- deriveNewName "res"
