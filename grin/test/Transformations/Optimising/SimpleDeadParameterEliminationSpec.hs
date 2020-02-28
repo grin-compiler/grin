@@ -25,6 +25,30 @@ spec = do
       |]
     simpleDeadParameterElimination before `sameAs` after
 
+  it "recursive non-used parameter" $ do
+    let before = [prog|
+          fun f1 f2 =
+            f3 <- fun2 f1
+            fun f1 f2
+      |]
+    let after = [prog|
+          fun f1 =
+            f3 <- fun2 f1
+            fun f1
+      |]
+    simpleDeadParameterElimination before `sameAs` after
+
+  it "recursive switched parameter" $ do
+    let before = [prog|
+        fun f1 f2 =
+          fun f2 f1
+      |]
+    let after = [prog|
+        fun f1 f2 =
+          fun f2 f1
+      |]
+    simpleDeadParameterElimination before `sameAs` after
+
   it "Pnode + Fnode ; val - lpat - cpat" $ do
     let before = [prog|
           funA a b = pure b
@@ -69,3 +93,4 @@ spec = do
                 pure (P0funA b6)
       |]
     simpleDeadParameterElimination before `sameAs` after
+

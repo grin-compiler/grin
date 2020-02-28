@@ -11,15 +11,21 @@ import qualified Data.Foldable
 import Grin.Grin
 
 simpleDeadFunctionElimination :: Program -> Program
-simpleDeadFunctionElimination exp@(Program exts defs) = Program exts [def | def@(Def name _ _) <- defs, Set.member name liveDefs] where
+simpleDeadFunctionElimination (Program exts defs) = Program liveExts liveDefs where
+
+  liveExts = [ext | ext <- exts, Set.member (eName ext) liveNames]
+  liveDefs = [def | def@(Def name _ _) <- defs, Set.member name liveSet]
+
+  liveNames = cata collectAll $ Program [] liveDefs -- collect all live names
+
   defMap :: Map Name Def
   defMap = Map.fromList [(name, def) | def@(Def name _ _) <- defs]
 
   lookupDef :: Name -> Maybe Def
   lookupDef name = Map.lookup name defMap
 
-  liveDefs :: Set Name
-  liveDefs = fst $ until (\(live, visited) -> live == visited) visit (Set.singleton "grinMain", mempty)
+  liveSet :: Set Name
+  liveSet = fst $ until (\(live, visited) -> live == visited) visit (Set.singleton "grinMain", mempty)
 
   visit :: (Set Name, Set Name) -> (Set Name, Set Name)
   visit (live, visited) = (mappend live seen, mappend visited toVisit) where
@@ -28,5 +34,10 @@ simpleDeadFunctionElimination exp@(Program exts defs) = Program exts [def | def@
 
   collect :: ExpF (Set Name) -> Set Name
   collect = \case
-    SAppF name _ | not (isExternalName exts name) -> Set.singleton name
+    SAppF name _ | Map.member name defMap -> Set.singleton name
+    exp -> Data.Foldable.fold exp
+
+  collectAll :: ExpF (Set Name) -> Set Name
+  collectAll = \case
+    SAppF name args -> Set.singleton name
     exp -> Data.Foldable.fold exp

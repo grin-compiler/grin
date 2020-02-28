@@ -1,0 +1,5 @@
+outputExtension: "out"
+grinOptions:
+- "--quiet"
+- "--dpe"
+- "--save-grin=$$$OUT$$$"

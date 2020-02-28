@@ -333,6 +333,7 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
 
     ProgramF exts defs -> do
       -- register prim fun lib
+      runtimeErrorExternal
       mapM registerPrimFunLib exts
       sequence_ (map snd defs) >> pure (O unitCGType unit)
 
@@ -581,6 +582,14 @@ registerPrimFunLib ext = do
       TySimple t -> typeGenSimpleType t
       rest       -> error $ "Unsupported type:" ++ show rest
 
+runtimeErrorExternal :: CG ()
+runtimeErrorExternal =
+  external
+    (typeGenSimpleType T_Unit)
+    (mkName "__runtime_error")
+    [(typeGenSimpleType T_Int64, mkName "x0")]
+
+errorBlock :: CG ()
 errorBlock = do
   activeBlock $ mkName "error_block"
   let functionType = FunctionType
@@ -593,7 +602,7 @@ errorBlock = do
     { tailCallKind        = Just Tail
     , callingConvention   = CC.C
     , returnAttributes    = []
-    , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName "_prim_int_print")
+    , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName "__runtime_error")
     , arguments           = zip [ConstantOperand $ C.Int 64 666] (repeat [])
     , functionAttributes  = []
     , metadata            = []

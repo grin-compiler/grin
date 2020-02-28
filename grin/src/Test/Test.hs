@@ -939,4 +939,4 @@ instance Solve G.Prog where
     _    -> mzero
 
 changed :: (Testable prop) => Exp -> Exp -> prop -> Property
-changed old new = cover (old /= new) 1 "Transformation has effect"
+changed old new = cover 1 (old /= new) "Transformation has effect"

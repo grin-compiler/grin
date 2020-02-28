@@ -1,0 +1,6 @@
+outputExtension: "out.s"
+grinOptions:
+- "--optimize"
+- "--hpt"
+- "--quiet"
+- "--save-llvm=$$$OUT$$$"

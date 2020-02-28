@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Main where
+module CLI.Lib where
 
 import Control.Monad
 import Data.Map (Map(..))
@@ -17,9 +17,11 @@ import System.IO
 
 import Grin.Grin
 import Grin.PrimOpsPrelude
-import Grin.Parse hiding (value)
+import Grin.Parse
 import Grin.Nametable as Nametable
 import Pipeline.Pipeline
+
+
 
 data Options = Options
   { optFiles     :: [FilePath]
@@ -29,6 +31,8 @@ data Options = Options
   , optQuiet     :: Bool
   , optLoadBinary :: Bool
   , optSaveBinary :: Bool
+  , optCFiles     :: [FilePath]
+  , optDontFailOnLint :: Bool
   } deriving Show
 
 flg c l h = flag' c (mconcat [long l, help h])
@@ -118,7 +122,8 @@ pipelineOpts =
   <|> flg (Pass [Sharing Compile, Sharing Optimise, Sharing RunPure]) "sharing-opt" "Compiles, optimizes and runs the sharing analysis"
   <|> flg  (Pass [LVA Compile, CBy Compile, RunCByWithLVA]) "cby-with-lva" "Compiles the live variable and created-by analyses, then runs the created-by analysis using the LVA result"
   <|> flg DeadCodeElimination "dce" "Dead Code Elimination"
-  <|> flg PureEval "eval" "Evaluate the grin program (pure)"
+  <|> flg (PureEval False) "eval" "Evaluate the grin program (pure)"
+  <|> (PureEval <$> (option auto (mconcat [long "eval-with-statistics", help "Evaluate the grin program (pure) and render heap statistics."])))
   <|> flg JITLLVM "llvm" "JIT with LLVM"
   <|> flg PrintAST "ast" "Print the Abstract Syntax Tree"
   <|> (SaveExecutable False . Abs <$> (strOption (mconcat [short 'o', long "save-elf", help "Save an executable ELF"])))
@@ -129,6 +134,7 @@ pipelineOpts =
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
+
 
 maybeRenderingOpt :: String -> Maybe RenderingOption
 maybeRenderingOpt = M.parseMaybe renderingOpt
@@ -149,14 +155,18 @@ printGrinWithOpt = flip PrintGrin id <$> option (maybeReader maybeRenderingOpt)
   <> help "Print the actual grin code with a given rendering option [simple | with-externals]"
   <> metavar "OPT" )
 
-options :: IO Options
-options = execParser $ info
-  (pipelineArgs <**> helper)
-  (mconcat
-    [ fullDesc
-    , progDesc "grin compiler"
-    , header "grin compiler"
-    ])
+options :: [String] -> IO Options
+options args = do
+  let res = execParserPure defaultPrefs
+              (info
+                (pipelineArgs <**> helper)
+                (mconcat
+                  [ fullDesc
+                  , progDesc "grin compiler"
+                  , header "grin compiler"
+                  ]))
+              args
+  handleParseResult res
   where
     pipelineArgs = Options
       <$> some (argument str (metavar "FILES..."))
@@ -184,20 +194,44 @@ options = execParser $ info
             [ long "save-binary-intermed"
             , help "Save intermediate results in binary format"
             ])
+      <*> many (strOption (mconcat
+            [ short 'C'
+            , long "c-file"
+            , help "The path for the runtime implementation in C"]))
+      <*> switch (mconcat
+            [ long "continue-on-failed-lint"
+            , help "Do not fail on lint errors"
+            ])
 
-main :: IO ()
-main = do
+mainWithArgs :: [String] -> IO ()
+mainWithArgs args = do
   hSetBuffering stdout NoBuffering
-  Options files steps outputDir noPrelude quiet loadBinary saveBinary <- options
+  Options
+    files
+    steps
+    outputDir
+    noPrelude
+    quiet
+    loadBinary
+    saveBinary
+    cFiles
+    continueOnLint
+    <- options args
   forM_ files $ \fname -> do
     (mTypeEnv, program) <- if loadBinary
       then do
         ((,) Nothing . Nametable.restore) <$> Binary.decodeFile fname
       else do
         content <- Text.readFile fname
-        let (typeEnv, program') = either (error . M.parseErrorPretty' content) id $ parseGrinWithTypes fname content
+        let (typeEnv, program') = either (error . M.errorBundlePretty) id $ parseGrinWithTypes fname content
         pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
-    let opts = defaultOpts { _poOutputDir = outputDir, _poFailOnLint = True, _poLogging = not quiet, _poSaveBinary = saveBinary }
+    let opts = defaultOpts
+                { _poOutputDir = outputDir
+                , _poFailOnLint = not continueOnLint
+                , _poLogging = not quiet
+                , _poSaveBinary = saveBinary
+                , _poCFiles = cFiles
+                }
     case steps of
       [] -> void $ optimize opts program [] postPipeline
       _  -> void $ pipeline opts mTypeEnv program steps
