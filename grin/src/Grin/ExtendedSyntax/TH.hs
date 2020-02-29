@@ -51,7 +51,7 @@ progConst = QuasiQuoter
   { quoteExp = \input -> do
       let src = T.pack $ normalizeQQInput input
       case P.parseGrin "" src of
-        Left  e -> fail $ parseErrorPretty' src e
+        Left  e -> fail $ errorBundlePretty e
         Right p -> liftDataWithText p
   , quotePat  = undefined
   , quoteType = undefined
