@@ -78,7 +78,7 @@ literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
           (try $ LInt64 . fromIntegral <$> signedInteger) <|>
           (try $ LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")) <|>
           (try $ LString <$> lexeme (C.char '#' *> quotedString)) <|>
-          (try $ LChar <$> lexeme (C.string "#'" *> (escaped <|> anyChar) <* C.char '\''))
+          (try $ LChar <$> lexeme (C.string "#'" *> (escaped <|> anySingle) <* C.char '\''))
 
 satisfyM :: (a -> Bool) -> Parser a -> Parser a
 satisfyM pred parser = do
@@ -122,17 +122,17 @@ tyP =
 grinModule :: Parser Exp
 grinModule = Program <$> (concat <$> many (try externalBlock)) <*> many def <* sc <* eof
 
-parseGrin :: String -> Text -> Either (ParseError Char Void) Exp
+parseGrin :: String -> Text -> Either (ParseErrorBundle Text Void) Exp
 parseGrin filename content = runParser grinModule filename (withoutTypeAnnots content)
 
 parseProg :: Text -> Exp
-parseProg src = either (error . parseErrorPretty' src) id . parseGrin "" $ withoutTypeAnnots src
+parseProg src = either (error . errorBundlePretty) id . parseGrin "" $ withoutTypeAnnots src
 
 parseDef :: Text -> Exp
-parseDef src = either (error . parseErrorPretty' src) id . runParser (def <* sc <* eof) "" $ withoutTypeAnnots src
+parseDef src = either (error . errorBundlePretty) id . runParser (def <* sc <* eof) "" $ withoutTypeAnnots src
 
 parseExpr :: Text -> Exp
-parseExpr src = either (error . parseErrorPretty' src) id . runParser (expr pos1 <* sc <* eof) "" $ withoutTypeAnnots src
+parseExpr src = either (error . errorBundlePretty) id . runParser (expr pos1 <* sc <* eof) "" $ withoutTypeAnnots src
 
 
 withoutTypeAnnots :: Text -> Text
