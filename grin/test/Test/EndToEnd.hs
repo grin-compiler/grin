@@ -196,6 +196,7 @@ instance Example CompilerTest where
     PipelineTest i o e x -> evaluatePipelineTest i o e x
     EndToEndTest i       -> evaluateEndToEndTest i
 
+-- TODO: do not collect from "test-data/ExtendedSyntax"
 endToEnd :: FilePath -> Spec
 endToEnd dp = describe "End to end tests" $ do
   compilerTests <- runIO $ readDirectoryWith createTest dp
