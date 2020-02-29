@@ -87,17 +87,18 @@ spec = do
             unboxed.CInt.2 <- sum.unboxed $ y.0 y.1
             _prim_int_print $ unboxed.CInt.2
 
-          sum.unboxed l.75.arity.1.207.arity.1 l.75.arity.2.265.arity.1 =
-            b'.0 <- _prim_int_gt $ l.75.arity.1.207.arity.1 l.75.arity.2.265.arity.1
+          sum.unboxed l.69.arity.1.217.arity.1 l.69.arity.2.269.arity.1 =
+            b'.0 <- _prim_int_gt $ l.69.arity.1.217.arity.1 l.69.arity.2.269.arity.1
             case b'.0 of
               #True @ alt.0.0 ->
                 y.10.0 <- pure 0
                 pure y.10.0
+
               #False @ alt.1.0 ->
                 x.7.0 <- pure 1
-                m1'.0 <- _prim_int_add $ l.75.arity.1.207.arity.1 x.7.0
-                unboxed.CInt.3.0 <- sum.unboxed $ m1'.0 l.75.arity.2.265.arity.1
-                ax'.0 <- _prim_int_add $ l.75.arity.1.207.arity.1 unboxed.CInt.3.0
+                m1'.0 <- _prim_int_add $ l.69.arity.1.217.arity.1 x.7.0
+                unboxed.CInt.3.0 <- sum.unboxed $ m1'.0 l.69.arity.2.269.arity.1
+                ax'.0 <- _prim_int_add $ l.69.arity.1.217.arity.1 unboxed.CInt.3.0
                 pure ax'.0
       |]
 
