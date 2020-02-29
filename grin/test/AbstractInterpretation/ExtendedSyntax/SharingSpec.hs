@@ -24,6 +24,7 @@ spec :: Spec
 spec = describe "Sharing analysis" $ do
   it "has not changed for sum simple." $ do
     let result = calcSharedLocations testProgram
+    -- TODO: improve precision, improve altName tracking
     let expected = Set.fromList [0,1,2,4,5]
     result `shouldBe` expected
 
@@ -245,11 +246,11 @@ testProgram = withPrimPrelude [prog|
     v <- fetch q
     case v of
       (CInt x'1) @ alt.4 ->
-        pure (CInt x'1)
+        pure alt.4
       (CNil) @ alt.5 ->
-        pure (CNil)
+        pure alt.5
       (CCons y ys) @ alt.6 ->
-        pure (CCons y ys)
+        pure alt.6
       (Fupto a b) @ alt.7 ->
         w <- upto $ a b
         p.5 <- update q w
