@@ -206,7 +206,7 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       pure Z
 
-    -- NOTE:
+    -- TODO: either fix this here, or run BN before CBy
     EBindF (SBlock{}, _) _ _ -> error $
       "CBy does not handle un(bind)normalized code. " ++
       "Possible fix: run BindNormalisation before CBy."
