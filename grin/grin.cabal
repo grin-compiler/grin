@@ -147,6 +147,8 @@ library
     Transformations.ExtendedSyntax.MangleNames
     Transformations.ExtendedSyntax.StaticSingleAssignment
     Transformations.ExtendedSyntax.Optimising.CopyPropagation
+    Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
+    Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
     Transformations.BindNormalisation
     Transformations.CountVariableUse
@@ -299,6 +301,8 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.MangleNamesSpec
                      Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
                      Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
+                     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec
