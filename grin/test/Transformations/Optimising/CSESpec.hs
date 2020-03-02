@@ -95,6 +95,23 @@ spec = do
         |]
       cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
+    it "store - fetch - update - fetch" $ do
+      let before = [expr|
+          p1 <- store (COne)
+          (COne) <- fetch p1
+          update p1 (CTwo)
+          n2 <- fetch p1
+          pure ()
+        |]
+      let after = [expr|
+          p1 <- store (COne)
+          (COne) <- pure (COne)
+          update p1 (CTwo)
+          n2 <- pure (CTwo)
+          pure ()
+        |]
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+
     it "store - update" $ do
       let before = [expr|
           p1 <- store (CInt 0)
@@ -153,6 +170,22 @@ spec = do
         |]
       cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
 
+    it "node with variables" $ do
+      pendingWith "Now only pure constants are tracked"
+      let before = [expr|
+          n1 <- pure 0
+          v1 <- pure (CInt n1)
+          v2 <- pure (CInt n1)
+          pure ()
+        |]
+      let after = [expr|
+          n1 <- pure 0
+          v1 <- pure (CInt n1)
+          v2 <- pure v1
+          pure ()
+        |]
+      cseOptNoEff (ctx (te, before)) `sameAs` (snd $ ctx (te, after))
+
     it "application" $ do
       let te = create $ mconcat
             [ newFun "_prim_int_add" int64_t [int64_t, int64_t]
@@ -200,6 +233,36 @@ spec = do
             (CBox a2) ->
               n3 <- pure (CBox a2)
               pure n3
+            #default ->
+              n4 <- pure n1
+              pure n4
+        |]
+      (cseOptNoEff (ctx (te, before))) `sameAs` (snd $ ctx (te, after))
+
+    it "case alternative, intended dead code rewriting" $ do
+      let before = [expr|
+          n1 <- pure (CFoo)
+          case n1 of
+            (CNode a1 b2) ->
+              n2 <- pure (CNode a1 b2)
+              pure n2
+            (CBox a2) ->
+              n3 <- pure (CBox a2)
+              pure (CFoo)
+            #default ->
+              n4 <- pure n1
+              pure n4
+        |]
+      let after = [expr|
+          n1 <- pure (CFoo)
+          case n1 of
+            (CNode a1 b2) ->
+              n2 <- pure (CNode a1 b2)
+              pure n2
+            (CBox a2) ->
+              n3 <- pure (CBox a2)
+              -- NOTE: this rewrite is valid, since this alternative is dead anyways
+              pure n1
             #default ->
               n4 <- pure n1
               pure n4

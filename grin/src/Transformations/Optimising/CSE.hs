@@ -55,6 +55,10 @@ commonSubExpressionElimination typeEnv effMap e = hylo skipUnit builder (mempty,
       NodePat tag args  -> env -- When we use scrutinee variable already HPT will include all the
                                -- possible values, instead of the matching one. As result it will
                                -- overapproximate the values more than needed.
+
+                               -- NOTE: We could extend the env with [ SReturn (ConstTagNode tag args) -> SReturn val ]
+                               -- HPT would _not_ overapproximate the possible type of the variable,
+                               -- since it restricts the scrutinee to the alternative's domain
       LitPat lit        -> Map.insertWith (\new old -> old) (SReturn (Lit lit)) (SReturn val) env
       TagPat tag        -> Map.insertWith (\new old -> old) (SReturn (ValTag tag)) (SReturn val) env
       DefaultPat        -> env
