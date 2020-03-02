@@ -19,7 +19,7 @@ import Transformations.ExtendedSyntax.Util
 
 
 -- TODO: consult EffectMap for side-effects
--- QUESTION: should DVE use any interprocedural information?
+-- QUESTION: should DVE use any interprocedural information? [1]
 deadVariableElimination :: EffectMap -> Exp -> Exp
 deadVariableElimination effMap e = cata folder e ^. _1 where
 
@@ -37,8 +37,10 @@ deadVariableElimination effMap e = cata folder e ^. _1 where
       , all (flip Set.notMember rightRef) vars        -- are not referred
       -> case left of
           SBlock{}  -> embedExp exp
+          SUpdate{} -> embedExp exp
           _         -> right
 
+    -- QUESTION: Should we just keep all function calls? See [1]
     exp@(SAppF name _) ->
       embedExp exp & _3 .~ (hasPossibleSideEffect name effMap || Set.member name effectfulExternals)
 
