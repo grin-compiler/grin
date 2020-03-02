@@ -144,7 +144,7 @@ data WarningKind
   deriving (Enum, Eq, Ord, Show)
 
 allWarnings :: [WarningKind]
-allWarnings = [Syntax .. DDE]
+allWarnings = [toEnum 0 ..]
 
 noDDEWarnings :: [WarningKind]
 noDDEWarnings = [Syntax, Semantics]
@@ -304,7 +304,9 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
     -- Exp
     -- The result Fetch should be bound to a variable to make DDE simpler
     (_ :< EBindF leftExp lpat rightExp) -> do
-      let lhsCtx = if notVariable lpat then SEWithoutNodesCtx else SimpleExpCtx
+      let lhsCtx = if (isDDEMode && notVariable lpat)
+                      then SEWithoutNodesCtx
+                      else SimpleExpCtx
       check (EBindF (lhsCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
         syntaxE ExpCtx
         when (isFetchF leftExp && notVariable lpat) (warning DDE [msg $ "The result of Fetch can only be bound to a variable: " ++ plainShow lpat])
@@ -396,7 +398,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
     (_ :< SStoreF val) -> checkWithChild ctx $ do
       syntaxE SEWithoutNodesCtx
-      syntaxVal_ SimpleValCtx val
+      when isDDEMode $ syntaxVal_ SimpleValCtx val
       forM_ mTypeEnv $ \typeEnv -> do
         -- Store has given a primitive type
         case val of
@@ -451,6 +453,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
       syntaxE AltCtx
 
     where
+      isDDEMode = DDE `elem` warningKinds
       syntaxE = syntaxExp ctx
       checkWithChild childCtx m = check ((childCtx,) <$> (getF e)) m
       getF (_ :< f) = f

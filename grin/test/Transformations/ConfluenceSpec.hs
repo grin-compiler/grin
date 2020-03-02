@@ -73,7 +73,7 @@ spec = do
 
   it "Random pipeline" $ do
     -- NOTE: This is a random test. This could make fail the build non-related to code changes.
-    let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
+    let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp", _poFailOnLint = False }
     forAll arbitrary $ \(seed1, seed2) -> monadicIO $ run $ do
       transformed1 <- randomPipeline (mkStdGen seed1) opts exp
       transformed2 <- randomPipeline (mkStdGen seed2) opts exp

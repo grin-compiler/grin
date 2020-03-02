@@ -13,3 +13,6 @@ related: [Dead data elimination](http://nbviewer.jupyter.org/github/grin-compile
 
 ## Sample Project
 [Sample project](https://github.com/robinvd/lang-experiments) for LLVM stack map based GC.
+
+## Readings
+- http://craftinginterpreters.com/garbage-collection.html

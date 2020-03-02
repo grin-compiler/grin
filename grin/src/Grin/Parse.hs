@@ -14,5 +14,5 @@ import Grin.TypeEnvDefs
 import Grin.Parse.AST
 import Grin.Parse.TypeEnv
 
-parseGrinWithTypes :: String -> Text -> Either (ParseError Char Void) (TypeEnv, Exp)
+parseGrinWithTypes :: String -> Text -> Either (ParseErrorBundle Text Void) (TypeEnv, Exp)
 parseGrinWithTypes filename content = (,) <$> parseMarkedTypeEnv filename content <*> parseGrin filename content

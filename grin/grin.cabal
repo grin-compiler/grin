@@ -272,7 +272,7 @@ library
 
 executable grin
   hs-source-dirs:      app
-  main-is:             GrinCLI.hs
+  main-is:             CLI/Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base >=4.11
                      , grin
@@ -293,11 +293,13 @@ executable grin
                      , optparse-applicative
                      , directory
                      , binary
+  other-modules:
+    CLI.Lib
   default-language:    Haskell2010
 
 test-suite grin-test
   type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
+  hs-source-dirs:      test, app
   main-is:             Spec.hs
   default-extensions:  OverloadedStrings
   build-depends:       base >=4.11
@@ -319,14 +321,35 @@ test-suite grin-test
                      , ansi-wl-pprint
                      , directory
                      , inline-c
+                     , directory-tree
+                     , yaml
+                     , binary
+                     , optparse-applicative
+                     , megaparsec
+                     , system-posix-redirect
+                     , process
+                     , bytestring
+                     , MissingH
 
   other-modules:
+                     AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
+                     AbstractInterpretation.ExtendedSyntax.CreatedBySpec
+                     AbstractInterpretation.ExtendedSyntax.HptSpec
+                     AbstractInterpretation.ExtendedSyntax.IRSpec
+                     AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
+                     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
+                     AbstractInterpretation.ExtendedSyntax.SharingSpec
                      ExtendedSyntax.LintSpec
                      ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec
                      ExtendedSyntax.PipelineSpec
                      ExtendedSyntax.PrimOpsSpec
                      ExtendedSyntax.TestSpec
+                     Reducer.ExtendedSyntax.BaseSpec
+                     Reducer.ExtendedSyntax.IOSpec
+                     Reducer.ExtendedSyntax.PureSpec
+                     Samples.ExtendedSyntax.ArityFullRemoveSpec
+                     Samples.ExtendedSyntax.SumListSpec
                      Transformations.ExtendedSyntax.BindNormalisationSpec
                      Transformations.ExtendedSyntax.ConfluenceSpec
                      Transformations.ExtendedSyntax.ConversionSpec
@@ -382,23 +405,15 @@ test-suite grin-test
                      Transformations.BindNormalisationSpec
                      Transformations.ConfluenceSpec
                      Transformations.MangleNamesSpec
-                     Samples.ExtendedSyntax.ArityFullRemoveSpec
-                     Samples.ExtendedSyntax.SumListSpec
                      Samples.SumListSpec
                      Samples.ArityFullRemoveSpec
                      LintSpec
                      TestSpec
                      PipelineSpec
+                     PrettySpec
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
-                     AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
-                     AbstractInterpretation.ExtendedSyntax.CreatedBySpec
-                     AbstractInterpretation.ExtendedSyntax.HptSpec
-                     AbstractInterpretation.ExtendedSyntax.IRSpec
-                     AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
-                     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
-                     AbstractInterpretation.ExtendedSyntax.SharingSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
                      AbstractInterpretation.EffectTrackingSpec
@@ -407,11 +422,140 @@ test-suite grin-test
                      AbstractInterpretation.SharingSpec
                      AbstractInterpretation.CreatedBySpec
                      Test.Hspec.PipelineExample
+                     Test.EndToEnd
+                     Test.EndToEndSpec
+                     CLI.Lib
+  default-language:    Haskell2010
 
+test-suite grin-end-to-end-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test, app
+  main-is:             EndToEnd.hs
+  default-extensions:  OverloadedStrings
+  build-depends:       base >=4.11
+                     , containers
+                     , filepath
+                     , functor-infix
+                     , grin
+                     , hspec
+                     , hspec-core
+                     , hspec-discover
+                     , QuickCheck
+                     , deepseq
+                     , vector
+                     , text
+                     , random
+                     , microlens
+                     , transformers
+                     , mtl
+                     , ansi-wl-pprint
+                     , directory
+                     , inline-c
+                     , directory-tree
+                     , yaml
+                     , megaparsec
+                     , binary
+                     , optparse-applicative
+                     , system-posix-redirect
+                     , process
+                     , bytestring
+                     , MissingH
+  other-modules:
+                     AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
+                     AbstractInterpretation.ExtendedSyntax.CreatedBySpec
+                     AbstractInterpretation.ExtendedSyntax.HptSpec
+                     AbstractInterpretation.ExtendedSyntax.IRSpec
+                     AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
+                     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
+                     AbstractInterpretation.ExtendedSyntax.SharingSpec
+                     ExtendedSyntax.LintSpec
+                     ExtendedSyntax.NametableSpec
+                     ExtendedSyntax.ParserSpec
+                     ExtendedSyntax.PipelineSpec
+                     ExtendedSyntax.PrimOpsSpec
+                     ExtendedSyntax.TestSpec
                      Reducer.ExtendedSyntax.BaseSpec
                      Reducer.ExtendedSyntax.IOSpec
                      Reducer.ExtendedSyntax.PureSpec
+                     Samples.ExtendedSyntax.ArityFullRemoveSpec
+                     Samples.ExtendedSyntax.SumListSpec
+                     Transformations.ExtendedSyntax.BindNormalisationSpec
+                     Transformations.ExtendedSyntax.ConfluenceSpec
+                     Transformations.ExtendedSyntax.ConversionSpec
+                     Transformations.ExtendedSyntax.MangleNamesSpec
+                     Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
+                     Transformations.ExtendedSyntax.Optimising.ArityRaisingSpec
+                     Transformations.ExtendedSyntax.Optimising.CaseCopyPropagationSpec
+                     Transformations.ExtendedSyntax.Optimising.CaseHoistingSpec
+                     Transformations.ExtendedSyntax.Optimising.ConstantPropagationSpec
+                     Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
+                     Transformations.ExtendedSyntax.Optimising.CSESpec
+                     Transformations.ExtendedSyntax.Optimising.DeadVariableEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.DeadFunctionEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.DeadParameterEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisationSpec
+                     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxingSpec
+                     Transformations.ExtendedSyntax.Optimising.InliningSpec
+                     Transformations.ExtendedSyntax.Optimising.InterproceduralDeadDataEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.InterproceduralDeadFunctionEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.InterproceduralDeadParameterEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.NonSharedEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
+
+                     Transformations.Simplifying.RegisterIntroductionSpec
+                     Transformations.Simplifying.CaseSimplificationSpec
+                     Transformations.Simplifying.SplitFetchSpec
+                     Transformations.Simplifying.RightHoistFetchSpec
+                     Transformations.Simplifying.VectorisationSpec
+                     Transformations.Simplifying.ProducerNameIntroductionSpec
+                     Transformations.Simplifying.BindingPatternSimplificationSpec
+                     Transformations.Optimising.CaseCopyPropagationSpec
+                     Transformations.Optimising.CopyPropagationSpec
+                     Transformations.Optimising.ConstantFoldingSpec
+                     Transformations.Optimising.ConstantPropagationSpec
+                     Transformations.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.Optimising.TrivialCaseEliminationSpec
+                     Transformations.Optimising.SparseCaseOptimisationSpec
+                     Transformations.Optimising.UpdateEliminationSpec
+                     Transformations.Optimising.CSESpec
+                     Transformations.Optimising.GeneralizedUnboxingSpec
+                     Transformations.Optimising.ArityRaisingSpec
+                     Transformations.Optimising.SimpleDeadFunctionEliminationSpec
+                     Transformations.Optimising.SimpleDeadParameterEliminationSpec
+                     Transformations.Optimising.SimpleDeadVariableEliminationSpec
+                     Transformations.Optimising.InliningSpec
+                     Transformations.Optimising.CaseHoistingSpec
+                     Transformations.Optimising.DeadDataEliminationSpec
+                     Transformations.Optimising.DeadFunctionEliminationSpec
+                     Transformations.Optimising.DeadParameterEliminationSpec
+                     Transformations.Optimising.DeadVariableEliminationSpec
+                     Transformations.StaticSingleAssignmentSpec
+                     Transformations.BindNormalisationSpec
+                     Transformations.ConfluenceSpec
+                     Transformations.MangleNamesSpec
+                     Samples.SumListSpec
+                     Samples.ArityFullRemoveSpec
+                     LintSpec
+                     TestSpec
+                     PipelineSpec
+                     PrettySpec
+                     ParserSpec
+                     PrimOpsSpec
+                     NametableSpec
+                     AbstractInterpretation.HptSpec
+                     AbstractInterpretation.LiveVariableSpec
+                     AbstractInterpretation.EffectTrackingSpec
+                     AbstractInterpretation.IRSpec
+                     AbstractInterpretation.OptimiseAbstractProgramSpec
+                     AbstractInterpretation.SharingSpec
+                     AbstractInterpretation.CreatedBySpec
+                     Test.Hspec.PipelineExample
+                     Test.EndToEnd
+                     Test.EndToEndSpec
+                     CLI.Lib
   default-language:    Haskell2010
+
 
 benchmark grin-benchmark
   type:                exitcode-stdio-1.0
