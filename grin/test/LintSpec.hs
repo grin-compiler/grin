@@ -247,7 +247,8 @@ spec = do
             n1 <- case n0 of
               (CInt c0) -> pure n0
               (CFloat c1) ->
-                a0 <- pure (CFloat 2.0)
+                k1 <- pure 2.0
+                a0 <- pure (CFloat k1)
                 pure a0
             pure ()
         |]
