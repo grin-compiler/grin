@@ -242,7 +242,8 @@ spec = do
     it "disregards variable patterns" $ do
       let program = [prog|
           main =
-            n0 <- pure (CInt 0)
+            k0 <- pure 0
+            n0 <- pure (CInt k0)
             n1 <- case n0 of
               (CInt c0) -> pure n0
               (CFloat c1) ->
