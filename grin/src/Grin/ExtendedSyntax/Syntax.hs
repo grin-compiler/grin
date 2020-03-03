@@ -88,8 +88,9 @@ data CPat
 data BPat
   = VarPat { _bPatVar :: Name }
   -- TODO: swap the fields so that it is consistent with the concrete syntax
-  | AsPat  { _bPatVar :: Name
-           , _bPatVal :: Val
+  | AsPat  { _bPatTag    :: Tag
+           , _bPatFields :: [Name]
+           , _bPatVar    :: Name
            }
   deriving (Generic, Data, NFData, Binary, Eq, Show, Ord)
 
@@ -151,8 +152,8 @@ _OnlyVarPat f (VarPat v) = VarPat <$> f v
 _OnlyVarPat _ other      = pure other
 
 _BPatVar :: Traversal' BPat Name
-_BPatVar f (AsPat v val) = AsPat <$> f v <*> pure val
-_BPatVar f (VarPat v)    = VarPat <$> f v
+_BPatVar f (AsPat tag vars v) = AsPat <$> pure tag <*> pure vars <*> f v
+_BPatVar f (VarPat v)         = VarPat <$> f v
 
 _CPatNodeTag :: Traversal' CPat Tag
 _CPatNodeTag f (NodePat tag args) = (`NodePat` args) <$> f tag

@@ -161,10 +161,10 @@ testProgram = withPrimPrelude [prog|
         pure v
       (Fupto a b) @ alt.7 ->
         w <- upto $ a b
-        () @ p.5 <- update q w
+        p.5 <- update q w
         pure w
       (Fsum c) @ alt.8 ->
         z <- sum $ c
-        () @ p.6 <- update q z
+        p.6 <- update q z
         pure z
   |]

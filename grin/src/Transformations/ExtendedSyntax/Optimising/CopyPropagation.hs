@@ -66,10 +66,9 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
            pure $ project $ EBind (SReturn valWithOrigVars) bpat rightExp
 
       -- left unit law + eliminate redundant rebinds
-      EBind (SReturn (Var valVar)) (AsPat patVar asPat) rightExp
+      EBind (SReturn (Var valVar)) (AsPat patTag patArgs patVar) rightExp
         | origVar <- getAlias valVar aliases
         , origVal <- getOrigVal origVar origVals
-        , ConstTagNode patTag patArgs <- asPat
         , ConstTagNode valTag valArgs <- origVal
         , patTag == valTag -> do
           let aliases' = aliases <> (Map.fromList $ zip (patVar:patArgs) (origVar:valArgs))
@@ -79,10 +78,9 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
 
       -- add the lhs value as an original value
       -- and eliminate redudant rebinds
-      EBind (SReturn val) (AsPat patVar asPat) rightExp
+      EBind (SReturn val) (AsPat patTag patArgs patVar) rightExp
         | isn't _Lit val
         , valWithOrigVars <- substNamesVal aliases val
-        , ConstTagNode patTag patArgs <- asPat
         , ConstTagNode valTag valArgs <- valWithOrigVars
         , patTag == valTag -> do
           let origVals' = Map.insert patVar valWithOrigVars origVals
@@ -91,10 +89,10 @@ copyPropagation = flip evalState mempty . hyloM rmBlocks builder where
           put newEnv
           pure $ project $ EBind (SReturn val) (VarPat patVar) rightExp
 
-      -- simplify as-pattern matching against the same basic value it binds
-      EBind (SReturn retVal) (AsPat var patVal) rightExp
-        | isBasicValue retVal
-        , retVal == patVal -> do
+      -- simplify as-pattern matching against the same node value it binds
+      EBind (SReturn retVal@(ConstTagNode retTag retArgs)) (AsPat patTag patArgs var) rightExp
+        | retTag  == patTag
+        , retArgs == patArgs -> do
           pure $ project $ EBind (SReturn retVal) (VarPat var) rightExp
 
       _ -> pure $ project exp'

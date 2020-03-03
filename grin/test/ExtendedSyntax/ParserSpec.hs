@@ -60,30 +60,6 @@ spec = do
             ]
       before `sameAs` after
 
-    it "as-pat-unit" $ do
-      let before = [prog|
-        grinMain =
-          ()@v <- pure ()
-          pure v
-        |]
-      let after = Program []
-            [ Def "grinMain" [] $
-                EBind (SReturn Unit) (AsPat "v" Unit) (SReturn $ Var "v")
-            ]
-      before `sameAs` after
-
-    it "as-pat-lit" $ do
-      let before = [prog|
-        grinMain =
-          5@v <- pure ()
-          pure v
-        |]
-      let after = Program []
-            [ Def "grinMain" [] $
-                EBind (SReturn Unit) (AsPat "v" (Lit $ LInt64 5)) (SReturn $ Var "v")
-            ]
-      before `sameAs` after
-
     it "as-pat-nullary-node" $ do
       let before = [prog|
         grinMain =
@@ -92,7 +68,7 @@ spec = do
         |]
       let after = Program []
             [ Def "grinMain" [] $
-                EBind (SReturn Unit) (AsPat "v" (ConstTagNode (Tag C "Nil") [])) (SReturn $ Var "v")
+                EBind (SReturn Unit) (AsPat (Tag C "Nil") [] "v") (SReturn $ Var "v")
             ]
       before `sameAs` after
 
@@ -104,14 +80,14 @@ spec = do
         |]
       let after = Program []
             [ Def "grinMain" [] $
-                EBind (SReturn Unit) (AsPat "v" (ConstTagNode (Tag C "Cons") ["x", "xs"])) (SReturn $ Var "v")
+                EBind (SReturn Unit) (AsPat (Tag C "Cons") ["x", "xs"] "v") (SReturn $ Var "v")
             ]
       before `sameAs` after
 
     it "case" $ do
       let before = [prog|
         test p =
-          ()@_unit <- case p of
+          (CNil)@_cNil <- case p of
             #default @ _1 ->
               pure ()
           case p of
@@ -120,7 +96,7 @@ spec = do
         |]
       let after = Program []
             [ Def "test"[ "p" ]
-              ( EBind ( ECase "p" [ Alt DefaultPat "_1" ( SReturn Unit ) ] ) (AsPat "_unit" Unit)
+              ( EBind ( ECase "p" [ Alt DefaultPat "_1" ( SReturn Unit ) ] ) (AsPat (Tag C "Nil") [] "_cNil")
                 ( ECase "p" [ Alt DefaultPat "_2" ( SReturn (Var "p") ) ] )
               )
             ]
@@ -325,7 +301,6 @@ spec = do
               #"" @ _1 -> pure 1
               #"a" @ _2 -> pure 2
               #default @ _3 -> pure 3
-            #"a" @ _x <- pure v2
             pure ()
         |]
     let after = Program []
@@ -337,7 +312,6 @@ spec = do
               ,Alt (LitPat (LString "a")) "_2" (SReturn (Lit (LInt64 2)))
               ,Alt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
               ]) (VarPat "v3") $
-            EBind (SReturn $ Var "v2") (AsPat "_x" $ (Lit (LString "a"))) $
             SReturn Unit
           ]
     before `sameAs` after
@@ -350,7 +324,6 @@ spec = do
               #'b' @ _1 -> pure 1
               #'c' @ _2 -> pure 2
               #default @ _3 -> pure 3
-            #'a' @ _c <- pure v2
             pure ()
         |]
     let after = Program []
@@ -361,7 +334,6 @@ spec = do
               ,Alt (LitPat (LChar 'c')) "_2" (SReturn (Lit (LInt64 2)))
               ,Alt DefaultPat "_3" (SReturn (Lit (LInt64 3)))
               ]) (VarPat "v3") $
-            EBind (SReturn $ Var "v2") (AsPat "_c" $ Lit (LChar 'a')) $
             SReturn Unit
           ]
     before `sameAs` after
