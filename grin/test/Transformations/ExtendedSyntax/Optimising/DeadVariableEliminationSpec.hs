@@ -123,6 +123,28 @@ spec = do
           dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
+    it "keeps updates" $ do
+      let before = withPrimPrelude [prog|
+          grinMain =
+            n1 <- pure (COne)
+            n2 <- pure (CTwo)
+            p <- store n1
+            _1 <- update p n2
+            pure ()
+        |]
+      let after = withPrimPrelude [prog|
+          grinMain =
+            n1 <- pure (COne)
+            n2 <- pure (CTwo)
+            p <- store n1
+            _1 <- update p n2
+            pure ()
+        |]
+      let tyEnv = inferTypeEnv before
+          effMap = effectMap (tyEnv, before)
+          dveExp = deadVariableElimination effMap before
+      dveExp `sameAs` after
+
 
   describe "Simple dead variable elimination works for" $ do
     it "simple" $ do
