@@ -1017,16 +1017,9 @@ runAnalysisFor t = do
 
     hpt = analysis psHPTResult HPT
     lva = analysis psLVAResult LVA
+    cby = analysis psCByResult CBy
     et  = analysis psETResult ET
     sharing = analysis psSharingResult Sharing
-    cby = do
-      r <- use psCByProgram
-      when (isNothing r) $ do
-        pipelineLog ""
-        pipelineLog $ "CBy requires bind-normalized code"
-        pipelineStep $ T BindNormalisation
-        pipelineLog $ "Analysis"
-        mapM_ pipelineStep $ (CBy <$> [Compile, RunPure])
 
     eff :: PipelineM ()
     eff = do
