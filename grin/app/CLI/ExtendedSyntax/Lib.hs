@@ -15,11 +15,11 @@ import qualified Data.Binary as Binary
 import Options.Applicative
 import System.IO
 
-import Grin.Grin
-import Grin.PrimOpsPrelude
-import Grin.Parse
-import Grin.Nametable as Nametable
-import Pipeline.Pipeline
+import Grin.ExtendedSyntax.Grin
+import Grin.ExtendedSyntax.PrimOpsPrelude
+import Grin.ExtendedSyntax.Parse
+import Grin.ExtendedSyntax.Nametable as Nametable
+import Pipeline.ExtendedSyntax.Pipeline
 
 
 
@@ -40,31 +40,21 @@ flg' c s l h = flag' c (mconcat [short s, long l, help h])
 
 transformOpts :: Parser Transformation
 transformOpts =
-      flg CaseSimplification "cs" "Case Simplification"
-  <|> flg SplitFetch "sf" "Split Fetch"
-  <|> flg Vectorisation "v" "Vectorisation"
-  <|> flg RegisterIntroduction "ri" "Register Introduction"
-  <|> flg ProducerNameIntroduction "pni" "Producer Name Introduction"
-  <|> flg BindingPatternSimplification "bps" "Binding Pattern Simplification"
-  <|> flg InlineEval "ie" "Inline Eval"
+      flg InlineEval "ie" "Inline Eval"
   <|> flg InlineApply "ia" "Inline Apply"
   <|> flg BindNormalisation "bn" "Bind Normalisation"
-  <|> flg RightHoistFetch "rhf" "Right Hoist Fetch"
   <|> flg GenerateEval "ge" "Generate Eval"
-  <|> flg ConstantFolding "cfl" "Constant Folding"
   <|> flg EvaluatedCaseElimination "ece" "Evaluated Case Elimination"
   <|> flg TrivialCaseElimination "tce" "Trivial Case Elimination"
   <|> flg SparseCaseOptimisation "sco" "Sparse Case Optimisation"
-  <|> flg UpdateElimination "ue" "Update Elimination"
   <|> flg CopyPropagation "cp" "Copy Propagation"
   <|> flg ConstantPropagation "cnp" "Constant Propagation"
-  <|> flg DeadDataElimination "dde" "Dead Data Elimination"
+  <|> flg InterproceduralDeadDataElimination "idde" "Interprocedural Dead Data Elimination"
+  <|> flg InterproceduralDeadFunctionElimination "idfe" "Interprocedural Dead Function Elimination"
+  <|> flg InterproceduralDeadParameterElimination "idpe" "Interprocedural Dead Parameter Elimination"
   <|> flg DeadFunctionElimination "dfe" "Dead Function Elimination"
-  <|> flg DeadParameterElimination "dpe" "Dead Parameter Elimination"
   <|> flg DeadVariableElimination "dve" "Dead Variable Elimination"
-  <|> flg SimpleDeadFunctionElimination "sdfe" "Dead Procedure Elimination"
-  <|> flg SimpleDeadVariableElimination "sdve" "Simple Dead Variable Elimination"
-  <|> flg SimpleDeadParameterElimination "sdpe" "Simple Dead Parameter Elimination"
+  <|> flg DeadParameterElimination "dpe" "Dead Parameter Elimination"
   <|> flg CommonSubExpressionElimination "cse" "Common Sub-Expression Elimination"
   <|> flg CaseCopyPropagation "ccp" "Case Copy Propagation"
   <|> flg GeneralizedUnboxing "gub" "GeneralizedUnboxing"
@@ -121,7 +111,7 @@ pipelineOpts =
   <|> flg (Pass [ET Compile, ET Optimise, ET RunPure]) "et-opt" "Compiles, optimizes and runs the effect tracking analysis"
   <|> flg (Pass [Sharing Compile, Sharing Optimise, Sharing RunPure]) "sharing-opt" "Compiles, optimizes and runs the sharing analysis"
   <|> flg  (Pass [LVA Compile, CBy Compile, RunCByWithLVA]) "cby-with-lva" "Compiles the live variable and created-by analyses, then runs the created-by analysis using the LVA result"
-  <|> flg DeadCodeElimination "dce" "Dead Code Elimination"
+  <|> flg InterproceduralDeadCodeElimination "idce" "Dead Code Elimination"
   <|> flg (PureEval False) "eval" "Evaluate the grin program (pure)"
   <|> (PureEval <$> (option auto (mconcat [long "eval-with-statistics", help "Evaluate the grin program (pure) and render heap statistics."])))
   <|> flg JITLLVM "llvm" "JIT with LLVM"
