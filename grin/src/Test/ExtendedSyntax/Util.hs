@@ -111,9 +111,9 @@ loadTestData path = do
   pwd <- getCurrentDirectory
   -- There is a difference between the 'stack ghci --test' and 'stack test'.
   -- Stack test uses the grin/grin meanwhile stack ghci uses 'grin' directory
-  let testDataDir = if | "/grin/grin" `L.isSuffixOf` pwd -> "test-data/ExtendedSyntax"
-                       | "/grin"      `L.isSuffixOf` pwd -> "grin/test-data/ExtendedSyntax"
-                       | otherwise -> error "Impossible: stack did not run inside the project dir."
+  let testDataDir = if | "/grin/grin" `L.isSuffixOf` pwd -> "test-data-es"
+                       | "/grin"      `L.isSuffixOf` pwd -> "grin/test-data-es"
+                       | otherwise -> error "Impossible: stack was not run inside the project dir."
 
   file <- T.readFile (testDataDir </> path)
   pure $ withPrimPrelude . parseProg $ file
