@@ -17,6 +17,7 @@ module Pipeline.ExtendedSyntax.Pipeline
   , optimize
   , optimizeWith
   , randomPipeline
+  , silently
   ) where
 
 import Prelude
@@ -752,23 +753,22 @@ randomPipeline seed opts exp
 randomPipelineM :: StdGen -> PipelineM [Transformation]
 randomPipelineM seed = do
   liftIO $ setStdGen seed
-  go transformationWhitelist []
+  pipelineStep $ T BindNormalisation
+  go transformationWhitelist [BindNormalisation]
   where
     go :: [Transformation] -> [Transformation] -> PipelineM [Transformation]
-    go [] result = do
-      -- The final result must be normalised as, non-normalised and normalised
-      -- grin program is semantically the same.
-      pipelineStep $ T BindNormalisation
-      pure $ reverse result
+    go [] result = pure $ reverse result
     go available res = do
       exp <- use psExp
-      t <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
+      t   <- fmap ((available !!) . abs . (`mod` (length available))) $ liftIO $ randomIO
       eff <- pipelineStep (T t)
       case eff of
-        None -> go (available Data.List.\\ [t]) res
+        None ->
+          go (available Data.List.\\ [t]) res
         ExpChanged -> do
+          pipelineStep $ T BindNormalisation
           lintGrin . Just $ show t
-          go transformationWhitelist (t:res)
+          go transformationWhitelist (BindNormalisation:t:res)
 
     transformationWhitelist :: [Transformation]
     transformationWhitelist =
@@ -1034,6 +1034,9 @@ inceaseIntendation = psIntendation %= succ
 
 decreateIntendation :: PipelineM ()
 decreateIntendation = psIntendation %= pred
+
+silently :: PipelineM a -> PipelineM a
+silently = local $ \opts -> opts { _poLogging = False }
 
 pipelineLog :: String -> PipelineM ()
 pipelineLog str = do
