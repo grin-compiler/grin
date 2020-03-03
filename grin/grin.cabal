@@ -295,6 +295,7 @@ executable grin
                      , binary
   other-modules:
     CLI.Lib
+    CLI.ExtendedSyntax.Lib
   default-language:    Haskell2010
 
 test-suite grin-test
