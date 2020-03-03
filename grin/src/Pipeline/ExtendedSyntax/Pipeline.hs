@@ -13,6 +13,7 @@ module Pipeline.ExtendedSyntax.Pipeline
   , pattern SimplePrintGrin
   , pattern FullPrintGrin
   , pattern InterproceduralDeadCodeElimination
+  , pattern PureEvalPlugin
   , pipeline
   , optimize
   , optimizeWith
@@ -177,7 +178,8 @@ data PipelineStep
   | T Transformation
   | Pass [PipelineStep]
   | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
-  | PureEval
+  | PureEval Bool
+  | PureEvalPluginH (Hidden EvalPlugin) Bool
   | JITLLVM
   | PrintAST
   | SaveLLVM Path
@@ -230,6 +232,10 @@ pattern DebugTransformation :: (Exp -> Exp) -> PipelineStep
 pattern DebugTransformation t <- DebugTransformationH (H t)
   where DebugTransformation t =  DebugTransformationH (H t)
 
+pattern PureEvalPlugin :: EvalPlugin -> Bool -> PipelineStep
+pattern PureEvalPlugin t b <- PureEvalPluginH (H t) b
+  where PureEvalPlugin t b =  PureEvalPluginH (H t) b
+
 data PipelineOpts = PipelineOpts
   { _poOutputDir   :: FilePath
   , _poFailOnLint  :: Bool
@@ -239,6 +245,7 @@ data PipelineOpts = PipelineOpts
   , _poLintOnChange :: Bool
   , _poTypedLint :: Bool -- Run HPT before every lint
   , _poSaveBinary :: Bool
+  , _poCFiles :: [FilePath]
   }
 
 defaultOpts :: PipelineOpts
@@ -251,6 +258,7 @@ defaultOpts = PipelineOpts
   , _poLintOnChange = True
   , _poTypedLint    = False
   , _poSaveBinary   = False
+  , _poCFiles       = []
   }
 
 type PipelineM a = ReaderT PipelineOpts (StateT PState IO) a
@@ -424,7 +432,6 @@ pipelineStep p = do
     T t             -> transformation t
     Pass pass       -> mapM_ pipelineStep pass
     PrintGrin r d   -> printGrinM r d
-    PureEval        -> pureEval
     JITLLVM         -> jitLLVM
     SaveLLVM path   -> saveLLVM path
     SaveExecutable dbg path -> saveExecutable dbg path
@@ -442,6 +449,8 @@ pipelineStep p = do
       errors <- use psErrors
       pipelineLog $ unlines $ "errors:" : errors
     DebugPipelineState -> debugPipelineState
+    PureEval                  showStatistics -> pureEval (EvalPlugin evalPrimOp) showStatistics
+    PureEvalPlugin evalPlugin showStatistics -> pureEval evalPlugin showStatistics
   after <- use psExp
   let eff = if before == after then None else ExpChanged
       showMS :: Rational -> String
@@ -622,12 +631,13 @@ statistics = do
   exp <- use psExp
   saveTransformationInfo "Statistics" $ Statistics.statistics exp
 
-pureEval :: PipelineM ()
-pureEval = do
+pureEval :: EvalPlugin -> Bool -> PipelineM ()
+pureEval evalPlugin showStatistics = do
   e <- use psExp
-  val <- liftIO $ do
+  (val, stat) <- liftIO $ do
     hSetBuffering stdout NoBuffering
-    evalProgram PureReducer e
+    evalProgram (PureReducer evalPlugin) e
+  when showStatistics $ pipelineLog $ show $ pretty stat
   pipelineLog $ show $ pretty val
 
 printGrinM :: RenderingOption -> (Doc -> Doc) -> PipelineM ()
@@ -680,6 +690,7 @@ callCommand cmd = do
 saveLLVM :: Path -> PipelineM ()
 saveLLVM path = do
   e <- use psExp
+  pipelineStep HPTPass
   Just typeEnv <- use psTypeEnv
   fname <- relPath path
   let code = CGLLVM.codeGen typeEnv e
@@ -688,22 +699,28 @@ saveLLVM path = do
   pipelineLog "* to LLVM *"
   void $ liftIO $ CGLLVM.toLLVM llName code
   pipelineLog"* LLVM X64 codegen *"
-  callCommand $ printf "opt-7 -O3 %s | llc-7 -o %s" llName (sName :: String)
+  llcExe <- liftIO $ fromMaybe "llc-7" <$> lookupEnv "GRIN_LLC"
+  optExe <- liftIO $ fromMaybe "opt-7" <$> lookupEnv "GRIN_OPT"
+  callCommand $ printf "%s -O3 %s | %s -o %s" optExe llName llcExe (sName :: String)
 
 saveExecutable :: Bool -> Path -> PipelineM ()
 saveExecutable debugSymbols path = do
   pipelineLog "* generate llvm x64 optcode *"
   let grinOptCodePath = Rel "grin-opt-code"
+  clangExe <- liftIO $ fromMaybe "clang-7" <$> lookupEnv "GRIN_CC"
+  llcExe <- liftIO $ fromMaybe "llc-7" <$> lookupEnv "GRIN_LLC"
   pipelineStep $ SaveLLVM grinOptCodePath
   grinOptCodeFile <- relPath grinOptCodePath
   fname <- relPath path
   pipelineLog "* generate executable *"
   callCommand $ printf
-    ("llc-7 -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
-    grinOptCodeFile
+    ("%s -O3 -relocation-model=pic -filetype=obj %s.ll" ++ if debugSymbols then " -debugger-tune=gdb" else "")
+    llcExe grinOptCodeFile
+  cfg <- ask
   callCommand $ printf
-    ("clang-7 -O3 prim_ops.c runtime.c %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
-    grinOptCodeFile fname
+    -- TODO: Support defining libraries for ffi and primops.
+    ("%s -lm -O3 %s %s.o -s -o %s" ++ if debugSymbols then " -g" else "")
+    clangExe (intercalate " " $ _poCFiles cfg) grinOptCodeFile fname
 
 debugTransformation :: (Exp -> Exp) -> PipelineM ()
 debugTransformation t = do
@@ -727,19 +744,18 @@ lintGrin mPhaseName = do
   -- print errors
   errors <- use psErrors
   unless (Prelude.null errors) $ void $ do
-    failOnLintError <- view poFailOnLint
-    when failOnLintError $ void $ do
-      pipelineLog $ show $ prettyLintExp lintExp
-      pipelineStep $ HPT PrintResult
     case mPhaseName of
       Just phaseName  -> pipelineLog $ printf "error after %s:\n%s" phaseName (unlines errors)
       Nothing         -> pipelineLog $ printf "error:\n%s" (unlines errors)
     saveTransformationInfo "Lint" $ prettyLintExp lintExp
     mHptResult <- use psHPTResult
     saveTransformationInfo "HPT-Result" mHptResult
+    failOnLintError <- view poFailOnLint
+    pipelineLog $ show $ prettyLintExp lintExp
+    pipelineStep $ HPT PrintResult
     when failOnLintError $ do
       -- FIXME: reenable after: undefined support ; transformation to inject default alts for pattern match errors
-      -- liftIO $ die "illegal code"
+      liftIO $ die "illegal code"
       pure ()
 
 -- confluence testing
@@ -931,14 +947,7 @@ optimizeWithM pre trans post = do
 
     -- HPT LVA CBy is required
     -- Only run this phase when interprocedural transformations are required.
-    phase4 = phaseLoop False $ trans `intersect`
-      [ InterproceduralDeadDataElimination
-      , InterproceduralDeadFunctionElimination
-      , InterproceduralDeadParameterElimination
-      ]
-
-    -- TODO: remove
-    oldPhase4 = if (null (trans `intersect`
+    phase4 = if (null (trans `intersect`
                   [ InterproceduralDeadDataElimination
                   , InterproceduralDeadFunctionElimination
                   , InterproceduralDeadParameterElimination
