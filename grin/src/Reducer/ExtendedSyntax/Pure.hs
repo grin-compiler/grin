@@ -1,8 +1,12 @@
 {-# LANGUAGE LambdaCase, TupleSections, BangPatterns, OverloadedStrings #-}
-module Reducer.ExtendedSyntax.Pure (reduceFun) where
+module Reducer.ExtendedSyntax.Pure
+  ( EvalPlugin(..)
+  , reduceFun
+  , reduceFunWithoutStats
+  ) where
 
 import Text.Printf
-import Text.PrettyPrint.ANSI.Leijen
+import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -24,14 +28,22 @@ prettyDebug = show . plain . pretty
 -- models computer memory
 data StoreMap
   = StoreMap
-  { storeMap  :: IntMap RTVal
+  { storeMap  :: !(IntMap RTVal)
   , storeSize :: !Int
   }
 
 emptyStore = StoreMap mempty 0
 
+newtype EvalPlugin = EvalPlugin
+  { evalPluginPrimOp  :: Name -> [Name] -> [RTVal] -> IO RTVal
+  }
 type Prog = Map Name Def
-type GrinM = ReaderT Prog (StateT StoreMap IO)
+data Context = Context
+  { ctxProg       :: Prog
+  , ctxExternals  :: [External]
+  , ctxEvalPlugin :: EvalPlugin
+  }
+type GrinM a = ReaderT Context (StateT (StoreMap, Statistics) IO) a
 
 lookupStore :: Int -> StoreMap -> RTVal
 lookupStore i s = IntMap.findWithDefault (error $ printf "missing location: %d" i) i $ storeMap s
@@ -39,51 +51,68 @@ lookupStore i s = IntMap.findWithDefault (error $ printf "missing location: %d" 
 debug :: Bool
 debug = False
 
-evalSimpleExp :: [External] -> Env -> SimpleExp -> GrinM RTVal
-evalSimpleExp exts env s = do
+evalSimpleExp :: Env -> SimpleExp -> GrinM RTVal
+evalSimpleExp env s = do
   when debug $ do
     liftIO $ print s
     void $ liftIO $ getLine
   case s of
-    SApp n a -> do
-      let args = map (evalVar env) a
+    SApp fun args -> do
+      let rtValArgs = map (evalVar env) args
+
           go a [] [] = a
           go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-          go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (prettyDebug x) (prettyDebug y)
-      if isExternalName exts n
-        then evalPrimOp n a args
+          go _ x y = error $ printf "invalid pattern for function: %s %s %s" fun (prettyDebug x) (prettyDebug y)
+      exts <- asks ctxExternals
+      evalPrimOp <- asks (evalPluginPrimOp . ctxEvalPlugin)
+      if isExternalName exts fun
+        then liftIO $ evalPrimOp fun args rtValArgs
         else do
-          Def _ vars body <- reader $ Map.findWithDefault (error $ printf "unknown function: %s" n) n
-          evalExp exts (go env vars args) body
+          Def _ vars body <- reader
+            ((Map.findWithDefault (error $ printf "unknown function: %s" fun) fun) . ctxProg)
+          evalExp (go env vars rtValArgs) body
     SReturn v -> pure $ evalVal env v
     SStore v -> do
-                l <- gets storeSize
-                let v' = evalVar env v
-                modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) (s+1))
-                pure $ RT_Loc l
+      l <- gets (storeSize . fst)
+      let v' = evalVar env v
+      modify' $ \(StoreMap m s, Statistics f u) ->
+        ( StoreMap (IntMap.insert l v' m) (s+1)
+        , Statistics (IntMap.insert l 0 f) (IntMap.insert l 0 u)
+        )
+      pure $ RT_Loc l
     SFetch ptr -> case evalVar env ptr of
-                RT_Loc l -> gets $ lookupStore l
-                x -> error $ printf "evalSimpleExp - Fetch expected location, got: %s" (prettyDebug x)
+      RT_Loc l -> do
+        modify' $ \(heap, Statistics f u) ->
+          (heap, Statistics (IntMap.adjust (+1) l f) u)
+        gets $ lookupStore l . fst
+      x -> error $ printf "evalSimpleExp - Fetch expected location, got: %s" (prettyDebug x)
     SUpdate n v -> do
-                let v' = evalVar env v
-                case evalVar env n of
-                  RT_Loc l -> get >>= \(StoreMap m _) -> case IntMap.member l m of
-                              False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
-                              True  -> modify' (\(StoreMap m s) -> StoreMap (IntMap.insert l v' m) s) >> pure RT_Unit
-                  x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (prettyDebug x)
-    SBlock a -> evalExp exts env a
+      let v' = evalVar env v
+      case evalVar env n of
+        RT_Loc l -> do
+          StoreMap m _ <- fst <$> get
+          case IntMap.member l m of
+            False -> error $ printf "evalSimpleExp - Update unknown location: %d" l
+            True  -> do
+              modify' $ \(StoreMap m s, Statistics f u) ->
+                ( StoreMap (IntMap.insert l v' m) s
+                , Statistics f (IntMap.adjust (+1) l u)
+                )
+              pure RT_Unit
+        x -> error $ printf "evalSimpleExp - Update expected location, got: %s" (prettyDebug x)
+    SBlock a -> evalExp env a
 
-    e@ECase{} -> evalExp exts env e -- FIXME: this should not be here!!! please investigate.
+    e@ECase{} -> evalExp env e -- FIXME: this should not be here!!! please investigate.
 
     x -> error $ printf "invalid simple expression %s" (prettyDebug x)
 
-evalExp :: [External] -> Env -> Exp -> GrinM RTVal
-evalExp exts env = \case
+evalExp :: Env -> Exp -> GrinM RTVal
+evalExp env = \case
   EBind op pat exp -> do
-    v <- evalSimpleExp exts env op
+    v <- evalSimpleExp env op
     when debug $ do
       liftIO $ putStrLn $ unwords [show pat,":=",show v]
-    evalExp exts (bindPat env v pat) exp
+    evalExp (bindPat env v pat) exp
   ECase scrut alts -> do
     let defaultAlts = [exp | Alt DefaultPat _ exp <- alts]
         defaultAlt  = if length defaultAlts > 1
@@ -101,19 +130,24 @@ evalExp exts env = \case
             go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
             go _ x y = error $ printf "invalid pattern and constructor: %s %s %s" (prettyDebug t) (prettyDebug x) (prettyDebug y)
         in  evalExp
-              exts
               (case vars of -- TODO: Better error check: If not default then parameters must match
                 [] -> {-default-} env'
                 _  -> go env' vars l)
               exp
-      RT_Lit l -> evalExp exts env' $ head $ [exp | Alt (LitPat a) _ exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
+      RT_Lit l -> evalExp env' $ head $ [exp | Alt (LitPat a) _ exp <- alts, a == l] ++ defaultAlt ++ error (printf "evalExp - missing Case Lit alternative for: %s" (prettyDebug l))
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
-  exp -> evalSimpleExp exts env exp
+  exp -> evalSimpleExp env exp
 
-reduceFun :: Program -> Name -> IO RTVal
-reduceFun (Program exts l) n = evalStateT (runReaderT (evalExp exts mempty e) m) emptyStore where
-  m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
-  e = case Map.lookup n m of
-        Nothing -> error $ printf "missing function: %s" n
-        Just (Def _ [] a) -> a
-        _ -> error $ printf "function %s has arguments" n
+reduceFun :: EvalPlugin -> Program -> Name -> IO (RTVal, Maybe Statistics)
+reduceFun evalPrimOp (Program exts l) n = do
+  (v, (_, s)) <- runStateT (runReaderT (evalExp mempty e) context) (emptyStore, emptyStatistics)
+  pure (v, Just s)
+  where
+    context@(Context m _ _) = Context (Map.fromList [(n,d) | d@(Def n _ _) <- l]) exts evalPrimOp
+    e = case Map.lookup n m of
+          Nothing -> error $ printf "missing function: %s" n
+          Just (Def _ [] a) -> a
+          _ -> error $ printf "function %s has arguments" n
+
+reduceFunWithoutStats :: EvalPlugin -> Program -> Name -> IO RTVal
+reduceFunWithoutStats evalPrimOp prog funName = fst <$> reduceFun evalPrimOp prog funName

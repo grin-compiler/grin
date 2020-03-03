@@ -75,9 +75,12 @@ import qualified AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGenBas
 import qualified AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen              as Sharing
 import qualified Reducer.ExtendedSyntax.LLVM.CodeGen as CGLLVM
 import qualified Reducer.ExtendedSyntax.LLVM.JIT as JITLLVM
+import Reducer.ExtendedSyntax.Pure (EvalPlugin(..))
+import Reducer.ExtendedSyntax.PrimOps (evalPrimOp)
 import Grin.ExtendedSyntax.Nametable as Nametable
 
 import System.Directory
+import System.Environment (lookupEnv)
 import qualified System.Process
 import Data.Bifunctor
 

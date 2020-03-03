@@ -7,7 +7,7 @@ import Text.Megaparsec
 import Grin.ExtendedSyntax.Grin
 import Grin.ExtendedSyntax.TypeCheck
 import Grin.ExtendedSyntax.Parse
-import Reducer.ExtendedSyntax.Base (RTVal)
+import Reducer.ExtendedSyntax.Base (RTVal, Statistics)
 import qualified Reducer.ExtendedSyntax.IO as ReducerIO
 import qualified Reducer.ExtendedSyntax.Pure as ReducerPure
 import qualified Reducer.ExtendedSyntax.LLVM.JIT as LLVM
@@ -19,12 +19,12 @@ import AbstractInterpretation.ExtendedSyntax.Reduce (AbstractInterpretationResul
 
 
 data Reducer
-  = PureReducer
+  = PureReducer ReducerPure.EvalPlugin
   | IOReducer
   | LLVMReducer
-  deriving (Eq, Show)
 
 -- TODO: Add Mode as a parameter?
+-- NOTE: this is used in benchmarks
 eval' :: Reducer -> String -> IO RTVal
 eval' reducer fname = do
   content <- Text.readFile fname
@@ -32,15 +32,17 @@ eval' reducer fname = do
     Left err -> error $ errorBundlePretty err
     Right program ->
       case reducer of
-        PureReducer -> ReducerPure.reduceFun program "grinMain"
-        IOReducer   -> ReducerIO.reduceFun program "grinMain"
+        PureReducer evalPrimOp ->
+          ReducerPure.reduceFunWithoutStats evalPrimOp program "grinMain"
+        IOReducer ->
+          ReducerIO.reduceFun program "grinMain"
         LLVMReducer -> LLVM.eagerJit (LLVM.codeGen typeEnv program) "grinMain" where
           typeEnv   = either error id $ typeEnvFromHPTResult hptResult
           hptResult = HPT.toHPTResult hptMapping ((_airComp . evalAbstractProgram) $ hptProgram)
           (hptProgram, hptMapping) = HPT.codeGen program
 
-evalProgram :: Reducer -> Program -> IO RTVal
+evalProgram :: Reducer -> Program -> IO (RTVal, Maybe Statistics)
 evalProgram reducer program =
   case reducer of
-    PureReducer -> ReducerPure.reduceFun program "grinMain"
-    IOReducer   -> ReducerIO.reduceFun program "grinMain"
+    PureReducer evalPrimOp -> ReducerPure.reduceFun evalPrimOp program "grinMain"
+    IOReducer              -> (\rtVal -> (rtVal, Nothing)) <$> ReducerIO.reduceFun program "grinMain"
