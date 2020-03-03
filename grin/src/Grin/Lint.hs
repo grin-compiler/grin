@@ -317,7 +317,6 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
               expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
               lhsType         <- normalizeType <$> extract leftExp
               pure $ do -- Lint
-                -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.
                 when (subType expectedPatType lhsType == Just False) $ do
                   warning Semantics $ [beforeMsg $ unwords
                     ["Invalid pattern match for", plainShow lpat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
