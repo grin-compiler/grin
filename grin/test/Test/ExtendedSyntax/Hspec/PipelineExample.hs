@@ -5,12 +5,12 @@
 {-# LANGUAGE LambdaCase #-}
 module Test.ExtendedSyntax.Hspec.PipelineExample where
 
-import Grin.Syntax (Program)
-import Grin.Parse
-import Grin.Pretty (pretty)
-import Grin.PrimOpsPrelude
+import Grin.ExtendedSyntax.Syntax (Program)
+import Grin.ExtendedSyntax.Parse
+import Grin.ExtendedSyntax.Pretty (pretty)
+import Grin.ExtendedSyntax.PrimOpsPrelude
 import Text.PrettyPrint.ANSI.Leijen (plain)
-import Pipeline.Pipeline -- as Grin
+import Pipeline.ExtendedSyntax.Pipeline
 
 import Control.Exception
 import Control.Monad.Trans.Except
@@ -76,7 +76,7 @@ instance Example Pipeline where
               , _poSaveBinary = False
               , _poCFiles = ["runtime.c", "prim_ops.c"]
               }
-        resultExp <- lift $ Pipeline.Pipeline.pipeline opts Nothing beforeExp steps
+        resultExp <- lift $ Pipeline.ExtendedSyntax.Pipeline.pipeline opts Nothing beforeExp steps
         when (afterExp /= resultExp) $ do
           throwE $ Failure Nothing $ ExpectedButGot Nothing
             (show $ plain $ pretty afterExp)

@@ -3,7 +3,7 @@ module Test.ExtendedSyntax.EndToEndSpec where
 
 import Control.Monad.Reader
 import Test.Hspec
-import Test.EndToEnd
+import Test.ExtendedSyntax.EndToEnd
 import Test.QuickCheck hiding (Failure)
 import Data.ByteString.Char8
 import Test.Hspec.Core.Spec hiding (pending)

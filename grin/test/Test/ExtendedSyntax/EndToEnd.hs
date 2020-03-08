@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies, LambdaCase, TypeApplications, DeriveGeneric, ScopedTypeVariables #-}
 module Test.ExtendedSyntax.EndToEnd where
 
-import CLI.Lib (mainWithArgs)
+import CLI.ExtendedSyntax.Lib (mainWithArgs)
 import Control.Arrow ((&&&))
 import Control.Exception (catch)
 import Control.Monad (forM, when)
