@@ -89,8 +89,8 @@ spec = do
 
 
     it "PNode" $ do
-      before <- loadTestData "dead-parameter-elimination/pnode_before.grin"
-      after  <- loadTestData "dead-parameter-elimination/pnode_after.grin"
+      before <- loadTestData "dead-parameter-elimination/pnode.grin"
+      after  <- loadTestData "dead-parameter-elimination/pnode.grin.expected"
       dpe before `sameAs` after
 
     it "Pnode opt" $ do

@@ -53,8 +53,8 @@ instance Example Pipeline where
       pwd <- getCurrentDirectory
       -- There is a difference between the 'stack ghci --test' and 'stack test'.
       -- Stack test uses the grin/grin meanwhile stack ghci uses 'grin' directory
-      let testDataDir = if | "/grin/grin" `isSuffixOf` pwd -> "test-data/"
-                           | "/grin"      `isSuffixOf` pwd -> "grin/test-data/"
+      let testDataDir = if | "/grin/grin" `isSuffixOf` pwd -> "test-data-es/"
+                           | "/grin"      `isSuffixOf` pwd -> "grin/test-data-es/"
                            | otherwise -> error "Impossible: stack did not run inside the project dir."
           getInput i = withPrimPrelude <$> case i of
             Src prg -> pure prg
