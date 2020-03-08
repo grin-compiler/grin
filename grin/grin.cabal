@@ -351,6 +351,12 @@ test-suite grin-test
                      Reducer.ExtendedSyntax.PureSpec
                      Samples.ExtendedSyntax.ArityFullRemoveSpec
                      Samples.ExtendedSyntax.SumListSpec
+                     -- TODO: these should not be here ˇˇˇ
+                     CLI.ExtendedSyntax.Lib
+                     Test.ExtendedSyntax.Hspec.PipelineExample
+                     Test.ExtendedSyntax.EndToEnd
+                     Test.ExtendedSyntax.EndToEndSpec
+                     -- TODO: end ^^^
                      Transformations.ExtendedSyntax.BindNormalisationSpec
                      Transformations.ExtendedSyntax.ConfluenceSpec
                      Transformations.ExtendedSyntax.ConversionSpec
@@ -469,6 +475,7 @@ test-suite grin-end-to-end-test
                      AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
                      AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
+                     CLI.ExtendedSyntax.Lib
                      ExtendedSyntax.LintSpec
                      ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec
@@ -480,6 +487,9 @@ test-suite grin-end-to-end-test
                      Reducer.ExtendedSyntax.PureSpec
                      Samples.ExtendedSyntax.ArityFullRemoveSpec
                      Samples.ExtendedSyntax.SumListSpec
+                     Test.ExtendedSyntax.Hspec.PipelineExample
+                     Test.ExtendedSyntax.EndToEnd
+                     Test.ExtendedSyntax.EndToEndSpec
                      Transformations.ExtendedSyntax.BindNormalisationSpec
                      Transformations.ExtendedSyntax.ConfluenceSpec
                      Transformations.ExtendedSyntax.ConversionSpec
