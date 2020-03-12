@@ -22,7 +22,6 @@
 - Michael Koloberdin
 - William Harvey
 - Steven Kane
-- Aly-Bocar Cisse
 <!--50 end-->
 
 <h2 align="center">Backers via Patreon</h2>
@@ -61,4 +60,5 @@
 - Callan McGill
 - Simon
 - Owen Shepherd
+- Aly-Bocar Cissé
 <!--10 end-->
