@@ -61,4 +61,7 @@
 - Simon
 - Owen Shepherd
 - Aly-Bocar Cissé
+- Ollie Charles
+- Barry Moore
+- Joe Hermaszewski
 <!--10 end-->
