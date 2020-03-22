@@ -17,6 +17,36 @@ library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
   exposed-modules:
+    AbstractInterpretation.ExtendedSyntax.IR
+    AbstractInterpretation.ExtendedSyntax.PrettyIR
+    AbstractInterpretation.ExtendedSyntax.BinaryIR
+    AbstractInterpretation.ExtendedSyntax.BinaryResult
+    AbstractInterpretation.ExtendedSyntax.ReduceCpp
+    AbstractInterpretation.ExtendedSyntax.Reduce
+    AbstractInterpretation.ExtendedSyntax.Util
+    AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgram
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Result
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Util
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGen
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.CreatedBy.Pretty
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.CodeGen
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.Pretty
+    AbstractInterpretation.ExtendedSyntax.EffectTracking.Result
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.CodeGen
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty
+    AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result
+    AbstractInterpretation.ExtendedSyntax.LiveVariable.CodeGen
+    AbstractInterpretation.ExtendedSyntax.LiveVariable.CodeGenBase
+    AbstractInterpretation.ExtendedSyntax.LiveVariable.Result
+    AbstractInterpretation.ExtendedSyntax.LiveVariable.Pretty
+    AbstractInterpretation.ExtendedSyntax.Sharing.CodeGen
+    AbstractInterpretation.ExtendedSyntax.Sharing.Pretty
+    AbstractInterpretation.ExtendedSyntax.Sharing.Result
+
     AbstractInterpretation.CreatedBy.Result
     AbstractInterpretation.CreatedBy.Readback
     AbstractInterpretation.CreatedBy.Util
@@ -66,6 +96,25 @@ library
     Grin.PrimOpsPrelude
     Grin.Nametable
     Grin.Research
+    Grin.ExtendedSyntax.Syntax
+    Grin.ExtendedSyntax.SyntaxDefs
+    Grin.ExtendedSyntax.Grin
+    Grin.ExtendedSyntax.EffectMap
+    Grin.ExtendedSyntax.Lint
+    Grin.ExtendedSyntax.Nametable
+    Grin.ExtendedSyntax.Parse
+    Grin.ExtendedSyntax.Parse.AST
+    Grin.ExtendedSyntax.Parse.Basic
+    Grin.ExtendedSyntax.Parse.TypeEnv
+    Grin.ExtendedSyntax.Pretty
+    Grin.ExtendedSyntax.PrettyLint
+    Grin.ExtendedSyntax.PrimOpsPrelude
+    Grin.ExtendedSyntax.Statistics
+    Grin.ExtendedSyntax.TH
+    Grin.ExtendedSyntax.TypeCheck
+    Grin.ExtendedSyntax.TypeEnv
+    Grin.ExtendedSyntax.TypeEnvDefs
+    Grin.ExtendedSyntax.GADT
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -85,6 +134,23 @@ library
     Test.IO
     Test.Test
     Test.Util
+    Test.ExtendedSyntax.Assertions
+    Test.ExtendedSyntax.Old.Grammar
+    Test.ExtendedSyntax.Old.Test
+    Test.ExtendedSyntax.New.Test
+    Test.ExtendedSyntax.Util
+
+    Transformations.ExtendedSyntax.BindNormalisation
+    Transformations.ExtendedSyntax.CountVariableUse
+    Transformations.ExtendedSyntax.EffectMap
+    Transformations.ExtendedSyntax.GenerateEval
+    Transformations.ExtendedSyntax.MangleNames
+    Transformations.ExtendedSyntax.StaticSingleAssignment
+    Transformations.ExtendedSyntax.Optimising.CopyPropagation
+    Transformations.ExtendedSyntax.Optimising.CSE
+    Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
+    Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
+
     Transformations.BindNormalisation
     Transformations.CountVariableUse
     Transformations.EffectMap
@@ -94,6 +160,9 @@ library
     Transformations.StaticSingleAssignment
     Transformations.UnitPropagation
     Transformations.Util
+    Transformations.ExtendedSyntax.Conversion
+    Transformations.ExtendedSyntax.Names
+    Transformations.ExtendedSyntax.Util
     Transformations.Optimising.ArityRaising
     Transformations.Optimising.CaseCopyPropagation
     Transformations.Optimising.CaseHoisting
@@ -323,6 +392,18 @@ test-suite grin-end-to-end-test
                      , bytestring
                      , MissingH
   other-modules:
+                     ExtendedSyntax.LintSpec
+                     ExtendedSyntax.NametableSpec
+                     ExtendedSyntax.ParserSpec
+                     Transformations.ExtendedSyntax.BindNormalisationSpec
+                     Transformations.ExtendedSyntax.ConversionSpec
+                     Transformations.ExtendedSyntax.MangleNamesSpec
+                     Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
+                     Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
+                     Transformations.ExtendedSyntax.Optimising.CSESpec
+                     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
+
                      Transformations.Simplifying.RegisterIntroductionSpec
                      Transformations.Simplifying.CaseSimplificationSpec
                      Transformations.Simplifying.SplitFetchSpec
@@ -363,6 +444,13 @@ test-suite grin-end-to-end-test
                      ParserSpec
                      PrimOpsSpec
                      NametableSpec
+                     AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
+                     AbstractInterpretation.ExtendedSyntax.CreatedBySpec
+                     AbstractInterpretation.ExtendedSyntax.HptSpec
+                     AbstractInterpretation.ExtendedSyntax.IRSpec
+                     AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
+                     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
+                     AbstractInterpretation.ExtendedSyntax.SharingSpec
                      AbstractInterpretation.HptSpec
                      AbstractInterpretation.LiveVariableSpec
                      AbstractInterpretation.EffectTrackingSpec
