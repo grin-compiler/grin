@@ -7,5 +7,5 @@ import qualified Test.ExtendedSyntax.EndToEnd as ES (endToEnd)
 
 main :: IO ()
 main = do
-  hspec $ endToEnd "./test-data/"
+  -- hspec $ endToEnd "./test-data/"
   hspec $ ES.endToEnd "./test-data-es/"
