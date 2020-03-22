@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes, PatternSynonyms, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes, PatternSynonyms, TemplateHaskell, TypeApplications #-}
 module Pipeline.ExtendedSyntax.Pipeline
   ( PipelineOpts(..)
   , defaultOpts
@@ -49,6 +49,7 @@ import Transformations.ExtendedSyntax.MangleNames
 import Transformations.ExtendedSyntax.EffectMap
 import Transformations.ExtendedSyntax.StaticSingleAssignment
 import Transformations.ExtendedSyntax.Names (ExpChanges(..))
+import Transformations.ExtendedSyntax.Conversion (convertToNew)
 import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result   as HPT
 import qualified AbstractInterpretation.ExtendedSyntax.CreatedBy.Readback    as CBy
 import qualified AbstractInterpretation.ExtendedSyntax.CreatedBy.Result      as CBy
@@ -78,6 +79,9 @@ import qualified Reducer.ExtendedSyntax.LLVM.JIT as JITLLVM
 import Reducer.ExtendedSyntax.Pure (EvalPlugin(..))
 import Reducer.ExtendedSyntax.PrimOps (evalPrimOp)
 import Grin.ExtendedSyntax.Nametable as Nametable
+
+import qualified Grin.Nametable as Old
+import qualified Grin.Syntax    as Old
 
 import System.Directory
 import System.Environment (lookupEnv)
@@ -198,6 +202,7 @@ data PipelineStep
   | ConfluenceTest
   | PrintErrors
   | DebugPipelineState
+  | LoadOldAST FilePath -- currently only from binary
   deriving (Eq, Show)
 
 -- TODO: maybe we will need DVE & CopyPropgation here as well
@@ -454,6 +459,7 @@ pipelineStep p = do
     DebugPipelineState -> debugPipelineState
     PureEval                  showStatistics -> pureEval (EvalPlugin evalPrimOp) showStatistics
     PureEvalPlugin evalPlugin showStatistics -> pureEval evalPlugin showStatistics
+    LoadOldAST path -> loadOldAST path
   after <- use psExp
   let eff = if before == after then None else ExpChanged
       showMS :: Rational -> String
@@ -659,6 +665,13 @@ printAST :: PipelineM ()
 printAST = do
   e <- use psExp
   pPrint e
+
+loadOldAST :: FilePath -> PipelineM ()
+loadOldAST path = do
+  ent <- liftIO $
+    Binary.decodeFile @(Old.Exp, Old.Nametable) path
+  let oldAst = Old.restore ent
+  psExp .= convertToNew oldAst
 
 saveGrin :: Path -> PipelineM ()
 saveGrin path = do

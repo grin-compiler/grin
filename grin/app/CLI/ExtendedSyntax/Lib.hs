@@ -38,6 +38,8 @@ data Options = Options
 flg c l h = flag' c (mconcat [long l, help h])
 flg' c s l h = flag' c (mconcat [short s, long l, help h])
 
+
+
 transformOpts :: Parser Transformation
 transformOpts =
       flg InlineEval "ie" "Inline Eval"
@@ -124,6 +126,7 @@ pipelineOpts =
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
+  <|> (LoadOldAST <$> (strOption (mconcat [long "load-old-ast", help "Load an old AST from a binary file, then convert it to the new syntax", metavar "PATH"])))
 
 
 maybeRenderingOpt :: String -> Maybe RenderingOption
