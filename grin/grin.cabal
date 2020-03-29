@@ -344,6 +344,7 @@ test-suite grin-test
                      ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec
                      ExtendedSyntax.PipelineSpec
+                     ExtendedSyntax.PrettySpec
                      ExtendedSyntax.PrimOpsSpec
                      ExtendedSyntax.TestSpec
                      Reducer.ExtendedSyntax.BaseSpec
