@@ -217,7 +217,7 @@ mainWithArgs args = do
       else do
         content <- Text.readFile fname
         let (typeEnv, program') = either (error . M.errorBundlePretty) id $ parseGrinWithTypes fname content
-        pure $ (Just typeEnv, if noPrelude then program' else concatPrograms [primPrelude, program'])
+        pure $ (Just typeEnv, if noPrelude then program' else withPrimPrelude program')
     let opts = defaultOpts
                 { _poOutputDir = outputDir
                 , _poFailOnLint = not continueOnLint

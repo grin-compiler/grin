@@ -73,7 +73,7 @@ codeGenPrimOp name [opA, opB] = pure $ case name of
   "_prim_bool_eq"   -> I cgBool $ ICmp {iPredicate=I.EQ,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_bool_ne"   -> I cgBool $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}
 
-  _ -> error $ "unknown primop: " ++ show name
+codeGenPrimOp name _ = error $ "unknown primop: " ++ show name
 
 codeGenFFI :: Grin.External -> [Operand] -> CG Result
 codeGenFFI e ops = do
