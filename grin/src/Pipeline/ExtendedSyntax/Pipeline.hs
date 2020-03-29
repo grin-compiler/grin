@@ -619,7 +619,6 @@ printTypeEnv = do
   Just typeEnv <- use psTypeEnv
   pipelineLog . show . pretty $ typeEnv
 
-
 saveTransformationInfo :: (Pretty a) => String -> a -> PipelineM ()
 saveTransformationInfo name content = do
   n <- use psSaveIdx
@@ -676,10 +675,11 @@ loadOldAST path = do
 saveGrin :: Path -> PipelineM ()
 saveGrin path = do
   e <- use psExp
+  let prettyExp = prettyProgram WithExternals e
   case path of
-    Rel fn -> saveTransformationInfo fn e
+    Rel fn -> saveTransformationInfo fn prettyExp
     Abs fn -> liftIO $ do
-      writeFile fn $ show $ plain $ pretty e
+      writeFile fn $ show $ plain $ prettyExp
 
 -- | Save binary similar as transformation info.
 saveBinary :: String -> PipelineM ()
