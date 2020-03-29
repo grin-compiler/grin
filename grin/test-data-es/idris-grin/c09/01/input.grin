@@ -1,0 +1,782 @@
+ffi effectful
+  _prim_string_print :: T_String
+                     -> T_Unit
+  _prim_error :: T_String
+              -> T_Unit
+  
+ffi pure
+  _prim_string_concat :: T_String
+                      -> T_String
+                      -> T_String
+  _prim_string_eq :: T_String
+                  -> T_String
+                  -> T_Int64
+  _prim_string_head :: T_String
+                    -> T_Int64
+  _prim_int_str :: T_Int64
+                -> T_String
+  
+primop pure
+  _prim_int_sub :: T_Int64
+                -> T_Int64
+                -> T_Int64
+  _prim_int_eq :: T_Int64
+               -> T_Int64
+               -> T_Bool
+  _prim_int_lt :: T_Int64
+               -> T_Int64
+               -> T_Bool
+  
+idris_int_eq idris_int_eq0 idris_int_eq1 =
+  (CGrInt idris_int_eq0_1) @ p.1 <- fetch idris_int_eq0
+  (CGrInt idris_int_eq1_1) @ p.0 <- fetch idris_int_eq1
+  idris_int_eq2 <- _prim_int_eq $ idris_int_eq0_1 idris_int_eq1_1
+  case idris_int_eq2 of
+    #False @ alt.0 ->
+      y.0 <- pure 0
+      v.167 <- pure (CGrInt y.0)
+      pure v.167
+    #True @ alt.1 ->
+      y.1 <- pure 1
+      v.168 <- pure (CGrInt y.1)
+      pure v.168
+
+idris_int_lt idris_int_lt0 idris_int_lt1 =
+  (CGrInt idris_int_lt0_1) @ p.3 <- fetch idris_int_lt0
+  (CGrInt idris_int_lt1_1) @ p.2 <- fetch idris_int_lt1
+  idris_int_lt2 <- _prim_int_lt $ idris_int_lt0_1 idris_int_lt1_1
+  case idris_int_lt2 of
+    #False @ alt.2 ->
+      y.2 <- pure 0
+      v.169 <- pure (CGrInt y.2)
+      pure v.169
+    #True @ alt.3 ->
+      y.3 <- pure 1
+      v.170 <- pure (CGrInt y.3)
+      pure v.170
+
+idris_int_sub idris_int_sub0 idris_int_sub1 =
+  (CGrInt idris_int_sub0_1) @ p.5 <- fetch idris_int_sub0
+  (CGrInt idris_int_sub1_1) @ p.4 <- fetch idris_int_sub1
+  idris_int_sub2 <- _prim_int_sub $ idris_int_sub0_1 idris_int_sub1_1
+  v.171 <- pure (CGrInt idris_int_sub2)
+  pure v.171
+
+idris_write_str idris_write_str1 idris_write_str2 =
+  (CGrString idris_write_str2_0) @ p.7 <- fetch idris_write_str2
+  p.6 <- _prim_string_print $ idris_write_str2_0
+  v.172 <- pure (CUnit)
+  pure v.172
+
+idris_str_concat idris_str_concat1 idris_str_concat2 =
+  (CGrString idris_str_concat1_0) @ p.9 <- fetch idris_str_concat1
+  (CGrString idris_str_concat2_0) @ p.8 <- fetch idris_str_concat2
+  idris_str_concat3 <- _prim_string_concat $ idris_str_concat1_0 idris_str_concat2_0
+  v.173 <- pure (CGrString idris_str_concat3)
+  pure v.173
+
+idris_str_eq idris_str_eq1 idris_str_eq2 =
+  (CGrString idris_str_eq1_0) @ p.11 <- fetch idris_str_eq1
+  (CGrString idris_str_eq2_0) @ p.10 <- fetch idris_str_eq2
+  idris_str_eq3 <- _prim_string_eq $ idris_str_eq1_0 idris_str_eq2_0
+  v.174 <- pure (CGrInt idris_str_eq3)
+  pure v.174
+
+idris_str_head idris_str_head1 =
+  (CGrString idris_str_head1_0) @ p.12 <- fetch idris_str_head1
+  idris_str_head2 <- _prim_string_head $ idris_str_head1_0
+  v.175 <- pure (CGrInt idris_str_head2)
+  pure v.175
+
+idris_int_str idris_int_str1 =
+  (CGrInt idris_int_str1_0) @ p.13 <- fetch idris_int_str1
+  idris_int_str2 <- _prim_int_str $ idris_int_str1_0
+  v.176 <- pure (CGrString idris_int_str2)
+  pure v.176
+
+idris_error idris_error1 =
+  _prim_error $ idris_error1
+
+grinMain =
+  r <- "idr_{runMain_0}" $
+  pure ()
+
+idr_Data.Vect.foldrImpl idr_Data.Vect.foldrImpl0 idr_Data.Vect.foldrImpl1 idr_Data.Vect.foldrImpl2 idr_Data.Vect.foldrImpl3 idr_Data.Vect.foldrImpl4 idr_Data.Vect.foldrImpl5 idr_Data.Vect.foldrImpl6 =
+  idr_Data.Vect.foldrImpl6_val <- fetch idr_Data.Vect.foldrImpl6
+  case idr_Data.Vect.foldrImpl6_val of
+    (Cidr_Data.Vect.:: idr_Data.Vect.foldrImpl7 idr_Data.Vect.foldrImpl8) @ alt.4 ->
+      v.177 <- pure (CErased)
+      idr_Data.Vect.foldrImpl9 <- store v.177
+      v.178 <- pure (CErased)
+      idr_Data.Vect.foldrImpl10 <- store v.178
+      v.179 <- pure (CErased)
+      idr_Data.Vect.foldrImpl11 <- store v.179
+      v.180 <- pure (C"idr_{U_Data.Vect.{foldrImpl_0}_1}" idr_Data.Vect.foldrImpl5 idr_Data.Vect.foldrImpl3 idr_Data.Vect.foldrImpl7)
+      idr_Data.Vect.foldrImpl12 <- store v.180
+      idr_Data.Vect.foldrImpl $ idr_Data.Vect.foldrImpl9 idr_Data.Vect.foldrImpl10 idr_Data.Vect.foldrImpl11 idr_Data.Vect.foldrImpl3 idr_Data.Vect.foldrImpl4 idr_Data.Vect.foldrImpl12 idr_Data.Vect.foldrImpl8
+    (Cidr_Data.Vect.Nil) @ alt.5 ->
+      "idr_{APPLY_0}" $ idr_Data.Vect.foldrImpl5 idr_Data.Vect.foldrImpl4
+
+idr_Main.isElem' idr_Main.isElem'0 idr_Main.isElem'1 idr_Main.isElem'2 idr_Main.isElem'3 idr_Main.isElem'4 =
+  idr_Main.isElem'4_val <- fetch idr_Main.isElem'4
+  case idr_Main.isElem'4_val of
+    (Cidr_Data.Vect.:: idr_Main.isElem'5 idr_Main.isElem'6) @ alt.6 ->
+      idr_Main.isElem'7_val_3 <- "idr_{APPLY_0}" $ idr_Main.isElem'2 idr_Main.isElem'3
+      idr_Main.isElem'7 <- store idr_Main.isElem'7_val_3
+      idr_Main.isElem'7_val <- "idr_{APPLY_0}" $ idr_Main.isElem'7 idr_Main.isElem'5
+      idr_Main.isElem'7_4 <- store idr_Main.isElem'7_val
+      idr_Main.isElem'7_val_5 <- fetch idr_Main.isElem'7_4
+      case idr_Main.isElem'7_val_5 of
+        (Cidr_Prelude.Basics.No) @ alt.7 ->
+          v.181 <- pure (CErased)
+          idr_Main.isElem'8 <- store v.181
+          v.182 <- pure (CErased)
+          idr_Main.isElem'9 <- store v.182
+          idr_Main.isElem'8_val <- idr_Main.isElem' $ idr_Main.isElem'8 idr_Main.isElem'9 idr_Main.isElem'2 idr_Main.isElem'3 idr_Main.isElem'6
+          idr_Main.isElem'8_7 <- store idr_Main.isElem'8_val
+          idr_Main.isElem'8_val_8 <- fetch idr_Main.isElem'8_7
+          case idr_Main.isElem'8_val_8 of
+            (Cidr_Prelude.Basics.No) @ alt.8 ->
+              v.183 <- pure (Cidr_Prelude.Basics.No)
+              pure v.183
+            (Cidr_Prelude.Basics.Yes) @ alt.9 ->
+              v.184 <- pure (Cidr_Prelude.Basics.Yes)
+              pure v.184
+        (Cidr_Prelude.Basics.Yes) @ alt.10 ->
+          v.185 <- pure (Cidr_Prelude.Basics.Yes)
+          pure v.185
+    (Cidr_Data.Vect.Nil) @ alt.11 ->
+      v.186 <- pure (Cidr_Prelude.Basics.No)
+      pure v.186
+
+idr_Main.main idr_Main.main0 =
+  v.187 <- pure (CErased)
+  idr_Main.main1 <- store v.187
+  v.188 <- pure (CErased)
+  idr_Main.main2 <- store v.188
+  v.189 <- pure (C"idr_{U_Main.{main_2}_1}")
+  idr_Main.main3 <- store v.189
+  v.190 <- pure (CErased)
+  idr_Main.main4 <- store v.190
+  y.12 <- pure 2
+  v.191 <- pure (CGrInt y.12)
+  idr_Main.main5 <- store v.191
+  v.192 <- pure (CErased)
+  idr_Main.main6 <- store v.192
+  y.13 <- pure 1
+  v.193 <- pure (CGrInt y.13)
+  idr_Main.main7 <- store v.193
+  y.14 <- pure 2
+  v.194 <- pure (CGrInt y.14)
+  idr_Main.main8 <- store v.194
+  y.15 <- pure 3
+  v.195 <- pure (CGrInt y.15)
+  idr_Main.main9 <- store v.195
+  v.196 <- pure (Cidr_Data.Vect.Nil)
+  idr_Main.main10 <- store v.196
+  v.197 <- pure (Cidr_Data.Vect.:: idr_Main.main9 idr_Main.main10)
+  idr_Main.main9_14 <- store v.197
+  v.198 <- pure (Cidr_Data.Vect.:: idr_Main.main8 idr_Main.main9_14)
+  idr_Main.main8_15 <- store v.198
+  v.199 <- pure (Cidr_Data.Vect.:: idr_Main.main7 idr_Main.main8_15)
+  idr_Main.main7_16 <- store v.199
+  v.200 <- pure (Cidr_Data.Vect.Here)
+  idr_Main.main8_20 <- store v.200
+  v.201 <- pure (Cidr_Data.Vect.There idr_Main.main8_20)
+  idr_Main.main8_21 <- store v.201
+  v.202 <- pure (Cidr_Data.Vect.There idr_Main.main8_21)
+  idr_Main.main8_22 <- store v.202
+  idr_Main.main4_val <- idr_Main.removeElemPrf $ idr_Main.main4 idr_Main.main5 idr_Main.main6 idr_Main.main7_16 idr_Main.main8_22
+  idr_Main.main4_23 <- store idr_Main.main4_val
+  idr_Main.main1_val <- idr_Prelude.Interactive.printLn' $ idr_Main.main1 idr_Main.main2 idr_Main.main3 idr_Main.main4_23 idr_Main.main0
+  idr_Main.main1_24 <- store idr_Main.main1_val
+  v.203 <- pure (CErased)
+  idr_Main.main2_27 <- store v.203
+  v.204 <- pure (CErased)
+  idr_Main.main3_29 <- store v.204
+  v.205 <- pure (C"idr_{U_Main.{main_3}_1}")
+  idr_Main.main4_31 <- store v.205
+  v.206 <- pure (CErased)
+  idr_Main.main5_35 <- store v.206
+  v.207 <- pure (CErased)
+  idr_Main.main6_37 <- store v.207
+  v.208 <- pure (C"idr_{U_Main.{main_4}_2}")
+  idr_Main.main7_39 <- store v.208
+  y.24 <- pure 3
+  v.209 <- pure (CGrInt y.24)
+  idr_Main.main8_41 <- store v.209
+  y.25 <- pure 1
+  v.210 <- pure (CGrInt y.25)
+  idr_Main.main9_44 <- store v.210
+  y.26 <- pure 2
+  v.211 <- pure (CGrInt y.26)
+  idr_Main.main10_47 <- store v.211
+  y.27 <- pure 3
+  v.212 <- pure (CGrInt y.27)
+  idr_Main.main11 <- store v.212
+  v.213 <- pure (Cidr_Data.Vect.Nil)
+  idr_Main.main12 <- store v.213
+  v.214 <- pure (Cidr_Data.Vect.:: idr_Main.main11 idr_Main.main12)
+  idr_Main.main11_49 <- store v.214
+  v.215 <- pure (Cidr_Data.Vect.:: idr_Main.main10_47 idr_Main.main11_49)
+  idr_Main.main10_50 <- store v.215
+  v.216 <- pure (Cidr_Data.Vect.:: idr_Main.main9_44 idr_Main.main10_50)
+  idr_Main.main9_51 <- store v.216
+  idr_Main.main5_val_33 <- idr_Main.isElem' $ idr_Main.main5_35 idr_Main.main6_37 idr_Main.main7_39 idr_Main.main8_41 idr_Main.main9_51
+  idr_Main.main5_52 <- store idr_Main.main5_val_33
+  idr_Main.main5_val_53 <- fetch idr_Main.main5_52
+  idr_Main.main5_val_32 <- case idr_Main.main5_val_53 of
+    (Cidr_Prelude.Basics.No) @ alt.12 ->
+      v.217 <- pure (Cidr_Prelude.Bool.False)
+      pure v.217
+    (Cidr_Prelude.Basics.Yes) @ alt.13 ->
+      v.218 <- pure (Cidr_Prelude.Bool.True)
+      pure v.218
+  idr_Main.main5_54 <- store idr_Main.main5_val_32
+  idr_Main.main2_val_25 <- idr_Prelude.Interactive.printLn' $ idr_Main.main2_27 idr_Main.main3_29 idr_Main.main4_31 idr_Main.main5_54 idr_Main.main0
+  idr_Main.main2_55 <- store idr_Main.main2_val_25
+  v.219 <- pure (CErased)
+  idr_Main.main3_57 <- store v.219
+  v.220 <- pure (CErased)
+  idr_Main.main4_59 <- store v.220
+  v.221 <- pure (C"idr_{U_Main.{main_3}_1}")
+  idr_Main.main5_61 <- store v.221
+  v.222 <- pure (CErased)
+  idr_Main.main6_65 <- store v.222
+  v.223 <- pure (CErased)
+  idr_Main.main7_67 <- store v.223
+  v.224 <- pure (C"idr_{U_Main.{main_4}_2}")
+  idr_Main.main8_69 <- store v.224
+  y.34 <- pure 10
+  v.225 <- pure (CGrInt y.34)
+  idr_Main.main9_71 <- store v.225
+  y.35 <- pure 1
+  v.226 <- pure (CGrInt y.35)
+  idr_Main.main10_74 <- store v.226
+  y.36 <- pure 2
+  v.227 <- pure (CGrInt y.36)
+  idr_Main.main11_77 <- store v.227
+  y.37 <- pure 3
+  v.228 <- pure (CGrInt y.37)
+  idr_Main.main12_80 <- store v.228
+  y.38 <- pure 4
+  v.229 <- pure (CGrInt y.38)
+  idr_Main.main13 <- store v.229
+  y.39 <- pure 5
+  v.230 <- pure (CGrInt y.39)
+  idr_Main.main14 <- store v.230
+  y.40 <- pure 6
+  v.231 <- pure (CGrInt y.40)
+  idr_Main.main15 <- store v.231
+  y.41 <- pure 7
+  v.232 <- pure (CGrInt y.41)
+  idr_Main.main16 <- store v.232
+  y.42 <- pure 8
+  v.233 <- pure (CGrInt y.42)
+  idr_Main.main17 <- store v.233
+  y.43 <- pure 9
+  v.234 <- pure (CGrInt y.43)
+  idr_Main.main18 <- store v.234
+  v.235 <- pure (Cidr_Data.Vect.Nil)
+  idr_Main.main19 <- store v.235
+  v.236 <- pure (Cidr_Data.Vect.:: idr_Main.main18 idr_Main.main19)
+  idr_Main.main18_87 <- store v.236
+  v.237 <- pure (Cidr_Data.Vect.:: idr_Main.main17 idr_Main.main18_87)
+  idr_Main.main17_88 <- store v.237
+  v.238 <- pure (Cidr_Data.Vect.:: idr_Main.main16 idr_Main.main17_88)
+  idr_Main.main16_89 <- store v.238
+  v.239 <- pure (Cidr_Data.Vect.:: idr_Main.main15 idr_Main.main16_89)
+  idr_Main.main15_90 <- store v.239
+  v.240 <- pure (Cidr_Data.Vect.:: idr_Main.main14 idr_Main.main15_90)
+  idr_Main.main14_91 <- store v.240
+  v.241 <- pure (Cidr_Data.Vect.:: idr_Main.main13 idr_Main.main14_91)
+  idr_Main.main13_92 <- store v.241
+  v.242 <- pure (Cidr_Data.Vect.:: idr_Main.main12_80 idr_Main.main13_92)
+  idr_Main.main12_93 <- store v.242
+  v.243 <- pure (Cidr_Data.Vect.:: idr_Main.main11_77 idr_Main.main12_93)
+  idr_Main.main11_94 <- store v.243
+  v.244 <- pure (Cidr_Data.Vect.:: idr_Main.main10_74 idr_Main.main11_94)
+  idr_Main.main10_95 <- store v.244
+  idr_Main.main6_val_63 <- idr_Main.isElem' $ idr_Main.main6_65 idr_Main.main7_67 idr_Main.main8_69 idr_Main.main9_71 idr_Main.main10_95
+  idr_Main.main6_96 <- store idr_Main.main6_val_63
+  idr_Main.main6_val_97 <- fetch idr_Main.main6_96
+  idr_Main.main6_val_62 <- case idr_Main.main6_val_97 of
+    (Cidr_Prelude.Basics.No) @ alt.14 ->
+      v.245 <- pure (Cidr_Prelude.Bool.False)
+      pure v.245
+    (Cidr_Prelude.Basics.Yes) @ alt.15 ->
+      v.246 <- pure (Cidr_Prelude.Bool.True)
+      pure v.246
+  idr_Main.main6_98 <- store idr_Main.main6_val_62
+  idr_Prelude.Interactive.printLn' $ idr_Main.main3_57 idr_Main.main4_59 idr_Main.main5_61 idr_Main.main6_98 idr_Main.main0
+
+idr_Prelude.Show.primNumShow idr_Prelude.Show.primNumShow0 idr_Prelude.Show.primNumShow1 idr_Prelude.Show.primNumShow2 idr_Prelude.Show.primNumShow3 =
+  idr_Prelude.Show.primNumShow4_val <- "idr_{APPLY_0}" $ idr_Prelude.Show.primNumShow1 idr_Prelude.Show.primNumShow3
+  idr_Prelude.Show.primNumShow4 <- store idr_Prelude.Show.primNumShow4_val
+  idr_Prelude.Show.primNumShow2_val <- fetch idr_Prelude.Show.primNumShow2
+  idr_Prelude.Show.primNumShow5_val_101 <- case idr_Prelude.Show.primNumShow2_val of
+    (Cidr_Prelude.Show.App) @ alt.16 ->
+      y.62 <- pure 6
+      v.247 <- pure (CGrInt y.62)
+      pure v.247
+    (Cidr_Prelude.Show.Backtick) @ alt.17 ->
+      y.63 <- pure 3
+      v.248 <- pure (CGrInt y.63)
+      pure v.248
+    (Cidr_Prelude.Show.Dollar) @ alt.18 ->
+      y.64 <- pure 2
+      v.249 <- pure (CGrInt y.64)
+      pure v.249
+    (Cidr_Prelude.Show.Eq) @ alt.19 ->
+      y.65 <- pure 1
+      v.250 <- pure (CGrInt y.65)
+      pure v.250
+    (Cidr_Prelude.Show.Open) @ alt.20 ->
+      y.66 <- pure 0
+      v.251 <- pure (CGrInt y.66)
+      pure v.251
+    (Cidr_Prelude.Show.PrefixMinus) @ alt.21 ->
+      y.67 <- pure 5
+      v.252 <- pure (CGrInt y.67)
+      pure v.252
+    (Cidr_Prelude.Show.User) @ alt.22 ->
+      y.68 <- pure 4
+      v.253 <- pure (CGrInt y.68)
+      pure v.253
+  idr_Prelude.Show.primNumShow5 <- store idr_Prelude.Show.primNumShow5_val_101
+  y.69 <- pure 5
+  v.254 <- pure (CGrInt y.69)
+  idr_Prelude.Show.primNumShow6 <- store v.254
+  idr_Prelude.Show.primNumShow5_val_100 <- "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:0" $ idr_Prelude.Show.primNumShow5 idr_Prelude.Show.primNumShow6
+  idr_Prelude.Show.primNumShow5_102 <- store idr_Prelude.Show.primNumShow5_val_100
+  idr_Prelude.Show.primNumShow5_val_103 <- fetch idr_Prelude.Show.primNumShow5_102
+  idr_Prelude.Show.primNumShow5_val_99 <- case idr_Prelude.Show.primNumShow5_val_103 of
+    (Cidr_Prelude.Interfaces.GT) @ alt.23 ->
+      v.255 <- pure (Cidr_Prelude.Bool.True)
+      pure v.255
+    #default @ alt.24 ->
+      idr_Prelude.Show.primNumShow2_val_106 <- fetch idr_Prelude.Show.primNumShow2
+      idr_Prelude.Show.primNumShow6_val_105 <- case idr_Prelude.Show.primNumShow2_val_106 of
+        (Cidr_Prelude.Show.App) @ alt.25 ->
+          y.70 <- pure 6
+          v.256 <- pure (CGrInt y.70)
+          pure v.256
+        (Cidr_Prelude.Show.Backtick) @ alt.26 ->
+          y.71 <- pure 3
+          v.257 <- pure (CGrInt y.71)
+          pure v.257
+        (Cidr_Prelude.Show.Dollar) @ alt.27 ->
+          y.72 <- pure 2
+          v.258 <- pure (CGrInt y.72)
+          pure v.258
+        (Cidr_Prelude.Show.Eq) @ alt.28 ->
+          y.73 <- pure 1
+          v.259 <- pure (CGrInt y.73)
+          pure v.259
+        (Cidr_Prelude.Show.Open) @ alt.29 ->
+          y.74 <- pure 0
+          v.260 <- pure (CGrInt y.74)
+          pure v.260
+        (Cidr_Prelude.Show.PrefixMinus) @ alt.30 ->
+          y.75 <- pure 5
+          v.261 <- pure (CGrInt y.75)
+          pure v.261
+        (Cidr_Prelude.Show.User) @ alt.31 ->
+          y.76 <- pure 4
+          v.262 <- pure (CGrInt y.76)
+          pure v.262
+      idr_Prelude.Show.primNumShow6_107 <- store idr_Prelude.Show.primNumShow6_val_105
+      y.77 <- pure 5
+      v.263 <- pure (CGrInt y.77)
+      idr_Prelude.Show.primNumShow7 <- store v.263
+      idr_Prelude.Show.primNumShow6_val_104 <- idris_int_eq $ idr_Prelude.Show.primNumShow6_107 idr_Prelude.Show.primNumShow7
+      idr_Prelude.Show.primNumShow6_108 <- store idr_Prelude.Show.primNumShow6_val_104
+      idr_Prelude.Show.primNumShow6_val_109 <- fetch idr_Prelude.Show.primNumShow6_108
+      case idr_Prelude.Show.primNumShow6_val_109 of
+        (CGrInt idr_Prelude.Show.primNumShow_cpat_LInt64_0) @ alt.32 ->
+          case idr_Prelude.Show.primNumShow_cpat_LInt64_0 of
+            0 @ alt.33 ->
+              v.264 <- pure (Cidr_Prelude.Bool.False)
+              pure v.264
+            #default @ alt.34 ->
+              v.265 <- pure (Cidr_Prelude.Bool.True)
+              pure v.265
+        #default @ alt.35 ->
+          v.266 <- pure (Cidr_Prelude.Bool.True)
+          pure v.266
+  idr_Prelude.Show.primNumShow5_110 <- store idr_Prelude.Show.primNumShow5_val_99
+  idr_Prelude.Show.primNumShow5_val_111 <- fetch idr_Prelude.Show.primNumShow5_110
+  idr_Prelude.Show.primNumShow5_val <- case idr_Prelude.Show.primNumShow5_val_111 of
+    (Cidr_Prelude.Bool.False) @ alt.36 ->
+      v.267 <- pure (Cidr_Prelude.Bool.False)
+      pure v.267
+    (Cidr_Prelude.Bool.True) @ alt.37 ->
+      y.78 <- pure #""
+      v.268 <- pure (CGrString y.78)
+      idr_Prelude.Show.primNumShow6_116 <- store v.268
+      idr_Prelude.Show.primNumShow6_val_114 <- idris_str_eq $ idr_Prelude.Show.primNumShow4 idr_Prelude.Show.primNumShow6_116
+      idr_Prelude.Show.primNumShow6_117 <- store idr_Prelude.Show.primNumShow6_val_114
+      idr_Prelude.Show.primNumShow6_val_118 <- fetch idr_Prelude.Show.primNumShow6_117
+      idr_Prelude.Show.primNumShow6_val_113 <- case idr_Prelude.Show.primNumShow6_val_118 of
+        (CGrInt idr_Prelude.Show.primNumShow_cpat_LInt64_0_119) @ alt.38 ->
+          case idr_Prelude.Show.primNumShow_cpat_LInt64_0_119 of
+            0 @ alt.39 ->
+              v.269 <- pure (Cidr_Prelude.Bool.True)
+              pure v.269
+            #default @ alt.40 ->
+              v.270 <- pure (Cidr_Prelude.Bool.False)
+              pure v.270
+        #default @ alt.41 ->
+          v.271 <- pure (Cidr_Prelude.Bool.False)
+          pure v.271
+      idr_Prelude.Show.primNumShow6_120 <- store idr_Prelude.Show.primNumShow6_val_113
+      v.272 <- pure (Cidr_Prelude.Bool.True)
+      idr_Prelude.Show.primNumShow7_122 <- store v.272
+      idr_Prelude.Show.primNumShow6_val_112 <- "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:0" $ idr_Prelude.Show.primNumShow6_120 idr_Prelude.Show.primNumShow7_122
+      idr_Prelude.Show.primNumShow6_123 <- store idr_Prelude.Show.primNumShow6_val_112
+      idr_Prelude.Show.primNumShow6_val_124 <- fetch idr_Prelude.Show.primNumShow6_123
+      case idr_Prelude.Show.primNumShow6_val_124 of
+        (Cidr_Prelude.Basics.No) @ alt.42 ->
+          v.273 <- pure (Cidr_Prelude.Bool.False)
+          pure v.273
+        (Cidr_Prelude.Basics.Yes) @ alt.43 ->
+          idr_Prelude.Show.primNumShow7_val_126 <- idris_str_head $ idr_Prelude.Show.primNumShow4
+          idr_Prelude.Show.primNumShow7_127 <- store idr_Prelude.Show.primNumShow7_val_126
+          y.79 <- pure 45
+          v.274 <- pure (CGrInt y.79)
+          idr_Prelude.Show.primNumShow8 <- store v.274
+          idr_Prelude.Show.primNumShow7_val_125 <- idris_int_eq $ idr_Prelude.Show.primNumShow7_127 idr_Prelude.Show.primNumShow8
+          idr_Prelude.Show.primNumShow7_128 <- store idr_Prelude.Show.primNumShow7_val_125
+          idr_Prelude.Show.primNumShow7_val_129 <- fetch idr_Prelude.Show.primNumShow7_128
+          case idr_Prelude.Show.primNumShow7_val_129 of
+            (CGrInt idr_Prelude.Show.primNumShow_cpat_LInt64_0_130) @ alt.44 ->
+              case idr_Prelude.Show.primNumShow_cpat_LInt64_0_130 of
+                0 @ alt.45 ->
+                  v.275 <- pure (Cidr_Prelude.Bool.False)
+                  pure v.275
+                #default @ alt.46 ->
+                  v.276 <- pure (Cidr_Prelude.Bool.True)
+                  pure v.276
+            #default @ alt.47 ->
+              v.277 <- pure (Cidr_Prelude.Bool.True)
+              pure v.277
+  idr_Prelude.Show.primNumShow5_131 <- store idr_Prelude.Show.primNumShow5_val
+  idr_Prelude.Show.primNumShow5_val_132 <- fetch idr_Prelude.Show.primNumShow5_131
+  case idr_Prelude.Show.primNumShow5_val_132 of
+    (Cidr_Prelude.Bool.False) @ alt.48 ->
+      fetch idr_Prelude.Show.primNumShow4
+    (Cidr_Prelude.Bool.True) @ alt.49 ->
+      y.80 <- pure #"("
+      v.278 <- pure (CGrString y.80)
+      idr_Prelude.Show.primNumShow6_134 <- store v.278
+      y.81 <- pure #")"
+      v.279 <- pure (CGrString y.81)
+      idr_Prelude.Show.primNumShow7_137 <- store v.279
+      idr_Prelude.Show.primNumShow7_val_135 <- idris_str_concat $ idr_Prelude.Show.primNumShow4 idr_Prelude.Show.primNumShow7_137
+      idr_Prelude.Show.primNumShow7_138 <- store idr_Prelude.Show.primNumShow7_val_135
+      idris_str_concat $ idr_Prelude.Show.primNumShow6_134 idr_Prelude.Show.primNumShow7_138
+
+idr_prim__toStrBigInt idr_prim__toStrBigInt0 =
+  idris_int_str $ idr_prim__toStrBigInt0
+
+idr_Prelude.Interactive.printLn' idr_Prelude.Interactive.printLn'0 idr_Prelude.Interactive.printLn'1 idr_Prelude.Interactive.printLn'2 idr_Prelude.Interactive.printLn'3 idr_Prelude.Interactive.printLn'4 =
+  idr_Prelude.Interactive.printLn'5_val_140 <- "idr_{APPLY_0}" $ idr_Prelude.Interactive.printLn'2 idr_Prelude.Interactive.printLn'3
+  idr_Prelude.Interactive.printLn'5 <- store idr_Prelude.Interactive.printLn'5_val_140
+  y.82 <- pure #"\n"
+  v.280 <- pure (CGrString y.82)
+  idr_Prelude.Interactive.printLn'6 <- store v.280
+  idr_Prelude.Interactive.printLn'5_val_139 <- idris_str_concat $ idr_Prelude.Interactive.printLn'5 idr_Prelude.Interactive.printLn'6
+  idr_Prelude.Interactive.printLn'5_141 <- store idr_Prelude.Interactive.printLn'5_val_139
+  idr_Prelude.Interactive.printLn'5_val <- idris_write_str $ idr_Prelude.Interactive.printLn'4 idr_Prelude.Interactive.printLn'5_141
+  idr_Prelude.Interactive.printLn'5_142 <- store idr_Prelude.Interactive.printLn'5_val
+  v.281 <- pure (Cidr_MkUnit)
+  pure v.281
+
+idr_Main.removeElemPrf idr_Main.removeElemPrf0 idr_Main.removeElemPrf1 idr_Main.removeElemPrf2 idr_Main.removeElemPrf3 idr_Main.removeElemPrf4 =
+  idr_Main.removeElemPrf4_val <- fetch idr_Main.removeElemPrf4
+  case idr_Main.removeElemPrf4_val of
+    (Cidr_Data.Vect.Here) @ alt.50 ->
+      (Cidr_Data.Vect.:: idr_Main.removeElemPrf5 idr_Main.removeElemPrf6) @ idr_Main.removeElemPrf3_val <- fetch idr_Main.removeElemPrf3
+      fetch idr_Main.removeElemPrf6
+    (Cidr_Data.Vect.There idr_Main.removeElemPrf5_143) @ alt.51 ->
+      (Cidr_Data.Vect.:: idr_Main.removeElemPrf6_145 idr_Main.removeElemPrf7) @ idr_Main.removeElemPrf3_val_144 <- fetch idr_Main.removeElemPrf3
+      idr_Main.removeElemPrf7_val <- fetch idr_Main.removeElemPrf7
+      case idr_Main.removeElemPrf7_val of
+        (Cidr_Data.Vect.Nil) @ alt.52 ->
+          idr_Main.removeElemPrf1_val <- fetch idr_Main.removeElemPrf1
+          case idr_Main.removeElemPrf1_val of
+            (CGrInt idr_Main.removeElemPrf_cpat_LInt64_0) @ alt.53 ->
+              case idr_Main.removeElemPrf_cpat_LInt64_0 of
+                0 @ alt.54 ->
+                  v.282 <- pure (CErased)
+                  pure v.282
+                #default @ alt.55 ->
+                  v.283 <- pure (CErased)
+                  idr_Main.removeElemPrf8 <- store v.283
+                  y.83 <- pure 1
+                  v.284 <- pure (CGrInt y.83)
+                  idr_Main.removeElemPrf9 <- store v.284
+                  idr_Main.removeElemPrf9_val <- idris_int_sub $ idr_Main.removeElemPrf1 idr_Main.removeElemPrf9
+                  idr_Main.removeElemPrf9_148 <- store idr_Main.removeElemPrf9_val
+                  v.285 <- pure (CErased)
+                  idr_Main.removeElemPrf10 <- store v.285
+                  idr_Main.removeElemPrf8_val <- idr_Main.removeElemPrf $ idr_Main.removeElemPrf8 idr_Main.removeElemPrf9_148 idr_Main.removeElemPrf10 idr_Main.removeElemPrf7 idr_Main.removeElemPrf5_143
+                  idr_Main.removeElemPrf8_149 <- store idr_Main.removeElemPrf8_val
+                  v.286 <- pure (Cidr_Data.Vect.:: idr_Main.removeElemPrf6_145 idr_Main.removeElemPrf8_149)
+                  pure v.286
+            #default @ alt.56 ->
+              v.287 <- pure (CErased)
+              idr_Main.removeElemPrf8_152 <- store v.287
+              y.86 <- pure 1
+              v.288 <- pure (CGrInt y.86)
+              idr_Main.removeElemPrf9_155 <- store v.288
+              idr_Main.removeElemPrf9_val_153 <- idris_int_sub $ idr_Main.removeElemPrf1 idr_Main.removeElemPrf9_155
+              idr_Main.removeElemPrf9_156 <- store idr_Main.removeElemPrf9_val_153
+              v.289 <- pure (CErased)
+              idr_Main.removeElemPrf10_158 <- store v.289
+              idr_Main.removeElemPrf8_val_150 <- idr_Main.removeElemPrf $ idr_Main.removeElemPrf8_152 idr_Main.removeElemPrf9_156 idr_Main.removeElemPrf10_158 idr_Main.removeElemPrf7 idr_Main.removeElemPrf5_143
+              idr_Main.removeElemPrf8_159 <- store idr_Main.removeElemPrf8_val_150
+              v.290 <- pure (Cidr_Data.Vect.:: idr_Main.removeElemPrf6_145 idr_Main.removeElemPrf8_159)
+              pure v.290
+        #default @ alt.57 ->
+          v.291 <- pure (CErased)
+          idr_Main.removeElemPrf8_162 <- store v.291
+          y.89 <- pure 1
+          v.292 <- pure (CGrInt y.89)
+          idr_Main.removeElemPrf9_165 <- store v.292
+          idr_Main.removeElemPrf9_val_163 <- idris_int_sub $ idr_Main.removeElemPrf1 idr_Main.removeElemPrf9_165
+          idr_Main.removeElemPrf9_166 <- store idr_Main.removeElemPrf9_val_163
+          v.293 <- pure (CErased)
+          idr_Main.removeElemPrf10_168 <- store v.293
+          idr_Main.removeElemPrf8_val_160 <- idr_Main.removeElemPrf $ idr_Main.removeElemPrf8_162 idr_Main.removeElemPrf9_166 idr_Main.removeElemPrf10_168 idr_Main.removeElemPrf7 idr_Main.removeElemPrf5_143
+          idr_Main.removeElemPrf8_169 <- store idr_Main.removeElemPrf8_val_160
+          v.294 <- pure (Cidr_Data.Vect.:: idr_Main.removeElemPrf6_145 idr_Main.removeElemPrf8_169)
+          pure v.294
+
+"idr_{APPLY_0}" "idr_{APPLY_0}0" "idr_{APPLY_0}1" =
+  "idr_{APPLY_0}0_val" <- fetch "idr_{APPLY_0}0"
+  case "idr_{APPLY_0}0_val" of
+    (C"idr_{U_Data.Vect.{foldrImpl_0}_1}" "idr_{APPLY_0}2" "idr_{APPLY_0}3" "idr_{APPLY_0}4") @ alt.58 ->
+      "idr_Data.Vect.{foldrImpl_0}" $ "idr_{APPLY_0}2" "idr_{APPLY_0}3" "idr_{APPLY_0}4" "idr_{APPLY_0}1"
+    (C"idr_{U_Main.{main_1}_1}") @ alt.59 ->
+      "idr_Main.{main_1}" $ "idr_{APPLY_0}1"
+    (C"idr_{U_Main.{main_2}_1}") @ alt.60 ->
+      "idr_Main.{main_2}" $ "idr_{APPLY_0}1"
+    (C"idr_{U_Main.{main_3}_1}") @ alt.61 ->
+      "idr_Main.{main_3}" $ "idr_{APPLY_0}1"
+    (C"idr_{U_Main.{main_4}_1}" "idr_{APPLY_0}2_172") @ alt.62 ->
+      "idr_Main.{main_4}" $ "idr_{APPLY_0}2_172" "idr_{APPLY_0}1"
+    (C"idr_{U_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}_1}" "idr_{APPLY_0}2_173") @ alt.63 ->
+      "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}" $ "idr_{APPLY_0}2_173" "idr_{APPLY_0}1"
+    (C"idr_{U_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_9}_1}") @ alt.64 ->
+      "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_9}" $ "idr_{APPLY_0}1"
+    (C"idr_{U_prim__toStrBigInt_1}") @ alt.65 ->
+      idr_prim__toStrBigInt $ "idr_{APPLY_0}1"
+    (C"idr_{U_Main.{main_4}_2}") @ alt.66 ->
+      v.295 <- pure (C"idr_{U_Main.{main_4}_1}" "idr_{APPLY_0}1")
+      pure v.295
+    (C"idr_{U_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}_2}") @ alt.67 ->
+      v.296 <- pure (C"idr_{U_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}_1}" "idr_{APPLY_0}1")
+      pure v.296
+    #default @ alt.68 ->
+      v.297 <- pure (CErased)
+      pure v.297
+
+"idr_{EVAL_0}" "idr_{EVAL_0}0" =
+  "idr_{EVAL_0}0_val" <- fetch "idr_{EVAL_0}0"
+  case "idr_{EVAL_0}0_val" of
+    (C"idr_{P_{void_7}_0}") @ alt.69 ->
+      "idr_{EVAL_0}0_val_174" <- "idr_{void_7}" $
+      p.14 <- update "idr_{EVAL_0}0" "idr_{EVAL_0}0_val_174"
+      pure "idr_{EVAL_0}0_val_174"
+    #default @ alt.70 ->
+      fetch "idr_{EVAL_0}0"
+
+"idr_Data.Vect.{foldrImpl_0}" "idr_Data.Vect.{foldrImpl_0}0" "idr_Data.Vect.{foldrImpl_0}1" "idr_Data.Vect.{foldrImpl_0}2" "idr_Data.Vect.{foldrImpl_0}3" =
+  "idr_Data.Vect.{foldrImpl_0}4_val_175" <- "idr_{APPLY_0}" $ "idr_Data.Vect.{foldrImpl_0}1" "idr_Data.Vect.{foldrImpl_0}2"
+  "idr_Data.Vect.{foldrImpl_0}4" <- store "idr_Data.Vect.{foldrImpl_0}4_val_175"
+  "idr_Data.Vect.{foldrImpl_0}4_val" <- "idr_{APPLY_0}" $ "idr_Data.Vect.{foldrImpl_0}4" "idr_Data.Vect.{foldrImpl_0}3"
+  "idr_Data.Vect.{foldrImpl_0}4_176" <- store "idr_Data.Vect.{foldrImpl_0}4_val"
+  "idr_{APPLY_0}" $ "idr_Data.Vect.{foldrImpl_0}0" "idr_Data.Vect.{foldrImpl_0}4_176"
+
+"idr_{runMain_0}" =
+  v.298 <- pure (CErased)
+  "idr_{runMain_0}0" <- store v.298
+  "idr_{runMain_0}0_val" <- idr_Main.main $ "idr_{runMain_0}0"
+  "idr_{runMain_0}0_178" <- store "idr_{runMain_0}0_val"
+  "idr_{EVAL_0}" $ "idr_{runMain_0}0_178"
+
+"idr_Main.{main_1}" "idr_Main.{main_1}0" =
+  v.299 <- pure (CErased)
+  "idr_Main.{main_1}1" <- store v.299
+  v.300 <- pure (C"idr_{U_prim__toStrBigInt_1}")
+  "idr_Main.{main_1}2" <- store v.300
+  v.301 <- pure (Cidr_Prelude.Show.Open)
+  "idr_Main.{main_1}3" <- store v.301
+  idr_Prelude.Show.primNumShow $ "idr_Main.{main_1}1" "idr_Main.{main_1}2" "idr_Main.{main_1}3" "idr_Main.{main_1}0"
+
+"idr_Main.{main_2}" "idr_Main.{main_2}0" =
+  v.302 <- pure (CErased)
+  "idr_Main.{main_2}1" <- store v.302
+  v.303 <- pure (CErased)
+  "idr_Main.{main_2}2" <- store v.303
+  v.304 <- pure (C"idr_{U_Main.{main_1}_1}")
+  "idr_Main.{main_2}3" <- store v.304
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0" $ "idr_Main.{main_2}1" "idr_Main.{main_2}2" "idr_Main.{main_2}3" "idr_Main.{main_2}0"
+
+"idr_Main.{main_3}" "idr_Main.{main_3}0" =
+  "idr_Main.{main_3}0_val" <- fetch "idr_Main.{main_3}0"
+  case "idr_Main.{main_3}0_val" of
+    (Cidr_Prelude.Bool.False) @ alt.71 ->
+      y.94 <- pure #"False"
+      v.305 <- pure (CGrString y.94)
+      pure v.305
+    (Cidr_Prelude.Bool.True) @ alt.72 ->
+      y.95 <- pure #"True"
+      v.306 <- pure (CGrString y.95)
+      pure v.306
+
+"idr_Main.{main_4}" "idr_Main.{main_4}0" "idr_Main.{main_4}1" =
+  "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:0" $ "idr_Main.{main_4}0" "idr_Main.{main_4}1"
+
+"idr_{void_7}" =
+  x.138 <- pure #"No location:No pattern clauses"
+  idris_error $ x.138
+
+"idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}" "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}0" "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}1" =
+  v.307 <- pure (Cidr_Prelude.List.:: "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}0" "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}1")
+  pure v.307
+
+"idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_9}" "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_9}0" =
+  fetch "idr_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_9}0"
+
+"idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':0" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':00" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':01" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':02" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':03" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':04" =
+  "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':04_val" <- fetch "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':04"
+  case "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':04_val" of
+    (Cidr_Prelude.List.:: "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':05" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':06") @ alt.73 ->
+      "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':06_val" <- fetch "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':06"
+      case "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':06_val" of
+        (Cidr_Prelude.List.Nil) @ alt.74 ->
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':07_val" <- "idr_{APPLY_0}" $ "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':02" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':05"
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':07" <- store "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':07_val"
+          idris_str_concat $ "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':03" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':07"
+        #default @ alt.75 ->
+          v.308 <- pure (CErased)
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':07_180" <- store v.308
+          v.309 <- pure (CErased)
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':08" <- store v.309
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_val_182" <- "idr_{APPLY_0}" $ "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':02" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':05"
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09" <- store "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_val_182"
+          y.98 <- pure #", "
+          v.310 <- pure (CGrString y.98)
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':010" <- store v.310
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_val_181" <- idris_str_concat $ "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':010"
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_183" <- store "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_val_181"
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_val" <- idris_str_concat $ "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':03" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_183"
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_184" <- store "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_val"
+          "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':0" $ "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':07_180" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':08" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':02" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':09_184" "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':06"
+    (Cidr_Prelude.List.Nil) @ alt.76 ->
+      fetch "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':03"
+
+"idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:0" "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:00" "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:01" =
+  "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:01_val" <- fetch "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:01"
+  case "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:01_val" of
+    (Cidr_Prelude.Bool.False) @ alt.77 ->
+      "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:00_val" <- fetch "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:00"
+      case "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:00_val" of
+        (Cidr_Prelude.Bool.False) @ alt.78 ->
+          v.311 <- pure (Cidr_Prelude.Basics.Yes)
+          pure v.311
+        (Cidr_Prelude.Bool.True) @ alt.79 ->
+          v.312 <- pure (Cidr_Prelude.Basics.No)
+          pure v.312
+    (Cidr_Prelude.Bool.True) @ alt.80 ->
+      "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:00_val_185" <- fetch "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:00"
+      case "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Bool:!decEq:00_val_185" of
+        (Cidr_Prelude.Bool.False) @ alt.81 ->
+          v.313 <- pure (Cidr_Prelude.Basics.No)
+          pure v.313
+        (Cidr_Prelude.Bool.True) @ alt.82 ->
+          v.314 <- pure (Cidr_Prelude.Basics.Yes)
+          pure v.314
+
+"idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:0" "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:00" "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:01" =
+  "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:02_val" <- idris_int_eq $ "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:00" "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:01"
+  "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:02" <- store "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:02_val"
+  "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:02_val_186" <- fetch "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:02"
+  case "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:02_val_186" of
+    (CGrInt "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:0_cpat_LInt64_0") @ alt.83 ->
+      case "idr_Decidable.Equality.Decidable.Equality.@Decidable.Equality.DecEq$Integer:!decEq:0_cpat_LInt64_0" of
+        0 @ alt.84 ->
+          v.315 <- pure (Cidr_Prelude.Basics.No)
+          pure v.315
+        #default @ alt.85 ->
+          v.316 <- pure (Cidr_Prelude.Basics.Yes)
+          pure v.316
+    #default @ alt.86 ->
+      v.317 <- pure (Cidr_Prelude.Basics.Yes)
+      pure v.317
+
+"idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:0" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:00" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:01" =
+  "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:02_val" <- idris_int_eq $ "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:00" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:01"
+  "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:02" <- store "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:02_val"
+  "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:02_val_187" <- fetch "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:02"
+  case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:02_val_187" of
+    (CGrInt "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:0_cpat_LInt64_0") @ alt.87 ->
+      case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:0_cpat_LInt64_0" of
+        0 @ alt.88 ->
+          "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:03_val" <- idris_int_lt $ "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:00" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:01"
+          "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:03" <- store "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:03_val"
+          "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:03_val_188" <- fetch "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:03"
+          case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:03_val_188" of
+            (CGrInt "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:0_cpat_LInt64_0_189") @ alt.89 ->
+              case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$Integer:!compare:0_cpat_LInt64_0_189" of
+                0 @ alt.90 ->
+                  v.318 <- pure (Cidr_Prelude.Interfaces.GT)
+                  pure v.318
+                #default @ alt.91 ->
+                  v.319 <- pure (Cidr_Prelude.Interfaces.LT)
+                  pure v.319
+            #default @ alt.92 ->
+              v.320 <- pure (Cidr_Prelude.Interfaces.LT)
+              pure v.320
+        #default @ alt.93 ->
+          v.321 <- pure (Cidr_Prelude.Interfaces.EQ)
+          pure v.321
+    #default @ alt.94 ->
+      v.322 <- pure (Cidr_Prelude.Interfaces.EQ)
+      pure v.322
+
+"idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:00" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:01" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:02" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:03" =
+  y.99 <- pure #"["
+  v.323 <- pure (CGrString y.99)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:04" <- store v.323
+  v.324 <- pure (CErased)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05" <- store v.324
+  v.325 <- pure (CErased)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:06" <- store v.325
+  y.100 <- pure #""
+  v.326 <- pure (CGrString y.100)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:07" <- store v.326
+  v.327 <- pure (CErased)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:08" <- store v.327
+  v.328 <- pure (CErased)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:09" <- store v.328
+  v.329 <- pure (CErased)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:010" <- store v.329
+  v.330 <- pure (C"idr_{U_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_8}_2}")
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:011" <- store v.330
+  v.331 <- pure (Cidr_Prelude.List.Nil)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:012" <- store v.331
+  v.332 <- pure (C"idr_{U_Prelude.Show.{Data.Vect.@Prelude.Show.Show$Vect len elem:!show:0_lam_9}_1}")
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:013" <- store v.332
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:08_val" <- idr_Data.Vect.foldrImpl $ "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:08" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:09" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:010" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:011" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:012" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:013" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:03"
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:08_193" <- store "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:08_val"
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_val_190" <- "idr_Prelude.Show.Prelude.Show.@Prelude.Show.Show$List a:!show:0:show':0" $ "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:06" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:02" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:07" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:08_193"
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_194" <- store "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_val_190"
+  y.101 <- pure #"]"
+  v.333 <- pure (CGrString y.101)
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:06_196" <- store v.333
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_val" <- idris_str_concat $ "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_194" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:06_196"
+  "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_197" <- store "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_val"
+  idris_str_concat $ "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:04" "idr_Prelude.Show.Data.Vect.@Prelude.Show.Show$Vect len elem:!show:05_197"
