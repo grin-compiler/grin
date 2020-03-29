@@ -1,0 +1,29 @@
+idris_write_str idris_write_str1 idris_write_str2 =
+  (CGrString idris_write_str2_0) @ p.1 <- fetch idris_write_str2
+  p.0 <- _prim_string_print $ idris_write_str2_0
+  v.4 <- pure (CUnit)
+  pure v.4
+
+grinMain =
+  r <- "idr_{runMain_0}" $
+  pure ()
+
+idr_Main.main idr_Main.main0 =
+  y.0 <- pure #"Hello World!\n"
+  v.5 <- pure (CGrString y.0)
+  idr_Main.main1 <- store v.5
+  idr_Main.main1_val <- idris_write_str $ idr_Main.main0 idr_Main.main1
+  idr_Main.main1_4 <- store idr_Main.main1_val
+  v.6 <- pure (Cidr_MkUnit)
+  pure v.6
+
+"idr_{EVAL_0}" "idr_{EVAL_0}0" =
+  "idr_{EVAL_0}0_val" <- fetch "idr_{EVAL_0}0"
+  fetch "idr_{EVAL_0}0"
+
+"idr_{runMain_0}" =
+  v.7 <- pure (CErased)
+  "idr_{runMain_0}0" <- store v.7
+  "idr_{runMain_0}0_val" <- idr_Main.main $ "idr_{runMain_0}0"
+  "idr_{runMain_0}0_6" <- store "idr_{runMain_0}0_val"
+  "idr_{EVAL_0}" $ "idr_{runMain_0}0_6"

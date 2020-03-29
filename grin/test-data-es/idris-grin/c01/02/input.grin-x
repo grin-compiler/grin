@@ -1,0 +1,100 @@
+ffi effectful
+  _prim_string_print :: T_String
+                     -> T_Unit
+
+ffi pure
+  _prim_string_concat :: T_String
+                      -> T_String
+                      -> T_String
+  _prim_int_str :: T_Int64
+                -> T_String
+
+idris_write_str idris_write_str1 idris_write_str2 =
+  (CGrString idris_write_str2_0) @ p.1 <- fetch idris_write_str2
+  p.0 <- _prim_string_print $ idris_write_str2_0
+  v.14 <- pure (CUnit)
+  pure v.14
+
+idris_str_concat idris_str_concat1 idris_str_concat2 =
+  (CGrString idris_str_concat1_0) @ p.3 <- fetch idris_str_concat1
+  (CGrString idris_str_concat2_0) @ p.2 <- fetch idris_str_concat2
+  idris_str_concat3 <- _prim_string_concat $ idris_str_concat1_0 idris_str_concat2_0
+  v.15 <- pure (CGrString idris_str_concat3)
+  pure v.15
+
+idris_int_str idris_int_str1 =
+  (CGrInt idris_int_str1_0) @ p.4 <- fetch idris_int_str1
+  idris_int_str2 <- _prim_int_str $ idris_int_str1_0
+  v.16 <- pure (CGrString idris_int_str2)
+  pure v.16
+
+grinMain =
+  r <- "idr_{runMain_0}" $
+  pure ()
+
+idr_Main.getStringOrInt idr_Main.getStringOrInt0 =
+  idr_Main.getStringOrInt0_val <- fetch idr_Main.getStringOrInt0
+  case idr_Main.getStringOrInt0_val of
+    (Cidr_Prelude.Bool.False) @ alt.0 ->
+      y.2 <- pure #"Ninety four"
+      v.17 <- pure (CGrString y.2)
+      pure v.17
+    (Cidr_Prelude.Bool.True) @ alt.1 ->
+      y.3 <- pure 94
+      v.18 <- pure (CGrInt y.3)
+      pure v.18
+
+idr_Main.main idr_Main.main0 =
+  v.19 <- pure (Cidr_Prelude.Bool.True)
+  idr_Main.main1 <- store v.19
+  v.20 <- pure (Cidr_Prelude.Bool.True)
+  idr_Main.main2 <- store v.20
+  idr_Main.main2_val <- idr_Main.getStringOrInt $ idr_Main.main2
+  idr_Main.main2_8 <- store idr_Main.main2_val
+  idr_Main.main1_val_5 <- idr_Main.valToString $ idr_Main.main1 idr_Main.main2_8
+  idr_Main.main1_9 <- store idr_Main.main1_val_5
+  y.4 <- pure #"\n"
+  v.21 <- pure (CGrString y.4)
+  idr_Main.main2_11 <- store v.21
+  idr_Main.main1_val_4 <- idris_str_concat $ idr_Main.main1_9 idr_Main.main2_11
+  idr_Main.main1_12 <- store idr_Main.main1_val_4
+  idr_Main.main1_val_3 <- idris_write_str $ idr_Main.main0 idr_Main.main1_12
+  idr_Main.main1_13 <- store idr_Main.main1_val_3
+  v.22 <- pure (Cidr_MkUnit)
+  idr_Main.main1_14 <- store v.22
+  v.23 <- pure (Cidr_Prelude.Bool.False)
+  idr_Main.main2_19 <- store v.23
+  v.24 <- pure (Cidr_Prelude.Bool.False)
+  idr_Main.main3 <- store v.24
+  idr_Main.main3_val <- idr_Main.getStringOrInt $ idr_Main.main3
+  idr_Main.main3_21 <- store idr_Main.main3_val
+  idr_Main.main2_val_17 <- idr_Main.valToString $ idr_Main.main2_19 idr_Main.main3_21
+  idr_Main.main2_22 <- store idr_Main.main2_val_17
+  y.5 <- pure #"\n"
+  v.25 <- pure (CGrString y.5)
+  idr_Main.main3_24 <- store v.25
+  idr_Main.main2_val_16 <- idris_str_concat $ idr_Main.main2_22 idr_Main.main3_24
+  idr_Main.main2_25 <- store idr_Main.main2_val_16
+  idr_Main.main2_val_15 <- idris_write_str $ idr_Main.main0 idr_Main.main2_25
+  idr_Main.main2_26 <- store idr_Main.main2_val_15
+  v.26 <- pure (Cidr_MkUnit)
+  pure v.26
+
+idr_Main.valToString idr_Main.valToString0 idr_Main.valToString1 =
+  idr_Main.valToString0_val <- fetch idr_Main.valToString0
+  case idr_Main.valToString0_val of
+    (Cidr_Prelude.Bool.False) @ alt.2 ->
+      fetch idr_Main.valToString1
+    (Cidr_Prelude.Bool.True) @ alt.3 ->
+      idris_int_str $ idr_Main.valToString1
+
+"idr_{EVAL_0}" "idr_{EVAL_0}0" =
+  "idr_{EVAL_0}0_val" <- fetch "idr_{EVAL_0}0"
+  fetch "idr_{EVAL_0}0"
+
+"idr_{runMain_0}" =
+  v.27 <- pure (CErased)
+  "idr_{runMain_0}0" <- store v.27
+  "idr_{runMain_0}0_val" <- idr_Main.main $ "idr_{runMain_0}0"
+  "idr_{runMain_0}0_28" <- store "idr_{runMain_0}0_val"
+  "idr_{EVAL_0}" $ "idr_{runMain_0}0_28"
