@@ -123,7 +123,7 @@ prettyHighlightExternals externals exp = cata prettyExpAlgebra exp where
 
 
 instance Pretty Exp where
-  pretty = prettyProgram Simple
+  pretty = prettyProgram WithExternals
 
 instance Pretty Val where
   pretty = \case
