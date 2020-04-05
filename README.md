@@ -21,16 +21,16 @@ Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.ju
 
 ## Support
 
-The project is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md).
-If you'd like to join them, please consider become a backer or sponsor on [Patreon](https://www.patreon.com/csaba_hruska).
+The project is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md). Special thanks to our gold sponsor:
+### *Sam Griffin*
 
+If you'd like to join them, please consider become a backer or sponsor on [Patreon](https://www.patreon.com/csaba_hruska).  
 
 <a href="https://www.patreon.com/csaba_hruska">
-<img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" width="150" >
+<img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" width="150"/>
 </a>
 
-
-### GRIN IR
+## GRIN IR
 
 <a href="http://nbviewer.jupyter.org/github/grin-compiler/grin/blob/master/papers/boquist.pdf#page=41">
 <img src="https://raw.githubusercontent.com/grin-compiler/grin/master/images/grin-syntax.png" width="500" >

@@ -1,8 +1,11 @@
 <h1 align="center">Sponsors &amp; Backers</h1>
 
-<h2 align="center">Silver via Patreon</h2>
+<h2 align="center">Gold via Patreon</h2>
 
 - Sam Griffin
+
+<h2 align="center">Silver via Patreon</h2>
+
 - Timothy Klim
 
 <h2 align="center">Bronze via Patreon</h2>
@@ -55,4 +58,10 @@
 - Brooklyn Zelenka
 - Jaseem Abid
 - Callan McGill
+- Simon
+- Owen Shepherd
+- Aly-Bocar Cissé
+- Ollie Charles
+- Barry Moore
+- Joe Hermaszewski
 <!--10 end-->
