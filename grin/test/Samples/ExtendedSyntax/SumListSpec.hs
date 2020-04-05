@@ -6,11 +6,15 @@ import Pipeline.ExtendedSyntax.Pipeline
 import Test.Hspec
 
 import Grin.ExtendedSyntax.TH
+import Grin.ExtendedSyntax.Grin (Exp)
 import Grin.ExtendedSyntax.PrimOpsPrelude
 import Test.ExtendedSyntax.Assertions
 
 runTests :: IO ()
 runTests = hspec spec
+
+testPipeline :: Exp -> [PipelineStep] -> IO Exp
+testPipeline before steps = pipeline (defaultOpts { _poFailOnLint = False }) Nothing before steps
 
 spec :: Spec
 spec = do
@@ -80,7 +84,14 @@ spec = do
               #default @ alt.6 ->
                 pure alt.6
       |]
-    let after = withPrimPrelude [prog|
+    let after = [prog|
+          ffi effectful
+            _prim_int_print :: T_Int64 -> T_Unit
+
+          primop pure
+            _prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
+            _prim_int_gt  :: T_Int64 -> T_Int64 -> T_Bool
+
           grinMain =
             y.0 <- pure 1
             y.1 <- pure 10000
@@ -104,7 +115,7 @@ spec = do
 
     let steps = [ Optimize ]
 
-    transformed <- pipeline defaultOpts Nothing before steps
+    transformed <- testPipeline before steps
     transformed `sameAs` after
 
   it "lazy list sum - fully optimize without Fupto update" $ do
@@ -169,30 +180,36 @@ spec = do
               #default @ alt.6 ->
                 pure alt.6
       |]
-    let after = withPrimPrelude [prog|
+    let after = [prog|
+          ffi effectful
+            _prim_int_print :: T_Int64 -> T_Unit
+
+          primop pure
+            _prim_int_add :: T_Int64 -> T_Int64 -> T_Int64
+            _prim_int_gt  :: T_Int64 -> T_Int64 -> T_Bool
+
           grinMain =
             y.0 <- pure 1
             y.1 <- pure 10000
             unboxed.CInt.2 <- sum.unboxed $ y.0 y.1
             _prim_int_print $ unboxed.CInt.2
 
-          sum.unboxed l.69.arity.1.165.arity.1 l.69.arity.2.217.arity.1 =
-            b'.0 <- _prim_int_gt $ l.69.arity.1.165.arity.1 l.69.arity.2.217.arity.1
+          sum.unboxed l.77.arity.1.173.arity.1 l.77.arity.2.225.arity.1 =
+            b'.0 <- _prim_int_gt $ l.77.arity.1.173.arity.1 l.77.arity.2.225.arity.1
             case b'.0 of
               #True @ alt.0.0 ->
                 y.10.0 <- pure 0
                 pure y.10.0
               #False @ alt.1.0 ->
                 x.7.0 <- pure 1
-                m1'.0 <- _prim_int_add $ l.69.arity.1.165.arity.1 x.7.0
-                unboxed.CInt.3.0 <- sum.unboxed $ m1'.0 l.69.arity.2.217.arity.1
-                ax'.0 <- _prim_int_add $ l.69.arity.1.165.arity.1 unboxed.CInt.3.0
+                m1'.0 <- _prim_int_add $ l.77.arity.1.173.arity.1 x.7.0
+                unboxed.CInt.3.0 <- sum.unboxed $ m1'.0 l.77.arity.2.225.arity.1
+                ax'.0 <- _prim_int_add $ l.77.arity.1.173.arity.1 unboxed.CInt.3.0
                 pure ax'.0
-
       |]
 
     let steps = [ Optimize ]
 
-    transformed <- pipeline defaultOpts Nothing before steps
+    transformed <- testPipeline before steps
     transformed `sameAs` after
 
