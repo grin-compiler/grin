@@ -1,5 +1,6 @@
 outputExtension: "out"
 grinOptions:
 - "--quiet"
+- "--no-prelude"
 - "--idde"
 - "--save-grin=$$$OUT$$$"
