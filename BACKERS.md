@@ -64,4 +64,5 @@
 - Ollie Charles
 - Barry Moore
 - Joe Hermaszewski
+- Joe Vargas
 <!--10 end-->
