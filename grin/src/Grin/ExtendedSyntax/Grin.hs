@@ -25,8 +25,8 @@ instance FoldNames Val where
 
 instance FoldNames BPat where
   foldNames f = \case
-    VarPat v    -> f v
-    AsPat v val -> f v <> foldNames f val
+    VarPat v     -> f v
+    AsPat t vs v -> f v <> foldNames f (ConstTagNode t vs)
 
 
 instance FoldNames CPat where
@@ -54,6 +54,7 @@ _Lit :: Traversal' Val Lit
 _Lit f (Lit l) = Lit <$> f l
 _Lit _ rest    = pure rest
 
+-- NOTE: This will return NM "" for everyrhing that is not a Var
 _Var :: Traversal' Val Name
 _Var f (Var name) = Var <$> f name
 _Var _ rest       = pure rest

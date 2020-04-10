@@ -168,11 +168,7 @@ producesNode (Undefined T_NodeSet{}) = True
 producesNode _ = False
 
 asPatternDataflow :: IR.Reg -> BPat -> CG ()
-asPatternDataflow r asPat@(AsPat _ asVal) = case asVal of
-  Unit  -> pure ()
-  Lit{} -> pure ()
-  Var v -> addReg v r
-  ConstTagNode tag args -> do
+asPatternDataflow r asPat@(AsPat tag args _) = do
     irTag <- getTag tag
     bindInstructions <- forM (zip [1..] args) $ \(idx, arg) -> do
       argReg <- newReg
@@ -187,7 +183,6 @@ asPatternDataflow r asPat@(AsPat _ asVal) = case asVal of
       , srcReg        = r
       , instructions  = concat bindInstructions
       }
-  valPat -> error $ "unsupported @pattern: " ++ show (PP asPat)
 asPatternDataflow _ pat = error $ "not @pattern: " ++ show (PP pat)
 
 {- NOTE: para is needed to specify the order of evalution of the lhs and rhs on binds.
@@ -227,17 +222,10 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       cgRhs
 
     -- NOTE: @patterns
-    EBindF (lhs, cgLhs) asPat@(AsPat var valPat) (_, cgRhs) -> do
+    EBindF (lhs, cgLhs) asPat@(AsPat tag args var) (_, cgRhs) -> do
       lhsRes <- cgLhs
       case lhsRes of
-        Z -> do
-          r <- newReg
-          emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
-          addReg var r
-          case valPat of
-            Unit      -> pure ()
-            Var inner -> addReg inner r
-            _ -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show (PP valPat)
+        Z -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show (PP $ ConstTagNode tag args)
         R r -> do
           case lhs of
             SReturn val | producesNode val -> do

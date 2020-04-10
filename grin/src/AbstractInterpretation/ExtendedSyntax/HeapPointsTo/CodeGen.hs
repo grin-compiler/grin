@@ -176,10 +176,6 @@ codeGenM = cata folder where
     EBindF leftExp bpat rightExp -> do
       leftExp >>= \case
         Z -> case bpat of
-          AsPat varName Unit -> do
-            r <- newReg
-            emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
-            addReg varName r
           VarPat varName -> do
             r <- newReg
             emit IR.Set {dstReg = r, constant = IR.CSimpleType unitType}
@@ -187,17 +183,7 @@ codeGenM = cata folder where
           _ -> error $ "pattern mismatch at HPT bind codegen, Unit cannot be matched against " ++ show bpat
         R r -> case bpat of -- QUESTION: should the evaluation continue if the pattern does not match yet?
           VarPat varName -> addReg varName r
-          AsPat varName Unit -> do
-            addReg varName r
-            pure () -- TODO: is this ok? or error?
-          -- NOTE: I think this is okay. Could be optimised though (since we already know the result)?
-          AsPat varName Lit{} -> do
-            addReg varName r
-            pure () -- TODO: is this ok? or error?
-          AsPat v1 (Var v2) -> do
-            addReg v1 r
-            addReg v2 r
-          AsPat varName (ConstTagNode tag args) -> do
+          AsPat tag args varName -> do
             addReg varName r
             irTag <- getTag tag
             bindInstructions <- forM (zip [0..] args) $ \(idx, name) -> do

@@ -310,8 +310,8 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
         when (isn't _OnlyVarPat bPat) $ do
           forM_ mTypeEnv $ \typeEnv -> do
             fromMaybe (pure ()) $ case bPat of
-              AsPat v val -> do -- Maybe
-                expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv val
+              AsPat tag fields v -> do -- Maybe
+                expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv (ConstTagNode tag fields)
                 lhsType         <- normalizeType <$> extract leftExp
                 pure $ do -- Lint
                   -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.

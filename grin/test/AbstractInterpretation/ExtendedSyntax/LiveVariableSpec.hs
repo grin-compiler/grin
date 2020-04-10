@@ -65,24 +65,6 @@ spec = describe "Live Variable Analysis" $ do
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` variableAliasExpected
 
-  it "variable_alias_with_as_pattern" $ do
-    let exp = withPrimPrelude [prog|
-          grinMain =
-            x <- pure 0
-            y@z <- pure x
-            _prim_int_print y
-      |]
-    let variableAliasWithAsPatternExpected = emptyLVAResult
-          { _memory     = []
-          , _registerLv = [ ("x", liveVal)
-                          , ("y", liveVal)
-                          , ("z", deadVal)
-                          ]
-          , _functionLv = mkFunctionLivenessMap []
-          }
-        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
-    calculated `sameAs` variableAliasWithAsPatternExpected
-
   it "as_pattern_with_node_1" $ do
     let exp = withPrimPrelude [prog|
           grinMain =
@@ -1018,29 +1000,6 @@ spec = describe "Live Variable Analysis" $ do
         livenessN2 = nodeSet [ (cBool, [live]), (cWord, [dead]) ]
         calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
     calculated `sameAs` heapUpdateLocalExpected
-
-  it "lit_pat" $ do
-    let exp = [prog|
-          grinMain =
-            y <- pure 0
-            5 @ _1 <- f y
-            pure 0
-
-          f x = pure x
-        |]
-    let litPatExpected = emptyLVAResult
-          { _memory     = []
-          , _registerLv = [ ("y", liveVal)
-                          , ("x", liveVal)
-
-                          , ("_1", deadVal)
-                          ]
-          , _functionLv = litPatExpectedFunctions
-          }
-        litPatExpectedFunctions = mkFunctionLivenessMap
-          [ ("f", fun (liveVal, [liveVal])) ]
-        calculated = (calcLiveness exp) { _registerEff = mempty, _functionEff = mempty }
-    calculated `sameAs` litPatExpected
 
   it "var_pat" $ do
     let exp = [prog|
