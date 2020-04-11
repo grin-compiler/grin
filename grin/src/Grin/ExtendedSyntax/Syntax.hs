@@ -87,7 +87,6 @@ data CPat
 -- * Binding pattern
 data BPat
   = VarPat { _bPatVar :: Name }
-  -- TODO: swap the fields so that it is consistent with the concrete syntax
   | AsPat  { _bPatTag    :: Tag
            , _bPatFields :: [Name]
            , _bPatVar    :: Name

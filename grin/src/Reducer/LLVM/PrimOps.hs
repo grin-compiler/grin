@@ -74,6 +74,7 @@ codeGenPrimOp name [opA, opB] = pure $ case name of
   "_prim_bool_ne"   -> I cgBool $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}
 
   _ -> error $ "unknown primop: " ++ show name
+codeGenPrimOp name ops = error $ "Non supported primitive opts argument combination:" ++ show (name, ops)
 
 codeGenFFI :: Grin.External -> [Operand] -> CG Result
 codeGenFFI e ops = do

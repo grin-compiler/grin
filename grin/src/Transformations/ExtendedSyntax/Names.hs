@@ -14,7 +14,7 @@ import qualified Data.Foldable
 import Text.Printf
 
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 import Grin.ExtendedSyntax.Grin
 import Transformations.ExtendedSyntax.Util
@@ -26,6 +26,12 @@ data NameEnv
   { namePool  :: Map Name Int
   , nameSet   :: Set Name
   }
+
+instance Semigroup NameEnv where
+  (NameEnv np1 ns1) <> (NameEnv np2 ns2) = NameEnv (np1 <> np2) (ns1 <> ns2)
+
+instance Monoid NameEnv where
+  mempty = NameEnv mempty mempty
 
 type NameM = State NameEnv
 
@@ -72,6 +78,9 @@ data ExpChanges
 
 evalNameM :: Exp -> NameM a -> (a, ExpChanges)
 evalNameM e m = second (boolTF NoChange NewNames . Map.null . namePool) $ runState m (mkNameEnv e)
+
+runEvalNameM :: NameM a -> a
+runEvalNameM m = evalState m mempty
 
 -- refresh names
 
