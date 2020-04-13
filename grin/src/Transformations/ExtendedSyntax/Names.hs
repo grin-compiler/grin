@@ -14,7 +14,7 @@ import qualified Data.Foldable
 import Text.Printf
 
 import Control.Monad
-import Control.Monad.State.Strict
+import Control.Monad.State
 
 import Grin.ExtendedSyntax.Grin
 import Transformations.ExtendedSyntax.Util
