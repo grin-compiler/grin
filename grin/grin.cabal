@@ -128,6 +128,11 @@ library
     Reducer.LLVM.TypeGen
     Reducer.PrimOps
     Reducer.Pure
+    Reducer.Interpreter.Base
+    Reducer.Interpreter.Definitional
+    Reducer.Interpreter.Env
+    Reducer.Interpreter.Store
+
     Test.Assertions
     Test.Check
     Test.Grammar
@@ -239,7 +244,8 @@ library
     random,
     set-extra,
     deepseq,
-    binary
+    binary,
+    monad-control
 
   default-language:    Haskell2010
 
