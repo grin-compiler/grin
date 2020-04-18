@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase, GeneralizedNewtypeDeriving, InstanceSigs, TypeFamilies, TemplateHaskell, ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators, EmptyCase #-}
 module Reducer.Interpreter.Definitional where
 
 import Control.Monad (forM_, when)
@@ -28,6 +29,7 @@ import Reducer.Base (RTVal(..), Statistics(..))
 import Reducer.Pure (EvalPlugin(..))
 import Grin.Statistics (Statistics(..))
 import Transformations.ExtendedSyntax.Conversion (convertToNew, convert)
+import Data.Functor.Foldable
 
 
 -- * Definitional Interpreter
@@ -63,8 +65,8 @@ data DVal
   | DUnit
   deriving (Eq, Ord, Show)
 
-data DefEnv m v = DefEnv
-  { _defFuns :: Map.Map Name Exp
+data DefEnv m e v = DefEnv
+  { _defFuns :: Map.Map Name (Fix (Syntax.ExpF :+: e))
   , _defOps  :: Map.Map Name ([v] -> m v)
   , _defEnv  :: Env v
   }
@@ -74,29 +76,30 @@ makeLenses ''DefEnv
 data HeapNode = HeapNode { heapNode :: !Node , fetched :: !Int, updated :: !Int }
 
 -- TODO: Use RWST
-newtype DefinitionalT m a = DefinitionalT
-  { definitionalT :: StateT (Store Loc HeapNode) (ReaderT (DefEnv m DVal) m) a
+newtype DefinitionalT (m :: * -> *) (e :: * -> *) (a :: *) = DefinitionalT
+  { definitionalT :: StateT (Store Loc HeapNode) (ReaderT (DefEnv m e DVal) m) a
   } deriving
       ( Functor
       , Applicative
       , Monad
       , MonadFail
       , MonadIO
-      , MonadReader (DefEnv m DVal)
+      , MonadReader (DefEnv m e DVal)
       , MonadState (Store Loc HeapNode)
       )
 
-runDefinitionalT :: (Monad m) => Exp -> Map.Map Syntax.Name ([DVal] -> m DVal) -> DefinitionalT m a -> m a
+runDefinitionalT :: (Monad m) => Exp -> Map.Map Syntax.Name ([DVal] -> m DVal) -> DefinitionalT m e a -> m a
 runDefinitionalT prog ops n = runReaderT (evalStateT (definitionalT n) Store.empty) env
   where
     env = DefEnv (programToDefs prog) ops Env.empty
 
-instance (Applicative m, Monad m, MonadFail m, MonadIO m) => Interpreter (DefinitionalT m) where
-  type Val     (DefinitionalT m) = DVal
-  type HeapVal (DefinitionalT m) = Node
-  type Addr    (DefinitionalT m) = Loc
+instance (Applicative m, Monad m, MonadFail m, MonadIO m) => Interpreter (DefinitionalT m e) where
+  type Val     (DefinitionalT m e) = DVal
+  type HeapVal (DefinitionalT m e) = Node
+  type Addr    (DefinitionalT m e) = Loc
+  type Expr    (DefinitionalT m e) = e
 
-  value :: Syntax.Val -> DefinitionalT m DVal
+  value :: Syntax.Val -> DefinitionalT m e DVal
   value = \case
     Syntax.ConstTagNode t ns -> do
       p  <- askEnv
@@ -110,49 +113,48 @@ instance (Applicative m, Monad m, MonadFail m, MonadIO m) => Interpreter (Defini
     Syntax.Unit  -> pure DUnit
     Syntax.Var v -> error "Variable lookup is not supported."
 
-  val2addr :: DVal -> DefinitionalT m Loc
+  val2addr :: DVal -> DefinitionalT m e Loc
   val2addr = \case
     (DVal (SLoc l)) -> pure l
     other           -> error $ "val2addr" ++ show other
 
-  addr2val :: Loc -> DefinitionalT m DVal
+  addr2val :: Loc -> DefinitionalT m e DVal
   addr2val = pure . DVal . SLoc
 
-  heapVal2val :: Node -> DefinitionalT m DVal
+  heapVal2val :: Node -> DefinitionalT m e DVal
   heapVal2val = pure . DNode
 
-  val2heapVal :: DVal -> DefinitionalT m Node
+  val2heapVal :: DVal -> DefinitionalT m e Node
   val2heapVal = \case
     DNode n -> pure n
     other   -> error $ "val2heapVal: " ++ show other
 
-  unit :: DefinitionalT m DVal
+  unit :: DefinitionalT m e DVal
   unit = pure DUnit
 
-  bindPattern :: DVal -> (Tag, [Name]) -> DefinitionalT m [(Name, DVal)]
+  bindPattern :: DVal -> (Tag, [Name]) -> DefinitionalT m e [(Name, DVal)]
   bindPattern (DNode (Node t0 vs)) (t1, ps)
     | t0 == t1  = pure (ps `zip` (DVal <$> vs))
   bindPattern pattern match = error $ "bindPattern: " ++ show (pattern, match)
 
-  askEnv :: (DefinitionalT m) (Env DVal)
+  askEnv :: (DefinitionalT m e) (Env DVal)
   askEnv = _defEnv <$> ask
 
-  localEnv :: Env DVal -> (DefinitionalT m) DVal -> (DefinitionalT m) DVal
+  localEnv :: Env DVal -> (DefinitionalT m e) DVal -> (DefinitionalT m e) DVal
   localEnv e = local (defEnv .~ e)
 
-  lookupFun :: Name -> (DefinitionalT m) Exp
-  lookupFun funName = (fromMaybe (error $ "Missing:" ++ show funName) . Map.lookup funName . _defFuns) <$> ask
-
-  isExternal :: Name -> (DefinitionalT m) Bool
+  isExternal :: Name -> (DefinitionalT m e) Bool
   isExternal funName = (Map.member funName . _defOps) <$> ask
 
-  external :: Name -> [DVal] -> (DefinitionalT m) DVal
+  external :: Name -> [DVal] -> (DefinitionalT m e) DVal
   external funName params = DefinitionalT $ do
     op <- lift ((fromJust . Map.lookup funName . _defOps) <$> ask)
     lift (lift (op params))
 
-  evalCase :: (Exp -> (DefinitionalT m) DVal) -> DVal -> [Syntax.Alt] -> (DefinitionalT m) DVal
-  evalCase ev0 v alts = evalBranch v $ head $ filter (\(Alt p n _b) -> match v p) alts
+  matchingVal :: DVal -> [Fix (Syntax.ExpF :+: e)] -> DefinitionalT m e (Env DVal, Fix (Syntax.ExpF :+: e))
+  matchingVal v alts = do
+    let selectedAlt = head $ filter (\case { Fix (Inl (Syntax.AltF p n _b)) -> match v p ; _ -> False }) alts
+    pure $ (calcMatchEnv v selectedAlt, selectedAlt)
     where
       match :: DVal -> Syntax.CPat -> Bool
       match DUnit                 p                       = error $ "matching failure:" ++ show (DUnit, p)
@@ -163,50 +165,52 @@ instance (Applicative m, Monad m, MonadFail m, MonadIO m) => Interpreter (Defini
       match (DVal{})              Syntax.DefaultPat       = True
       match _                     _                       = False
 
-      evalBranch :: DVal -> Syntax.Alt -> (DefinitionalT m) DVal
-      evalBranch (DNode (Node t0 vs)) (Alt (Syntax.NodePat t1 nps) n body)
-        | t0 == t1 = do
-            p0 <- askEnv
-            let p1 = Env.insert n v p0
-            let p2 = Env.inserts (nps `zip` (DVal <$> vs)) p1
-            localEnv p2 (ev0 body)
-      evalBranch _ (Alt _ n body) = do
-        p <- askEnv
-        localEnv (Env.insert n v p) $ ev0 body
-      evalBranch pat alt = error $ "evalBranch: " ++ show (pat, alt)
+      calcMatchEnv :: DVal -> Fix (Syntax.ExpF :+: e) -> Env DVal
+      calcMatchEnv (DNode (Node t0 vs)) (Fix (Inl (Syntax.AltF (Syntax.NodePat t1 nps) n body)))
+        | t0 == t1  = Env.inserts (nps `zip` (DVal <$> vs)) $ Env.insert n v Env.empty
+        | otherwise = error "mismatching branch"
+      calcMatchEnv _ (Fix (Inl (Syntax.AltF _ n body))) = Env.insert n v Env.empty
+      calcMatchEnv pat alt = error "calcMatchEnv"
 
-  funCall :: (Exp -> DefinitionalT m DVal) -> Name -> [DVal] -> DefinitionalT m DVal
-  funCall ev0 fn vs = do
-    (Def _ fps body) <- lookupFun fn
-    let p' = Env.inserts (fps `zip` vs) Env.empty
-    localEnv p' (ev0 body)
+  funCall :: Name -> [DVal] -> DefinitionalT m e (Env DVal, Fix (Syntax.ExpF :+: e))
+  funCall fn vs = do
+    (Fix (Inl (Syntax.DefF _ fps body))) <- lookupFun fn
+    let p = Env.inserts (fps `zip` vs) Env.empty
+    pure (p, body)
 
-  allocStore :: Name -> DefinitionalT m DVal
+  allocStore :: Name -> DefinitionalT m e DVal
   allocStore _ = do
     (Store s) <- get
     let a = Loc $ Map.size s
     addr2val a
 
-  fetchStore :: DVal -> DefinitionalT m DVal
+  fetchStore :: DVal -> DefinitionalT m e DVal
   fetchStore l = do
     a <- val2addr l
     DefinitionalT $ modify (Store.modify a (\(HeapNode n f u) -> HeapNode n (succ f) u))
     s <- get
     heapVal2val $ heapNode $ Store.lookup a s
 
-  extStore :: DVal -> DVal -> DefinitionalT m ()
+  extStore :: DVal -> DVal -> DefinitionalT m e ()
   extStore l n = do
     a <- val2addr l
     v <- val2heapVal n
     DefinitionalT $ modify (Store.modify a (\(HeapNode _ f u) -> HeapNode v f (succ u)))
 
+lookupFun :: (Monad m) => Name -> (DefinitionalT m e) (Fix (Syntax.ExpF :+: e))
+lookupFun funName = (fromMaybe (error $ "Missing:" ++ show funName) . Map.lookup funName . _defFuns) <$> ask
+
+
 evalDefinitional :: (Monad m, MonadFail m, MonadIO m) => EvalPlugin -> Name -> Exp -> m DVal
 evalDefinitional (EvalPlugin evalPrimOps) mainName prog = do
   let ops = Map.map convertPrimOp $ Map.mapKeys nameV1toV2 evalPrimOps
-  runDefinitionalT prog ops (eval (SApp mainName []))
+  runDefinitionalT prog ops (eval evalVoid (Fix (Inl (Syntax.SAppF mainName []))))
   where
     exts = Syntax.externals prog
     convertPrimOp f args = liftIO $ fmap rtValToDVal $ f $ map dValToRtVal args
+
+    evalVoid :: Void a -> m DVal
+    evalVoid = \case
 
 nameV1toV2 :: SyntaxV1.Name -> Syntax.Name
 nameV1toV2 = \case
