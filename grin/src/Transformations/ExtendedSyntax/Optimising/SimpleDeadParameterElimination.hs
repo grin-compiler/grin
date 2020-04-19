@@ -43,7 +43,6 @@ simpleDeadParameterElimination prog@(Program exts defs) = ana builder prog where
       | Just dead <- Map.lookup name deadArgMap
       -> SAppF name (removeDead dead args)
 
-    -- TODO: change this
     EBind leftExp (AsPat tag args var) rightExp
       | Tag kind tagName <- tag
       , isPFtag kind
