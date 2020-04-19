@@ -30,11 +30,11 @@ collectTagInfo :: Exp -> InfoTable
 collectTagInfo = flip execState mempty . cataM alg where
 
   alg :: ExpF TagInfo -> State InfoTable TagInfo
-  alg = pure . \case
-    SBlockF tagInfo                   -> tagInfo
-    EBindF _ _ rhsTagInfo             -> rhsTagInfo
-    ECaseF scrut altTagInfo           -> commonTag altTagInfo
-    SReturnF (ConstTagNode tag [arg]) -> Known tag
+  alg = \case
+    SBlockF tagInfo                   -> pure tagInfo
+    EBindF _ _ rhsTagInfo             -> pure rhsTagInfo
+    ECaseF scrut altTagInfo           -> pure $ commonTag altTagInfo
+    SReturnF (ConstTagNode tag [arg]) -> pure $ Known tag
 
     AltF _ name tagInfo -> do
       modify (Map.insert name tagInfo)
