@@ -130,9 +130,9 @@ cPatToVal = \case
   LitPat  lit       -> Lit lit
   DefaultPat        -> Unit
 
-cPatToAsPat :: Name -> CPat -> BPat
-cPatToAsPat name (NodePat tag args) = AsPat tag args name
-cPatToAsPat _ cPat = error $ "cPatToAsPat: cannot convert to as-pattern: " ++ show (PP cPat)
+cPatToAsPat :: CPat -> Name -> BPat
+cPatToAsPat (NodePat tag args) name = AsPat tag args name
+cPatToAsPat cPat _ = error $ "cPatToAsPat: cannot convert to as-pattern: " ++ show (PP cPat)
 
 -- monadic recursion schemes
 --  see: https://jtobin.io/monadic-recursion-schemes
