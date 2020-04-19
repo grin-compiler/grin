@@ -44,6 +44,7 @@ foldNameUseExpF f = \case
   SReturnF val      -> foldNames f val
   SStoreF v         -> f v
   SUpdateF p v      -> f p <> f v
+  SFetchF p         -> f p
   _                 -> mempty
 
 data DefRole = FunName | FunParam | BindVar | AltVar
@@ -107,19 +108,19 @@ mapNameUseExp f = \case
 subst :: Ord a => Map a a -> a -> a
 subst env x = Map.findWithDefault x x env
 
--- substitute all @Names@s in an @Exp@
+-- substitute all @Names@s in an @Exp@ (non-recursive)
 substVarRefExp :: Map Name Name -> Exp -> Exp
 substVarRefExp env = mapNameUseExp (subst env)
 
--- substitute all @Names@s in a @Val@
+-- substitute all @Names@s in a @Val@ (non-recursive)
 substNamesVal :: Map Name Name -> Val -> Val
 substNamesVal env = mapNamesVal (subst env)
 
--- specialized version of @subst@ to @Val@s
+-- specialized version of @subst@ to @Val@s (non-recursive)
 substValsVal :: Map Val Val -> Val -> Val
 substValsVal env = subst env
 
--- substitute all @Val@s in an @Exp@
+-- substitute all @Val@s in an @Exp@ (non-recursive)
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (subst env)
 
@@ -129,9 +130,9 @@ cPatToVal = \case
   LitPat  lit       -> Lit lit
   DefaultPat        -> Unit
 
-cPatToAsPat :: Name -> CPat -> BPat
-cPatToAsPat name (NodePat tag args) = AsPat tag args name
-cPatToAsPat _ cPat = error $ "cPatToAsPat: cannot convert to as-pattern: " ++ show (PP cPat)
+cPatToAsPat :: CPat -> Name -> BPat
+cPatToAsPat (NodePat tag args) name = AsPat tag args name
+cPatToAsPat cPat _ = error $ "cPatToAsPat: cannot convert to as-pattern: " ++ show (PP cPat)
 
 -- monadic recursion schemes
 --  see: https://jtobin.io/monadic-recursion-schemes

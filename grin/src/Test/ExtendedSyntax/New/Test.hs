@@ -22,6 +22,9 @@ type TestExpContext = (String, (TypeEnv, Exp) -> (TypeEnv, Exp))
 testExprContext :: (((TypeEnv, Exp) -> (TypeEnv, Exp)) -> Spec) -> Spec
 testExprContext mkSpec = forM_ contexts $ \(label, ctx) -> describe (concat ["(", label, ")"]) $ mkSpec ctx
 
+testExprContextIn :: [TestExpContext] -> (((TypeEnv, Exp) -> (TypeEnv, Exp)) -> Spec) -> Spec
+testExprContextIn ctxs mkSpec = forM_ ctxs $ \(label, ctx) -> describe (concat ["(", label, ")"]) $ mkSpec ctx
+
 testExprContextE :: ((Exp -> Exp) -> Spec) -> Spec
 testExprContextE mkSpec =
   forM_ contexts $ \(label, ctx) ->
