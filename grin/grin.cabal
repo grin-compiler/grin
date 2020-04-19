@@ -156,6 +156,7 @@ library
     Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxing
     Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionElimination
     Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterElimination
+    Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableElimination
     Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisation
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
@@ -318,6 +319,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxingSpec
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisationSpec
                      Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
