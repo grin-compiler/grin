@@ -154,6 +154,7 @@ library
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
     Transformations.ExtendedSyntax.Optimising.Inlining
     Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxing
+    Transformations.ExtendedSyntax.Optimising.NonSharedElimination
     Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionElimination
     Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterElimination
     Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableElimination
@@ -317,6 +318,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.InliningSpec
                      Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxingSpec
+                     Transformations.ExtendedSyntax.Optimising.NonSharedEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableEliminationSpec
