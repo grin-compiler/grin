@@ -10,5 +10,5 @@ trivialCaseElimination = ana builder where
   builder :: Exp -> ExpF Exp
   builder = \case
     ECase scrut [Alt DefaultPat altName body] -> SBlockF $ EBind (SReturn (Var scrut)) (VarPat altName)           body
-    ECase scrut [Alt cpat       altName body] -> SBlockF $ EBind (SReturn (Var scrut)) (cPatToAsPat altName cpat) body
+    ECase scrut [Alt cpat       altName body] -> SBlockF $ EBind (SReturn (Var scrut)) (cPatToAsPat cpat altName) body
     exp -> project exp
