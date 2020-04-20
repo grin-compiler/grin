@@ -147,6 +147,7 @@ library
     Transformations.ExtendedSyntax.MangleNames
     Transformations.ExtendedSyntax.StaticSingleAssignment
     Transformations.ExtendedSyntax.Optimising.ArityRaising
+    Transformations.ExtendedSyntax.Optimising.CaseCopyPropagation
     Transformations.ExtendedSyntax.Optimising.CaseHoisting
     Transformations.ExtendedSyntax.Optimising.CopyPropagation
     Transformations.ExtendedSyntax.Optimising.ConstantPropagation
@@ -312,6 +313,7 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.MangleNamesSpec
                      Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
                      Transformations.ExtendedSyntax.Optimising.ArityRaisingSpec
+                     Transformations.ExtendedSyntax.Optimising.CaseCopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.CaseHoistingSpec
                      Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.CSESpec
