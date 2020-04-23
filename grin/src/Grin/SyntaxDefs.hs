@@ -52,8 +52,8 @@ data Tag = Tag
 type Loc = Int
 
 data SimpleType
-  = T_Int64
-  | T_Word64
+  = T_Int {width :: Word}
+  | T_Word {width :: Word}
   | T_Float
   | T_Bool
   | T_Unit
