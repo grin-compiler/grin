@@ -113,12 +113,12 @@ typeOfLit = T_SimpleType . typeOfLitST
 
 typeOfLitST :: Lit -> SimpleType
 typeOfLitST lit = case lit of
-  LInt64{}  -> T_Int64
-  LWord64{} -> T_Word64
-  LFloat{}  -> T_Float
-  LBool{}   -> T_Bool
-  LString{} -> T_String
-  LChar{}   -> T_Char
+  LInt width _  -> T_Int width
+  LWord width _ -> T_Word width
+  LFloat{}      -> T_Float
+  LBool{}       -> T_Bool
+  LString{}     -> T_String
+  LChar{}       -> T_Char
 
 -- Type of literal like values
 typeOfVal :: Val -> Type
