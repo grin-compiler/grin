@@ -36,8 +36,8 @@ stringType = ptr stringStructType
 
 typeGenSimpleType :: SimpleType -> LLVM.Type
 typeGenSimpleType = \case
-  T_Int64   -> i64
-  T_Word64  -> i64
+  T_Int w   -> IntegerType w
+  T_Word w  -> IntegerType w
   T_Float   -> float
   T_Bool    -> i1
   T_String  -> stringType
