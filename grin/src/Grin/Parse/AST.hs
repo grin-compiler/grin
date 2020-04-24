@@ -93,7 +93,7 @@ wordLiteral :: Parser Lit
 wordLiteral = lexeme (LWord <$> (integer <* C.char 'u') <*> L.decimal)
 
 intLiteral :: Parser Lit
-intLiteral = LInt <$> (signedInteger <* C.char 'i') <*> L.decimal
+intLiteral = lexeme (LInt <$> (signedInteger <* C.char 'i') <*> L.decimal)
 
 literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
