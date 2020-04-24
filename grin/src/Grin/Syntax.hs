@@ -55,8 +55,8 @@ isExternalName es n = n `Prelude.elem` (eName <$> es)
 -- QUESTION: Now #undefined can be pattern matched on.
 -- Should the linter warn about this?
 data Lit
-  = LInt    Word Int
-  | LWord   Word Word
+  = LInt    Word32 Int
+  | LWord   Word32 Word
   | LFloat  Float
   | LBool   Bool
   | LString Text

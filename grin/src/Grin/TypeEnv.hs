@@ -10,6 +10,7 @@ import Data.Int
 import Data.Map (Map)
 import Data.Set (Set)
 import Data.Vector (Vector)
+import Data.Word
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Vector as Vector
@@ -34,7 +35,7 @@ dead_t = T_SimpleType T_Dead
 unit_t :: Type
 unit_t = T_SimpleType T_Unit
 
-int_t :: Word -> Type
+int_t :: Word32 -> Type
 int_t = T_SimpleType . T_Int
 
 bool_t :: Type

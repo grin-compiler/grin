@@ -24,8 +24,8 @@ import AbstractInterpretation.HeapPointsTo.CodeGenBase (HPTMapping)
 type Loc = Int
 
 data SimpleType
-  = T_Int Word
-  | T_Word Word
+  = T_Int Word32
+  | T_Word Word32
   | T_Float
   | T_Bool
   | T_Unit
