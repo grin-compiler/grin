@@ -2,6 +2,7 @@
 module Reducer.LLVM.PrimOps where
 
 import Control.Monad (when)
+import Data.Word
 import LLVM.AST
 import qualified LLVM.AST.IntegerPredicate as I
 import qualified LLVM.AST.FloatingPointPredicate as F
@@ -17,13 +18,13 @@ import Reducer.LLVM.TypeGen
 import Grin.PrimOpsPrelude
 
 
-cgUnit    = toCGType $ T_SimpleType T_Unit    :: CGType
-cgInt64   = toCGType $ T_SimpleType T_Int64   :: CGType
-cgWord64  = toCGType $ T_SimpleType T_Word64  :: CGType
-cgFloat   = toCGType $ T_SimpleType T_Float   :: CGType
-cgBool    = toCGType $ T_SimpleType T_Bool    :: CGType
-cgString  = toCGType $ T_SimpleType T_String  :: CGType
-cgChar    = toCGType $ T_SimpleType T_Char    :: CGType
+cgUnit    = toCGType $ T_SimpleType T_Unit     :: CGType
+cgInt w   = toCGType $ T_SimpleType $ T_Int w  :: CGType
+cgWord w  = toCGType $ T_SimpleType $ T_Word w :: CGType
+cgFloat   = toCGType $ T_SimpleType T_Float    :: CGType
+cgBool    = toCGType $ T_SimpleType T_Bool     :: CGType
+cgString  = toCGType $ T_SimpleType T_String   :: CGType
+cgChar    = toCGType $ T_SimpleType T_Char     :: CGType
 
 codeExternal :: Grin.External -> [Operand] -> CG Result
 codeExternal e ops = case Grin.eKind e of
@@ -33,11 +34,11 @@ codeExternal e ops = case Grin.eKind e of
 codeGenPrimOp :: Grin.Name -> [Operand] -> CG Result
 codeGenPrimOp name [opA, opB] = pure $ case name of
   -- Int
-  "_prim_int_add"   -> I cgInt64 $ Add  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_int_sub"   -> I cgInt64 $ Sub  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_int_mul"   -> I cgInt64 $ Mul  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_int_div"   -> I cgInt64 $ SDiv {exact=False, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_int_ashr"  -> I cgInt64 $ AShr {exact=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_add"   -> I (cgInt 64) $ Add  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_sub"   -> I (cgInt 64) $ Sub  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_mul"   -> I (cgInt 64) $ Mul  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_div"   -> I (cgInt 64) $ SDiv {exact=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_int_ashr"  -> I (cgInt 64) $ AShr {exact=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_eq"    -> I cgBool  $ ICmp {iPredicate=I.EQ,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_ne"    -> I cgBool  $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_int_gt"    -> I cgBool  $ ICmp {iPredicate=I.SGT, operand0=opA, operand1=opB, metadata=[]}
@@ -46,10 +47,10 @@ codeGenPrimOp name [opA, opB] = pure $ case name of
   "_prim_int_le"    -> I cgBool  $ ICmp {iPredicate=I.SLE, operand0=opA, operand1=opB, metadata=[]}
 
   -- Word
-  "_prim_word_add"  -> I cgWord64 $ Add  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_word_sub"  -> I cgWord64 $ Sub  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_word_mul"  -> I cgWord64 $ Mul  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
-  "_prim_word_div"  -> I cgWord64 $ UDiv {exact=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_word_add"  -> I (cgWord 64) $ Add  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_word_sub"  -> I (cgWord 64) $ Sub  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_word_mul"  -> I (cgWord 64) $ Mul  {nsw=False, nuw=False, operand0=opA, operand1=opB, metadata=[]}
+  "_prim_word_div"  -> I (cgWord 64) $ UDiv {exact=False, operand0=opA, operand1=opB, metadata=[]}
   "_prim_word_eq"   -> I cgBool   $ ICmp {iPredicate=I.EQ,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_word_ne"   -> I cgBool   $ ICmp {iPredicate=I.NE,  operand0=opA, operand1=opB, metadata=[]}
   "_prim_word_gt"   -> I cgBool   $ ICmp {iPredicate=I.UGT, operand0=opA, operand1=opB, metadata=[]}

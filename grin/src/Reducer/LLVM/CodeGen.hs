@@ -66,8 +66,8 @@ toLLVM fname mod = withContext $ \ctx -> do
 
 codeGenLit :: Lit -> CG C.Constant
 codeGenLit = \case
-  LInt64 v  -> pure $ Int {integerBits=64, integerValue=fromIntegral v}
-  LWord64 v -> pure $ Int {integerBits=64, integerValue=fromIntegral v}
+  LInt w v  -> pure $ Int {integerBits=w, integerValue=fromIntegral v}
+  LWord w v -> pure $ Int {integerBits=w, integerValue=fromIntegral v}
   LFloat v  -> pure $ C.Float {floatValue=F.Single v}
   LBool v   -> pure $ Int {integerBits=1, integerValue=if v then 1 else 0}
   LChar v   -> pure $ Int {integerBits=8, integerValue=fromIntegral $ fromEnum v}
@@ -141,8 +141,8 @@ getCPatName :: CPat -> Grin.Name
 getCPatName = \case
   TagPat  tag   -> tagName tag
   LitPat  lit   -> case lit of
-    LInt64 v  -> "int_" <> showTS v
-    LWord64 v -> "word_" <> showTS v
+    LInt w v  -> "int" <> showTS w <> "_" <> showTS v
+    LWord w v -> "word" <> showTS w <> "_" <> showTS v
     LBool v   -> "bool_" <> showTS v
     LChar v   -> "char_" <> showTS v
     LString v -> error "pattern match on string is not supported"
@@ -587,7 +587,7 @@ runtimeErrorExternal =
   external
     (typeGenSimpleType T_Unit)
     (mkName "__runtime_error")
-    [(typeGenSimpleType T_Int64, mkName "x0")]
+    [(typeGenSimpleType (T_Int 64), mkName "x0")]
 
 errorBlock :: CG ()
 errorBlock = do

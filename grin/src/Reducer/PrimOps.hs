@@ -103,8 +103,8 @@ evalPrimOp name params args = case name of
 
   _ -> error $ "unknown primitive operation: " ++ unpackName name
  where
-  int   x = pure . RT_Lit . LInt64 $ x
-  word  x = pure . RT_Lit . LWord64 $ x
+  int   x = pure . RT_Lit . (LInt 64) $ x
+  word  x = pure . RT_Lit . (LWord 64) $ x
   float x = pure . RT_Lit . LFloat $ x
   bool  x = pure . RT_Lit . LBool $ x
   string x = pure . RT_Lit . LString $ x
