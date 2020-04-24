@@ -332,10 +332,10 @@ instance Arbitrary Eff where arbitrary = genericArbitraryU
 -- TODO: Remove
 data Type
   = TUnit -- TODO: Rename
-  | TInt
+  | TInt Word
   | TFloat
   | TBool
-  | TWord
+  | TWord Word
   | TLoc Type
   | TTag Name [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
@@ -387,8 +387,8 @@ class TypeOf t where
 
 instance TypeOf G.SimpleVal where
   typeOf = \case
-    G.Lit (LInt64 _)  -> TInt
-    G.Lit (LWord64 _) -> TWord
+    G.Lit (LInt w _)  -> TInt w
+    G.Lit (LWord w _) -> TWord w
     G.Lit (LFloat _)  -> TFloat
     G.Lit (LBool _)   -> TBool
     G.Lit (LString _) -> TString
