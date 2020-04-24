@@ -72,10 +72,16 @@ value = Lit <$> literal <|>
         try (Unit <$ op "()") <|>
         Undefined <$> parens (kw "#undefined" *> op "::" *> typeAnnot)
 
+wordLiteral :: Parser Lit
+wordLiteral = lexeme (LWord <$> (integer <* C.char 'u') <*> L.decimal)
+
+intLiteral :: Parser Lit
+intLiteral = lexeme (LInt <$> (signedInteger <* C.char 'i') <*> L.decimal)
+
 literal :: Parser Lit
 literal = (try $ LFloat . realToFrac <$> signedFloat) <|>
-          (try $ LWord64 . fromIntegral <$> lexeme (L.decimal <* C.char 'u')) <|>
-          (try $ LInt64 . fromIntegral <$> signedInteger) <|>
+          (try $ wordLiteral) <|>
+          (try $ intLiteral) <|>
           (try $ LBool <$> (True <$ kw "#True" <|> False <$ kw "#False")) <|>
           (try $ LString <$> lexeme (C.char '#' *> quotedString)) <|>
           (try $ LChar <$> lexeme (C.string "#'" *> (escaped <|> anySingle) <* C.char '\''))
