@@ -32,7 +32,7 @@ C.include "<math.h>"
 C.include "<stdio.h>"
 
 -- primitive functions
-primLiteralPrint _ _ [RT_Lit (LInt64 a)] = liftIO (putStr $ show a) >> pure RT_Unit
+primLiteralPrint _ _ [RT_Lit (LInt 64 a)] = liftIO (putStr $ show a) >> pure RT_Unit
 primLiteralPrint _ _ [RT_Lit (LString a)] = liftIO (putStr (Text.unpack a)) >> pure RT_Unit
 primLiteralPrint ctx ps x = error $ Prelude.unwords ["primLiteralPrint", ctx, "- invalid arguments:", show ps, " - ", show x]
 
@@ -111,15 +111,15 @@ evalPrimOp name params args = case name of
 --  char x = pure . RT_Lit . LChar $ x
 
   int_un_op retTy fn = case args of
-    [RT_Lit (LInt64 a)] -> retTy $ fn a
+    [RT_Lit (LInt 64 a)] -> retTy $ fn a
     _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_bin_op retTy fn = case args of
-    [RT_Lit (LInt64 a), RT_Lit (LInt64 b)] -> retTy $ fn a b
+    [RT_Lit (LInt 64 a), RT_Lit (LInt 64 b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   word_bin_op retTy fn = case args of
-    [RT_Lit (LWord64 a), RT_Lit (LWord64 b)] -> retTy $ fn a b
+    [RT_Lit (LWord 64 a), RT_Lit (LWord 64 b)] -> retTy $ fn a b
     _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   float_bin_op retTy fn = case args of
@@ -139,11 +139,11 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   string_cons = case args of
-    [RT_Lit (LInt64 a), RT_Lit (LString b)] -> string $ Text.cons (chr (fromIntegral a)) b
+    [RT_Lit (LInt 64 a), RT_Lit (LString b)] -> string $ Text.cons (chr (fromIntegral a)) b
     _ -> error $ "invalid arguments: " ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_str = case args of
-    [RT_Lit (LInt64 a)] -> string $ fromString $ show a
+    [RT_Lit (LInt 64 a)] -> string $ fromString $ show a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   str_int = case args of
@@ -151,7 +151,7 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   int_float = case args of
-    [RT_Lit (LInt64 a)] -> float $ fromIntegral a
+    [RT_Lit (LInt 64 a)] -> float $ fromIntegral a
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   char_int = case args of
@@ -167,7 +167,7 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   file_eof = case args of
-    [RT_Lit (LInt64 0)] -> (fmap (\case { False -> 0; _ -> 1}) (liftIO (hIsEOF stdin))) >>= int
+    [RT_Lit (LInt 64 0)] -> (fmap (\case { False -> 0; _ -> 1}) (liftIO (hIsEOF stdin))) >>= int
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   primReadString = case args of
@@ -175,7 +175,7 @@ evalPrimOp name params args = case name of
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   primUSleep = case args of
-    [RT_Lit (LInt64 us)] -> liftIO $ threadDelay (fromIntegral us) >> pure RT_Unit
+    [RT_Lit (LInt 64 us)] -> liftIO $ threadDelay (fromIntegral us) >> pure RT_Unit
     _ -> error $ "invalid arguments:" ++ show params ++ " " ++ show args ++ " for " ++ unpackName name
 
   primError = case args of
