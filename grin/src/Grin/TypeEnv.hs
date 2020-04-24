@@ -34,8 +34,8 @@ dead_t = T_SimpleType T_Dead
 unit_t :: Type
 unit_t = T_SimpleType T_Unit
 
-int64_t :: Type
-int64_t = T_SimpleType T_Int64
+int_t :: Word -> Type
+int_t = T_SimpleType . T_Int
 
 bool_t :: Type
 bool_t = T_SimpleType T_Bool
