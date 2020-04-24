@@ -55,8 +55,8 @@ instance Convertible Tag New.Tag where
 
 instance Convertible Lit New.Lit where
   convert = \case
-    LInt64 n  -> New.LInt64 n
-    LWord64 n -> New.LWord64 n
+    LInt w n  -> New.LInt w n
+    LWord w n -> New.LWord w n
     LFloat f  -> New.LFloat f
     LBool b   -> New.LBool b
     LString s -> New.LString s
@@ -64,8 +64,8 @@ instance Convertible Lit New.Lit where
 
 instance Convertible SimpleType New.SimpleType where
   convert = \case
-    T_Int64               -> New.T_Int64
-    T_Word64              -> New.T_Word64
+    T_Int w               -> New.T_Int w
+    T_Word w              -> New.T_Word w
     T_Float               -> New.T_Float
     T_Bool                -> New.T_Bool
     T_Unit                -> New.T_Unit
