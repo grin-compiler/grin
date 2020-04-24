@@ -51,7 +51,7 @@ locationCGType :: CGType
 locationCGType = toCGType $ T_SimpleType $ T_Location []
 
 tagCGType :: CGType
-tagCGType = toCGType $ T_SimpleType $ T_Int64
+tagCGType = toCGType $ T_SimpleType $ T_Int 64
 
 unitCGType :: CGType
 unitCGType = toCGType $ T_SimpleType $ T_Unit

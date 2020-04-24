@@ -36,8 +36,8 @@ typeEnvFromHPTResult :: HPTResult -> Either String TypeEnv.TypeEnv
 typeEnvFromHPTResult hptResult = typeEnv where
   convertSimpleType :: SimpleType -> Either String TypeEnv.SimpleType
   convertSimpleType = \case
-    T_Int64               -> pure TypeEnv.T_Int64
-    T_Word64              -> pure TypeEnv.T_Word64
+    T_Int w               -> pure $ TypeEnv.T_Int w
+    T_Word w              -> pure $ TypeEnv.T_Word w
     T_Float               -> pure TypeEnv.T_Float
     T_Bool                -> pure TypeEnv.T_Bool
     T_Unit                -> pure TypeEnv.T_Unit

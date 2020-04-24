@@ -523,8 +523,8 @@ instance ToTypeSet Val where typeSet = litOrConstTagNodeToTypeSet
 
 typeOfLiteral :: Lit -> SimpleType
 typeOfLiteral = \case
-  LInt64  _ -> T_Int64
-  LWord64 _ -> T_Word64
+  LInt w  _ -> T_Int w
+  LWord w _ -> T_Word w
   LFloat  _ -> T_Float
   LBool   _ -> T_Bool
 
@@ -591,9 +591,9 @@ primitive name = case name of
   "_prim_bool_ne"   -> op [bool, bool] bool
   _ -> Nothing
   where
-    int = T_Int64
+    int = T_Int 64
     bool = T_Bool
-    word = T_Word64
+    word = T_Word 64
     unit = T_Unit
     float = T_Float
 

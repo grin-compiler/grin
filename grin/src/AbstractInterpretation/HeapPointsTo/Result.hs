@@ -24,8 +24,8 @@ import AbstractInterpretation.HeapPointsTo.CodeGenBase (HPTMapping)
 type Loc = Int
 
 data SimpleType
-  = T_Int64
-  | T_Word64
+  = T_Int Word
+  | T_Word Word
   | T_Float
   | T_Bool
   | T_Unit
@@ -99,8 +99,8 @@ concat <$> mapM makeLenses [''NodeSet, ''TypeSet, ''HPTResult]
 toSimpleType :: IR.SimpleType -> SimpleType
 toSimpleType = \case
   -1 -> T_Unit
-  -2 -> T_Int64
-  -3 -> T_Word64
+--  -2 -> T_Int w
+--  -3 -> T_Word w
   -4 -> T_Float
   -5 -> T_Bool
   -6 -> T_String
