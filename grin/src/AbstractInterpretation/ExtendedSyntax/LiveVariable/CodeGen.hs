@@ -23,8 +23,6 @@ import qualified AbstractInterpretation.ExtendedSyntax.IR as IR
 import AbstractInterpretation.ExtendedSyntax.IR (Instruction(..), AbstractProgram(..), AbstractMapping(..))
 import AbstractInterpretation.ExtendedSyntax.LiveVariable.CodeGenBase
 
-import AbstractInterpretation.ExtendedSyntax.EffectTracking.Result
-
 -- NOTE: For a live variable, we could store its type information.
 
 -- Live variable analysis program.
@@ -230,26 +228,34 @@ codeGenM e = (cata folder >=> const setMainLive) e
       lhs <- leftExp
       let R lhsReg = lhs
 
-      let mkRegsThenVarPatternDataFlow v = do
-            varReg <- newReg
-            addReg v varReg
-            varPatternDataFlow varReg lhsReg
-
       case bPat of
-        VarPat v -> mkRegsThenVarPatternDataFlow v
+        VarPat v -> do
+          varReg <- newReg
+          addReg v varReg
+          varPatternDataFlow varReg lhsReg
         AsPat tag args v -> do
+          varReg <- newReg
+          addReg v varReg
+          varPatternDataFlow varReg lhsReg
+
           irTag <- getTag tag
           setTagLive irTag lhsReg
           bindInstructions <- codeGenBlock_ $ forM (zip [1..] args) $ \(idx, arg) -> do
             argReg <- newReg
             addReg arg argReg
             nodePatternDataFlow argReg lhsReg irTag idx
+
+            -- propagating liveness info backwards
+            emit IR.Extend
+              { srcReg      = argReg
+              , dstSelector = IR.NodeItem irTag idx
+              , dstReg      = varReg
+              }
           emit IR.If
             { condition     = IR.NodeTypeExists irTag
             , srcReg        = lhsReg
             , instructions  = bindInstructions
             }
-          mkRegsThenVarPatternDataFlow v
         -- QUESTION: what about undefined?
         _ -> error $ "unsupported bpat " ++ show (PP bPat)
 
@@ -400,17 +406,21 @@ codeGenM e = (cata folder >=> const setMainLive) e
       argRegs <- mapM getReg args
 
       mExt <- getExternal name
+      (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
+      varPatternDataFlow appReg funResultReg
+
       case mExt of
         Nothing -> do -- regular function
-          (funResultReg, funArgRegs) <- getOrAddFunRegs name $ length args
           -- no effect data-flow between formal and actual arguments
           zipWithM_ livenessDataFlow funArgRegs argRegs
           zipWithM_ (\src dst -> emit $ copyStructureWithPtrInfo src dst) argRegs funArgRegs
-
-          varPatternDataFlow appReg funResultReg
         Just ext | eEffectful ext -> do mapM_ setBasicValLive argRegs
+                                        mapM_ setBasicValLive funArgRegs
                                         setBasicValSideEffecting appReg
-                 | otherwise      -> do allArgsLive <- codeGenBlock_ $ mapM_ setBasicValLive argRegs
+                                        setBasicValSideEffecting funResultReg
+                 | otherwise      -> do allArgsLive <- codeGenBlock_ $ do
+                                          mapM_ setBasicValLive argRegs
+                                          mapM_ setBasicValLive funArgRegs
                                         emit $ appReg `isLiveThen` allArgsLive
 
       pure $ R appReg
