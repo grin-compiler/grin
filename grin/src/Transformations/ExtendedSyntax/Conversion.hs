@@ -198,7 +198,7 @@ instance Convertible Exp New.Exp where
       <rhs>
     -}
     (EBind lhs (ConstTagNode tag args) rhs) -> do
-      asPatName  <- deriveNewName "a"
+      asPatName  <- deriveNewName "conv"
       newNodePat <- oldNodePatToAsPat tag args asPatName
       pure $ New.EBindF lhs newNodePat rhs
     (EBind lhs (Var var) rhs)
