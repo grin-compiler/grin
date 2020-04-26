@@ -29,16 +29,16 @@ instance Functor Void where
   fmap f = \case
 
 eval :: (Interpreter m, MonadIO m, Show v, v ~ Val m)
-     => (forall e . Expr m e -> m v)
+     => (forall a . Expr m a -> m v)
      -> Fix (ExpF :+: Expr m) -> m v
 eval ev = fix (baseEval ev)
 
 -- Open recursion and monadic interpreter.
 baseEval :: (MonadIO m, Interpreter m, a ~ Addr m, v ~ Val m, Show v)
-         => (forall e . Expr m e -> m v)
+         => (forall b . Expr m b -> m v)
          -> (Fix (ExpF :+: Expr m) -> m (Val m))
          -> Fix (ExpF :+: Expr m) -> m (Val m)
-baseEval ev1 ev0 = \case
+baseEval evExpr ev0 = \case
   Fix (Inl (SReturnF (Var n))) -> do
     p <- askEnv
     pure $ Env.lookup p n
@@ -98,7 +98,7 @@ baseEval ev1 ev0 = \case
   Fix (Inl (AltF _name _pat body)) -> do
     ev0 body
 
-  other@(Fix (Inr e)) -> ev1 e
+  other@(Fix (Inr e)) -> evExpr e
 
   overGenerative -> error "overGenerative"
 
@@ -133,13 +133,13 @@ class (Monad m, MonadFail m) => Interpreter m where
 
   -- Store
   allocStore    :: Name -> m (Val m)
-  fetchStore    :: Val m -> m (Val m)      -- TODO: Change this to Addr m??
-  extStore      :: Val m -> Val m -> m ()  --
+  fetchStore    :: Val m -> m (Val m)
+  extStore      :: Val m -> Val m -> m ()
 
 toExprF :: Exp -> Fix (ExpF :+: e)
 toExprF = cata (Fix . Inl)
 
-programToDefs :: Exp -> Map Name (Fix (ExpF :+: e))
-programToDefs (toExprF -> expr) = case expr of
+programToDefs :: (Fix (ExpF :+: e)) -> Map Name (Fix (ExpF :+: e))
+programToDefs = \case
   (Fix (Inl (ProgramF _ defs))) -> fromList ((\d@(Fix (Inl (DefF n _ _))) -> (n,d)) <$> defs)
   _                             -> mempty

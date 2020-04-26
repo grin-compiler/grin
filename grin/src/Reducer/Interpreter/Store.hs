@@ -1,14 +1,16 @@
+{-# LANGUAGE InstanceSigs, RankNTypes, GeneralizedNewtypeDeriving #-}
 module Reducer.Interpreter.Store where
 
 import Data.Maybe (fromMaybe)
 import Grin.ExtendedSyntax.Pretty
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 
 -- * Store
 
 -- | Store maps addresses to abstract values.
 newtype Store a v = Store (Map.Map a v)
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor, Foldable)
 
 empty :: (Ord a) => Store a v
 empty = Store mempty
@@ -24,6 +26,9 @@ modify a f (Store m) = Store (Map.adjust f a m)
 
 size :: Store a v -> Int
 size (Store m) = Map.size m
+
+storeKeys :: Store a v -> Set.Set a
+storeKeys (Store m) = Map.keysSet m
 
 instance (Ord a, Semigroup v) => Semigroup (Store a v) where
   (Store ma) <> (Store mb) = Store (Map.unionWith (<>) ma mb)
