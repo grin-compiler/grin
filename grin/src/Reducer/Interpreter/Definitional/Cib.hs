@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables, TypeApplications, TypeOperators #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 module Reducer.Interpreter.Definitional.Cib where
 
 import Data.Maybe (mapMaybe)
@@ -10,6 +12,7 @@ import Reducer.Interpreter.Base
 import Reducer.Interpreter.Definitional.Internal
 import Reducer.Interpreter.Definitional.Instance
 import Data.Functor.Foldable (Fix)
+import Data.Functor.Sum
 
 import qualified Grin.ExtendedSyntax.Syntax as Syntax
 import qualified Reducer.Interpreter.Store as Store
@@ -62,40 +65,42 @@ evalCibF
 evalCibF = \case
   IncF n -> do
     -- Increment the reference counters transitively
-    a <- (flip Env.lookup n) <$> askEnv
-    l <- val2addr a
+    a <- (flip Env.lookup n) <$> getEnv
+    l <- valToAddr a
     modifyCounterInfo incRefCntr l
     pure $ Left DUnit
   DecF n -> do
-    a <- (flip Env.lookup n) <$> askEnv
-    l <- val2addr a
+    a <- (flip Env.lookup n) <$> getEnv
+    l <- valToAddr a
     modifyCounterInfo decRefCntr l
     pure $ Left DUnit
   ResetF n -> do
     -- Returns the heap location if its reference counter zero, otherwise BOX
     -- which means we need to create an new location in reuse.
-    a <- (flip Env.lookup n) <$> askEnv
-    l <- val2addr a
+    a <- (flip Env.lookup n) <$> getEnv
+    l <- valToAddr a
     (HeapNode _ (RefCounter c)) <- gets (Store.lookup l)
     pure $ case c of
       0 -> a
-      n -> Right Box
+      _ -> Right Box
   ReuseF n m -> do
     -- Tries to reuse the given heap location, if it is BOX than a new location
     -- needs to be created.
-    env <- askEnv
+    env <- getEnv
     let a = Env.lookup env n
     let v = Env.lookup env m
+    nd <- valToNode v
     case a of
-      Right box -> do
+      Right Box -> do
         -- same as store
-        l <- allocStore n
-        extStore l v
-        pure l
-      Left addr -> do
+        l <- store n
+        Reducer.Interpreter.Base.update l nd
+        addrToVal l
+      Left _ -> do
         -- same as update
-        extStore a v
-        l <- val2addr a
+        addr <- valToAddr a
+        Reducer.Interpreter.Base.update addr nd
+        l <- valToAddr a
         modify $ Store.modify l (\(HeapNode c _) -> HeapNode c storeHeapInfo)
         pure a
 
@@ -114,14 +119,14 @@ modifyCounterInfo f l = do
       modify $ Store.modify x (\(HeapNode c r) -> HeapNode c (f r))
 
     pointsTo :: Loc -> DefinitionalT m RefCounter CibF CVal [Loc]
-    pointsTo l = do
-      (HeapNode (Just (Node t vals)) _) <- gets (Store.lookup l)
+    pointsTo loc = do
+      (HeapNode (Just (Node _ vals)) _) <- gets (Store.lookup loc)
       pure $ mapMaybe (\case { SLoc x -> Just x; _ -> Nothing }) vals
 
     newLocs :: Set.Set Loc -> DefinitionalT m RefCounter CibF CVal (Set.Set Loc)
     newLocs visited = do
-      newLocs <- mapM pointsTo $ Set.toList visited
-      let newLocSet = Set.fromList $ concat newLocs
+      new <- mapM pointsTo $ Set.toList visited
+      let newLocSet = Set.fromList $ concat new
       pure $ Set.difference newLocSet visited
 
     go visited = do
@@ -138,7 +143,7 @@ evalCib
   :: (Monad m, MonadFail m, MonadIO m)
   => Map.Map Syntax.Name ([DVal] -> m DVal)
   -> Syntax.Name
-  -> Fix (Syntax.ExpF :+: CibF)
+  -> Fix (Sum Syntax.ExpF CibF)
   -> m (Either DVal CVal, Store.Store Loc (HeapNode RefCounter))
 evalCib ops = evalDefinitional
   (DefinitionalTContext @CibF @CVal @RefCounter)

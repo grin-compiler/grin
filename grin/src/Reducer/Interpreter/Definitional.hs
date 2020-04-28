@@ -7,11 +7,10 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Reducer.Interpreter.Base (Void, toExprF)
 import Reducer.Interpreter.Definitional.Internal
 import Reducer.Interpreter.Definitional.Instance
-import Reducer.Base (RTVal(..), Statistics(..))
+import Reducer.Base (RTVal(..))
 import Reducer.Pure (EvalPlugin(..))
 import Transformations.ExtendedSyntax.Conversion (convertToNew)
-import qualified Grin.ExtendedSyntax.Syntax as Syntax
-import qualified Grin.Syntax as SyntaxV1 (Exp, Name(..), Tag(..), Lit(..))
+import qualified Grin.Syntax as SyntaxV1 (Exp, Name(..))
 
 
 import qualified Data.Map as Map

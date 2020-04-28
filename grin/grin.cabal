@@ -247,8 +247,7 @@ library
     random,
     set-extra,
     deepseq,
-    binary,
-    monad-control
+    binary
 
   default-language:    Haskell2010
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE InstanceSigs, RankNTypes, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Reducer.Interpreter.Store where
 
 import Data.Maybe (fromMaybe)

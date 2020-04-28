@@ -26,7 +26,7 @@ inserts :: [(Name, v)] -> Env v -> Env v
 inserts vs (Env m) = Env $ foldl' (\n (k,v) -> Map.insert k v n) m vs
 
 insertEnv :: Env v -> Env v -> Env v
-insertEnv (Env old) (Env new) = Env (Map.unionWith (\o n -> n) old new)
+insertEnv (Env old) (Env new) = Env (Map.unionWith (\_ n -> n) old new)
 
 -- Explicit instance!! different from default
 instance (Semigroup v) => Semigroup (Env v) where
