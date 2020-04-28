@@ -59,7 +59,37 @@ spec = do
         |]
       copyPropagation (ctx before) `sameAs` (ctx after)
 
-    it "node value - node pattern" $ do
+    it "node value - node pattern 1" $ do
+      let before = [expr|
+          a1 <- pure 1
+          b1 <- pure 0
+          (CNode a2 b2) @ n1 <- pure (CNode a1 b1)
+          foo n1
+        |]
+      let after = [expr|
+          a1 <- pure 1
+          b1 <- pure 0
+          n1 <- pure (CNode a1 b1)
+          foo n1
+        |]
+      copyPropagation (ctx before) `sameAs` (ctx after)
+
+    it "node value - node pattern 2" $ do
+      let before = [expr|
+          a1 <- pure 1
+          b1 <- pure 0
+          (CNode a2 b2) @ n1 <- pure (CNode a1 b1)
+          foo a2
+        |]
+      let after = [expr|
+          a1 <- pure 1
+          b1 <- pure 0
+          n1 <- pure (CNode a1 b1)
+          foo a1
+        |]
+      copyPropagation (ctx before) `sameAs` (ctx after)
+
+    it "node value - node pattern 3" $ do
       let before = [expr|
           a1 <- pure 1
           b1 <- pure 0
