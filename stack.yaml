@@ -18,6 +18,8 @@ extra-deps:
     subdirs:
       - llvm-hs
       - llvm-hs-pure
+  - github: luc-tielen/souffle-haskell
+    commit: c76bd446c210b32e7a1de55b37a4df051586f108
 
 flags:
   llvm-hs:

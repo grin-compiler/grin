@@ -115,6 +115,7 @@ library
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
     Grin.ExtendedSyntax.GADT
+    Grin.ExtendedSyntax.Datalog
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -239,7 +240,8 @@ library
     random,
     set-extra,
     deepseq,
-    binary
+    binary,
+    souffle-haskell
 
   default-language:    Haskell2010
 

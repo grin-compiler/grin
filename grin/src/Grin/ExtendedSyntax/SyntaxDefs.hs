@@ -17,6 +17,9 @@ data Name
   | NI !Int
   deriving (Generic, Data, NFData, Binary, Eq, Ord, Show)
 
+mkName :: Text -> Name
+mkName = NM
+
 nMap :: (Text -> Text) -> Name -> Name
 nMap f (NM n) = NM (f n)
 
@@ -31,6 +34,11 @@ instance IsString Name where
 
 instance PrintfArg Name where
   formatArg = formatString . unpack . unNM
+
+nameText :: Name -> Text
+nameText = \case
+  NM n -> n
+  _    -> error "Name index found." -- This could have left in the AST after a problematic deserialisation.
 
 nameString :: Name -> String
 nameString = \case
