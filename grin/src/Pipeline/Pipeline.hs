@@ -100,7 +100,7 @@ import Control.Monad.Trans.State.Strict hiding (gets)
 import Control.Monad.IO.Class
 import Lens.Micro.TH
 import Lens.Micro.Mtl
-import System.FilePath
+import System.FilePath hiding (normalise)
 import System.Exit
 import Control.DeepSeq
 import Debug.Trace
@@ -121,6 +121,13 @@ import Grin.Nametable as Nametable
 import qualified Data.ByteString.Lazy as LBS
 import Reducer.PrimOps (evalPrimOp)
 import Reducer.Pure (EvalPlugin(..))
+
+import qualified Grin.ExtendedSyntax.Syntax as SyntaxV2
+import qualified Transformations.ExtendedSyntax.Conversion as SyntaxV2 (convertToNew)
+import qualified Grin.ExtendedSyntax.Pretty as SyntaxV2
+import qualified Grin.ExtendedSyntax.Datalog as Datalog
+import Transformations.ExtendedSyntax.Normalisation (normalise)
+
 
 data Transformation
   -- Simplifying
@@ -215,6 +222,7 @@ data PipelineStep
   | ConfluenceTest
   | PrintErrors
   | DebugPipelineState
+  | DatalogHPT
   deriving (Eq, Show)
 
 pattern DeadCodeElimination :: PipelineStep
@@ -480,6 +488,7 @@ pipelineStep p = do
     DebugPipelineState -> debugPipelineState
     PureEval                  showStatistics -> pureEval (EvalPlugin evalPrimOp) showStatistics
     PureEvalPlugin evalPlugin showStatistics -> pureEval evalPlugin showStatistics
+    DatalogHPT -> datalogHPT
   after <- use psExp
   let eff = if before == after then None else ExpChanged
       showMS :: Rational -> String
@@ -784,6 +793,14 @@ lintGrin mPhaseName = do
       -- FIXME: reenable after: undefined support ; transformation to inject default alts for pattern match errors
       liftIO $ die "illegal code"
       pure ()
+
+datalogHPT :: PipelineM ()
+datalogHPT = do
+  exp <- use psExp
+  let expV2 = normalise $ SyntaxV2.convertToNew exp
+  liftIO $ SyntaxV2.printGrin    expV2
+  liftIO $ Datalog.renderDatalog expV2
+  pure ()
 
 -- confluence testing
 

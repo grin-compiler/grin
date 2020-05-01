@@ -3,23 +3,39 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TypeApplications #-}
 module Grin.ExtendedSyntax.Datalog where
 
-import Control.Monad (forM_)
+import Control.Monad (forM, forM_, void)
 import Data.Int
 import Language.Souffle.Interpreted as Souffle
 import GHC.Generics
 import Control.Monad.Trans
 import Control.Monad.Trans.Reader
 import Data.Text (Text)
+import Data.Functor.Foldable
+import Control.Comonad (extract)
+import Control.Comonad.Cofree
+import Data.Maybe (catMaybes, mapMaybe)
+import Data.Proxy
+
 import qualified Grin.ExtendedSyntax.Syntax as Grin
 import qualified Data.Text as Text
+
+{-
+TODO:
+[ ] Handle As patterns
+[x] Generate code that always have a single return value (In normalisation)
+[ ] Add Datalog program to the resources
+-}
 
 data HPT = HPT
 
 instance Souffle.Program HPT where
   type ProgramFacts HPT =
-    '[ External
+    '[ EntryPoint
+     , External
      , ExternalParam
      , Move
      , LitAssign
@@ -44,21 +60,26 @@ instance Souffle.Program HPT where
      ]
   programName = const "hpt"
 
-type Function   = Text
-type Boolean    = Int32
-type SimpleType = Text
-type Number     = Int32
-type Variable   = Text
-type Literal    = Text
-type Tag        = Text -- TODO: TagType?
-type CodeName   = Text
+type Function     = Text
+type Boolean      = Int32
+type SimpleType   = Text
+type Number       = Int32
+type Variable     = Text
+type Literal      = Text
+type Tag          = Text
+type CodeName     = Text
+type ExternalKind = Text
+
+mkBoolean :: Bool -> Boolean
+mkBoolean = \case
+  False -> 0
+  True  -> 1
 
 --instance Souffle.Marshal Grin.Name where
 --  push (Grin.NM n) = push n
 --  pop = Grin.NM <$> pop
 
-data External           = External !Function !Boolean !SimpleType               deriving (Eq, Show, Generic)
-data ExternalParam      = ExternalParam !Function !Number !SimpleType           deriving (Eq, Show, Generic)
+data EntryPoint         = EntryPoint !CodeName                                  deriving (Eq, Show, Generic)
 data Move               = Move !Variable !Variable                              deriving (Eq, Show, Generic)
 data LitAssign          = LitAssign !Variable !SimpleType !Literal              deriving (Eq, Show, Generic)
 data Node               = Node !Variable !Tag                                   deriving (Eq, Show, Generic)
@@ -72,14 +93,17 @@ data NodePattern        = NodePattern !Variable !Tag !Variable                  
 data NodeParameter      = NodeParameter !Variable !Number !Variable             deriving (Eq, Show, Generic)
 data Case               = Case !Variable !Variable                              deriving (Eq, Show, Generic)
 data Alt                = Alt !Variable !Variable !Tag                          deriving (Eq, Show, Generic)
-data AltLiteral         = AltLiteral !Variable !Variable !Literal               deriving (Eq, Show, Generic)
+data AltLiteral         = AltLiteral !Variable !Variable !SimpleType !Literal   deriving (Eq, Show, Generic)
 data AltDefault         = AltDefault !Variable !Variable                        deriving (Eq, Show, Generic)
 data ReturnValue        = ReturnValue !CodeName !Variable                       deriving (Eq, Show, Generic)
 data FirstInst          = FirstInst !CodeName !Variable                         deriving (Eq, Show, Generic)
 data NextInst           = NextInst !Variable !Variable                          deriving (Eq, Show, Generic)
 data FunctionParameter  = FunctionParameter !Function !Number !Variable         deriving (Eq, Show, Generic)
-data AltParameter       = AltParameter !Variable !Tag !Number {-!Variable-}         deriving (Eq, Show, Generic)
+data AltParameter       = AltParameter !Variable !Tag !Number !Variable         deriving (Eq, Show, Generic)
+data External           = External !Function !Boolean !SimpleType !ExternalKind deriving (Eq, Show, Generic)
+data ExternalParam      = ExternalParam !Function !Number !SimpleType           deriving (Eq, Show, Generic)
 
+instance Souffle.Marshal EntryPoint
 instance Souffle.Marshal External
 instance Souffle.Marshal ExternalParam
 instance Souffle.Marshal Move
@@ -103,47 +127,49 @@ instance Souffle.Marshal NextInst
 instance Souffle.Marshal FunctionParameter
 instance Souffle.Marshal AltParameter
 
-instance Souffle.Fact External          where factName = const "external"
-instance Souffle.Fact ExternalParam     where factName = const "externalparam"
-instance Souffle.Fact Move              where factName = const "move"
-instance Souffle.Fact LitAssign         where factName = const "litassign"
-instance Souffle.Fact Node              where factName = const "node"
-instance Souffle.Fact NodeArgument      where factName = const "nodeargument"
-instance Souffle.Fact Fetch             where factName = const "fetch"
-instance Souffle.Fact Store             where factName = const "store"
-instance Souffle.Fact Update            where factName = const "update"
-instance Souffle.Fact Call              where factName = const "call"
-instance Souffle.Fact CallArgument      where factName = const "callargument"
-instance Souffle.Fact NodePattern       where factName = const "nodepattern"
-instance Souffle.Fact NodeParameter     where factName = const "nodeparameter"
-instance Souffle.Fact Case              where factName = const "case"
-instance Souffle.Fact Alt               where factName = const "alt"
-instance Souffle.Fact AltLiteral        where factName = const "altliteral"
-instance Souffle.Fact AltDefault        where factName = const "altdefault"
-instance Souffle.Fact ReturnValue       where factName = const "returnvalue"
-instance Souffle.Fact FirstInst         where factName = const "firstinst"
-instance Souffle.Fact NextInst          where factName = const "nextinst"
-instance Souffle.Fact FunctionParameter where factName = const "functionparameter"
-instance Souffle.Fact AltParameter      where factName = const "altparameter"
+instance Souffle.Fact EntryPoint        where factName = const "EntryPoint"
+instance Souffle.Fact External          where factName = const "External"
+instance Souffle.Fact ExternalParam     where factName = const "ExternalParam"
+instance Souffle.Fact Move              where factName = const "Move"
+instance Souffle.Fact LitAssign         where factName = const "LitAssign"
+instance Souffle.Fact Node              where factName = const "Node"
+instance Souffle.Fact NodeArgument      where factName = const "NodeArgument"
+instance Souffle.Fact Fetch             where factName = const "Fetch"
+instance Souffle.Fact Store             where factName = const "Store"
+instance Souffle.Fact Update            where factName = const "Update"
+instance Souffle.Fact Call              where factName = const "Call"
+instance Souffle.Fact CallArgument      where factName = const "CallArgument"
+instance Souffle.Fact NodePattern       where factName = const "NodePattern"
+instance Souffle.Fact NodeParameter     where factName = const "NodeParameter"
+instance Souffle.Fact Case              where factName = const "Case"
+instance Souffle.Fact Alt               where factName = const "Alt"
+instance Souffle.Fact AltLiteral        where factName = const "AltLiteral"
+instance Souffle.Fact AltDefault        where factName = const "AltDefault"
+instance Souffle.Fact ReturnValue       where factName = const "ReturnValue"
+instance Souffle.Fact FirstInst         where factName = const "FirstInst"
+instance Souffle.Fact NextInst          where factName = const "NextInst"
+instance Souffle.Fact FunctionParameter where factName = const "FunctionParameter"
+instance Souffle.Fact AltParameter      where factName = const "AltParameter"
 
+data HPTResult = HPTResult
 
-gtagToDtag :: Grin.Tag -> Tag
-gtagToDtag (Grin.Tag tt name) = (renderTagType tt) <> Grin.nameText name
-  where
-    renderTagType :: Grin.TagType -> Text
-    renderTagType Grin.C      = "C"
-    renderTagType Grin.F      = "F"
-    renderTagType (Grin.P m)  = "P-" <> Text.pack (show m) <> "-"
+renderDatalog :: Grin.Exp -> IO (Maybe HPTResult)
+renderDatalog exp = do
+  let cfg = Souffle.Config "./datalog/hpt/" (Just "souffle")
+  Souffle.runSouffleWith cfg $ do
+    mprog <- Souffle.init HPT
+    forM mprog $ \prog -> do
+      Souffle.addFact prog $ EntryPoint "grinMain"
+      para (structure prog) exp
+      calcReturnValues prog exp
+      nextInst prog exp
+      Souffle.run prog
+  pure Nothing
 
--- type Souffle a = ReaderT (Handle HPT) SouffleM a
-
-convertExternals :: [Grin.External] -> SouffleM ()
-convertExternals = undefined
-
-emitAlg :: Handle HPT -> Grin.ExpF (Grin.Exp, SouffleM ()) -> SouffleM ()
-emitAlg prog = \case
+structure :: Handle HPT -> Grin.ExpF (Grin.Exp, SouffleM ()) -> SouffleM ()
+structure prog = \case
   Grin.ProgramF externals defs -> do
-    convertExternals externals
+    convertExternals prog externals
     mapM_ snd defs
 
   -- f param0 param1 = ...
@@ -164,7 +190,7 @@ emitAlg prog = \case
   -- .decl LitAssign(result:Variable, l:Literal)
   Grin.EBindF (Grin.SReturn (Grin.Lit l), lhs) (Grin.VarPat res) (_, rhs) -> do
     lhs
-    Souffle.addFact prog $ litAssignFact res l
+    Souffle.addFact prog $ uncurry (LitAssign (Grin.nameText res)) $ literalParams l
     rhs
 
   -- result_node <- pure (Ctag item0 item1)
@@ -242,26 +268,125 @@ emitAlg prog = \case
         Souffle.addFact prog $ Alt (Grin.nameText cs_res) (Grin.nameText n) (gtagToDtag tag)
         Souffle.addFacts prog $
           zipWith
-            (\j a -> AltParameter (Grin.nameText cs_res) (gtagToDtag tag) j {-(Grin.nameText a)-})
+            (\j a -> AltParameter (Grin.nameText cs_res) (gtagToDtag tag) j (Grin.nameText a))
             [0..]
             args
 
       -- TODO: Handle literals better
-      -- Grin.Alt (Grin.LitPat (G.SInt64 i)) n _ ->
-      --   [ AltLiteral
-      --       { case_result = Variable cs_res
-      --       , alt_value = Variable n
-      --       , l = Literal (show i)
-      --       }
-      --   ]
+      Grin.Alt (Grin.LitPat l) n _ -> do
+        let (st, lt) = literalParams l
+        Souffle.addFact prog $ AltLiteral (Grin.nameText cs_res) (Grin.nameText n) st lt
 
       Grin.Alt Grin.DefaultPat n _ -> do
         Souffle.addFact prog $ AltDefault (Grin.nameText cs_res) (Grin.nameText n)
-
     rhs
 
-litAssignFact :: Grin.Name -> Grin.Lit -> LitAssign
-litAssignFact v sv = (\(ty, value) -> LitAssign (Grin.nameText v) ty value) $ case sv of
+  other -> void $ traverse snd other
+
+-- * Return values
+
+-- TODO: Make this monadic
+calcReturnValues :: Handle HPT -> Grin.Exp -> SouffleM ()
+calcReturnValues prog = snd . histo (returnValueAlg prog)
+
+returnValueAlg
+  :: Handle HPT
+  -> Grin.ExpF (Cofree Grin.ExpF (Maybe Grin.Name, SouffleM ()))
+  -> (Maybe Grin.Name, SouffleM ())
+returnValueAlg prog = \case
+  Grin.SReturnF (Grin.Var name) -> (Just name, pure ())
+  Grin.SReturnF val             -> (Nothing, pure ())
+  Grin.EBindF ((_, lhs) :< Grin.ECaseF _ alts) (Grin.VarPat v) (extract -> (returnValue, rhs))
+    -> let altReturnValues = mapMaybe (fst . extract) alts
+       in ( returnValue
+          , do lhs
+               Souffle.addFacts prog
+                $ map (\r -> NextInst (Grin.nameText r) (Grin.nameText v)) altReturnValues
+               rhs
+          )
+  Grin.EBindF (extract -> (_, lhs)) _ (extract -> (returnValue, rhs))
+    -> (returnValue, lhs >> rhs)
+  Grin.AltF _ codeName (extract -> (Just returnValue, body)) ->
+    ( Just returnValue
+    , do Souffle.addFact prog $ ReturnValue (Grin.nameText codeName) (Grin.nameText returnValue)
+         body
+    )
+  Grin.DefF codeName _ (extract -> (Just returnValue, body)) ->
+    ( Nothing
+    , do Souffle.addFact prog $ ReturnValue (Grin.nameText codeName) (Grin.nameText returnValue)
+         body
+    )
+  rest ->
+    ( Nothing
+    , void $ traverse (snd . extract) rest
+    )
+
+nextInst :: Handle HPT -> Grin.Exp -> SouffleM ()
+nextInst prog = void . para (nextInstAlg prog)
+
+-- | The next instrument makes a chain of variable associations, between binds
+nextInstAlg :: Handle HPT -> Grin.ExpF (Grin.Exp, SouffleM (Maybe Grin.Name)) -> SouffleM (Maybe Grin.Name)
+nextInstAlg prog = \case
+  Grin.DefF codeName _ (Grin.EBind _ (Grin.VarPat v) _, body) -> do
+    Souffle.addFact prog $ FirstInst (Grin.nameText codeName) (Grin.nameText v)
+    void body
+    pure Nothing
+  Grin.AltF _ n (Grin.EBind _ (Grin.VarPat v) _, body) -> do
+    Souffle.addFact prog $ NextInst (Grin.nameText n) (Grin.nameText v)
+    void body
+    pure $ Just n
+  Grin.ECaseF v alts -> do
+    nis <- catMaybes <$> mapM snd alts
+    Souffle.addFacts prog $
+      map (\ni -> NextInst (Grin.nameText v) (Grin.nameText ni)) nis
+    pure Nothing
+  Grin.EBindF (elhs, lhs) (Grin.VarPat v) (_, rhs) -> do
+    void lhs
+    mni <- rhs
+    forM_ mni $ \ni -> do
+      Souffle.addFact prog $ NextInst (Grin.nameText v) (Grin.nameText ni)
+    pure $ case elhs of
+      Grin.ECase{} -> Nothing
+      _            -> Just v
+  rest -> do
+    mapM_ snd rest
+    pure Nothing
+
+-- * Externals
+
+convertExternals :: Handle HPT -> [Grin.External] -> SouffleM ()
+convertExternals prog externals = forM_ externals $
+  \(Grin.External n rt pts e k) -> do
+      Souffle.addFact prog $
+        External (Grin.nameText n) (mkBoolean e) (asDatalogSimpleType rt) (externalKind k)
+      Souffle.addFacts prog $
+        zipWith
+          (\j t -> ExternalParam (Grin.nameText n) j (asDatalogSimpleType t))
+          [0..]
+          pts
+  where
+    asDatalogSimpleType :: Grin.Ty -> SimpleType
+    asDatalogSimpleType = \case
+      Grin.TySimple st -> stToDatalogST st
+      _ -> error "asDatalogSimpleType: None handled"
+
+externalKind :: Grin.ExternalKind -> ExternalKind
+externalKind = \case
+  Grin.PrimOp -> "primop"
+  Grin.FFI    -> "ffi"
+
+-- * Helpers
+
+gtagToDtag :: Grin.Tag -> Tag
+gtagToDtag (Grin.Tag tt name) = (renderTagType tt) <> Grin.nameText name
+  where
+    renderTagType :: Grin.TagType -> Text
+    renderTagType Grin.C      = "C"
+    renderTagType Grin.F      = "F"
+    renderTagType (Grin.P m)  = "P-" <> Text.pack (show m) <> "-"
+
+literalParams :: Grin.Lit -> (SimpleType, Literal)
+literalParams sv = case sv of
   Grin.LInt64  i -> (stToDatalogST Grin.T_Int64,  Text.pack $ show i)
   Grin.LWord64 w -> (stToDatalogST Grin.T_Word64, Text.pack $ show w)
   Grin.LFloat  f -> (stToDatalogST Grin.T_Float,  Text.pack $ show f)

@@ -134,6 +134,7 @@ pipelineOpts =
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
+  <|> flg DatalogHPT "datalog-hpt" "Run HPT in souffle"
 
 
 maybeRenderingOpt :: String -> Maybe RenderingOption
