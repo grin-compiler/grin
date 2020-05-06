@@ -798,8 +798,8 @@ datalogHPT :: PipelineM ()
 datalogHPT = do
   exp <- use psExp
   let expV2 = normalise $ SyntaxV2.convertToNew exp
-  liftIO $ SyntaxV2.printGrin    expV2
-  liftIO $ Datalog.renderDatalog expV2
+  -- liftIO $ SyntaxV2.printGrin    expV2
+  liftIO $ Datalog.calculateHPTResult expV2
   pure ()
 
 -- confluence testing

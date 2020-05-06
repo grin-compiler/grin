@@ -5,7 +5,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeApplications #-}
-module Grin.ExtendedSyntax.Datalog where
+{-# LANGUAGE RecordWildCards #-}
+module Grin.ExtendedSyntax.Datalog (calculateHPTResult) where
 
 import Control.Monad (forM, forM_, void)
 import Data.Int
@@ -17,16 +18,29 @@ import Data.Text (Text)
 import Data.Functor.Foldable
 import Control.Comonad (extract)
 import Control.Comonad.Cofree
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Either (fromRight)
+import Data.Maybe (catMaybes, mapMaybe, fromJust)
 import Data.Proxy
+import Data.Bifunctor
+import Data.List (sortBy)
+import Data.Function (on)
+import Grin.ExtendedSyntax.Pretty
+import Debug.Trace
 
+import qualified Data.Vector as Vector
+import qualified Data.Set as Set
+import qualified Data.Map.Strict as Map
 import qualified Grin.ExtendedSyntax.Syntax as Grin
 import qualified Data.Text as Text
+import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as Result
+
+import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty ()
 
 {-
 TODO:
 [ ] Handle As patterns
 [x] Generate code that always have a single return value (In normalisation)
+[x] Create HPTResult
 [ ] Add Datalog program to the resources
 -}
 
@@ -55,8 +69,17 @@ instance Souffle.Program HPT where
      , ReturnValue
      , FirstInst
      , NextInst
+
+     , Heap
      , FunctionParameter
      , AltParameter
+     , AbstractLocation
+     , VariableAbstractLocation
+     , VariableSimpleType
+     , VariableNodeTag
+     , VariableNodeParamType
+     , FunParam
+     , FunReturn
      ]
   programName = const "hpt"
 
@@ -69,6 +92,7 @@ type Literal      = Text
 type Tag          = Text
 type CodeName     = Text
 type ExternalKind = Text
+type Loc          = Text
 
 mkBoolean :: Bool -> Boolean
 mkBoolean = \case
@@ -103,6 +127,15 @@ data AltParameter       = AltParameter !Variable !Tag !Number !Variable         
 data External           = External !Function !Boolean !SimpleType !ExternalKind deriving (Eq, Show, Generic)
 data ExternalParam      = ExternalParam !Function !Number !SimpleType           deriving (Eq, Show, Generic)
 
+data Heap                     = Heap !Variable !Variable                                deriving (Eq, Show, Generic)
+data AbstractLocation         = AbstractLocation !Loc                                   deriving (Eq, Show, Generic)
+data VariableSimpleType       = VariableSimpleType !Variable !SimpleType                deriving (Eq, Show, Generic)
+data VariableNodeTag          = VariableNodeTag !Variable !Tag                          deriving (Eq, Show, Generic)
+data VariableNodeParamType    = VariableNodeParamType !Variable !Tag !Int32 !SimpleType deriving (Eq, Show, Generic)
+data VariableAbstractLocation = VariableAbstractLocation !Variable !Loc                 deriving (Eq, Show, Generic)
+data FunParam                 = FunParam !Function !Int32 !Variable                     deriving (Eq, Show, Generic)
+data FunReturn                = FunReturn !Function !Variable                           deriving (Eq, Show, Generic)
+
 instance Souffle.Marshal EntryPoint
 instance Souffle.Marshal External
 instance Souffle.Marshal ExternalParam
@@ -126,6 +159,15 @@ instance Souffle.Marshal FirstInst
 instance Souffle.Marshal NextInst
 instance Souffle.Marshal FunctionParameter
 instance Souffle.Marshal AltParameter
+
+instance Souffle.Marshal Heap
+instance Souffle.Marshal AbstractLocation
+instance Souffle.Marshal VariableAbstractLocation
+instance Souffle.Marshal VariableSimpleType
+instance Souffle.Marshal VariableNodeTag
+instance Souffle.Marshal VariableNodeParamType
+instance Souffle.Marshal FunParam
+instance Souffle.Marshal FunReturn
 
 instance Souffle.Fact EntryPoint        where factName = const "EntryPoint"
 instance Souffle.Fact External          where factName = const "External"
@@ -151,10 +193,19 @@ instance Souffle.Fact NextInst          where factName = const "NextInst"
 instance Souffle.Fact FunctionParameter where factName = const "FunctionParameter"
 instance Souffle.Fact AltParameter      where factName = const "AltParameter"
 
-data HPTResult = HPTResult
+instance Souffle.Fact Heap                      where factName = const "Heap"
+instance Souffle.Fact VariableSimpleType        where factName = const "VariableSimpleType"
+instance Souffle.Fact AbstractLocation          where factName = const "AbstractLocation"
+instance Souffle.Fact VariableAbstractLocation  where factName = const "VariableAbstractLocation"
+instance Souffle.Fact VariableNodeTag           where factName = const "VariableNodeTag"
+instance Souffle.Fact VariableNodeParamType     where factName = const "VariableNodeParamType"
+instance Souffle.Fact FunParam                  where factName = const "FunParam"
+instance Souffle.Fact FunReturn                 where factName = const "FunReturn"
 
-renderDatalog :: Grin.Exp -> IO (Maybe HPTResult)
-renderDatalog exp = do
+
+
+calculateHPTResult :: Grin.Exp -> IO (Maybe Result.HPTResult)
+calculateHPTResult exp = do
   let cfg = Souffle.Config "./datalog/hpt/" (Just "souffle")
   Souffle.runSouffleWith cfg $ do
     mprog <- Souffle.init HPT
@@ -164,7 +215,18 @@ renderDatalog exp = do
       calcReturnValues prog exp
       nextInst prog exp
       Souffle.run prog
-  pure Nothing
+      r <- ResultData
+        <$> Souffle.getFacts prog -- abstract location
+        <*> Souffle.getFacts prog -- value abstract location
+        <*> Souffle.getFacts prog -- variable simple type
+        <*> Souffle.getFacts prog -- resultVariableNodeTag
+        <*> Souffle.getFacts prog -- resultVariableNodeParamType
+        <*> Souffle.getFacts prog -- resultFunReturn
+        <*> Souffle.getFacts prog -- resultFunParam
+        <*> Souffle.getFacts prog -- heap
+      let res = calcHPTResult r
+      liftIO $ putStrLn $ showWide $ pretty res
+      pure res
 
 structure :: Handle HPT -> Grin.ExpF (Grin.Exp, SouffleM ()) -> SouffleM ()
 structure prog = \case
@@ -375,6 +437,133 @@ externalKind = \case
   Grin.PrimOp -> "primop"
   Grin.FFI    -> "ffi"
 
+-- * Convert to HPTResult
+
+data ResultData = ResultData
+  { resultAbstractLocations     :: [AbstractLocation]
+  , resultValueAbstractLocation :: [VariableAbstractLocation]
+  , resultVariableSimpleType    :: [VariableSimpleType]
+  , resultVariableNodeTag       :: [VariableNodeTag]
+  , resultVariableNodeParamType :: [VariableNodeParamType]
+  , resultFunReturn             :: [FunReturn]
+  , resultFunParam              :: [FunParam]
+  , resultHeap                  :: [Heap]
+  } deriving (Eq, Show)
+
+abstractLocationMap :: [AbstractLocation] -> (Map.Map Text Int, Map.Map Int Text)
+abstractLocationMap as = (ti, it)
+  where
+    (ti,it) = bimap Map.fromList Map.fromList
+            $ unzip
+            $ zipWith (\(AbstractLocation l) n -> ((l,n), (n,l))) as [0..]
+
+variableNodeMap
+  :: [VariableNodeTag]
+  -> [VariableNodeParamType]
+  -> Map.Map Text [(Tag, [Set.Set SimpleType])]
+variableNodeMap ns ps = Map.unionsWith (++)
+  [ Map.singleton n [(t,ts)]
+  | VariableNodeTag n t <- ns
+  , let ps0 = Map.unionsWith mappend
+            $ mapMaybe (\(VariableNodeParamType n0 t0 i s)
+                -> if n == n0 && t == t0
+                    then Just $ Map.singleton i (Set.singleton s)
+                    else Nothing) ps
+  , let ts = case unzip $ Map.toList ps0 of
+              (as, es) | as == [0 .. fromIntegral (length as - 1)] -> es
+              _ -> error $ "in positions: " ++ show ps0
+  ]
+
+functionNameMap
+  :: [FunParam]
+  -> [FunReturn]
+  -> Map.Map Grin.Name Result.TypeSet
+  -> Map.Map Grin.Name (Result.TypeSet, Vector.Vector Result.TypeSet)
+functionNameMap ps rs vars = Map.fromList
+  [ (Grin.mkName fun, (ret, params))
+  | FunReturn fun ret0 <- rs
+  , let ps0 = Map.unionsWith mappend
+            $ mapMaybe
+                (\(FunParam f i p)
+                  -> if f == fun
+                      then Map.singleton i <$> Map.lookup (Grin.mkName p) vars
+                      else Nothing)
+                ps
+  , let params = case unzip $ Map.toList ps0 of
+          (as,es) | as == [0 .. fromIntegral (length as - 1)] -> Vector.fromList es
+          _ -> error $ "functionMap: in positions: " ++ show (fun, ret0, ps0)
+  , let ret = fromJust $ Map.lookup (Grin.mkName ret0) vars
+  ]
+
+heapMap
+  :: [Heap]
+  -> Map.Map Text Int
+  -> Map.Map Grin.Name Result.TypeSet
+  -> Vector.Vector Result.NodeSet
+heapMap hs nameToLoc vars = Vector.generate (Map.size nameToLoc) (fromJust . flip Map.lookup heapVals)
+  where
+    heapVals = Map.unionsWith mappend
+      [ Map.singleton loc nodeSet
+      | Heap ln t <- hs
+      , let Just loc = Map.lookup ln nameToLoc
+      , let Just (Result.TypeSet _ nodeSet) = Map.lookup (Grin.mkName t) vars
+      ]
+
+calcHPTResult :: ResultData -> Result.HPTResult
+calcHPTResult (ResultData{..}) = Result.HPTResult memory register function
+  where
+    (nameToLoc, locToName) = abstractLocationMap resultAbstractLocations
+    nodeTags = Map.toList $ variableNodeMap resultVariableNodeTag resultVariableNodeParamType
+    memory = heapMap resultHeap nameToLoc register
+    register = Map.unionsWith (<>)
+               ( map (\(VariableSimpleType n t)
+                      -> Map.singleton (Grin.mkName n)
+                          (toTypeSet $ either (error . show) id $ datalogStToSt t))
+                     resultVariableSimpleType
+                 ++
+                 map (\(VariableAbstractLocation n l)
+                      -> case Map.lookup n nameToLoc of
+                          Nothing -> mempty
+                          Just l  -> Map.singleton
+                            (Grin.mkName n)
+                            (Result.TypeSet
+                              (Set.singleton (Result.T_Location l))
+                              mempty))
+                     resultValueAbstractLocation
+                 ++
+                 concatMap
+                  (\(n, ps)
+                    -> map (\(tag, types)
+                        -> Map.singleton
+                            (Grin.mkName n)
+                            (Result.TypeSet mempty
+                              (Result.NodeSet (Map.singleton
+                                (dtagToGtag tag)
+                                (Vector.fromList $ map
+                                  (Set.map
+                                    (either
+                                      (Result.T_Location . fromJust . flip Map.lookup nameToLoc)
+                                      id . datalogStToRSt))
+                                  types))))
+                    ) ps)
+                  nodeTags
+               )
+
+    function = functionNameMap resultFunParam resultFunReturn register
+
+class ToTypeSet t where
+  toTypeSet :: t -> Result.TypeSet
+
+instance ToTypeSet Grin.SimpleType where
+  toTypeSet = \case
+    Grin.T_Int64   -> Result.TypeSet (Set.singleton Result.T_Int64) mempty
+    Grin.T_Word64  -> Result.TypeSet (Set.singleton Result.T_Word64) mempty
+    Grin.T_Float   -> Result.TypeSet (Set.singleton Result.T_Float) mempty
+    Grin.T_Bool    -> Result.TypeSet (Set.singleton Result.T_Bool) mempty
+    Grin.T_Char    -> Result.TypeSet (Set.singleton Result.T_Char) mempty
+    Grin.T_Unit    -> Result.TypeSet (Set.singleton Result.T_Unit) mempty
+    Grin.T_String  -> Result.TypeSet (Set.singleton Result.T_String) mempty
+
 -- * Helpers
 
 gtagToDtag :: Grin.Tag -> Tag
@@ -384,6 +573,14 @@ gtagToDtag (Grin.Tag tt name) = (renderTagType tt) <> Grin.nameText name
     renderTagType Grin.C      = "C"
     renderTagType Grin.F      = "F"
     renderTagType (Grin.P m)  = "P-" <> Text.pack (show m) <> "-"
+
+dtagToGtag :: Tag -> Grin.Tag
+dtagToGtag tag = case Text.unpack tag of
+  'C':name -> Grin.Tag Grin.C (Grin.mkName $ Text.pack name)
+  'F':name -> Grin.Tag Grin.F (Grin.mkName $ Text.pack name)
+  'P':rest -> case Text.splitOn "-" $ Text.pack rest of
+    ["P",(read . show) -> m, name] -> Grin.Tag (Grin.P m) (Grin.NM name)
+    _ -> error $ show tag
 
 literalParams :: Grin.Lit -> (SimpleType, Literal)
 literalParams sv = case sv of
@@ -404,3 +601,25 @@ stToDatalogST = \case
   Grin.T_Unit    -> "Unit"
   Grin.T_String  -> "String"
   other -> error $ "stToDatalogST: None handled case: " ++ show other
+
+datalogStToSt :: SimpleType -> (Either Text Grin.SimpleType)
+datalogStToSt = \case
+  "Int64"  -> Right $ Grin.T_Int64
+  "Word64" -> Right $ Grin.T_Word64
+  "Float"  -> Right $ Grin.T_Float
+  "Bool"   -> Right $ Grin.T_Bool
+  "Char"   -> Right $ Grin.T_Char
+  "Unit"   -> Right $ Grin.T_Unit
+  "String" -> Right $ Grin.T_String
+  other    -> Left other
+
+datalogStToRSt :: SimpleType -> (Either Text Result.SimpleType)
+datalogStToRSt = \case
+  "Int64"  -> Right $ Result.T_Int64
+  "Word64" -> Right $ Result.T_Word64
+  "Float"  -> Right $ Result.T_Float
+  "Bool"   -> Right $ Result.T_Bool
+  "Char"   -> Right $ Result.T_Char
+  "Unit"   -> Right $ Result.T_Unit
+  "String" -> Right $ Result.T_String
+  other    -> Left other

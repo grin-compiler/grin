@@ -91,9 +91,9 @@
 
 // Reachability
 .decl ReachableCode(n:CodeName)
-.output ReachableCode(delimiter=",")
+// .output ReachableCode
 .decl CodeNameInst(n:CodeName, v:Variable)
-.output CodeNameInst(delimiter=",")
+// .output CodeNameInst
 
 CodeNameInst(n, v) :-
   FirstInst(n, v).
@@ -115,7 +115,7 @@ ReachableInst(v) :-
   CodeNameInst(n, v).
 
 .decl VarPointsTo(v:Variable, target:Variable)
-.output VarPointsTo(delimiter=",")
+.output VarPointsTo
 
 VarPointsTo(v,t) :-
   Store(v, t),
@@ -138,10 +138,10 @@ VarPointsTo(v,t) :-
 
 // Value Computation
 .decl Value(v:Variable, value:Variable)
-.output Value(delimiter=",")
+.output Value
 
 .decl Heap(orig:Variable, item:Variable)
-.output Heap(delimiter=",")
+.output Heap
 
 Heap(v,i) :- Store(v,i).
 
@@ -258,17 +258,17 @@ Value(case_result, val) :-
 .decl VariableNodeTag(n:Variable, t:Tag)
 .decl VariableNodeParamType(n: Variable, t:Tag, i:number, nt:NodeParamType)
 
-.output AbstractLocation(delimiter=",")
+.output AbstractLocation
 AbstractLocation(n) :- Heap(n,_).
 
-.output VariableSimpleType(delimiter=",")
+.output VariableSimpleType
 VariableSimpleType(n,st) :- LitAssign(n,st,_).
 VariableSimpleType(n,"Unit") :- Update(n,_,_).
 VariableSimpleType(n,st) :- External(f,_,st), Call(n,f).
 VariableSimpleType(n,st) :- ExternalParam(f,i,st), Call(r,f), CallArgument(r,i,n).
 VariableSimpleType(n,st) :- Value(n,r), VariableSimpleType(r,st).
 
-.output VariableNodeParamType(delimiter=",")
+.output VariableNodeParamType
 VariableNodeParamType(n,t,i,al)
   :- Node(n,t), NodeArgument(n,i,arg), Value(arg,al), AbstractLocation(al).
 VariableNodeParamType(n,t,i,st)
@@ -276,21 +276,21 @@ VariableNodeParamType(n,t,i,st)
 VariableNodeParamType(n,t,i,ty)
   :- Value(n,n0), VariableNodeParamType(n0,t,i,ty).
 
-.output VariableNodeTag(delimiter=",")
+.output VariableNodeTag
 VariableNodeTag(n,t) :- Value(n,r), Node(r,t).
 
-.output VariableAbstractLocation(delimiter=",")
+.output VariableAbstractLocation
 VariableAbstractLocation(n,n) :- AbstractLocation(n).
 VariableAbstractLocation(n,v) :- Value(n,v), AbstractLocation(v).
 
 .decl FunName(f: Function)
-.output FunName(delimiter=",")
+.output FunName
 
 .decl FunReturn(f:Function, n:Variable)
-.output FunReturn(delimiter=",")
+.output FunReturn
 
 .decl FunParam(f:Function, i:number, n:Variable)
-.output FunParam(delimiter=",")
+.output FunParam
 
 FunName("main").
 FunName(f) :- Call(_,f), ReachableCode(f).
@@ -303,7 +303,7 @@ FunParam(f,i,p) :- ExternalParam(f,i,_), Call(r,f), CallArgument(r,i,p).
 
 /* If a concrete instance of the abstract location may be subject to a fetch more than once, */
 .decl SharedLocation(n:Variable)
-.output SharedLocation(delimiter=",")
+// .output SharedLocation
 
 SharedLocation(l) :-
   AbstractLocation(l), Value(v,l), NonLinearVar(v).
@@ -313,13 +313,13 @@ SharedLocation(l) :-
 //
 
 .decl AfterInst(b:Variable,a:Variable)
-.output AfterInst(delimiter=",")
+// .output AfterInst
 
 AfterInst(b,a) :- NextInst(b,a).
 AfterInst(b,c) :- AfterInst(b,a), NextInst(a,c).
 
 .decl NonLinearVar(v:Variable)
-.output NonLinearVar(delimiter=",")
+// .output NonLinearVar
 
 // Variable used in different use cases.
 //                   CA F M NP RV
