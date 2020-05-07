@@ -52,8 +52,8 @@ class (Typeable a, Enum a, Bounded a) => IntValue a where
 codegenSimpleType :: SimpleType -> IR.SimpleType
 codegenSimpleType = \case
   T_Unit    -> -1
-  T_Int64   -> -2
-  T_Word64  -> -3
+--  T_Int w   -> -2
+--  T_Word w  -> -3
   T_Float   -> -4
   T_Bool    -> -5
   T_String  -> -6

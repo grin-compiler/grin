@@ -124,8 +124,8 @@ codeGenBlock_ = fmap snd . codeGenBlock
 codeGenSimpleType :: SimpleType -> CG IR.Reg
 codeGenSimpleType = \case
   T_Unit                -> newRegWithSimpleType (-1)
-  T_Int64               -> newRegWithSimpleType (-2)
-  T_Word64              -> newRegWithSimpleType (-3)
+--  T_Int w               -> newRegWithSimpleType (-2)
+--  T_Word w              -> newRegWithSimpleType (-3)
   T_Float               -> newRegWithSimpleType (-4)
   T_Bool                -> newRegWithSimpleType (-5)
   T_String              -> newRegWithSimpleType (-6)

@@ -2,6 +2,7 @@
 module Grin.SyntaxDefs where
 
 import Data.Text (Text, unpack)
+import Data.Word
 import Control.DeepSeq
 import GHC.Generics (Generic)
 import Data.Data
@@ -52,8 +53,8 @@ data Tag = Tag
 type Loc = Int
 
 data SimpleType
-  = T_Int64
-  | T_Word64
+  = T_Int {_width :: Word32}
+  | T_Word {_width :: Word32}
   | T_Float
   | T_Bool
   | T_Unit

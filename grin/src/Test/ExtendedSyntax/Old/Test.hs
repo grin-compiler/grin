@@ -38,6 +38,7 @@ import qualified Test.ExtendedSyntax.Old.Grammar as G
 import Data.Set (Set); import qualified Data.Set as Set
 import Data.Map (Map); import qualified Data.Map as Map
 import Data.List
+import Data.Word
 
 import Debug.Trace
 import Data.Text (pack)
@@ -140,7 +141,7 @@ changeLast e r             = EBind r (Var "cl") e
 
 firstBindR :: TestExpContext
 firstBindR = ("first bind right", second tr) where
-  tr e = changeLast (SReturn (Lit (LInt64 1))) e
+  tr e = changeLast (SReturn (Lit (LInt 64 1))) e
 
 middleBindR :: TestExpContext
 middleBindR = ("middle bind right", second tr) where
@@ -332,10 +333,10 @@ instance Arbitrary Eff where arbitrary = genericArbitraryU
 -- TODO: Remove
 data Type
   = TUnit -- TODO: Rename
-  | TInt
+  | TInt Word32
   | TFloat
   | TBool
-  | TWord
+  | TWord Word32
   | TLoc Type
   | TTag Name [Type] -- Only constant tags, only simple types, or variables with location info
   | TUnion (Set Type)
@@ -356,9 +357,9 @@ instance Arbitrary Grin.Type where
 
 simpleType :: GoalM Type
 simpleType = melements
-  [ TInt
+  [ TInt 64
   , TFloat
-  , TWord
+  , TWord 64
   , TUnit
   , TBool
   , TString
@@ -367,9 +368,9 @@ simpleType = melements
 
 primitiveType :: GoalM Type
 primitiveType = melements
-  [ TInt
+  [ TInt 64
   , TFloat
-  , TWord
+  , TWord 64
   , TBool
   , TString
   , TChar
@@ -387,8 +388,8 @@ class TypeOf t where
 
 instance TypeOf G.SimpleVal where
   typeOf = \case
-    G.Lit (LInt64 _)  -> TInt
-    G.Lit (LWord64 _) -> TWord
+    G.Lit (LInt w _)  -> TInt w
+    G.Lit (LWord w _) -> TWord w
     G.Lit (LFloat _)  -> TFloat
     G.Lit (LBool _)   -> TBool
     G.Lit (LString _) -> TString
@@ -404,7 +405,7 @@ instance TypeOf G.Val where
 
 instance TypeOf G.ExtraVal where
   typeOf = \case
-    G.Loc _ -> TLoc TInt -- TODO: More types...
+    G.Loc _ -> TLoc (TInt 64) -- TODO: More types...
 
 instance (TypeOf l, TypeOf r) => TypeOf (Either l r) where
   typeOf = either typeOf typeOf
@@ -461,8 +462,8 @@ initContext expGen = Context (Env mempty primitives mempty) mempty expGen
     primitives = Map.fromList [ (eName p, (tyToType <$> eArgsType p, tyToType $ eRetType p, [])) | p <- preludePurePrimOps ]
     tyToType = \case
       TySimple ty -> case ty of
-        T_Int64  -> TInt
-        T_Word64 -> TWord
+        T_Int w  -> TInt w
+        T_Word w -> TWord w
         T_Float  -> TFloat
         T_Bool   -> TBool
         T_Unit   -> TUnit
@@ -557,13 +558,13 @@ gEnv t = do
 
 gLiteral :: Type -> GoalM G.SimpleVal
 gLiteral = fmap G.Lit . \case
-  TInt   -> LInt64  <$> gen arbitrary
-  TFloat -> LFloat  <$> gen arbitrary
-  TWord  -> LWord64 <$> gen arbitrary
-  TBool  -> LBool   <$> gen arbitrary
+  TInt w  -> LInt w  <$> gen arbitrary
+  TFloat  -> LFloat  <$> gen arbitrary
+  TWord w -> LWord w <$> gen arbitrary
+  TBool   -> LBool   <$> gen arbitrary
   TString -> LString . fromString <$> gen (listOf alphaNumChar)
   TChar   -> LChar <$> gen alphaNumChar
-  _      -> mzero
+  _       -> mzero
   where
     alphaNumChar = elements $ ['a' .. 'z'] ++ ['0' .. '9']
 
@@ -572,12 +573,12 @@ varFromEnv t = (G.Var . G.Name <$> gEnv t)
 
 gSimpleVal :: Type -> GoalM G.SimpleVal
 gSimpleVal = \case
-  TInt   -> varFromEnv TInt `mplus` gLiteral TInt
-  TFloat -> varFromEnv TFloat `mplus` gLiteral TFloat
-  TWord  -> varFromEnv TWord `mplus` gLiteral TWord
-  TBool  -> varFromEnv TBool `mplus` gLiteral TBool
+  TInt w   -> varFromEnv (TInt w) `mplus` gLiteral (TInt w)
+  TFloat   -> varFromEnv TFloat `mplus` gLiteral TFloat
+  TWord w  -> varFromEnv (TWord w) `mplus` gLiteral (TWord w)
+  TBool    -> varFromEnv TBool `mplus` gLiteral TBool
   TString  -> varFromEnv TString `mplus` gLiteral TString
-  TChar  -> varFromEnv TChar `mplus` gLiteral TChar
+  TChar    -> varFromEnv TChar `mplus` gLiteral TChar
   (TLoc t) -> varFromEnv (TLoc t) -- Locations have no literals
   _      -> mzero
 
@@ -590,11 +591,11 @@ gNodeValue = \case
 
 gValue :: Type -> GoalM G.Val
 gValue = \case
-  TUnit          -> pure G.Unit
-  TInt            -> G.SimpleVal <$> gSimpleVal TInt
+  TUnit           -> pure G.Unit
+  TInt w          -> G.SimpleVal <$> gSimpleVal (TInt w)
   TFloat          -> G.SimpleVal <$> gSimpleVal TFloat
-  TWord           -> G.SimpleVal <$> gSimpleVal TWord
-  TLoc t        -> G.SimpleVal <$> gSimpleVal (TLoc t)
+  TWord w         -> G.SimpleVal <$> gSimpleVal (TWord w)
+  TLoc t          -> G.SimpleVal <$> gSimpleVal (TLoc t)
   TBool           -> G.SimpleVal <$> gSimpleVal TBool
   TString         -> G.SimpleVal <$> gSimpleVal TString
   TChar           -> G.SimpleVal <$> gSimpleVal TChar

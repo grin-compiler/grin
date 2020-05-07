@@ -10,6 +10,7 @@ import Data.Int
 import Data.Map (Map)
 import Data.Set (Set)
 import Data.Vector (Vector)
+import Data.Word
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Vector as Vector
@@ -34,8 +35,8 @@ dead_t = T_SimpleType T_Dead
 unit_t :: Type
 unit_t = T_SimpleType T_Unit
 
-int64_t :: Type
-int64_t = T_SimpleType T_Int64
+int_t :: Word32 -> Type
+int_t = T_SimpleType . T_Int
 
 bool_t :: Type
 bool_t = T_SimpleType T_Bool
@@ -113,12 +114,12 @@ typeOfLit = T_SimpleType . typeOfLitST
 
 typeOfLitST :: Lit -> SimpleType
 typeOfLitST lit = case lit of
-  LInt64{}  -> T_Int64
-  LWord64{} -> T_Word64
-  LFloat{}  -> T_Float
-  LBool{}   -> T_Bool
-  LString{} -> T_String
-  LChar{}   -> T_Char
+  LInt width _  -> T_Int width
+  LWord width _ -> T_Word width
+  LFloat{}      -> T_Float
+  LBool{}       -> T_Bool
+  LString{}     -> T_String
+  LChar{}       -> T_Char
 
 -- Type of literal like values
 typeOfVal :: Val -> Type

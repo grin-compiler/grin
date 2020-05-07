@@ -135,12 +135,12 @@ instance Pretty Val where
 
 instance Pretty Lit where
   pretty = \case
-    LInt64 a   -> integer $ fromIntegral a
-    LWord64 a  -> integer (fromIntegral a) <> text "u"
-    LFloat a   -> float a
-    LBool a    -> text "#" <> text (show a)
-    LString a  -> text "#" <> text (show a)
-    LChar a    -> text "#" <> text (show a)
+    LInt w a  -> integer (fromIntegral a) <> text "i" <> integer (fromIntegral w)
+    LWord w a -> integer (fromIntegral a) <> text "u" <> integer (fromIntegral w)
+    LFloat a  -> float a
+    LBool a   -> text "#" <> text (show a)
+    LString a -> text "#" <> text (show a)
+    LChar a   -> text "#" <> text (show a)
 
 instance Pretty CPat where
   pretty = \case

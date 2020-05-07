@@ -32,7 +32,7 @@ keywords = Set.fromList
   ] `Set.union` simpleTypes
 
 simpleTypes = Set.fromList
-  [ "T_Int64", "T_Word64", "T_Float"
+  [ "T_Int", "T_Word", "T_Float"
   , "T_Bool",  "T_Unit"
   , "T_Location", "T_Dead"
   , "T_String", "T_Char"
@@ -140,8 +140,8 @@ tag = Tag C <$ char 'C' <*> var <|>
 
 simpleType :: Parser SimpleType
 simpleType =
-  T_Int64 <$ kw "T_Int64" <|>
-  T_Word64 <$ kw "T_Word64" <|>
+  T_Int <$ kw "T_Int" <*> integer <|>
+  T_Word <$ kw "T_Word" <*> integer <|>
   T_Float <$ kw "T_Float" <|>
   T_Bool <$ kw "T_Bool" <|>
   T_Unit <$ kw "T_Unit" <|>
