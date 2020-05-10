@@ -134,6 +134,14 @@ library
     Reducer.LLVM.TypeGen
     Reducer.PrimOps
     Reducer.Pure
+    Reducer.Interpreter.Base
+    Reducer.Interpreter.Definitional
+    Reducer.Interpreter.Env
+    Reducer.Interpreter.Store
+    Reducer.Interpreter.Definitional.Instance
+    Reducer.Interpreter.Definitional.Internal
+    Reducer.Interpreter.Definitional.Cib
+
     Test.Assertions
     Test.Check
     Test.Grammar
@@ -311,6 +319,7 @@ test-suite grin-test
                      , process
                      , bytestring
                      , MissingH
+                     , recursion-schemes
 
   other-modules:
                      Transformations.Simplifying.RegisterIntroductionSpec
@@ -364,6 +373,25 @@ test-suite grin-test
                      Test.EndToEnd
                      Test.EndToEndSpec
                      CLI.Lib
+                     AbstractInterpretation.ExtendedSyntax.CreatedBySpec
+                     AbstractInterpretation.ExtendedSyntax.EffectTrackingSpec
+                     AbstractInterpretation.ExtendedSyntax.HptSpec
+                     AbstractInterpretation.ExtendedSyntax.IRSpec
+                     AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
+                     AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
+                     AbstractInterpretation.ExtendedSyntax.SharingSpec
+                     ExtendedSyntax.LintSpec
+                     ExtendedSyntax.NametableSpec
+                     ExtendedSyntax.ParserSpec
+                     Reducer.Interpreter.Definitional.CibSpec
+                     Transformations.ExtendedSyntax.BindNormalisationSpec
+                     Transformations.ExtendedSyntax.ConversionSpec
+                     Transformations.ExtendedSyntax.MangleNamesSpec
+                     Transformations.ExtendedSyntax.Optimising.CSESpec
+                     Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
+                     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
+                     Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
   default-language:    Haskell2010
 
 test-suite grin-end-to-end-test

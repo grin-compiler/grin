@@ -15,6 +15,7 @@ module Pipeline.Pipeline
   , pattern FullPrintGrin
   , pattern DeadCodeElimination
   , pattern PureEvalPlugin
+  , pattern DefinitionalInterpreter
   , pipeline
   , optimize
   , optimizeWith
@@ -209,6 +210,7 @@ data PipelineStep
   | PrintGrinH RenderingOption (Hidden (Doc -> Doc))
   | PureEval Bool
   | PureEvalPluginH (Hidden EvalPlugin) Bool
+  | DefinitionalInterpreterH (Hidden EvalPlugin) Bool
   | JITLLVM
   | PrintAST
   | SaveLLVM Path
@@ -265,6 +267,10 @@ pattern DebugTransformation t <- DebugTransformationH (H t)
 pattern PureEvalPlugin :: EvalPlugin -> Bool -> PipelineStep
 pattern PureEvalPlugin t b <- PureEvalPluginH (H t) b
   where PureEvalPlugin t b =  PureEvalPluginH (H t) b
+
+pattern DefinitionalInterpreter :: EvalPlugin -> Bool -> PipelineStep
+pattern DefinitionalInterpreter t b <- DefinitionalInterpreterH (H t) b
+  where DefinitionalInterpreter t b =  DefinitionalInterpreterH (H t) b
 
 data PipelineLogCfg
   = NoLog
@@ -495,6 +501,7 @@ pipelineStep p = do
     DebugPipelineState -> debugPipelineState
     PureEval                  showStatistics -> pureEval (EvalPlugin evalPrimOp) showStatistics
     PureEvalPlugin evalPlugin showStatistics -> pureEval evalPlugin showStatistics
+    DefinitionalInterpreter evalPlugin showStatistics -> definionalInterpreterEval evalPlugin showStatistics
     DatalogHPT -> datalogHPT
   after <- use psExp
   let eff = if before == after then None else ExpChanged
@@ -681,6 +688,15 @@ pureEval evalPlugin showStatistics = do
   (val, stat) <- liftIO $ do
     hSetBuffering stdout NoBuffering
     evalProgram (PureReducer evalPlugin) e
+  when showStatistics $ pipelineLog $ show $ pretty stat
+  pipelineLog $ show $ pretty val
+
+definionalInterpreterEval :: EvalPlugin -> Bool -> PipelineM ()
+definionalInterpreterEval evalPlugin showStatistics = do
+  e <- use psExp
+  (val, stat) <- liftIO $ do
+    hSetBuffering stdout NoBuffering
+    evalProgram (DefinitionalReducer evalPlugin) e
   when showStatistics $ pipelineLog $ show $ pretty stat
   pipelineLog $ show $ pretty val
 
