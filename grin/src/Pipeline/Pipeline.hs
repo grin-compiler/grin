@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes, PatternSynonyms, TemplateHaskell #-}
 module Pipeline.Pipeline
-  ( PipelineOpts(..)
+  ( PipelineLogCfg(..)
+  , PipelineOpts(..)
   , defaultOpts
   , PipelineStep(..)
   , AbstractComputationStep(..)
@@ -106,6 +107,7 @@ import Control.DeepSeq
 import Debug.Trace
 import Lens.Micro
 import Data.List
+import System.IO
 
 import Data.Algorithm.Diff
 import Data.Algorithm.DiffOutput
@@ -123,7 +125,7 @@ import Reducer.PrimOps (evalPrimOp)
 import Reducer.Pure (EvalPlugin(..))
 
 import qualified Grin.ExtendedSyntax.Syntax as SyntaxV2
-import qualified Transformations.ExtendedSyntax.Conversion as SyntaxV2 (convertToNew)
+import qualified Transformations.ExtendedSyntax.Conversion as SyntaxV2 (convertToNew, convert)
 import qualified Grin.ExtendedSyntax.Pretty as SyntaxV2
 import qualified Grin.ExtendedSyntax.Datalog as Datalog
 import Transformations.ExtendedSyntax.Normalisation (normalise)
@@ -264,10 +266,15 @@ pattern PureEvalPlugin :: EvalPlugin -> Bool -> PipelineStep
 pattern PureEvalPlugin t b <- PureEvalPluginH (H t) b
   where PureEvalPlugin t b =  PureEvalPluginH (H t) b
 
+data PipelineLogCfg
+  = NoLog
+  | StdoutLog
+  | HandleLog Handle
+
 data PipelineOpts = PipelineOpts
   { _poOutputDir   :: FilePath
   , _poFailOnLint  :: Bool
-  , _poLogging     :: Bool
+  , _poLogConfig   :: PipelineLogCfg
   , _poSaveTypeEnv :: Bool
   , _poStatistics  :: Bool
   , _poLintOnChange :: Bool
@@ -280,7 +287,7 @@ defaultOpts :: PipelineOpts
 defaultOpts = PipelineOpts
   { _poOutputDir    = ".grin-output"
   , _poFailOnLint   = True
-  , _poLogging      = True
+  , _poLogConfig    = StdoutLog
   , _poSaveTypeEnv  = False
   , _poStatistics   = False
   , _poLintOnChange = True
@@ -574,7 +581,6 @@ runHPTPure = use psHPTProgram >>= \case
         liftIO $ printf "type-env error: %s" err
         psTypeEnv .= Nothing
 
-
 runCByPureWith :: (CBy.CByMapping -> ComputerState -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case
   Nothing -> psCByResult .= Nothing
@@ -794,13 +800,15 @@ lintGrin mPhaseName = do
       liftIO $ die "illegal code"
       pure ()
 
+-- This is a proof of concept implementation of the Datalog implementation of the HPT.
+-- After the new version of the AST got introduced to the pipeline. This HPT will be wired in
+-- as a default HPT. Meanwhile it simply calculates the HPTResult and prints it on the pipeline.
 datalogHPT :: PipelineM ()
 datalogHPT = do
   exp <- use psExp
   let expV2 = normalise $ SyntaxV2.convertToNew exp
-  -- liftIO $ SyntaxV2.printGrin    expV2
-  liftIO $ Datalog.calculateHPTResult expV2
-  pure ()
+  res <- liftIO $ Datalog.calculateHPTResult expV2
+  pipelineLog $ show $ plain $ pretty res
 
 -- confluence testing
 
@@ -941,6 +949,7 @@ runPipeline :: PipelineOpts -> TypeEnv -> Exp -> PipelineM a -> IO (a, Exp)
 runPipeline o ta e m = do
   createDirectoryIfMissing True $ _poOutputDir o
   fmap (second _psExp) $ flip runStateT start $ runReaderT m o where
+
     start = PState
       { _psExp            = e
       , _psTransStep      = 0
@@ -1157,15 +1166,23 @@ decreateIntendation = psIntendation %= pred
 
 pipelineLog :: String -> PipelineM ()
 pipelineLog str = do
-  shouldLog <- view poLogging
   ident <- use psIntendation
-  when shouldLog $ liftIO $ putStrLn $ replicate ident ' ' ++ str
+  view poLogConfig >>= \case
+    NoLog       -> pure ()
+    StdoutLog   -> liftIO $ putStrLn $ replicate ident ' ' ++ str
+    HandleLog h -> liftIO $ do
+      hPutStrLn h $ replicate ident ' ' ++ str
+      hFlush h
 
 pipelineLogNoLn :: String -> PipelineM ()
 pipelineLogNoLn str = do
-  shouldLog <- view poLogging
   ident <- use psIntendation
-  when shouldLog $ liftIO $ putStr $ replicate ident ' ' ++ str
+  view poLogConfig >>= \case
+    NoLog       -> pure ()
+    StdoutLog   -> liftIO $ putStr $ replicate ident ' ' ++ str
+    HandleLog h -> liftIO $ do
+      hPutStr h $ replicate ident ' ' ++ str
+      hFlush h
 
 pipelineLogIterations :: Int -> PipelineM ()
 pipelineLogIterations n = pipelineLogNoLn $ "iterations: " ++ show n ++ " "

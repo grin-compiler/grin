@@ -13,9 +13,14 @@ build-type:          Simple
 --extra-source-files:  README.md
 cabal-version:       >=1.10
 
+data-files:
+  datalog/hpt/hpt.dl
+
 library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
+  other-modules:
+    Paths_grin
   exposed-modules:
     AbstractInterpretation.ExtendedSyntax.IR
     AbstractInterpretation.ExtendedSyntax.PrettyIR

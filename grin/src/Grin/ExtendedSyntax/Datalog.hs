@@ -19,13 +19,14 @@ import Data.Functor.Foldable
 import Control.Comonad (extract)
 import Control.Comonad.Cofree
 import Data.Either (fromRight)
-import Data.Maybe (catMaybes, mapMaybe, fromJust)
+import Data.Maybe (catMaybes, mapMaybe, fromMaybe, fromJust)
 import Data.Proxy
 import Data.Bifunctor
 import Data.List (sortBy)
 import Data.Function (on)
 import Grin.ExtendedSyntax.Pretty
 import Debug.Trace
+import System.FilePath (takeDirectory)
 
 import qualified Data.Vector as Vector
 import qualified Data.Set as Set
@@ -35,13 +36,14 @@ import qualified Data.Text as Text
 import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as Result
 
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty ()
+import Paths_grin
 
 {-
 TODO:
-[ ] Handle As patterns
+[x] Handle As patterns
 [x] Generate code that always have a single return value (In normalisation)
 [x] Create HPTResult
-[ ] Add Datalog program to the resources
+[x] Add Datalog program to the resources
 -}
 
 data HPT = HPT
@@ -98,10 +100,6 @@ mkBoolean :: Bool -> Boolean
 mkBoolean = \case
   False -> 0
   True  -> 1
-
---instance Souffle.Marshal Grin.Name where
---  push (Grin.NM n) = push n
---  pop = Grin.NM <$> pop
 
 data EntryPoint         = EntryPoint !CodeName                                  deriving (Eq, Show, Generic)
 data Move               = Move !Variable !Variable                              deriving (Eq, Show, Generic)
@@ -206,7 +204,14 @@ instance Souffle.Fact FunReturn                 where factName = const "FunRetur
 
 calculateHPTResult :: Grin.Exp -> IO (Maybe Result.HPTResult)
 calculateHPTResult exp = do
-  let cfg = Souffle.Config "./datalog/hpt/" (Just "souffle")
+
+  -- The datalog program needs to be registered in the cabal file as data-file
+  -- but the souffle-haskell library needs a directory to look for the program
+  -- file. In the instance of the Program HPT the name must concide the one
+  -- which is registered in the data-file part of the cabal file.
+  hptProgramDirPath <- takeDirectory <$> getDataFileName "datalog/hpt/hpt.dl"
+
+  let cfg = Souffle.Config hptProgramDirPath (Just "souffle")
   Souffle.runSouffleWith cfg $ do
     mprog <- Souffle.init HPT
     forM mprog $ \prog -> do
@@ -224,9 +229,7 @@ calculateHPTResult exp = do
         <*> Souffle.getFacts prog -- resultFunReturn
         <*> Souffle.getFacts prog -- resultFunParam
         <*> Souffle.getFacts prog -- heap
-      let res = calcHPTResult r
-      liftIO $ putStrLn $ showWide $ pretty res
-      pure res
+      pure $ calcHPTResult r
 
 structure :: Handle HPT -> Grin.ExpF (Grin.Exp, SouffleM ()) -> SouffleM ()
 structure prog = \case
@@ -471,7 +474,7 @@ variableNodeMap ns ps = Map.unionsWith (++)
                     else Nothing) ps
   , let ts = case unzip $ Map.toList ps0 of
               (as, es) | as == [0 .. fromIntegral (length as - 1)] -> es
-              _ -> error $ "in positions: " ++ show ps0
+              (_, es) -> error $ "in positions: " ++ show ps0 -- TODO
   ]
 
 functionNameMap
@@ -491,8 +494,9 @@ functionNameMap ps rs vars = Map.fromList
                 ps
   , let params = case unzip $ Map.toList ps0 of
           (as,es) | as == [0 .. fromIntegral (length as - 1)] -> Vector.fromList es
-          _ -> error $ "functionMap: in positions: " ++ show (fun, ret0, ps0)
-  , let ret = fromJust $ Map.lookup (Grin.mkName ret0) vars
+          (_, es) -> error $ "functionMap: in positions: " ++ show (fun, ret0, ps0) -- TODO
+  , let ret = fromMaybe (error $ "functionMap:" ++ show (ret0, vars))
+            $ Map.lookup (Grin.mkName ret0) vars
   ]
 
 heapMap
@@ -500,13 +504,20 @@ heapMap
   -> Map.Map Text Int
   -> Map.Map Grin.Name Result.TypeSet
   -> Vector.Vector Result.NodeSet
-heapMap hs nameToLoc vars = Vector.generate (Map.size nameToLoc) (fromJust . flip Map.lookup heapVals)
+heapMap hs nameToLoc vars
+  = Vector.generate
+      (Map.size nameToLoc)
+      (\l -> fromMaybe (error $ "heapMap #0: " ++ show (l, heapVals)) $ Map.lookup l heapVals) -- TODO: mempty
   where
     heapVals = Map.unionsWith mappend
       [ Map.singleton loc nodeSet
       | Heap ln t <- hs
-      , let Just loc = Map.lookup ln nameToLoc
-      , let Just (Result.TypeSet _ nodeSet) = Map.lookup (Grin.mkName t) vars
+      -- TODO: Fix below, we shouldn't avoid use pattern match errors.
+      , let loc = fromMaybe (error $ "heapMap #1: " ++ show (ln, nameToLoc))
+                $ Map.lookup ln nameToLoc
+      , let (Result.TypeSet _ nodeSet)
+              = fromMaybe (error $ "heapMap #2: " ++ show (t,vars))
+              $ Map.lookup (Grin.mkName t) vars
       ]
 
 calcHPTResult :: ResultData -> Result.HPTResult
@@ -542,7 +553,7 @@ calcHPTResult (ResultData{..}) = Result.HPTResult memory register function
                                 (Vector.fromList $ map
                                   (Set.map
                                     (either
-                                      (Result.T_Location . fromJust . flip Map.lookup nameToLoc)
+                                      (Result.T_Location . fromJust . flip Map.lookup nameToLoc) -- TODO: mempty
                                       id . datalogStToRSt))
                                   types))))
                     ) ps)
@@ -589,7 +600,7 @@ literalParams sv = case sv of
   Grin.LFloat  f -> (stToDatalogST Grin.T_Float,  Text.pack $ show f)
   Grin.LBool   b -> (stToDatalogST Grin.T_Bool,   Text.pack $ show b)
   Grin.LChar   c -> (stToDatalogST Grin.T_Char,   Text.pack $ show c)
-  Grin.LString s -> (stToDatalogST Grin.T_String, s) -- TODO
+  Grin.LString s -> (stToDatalogST Grin.T_String, Text.pack $ show s) -- TODO
 
 stToDatalogST :: Grin.SimpleType -> SimpleType
 stToDatalogST = \case

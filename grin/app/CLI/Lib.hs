@@ -229,7 +229,7 @@ mainWithArgs args = do
     let opts = defaultOpts
                 { _poOutputDir = outputDir
                 , _poFailOnLint = not continueOnLint
-                , _poLogging = not quiet
+                , _poLogConfig = if quiet then NoLog else StdoutLog
                 , _poSaveBinary = saveBinary
                 , _poCFiles = cFiles
                 }
