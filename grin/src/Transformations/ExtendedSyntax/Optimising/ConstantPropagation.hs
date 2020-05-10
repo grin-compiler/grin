@@ -28,8 +28,8 @@ constantPropagation e = ana builder (mempty, e) where
 
   builder :: (Env, Exp) -> ExpF (Env, Exp)
   builder (env, exp) = case exp of
-    ECase scrut alts ->
-      let constVal      = getValue scrut env
+    ECase scrut alts -> -- val ~ scrut
+      let constVal      = getValue scrut env -- error "substValsVal env val"
           known         = isKnown constVal || Map.member scrut env
           matchingAlts  = [alt | alt@(Alt cpat name body) <- alts, match cpat constVal]
           defaultAlts   = [alt | alt@(Alt DefaultPat name body) <- alts]
