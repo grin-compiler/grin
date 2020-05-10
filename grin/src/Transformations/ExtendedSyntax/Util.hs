@@ -108,19 +108,19 @@ mapNameUseExp f = \case
 subst :: Ord a => Map a a -> a -> a
 subst env x = Map.findWithDefault x x env
 
--- substitute all @Names@s in an @Exp@
+-- substitute all @Names@s in an @Exp@ (non-recursive)
 substVarRefExp :: Map Name Name -> Exp -> Exp
 substVarRefExp env = mapNameUseExp (subst env)
 
--- substitute all @Names@s in a @Val@
+-- substitute all @Names@s in a @Val@ (non-recursive)
 substNamesVal :: Map Name Name -> Val -> Val
 substNamesVal env = mapNamesVal (subst env)
 
--- specialized version of @subst@ to @Val@s
+-- specialized version of @subst@ to @Val@s (non-recursive)
 substValsVal :: Map Val Val -> Val -> Val
 substValsVal env = subst env
 
--- substitute all @Val@s in an @Exp@
+-- substitute all @Val@s in an @Exp@ (non-recursive)
 substVals :: Map Val Val -> Exp -> Exp
 substVals env = mapValsExp (subst env)
 
