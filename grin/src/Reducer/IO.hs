@@ -94,7 +94,9 @@ evalSimpleExp exts env = \case
                   go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                   go _ x y = error $ "invalid pattern for function: " ++ show (n,x,y)
               if isExternalName exts n
-                then evalPrimOp n [] args
+                then do
+                  let Just evalPrimOpFun = Map.lookup n evalPrimOp
+                  evalPrimOpFun args
                 else do
                   Def _ vars body <- (Map.findWithDefault (error $ "unknown function: " ++ unpackName n) n) <$> getProg
                   evalExp exts (go env vars args) body

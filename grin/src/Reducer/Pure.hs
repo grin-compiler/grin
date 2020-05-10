@@ -7,8 +7,8 @@ module Reducer.Pure
 import Text.Printf
 import Text.PrettyPrint.ANSI.Leijen
 
-import Data.Map (Map)
-import qualified Data.Map as Map
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 import Control.Monad.State
@@ -33,7 +33,7 @@ data StoreMap
 emptyStore = StoreMap mempty 0
 
 newtype EvalPlugin = EvalPlugin
-  { evalPluginPrimOp  :: Name -> [Val] -> [RTVal] -> IO RTVal
+  { evalPluginPrimOp  :: Map Name ([RTVal] -> IO RTVal)
   }
 
 type Prog = Map Name Def
@@ -62,9 +62,11 @@ evalSimpleExp env s = do
                     go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
                     go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (prettyDebug x) (prettyDebug y)
                 exts <- asks ctxExternals
-                evalPrimOp <- asks (evalPluginPrimOp . ctxEvalPlugin)
+                evalPrimOpMap <- asks (evalPluginPrimOp . ctxEvalPlugin)
                 if isExternalName exts n
-                  then liftIO $ evalPrimOp n a args
+                  then do
+                    let Just evalPrimOp = Map.lookup n evalPrimOpMap
+                    liftIO $ evalPrimOp args
                   else do
                     Def _ vars body <- reader
                       ((Map.findWithDefault (error $ printf "unknown function: %s" n) n) . ctxProg)
