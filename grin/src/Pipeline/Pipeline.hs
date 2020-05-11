@@ -128,7 +128,7 @@ import Reducer.Pure (EvalPlugin(..))
 import qualified Grin.ExtendedSyntax.Syntax as SyntaxV2
 import qualified Transformations.ExtendedSyntax.Conversion as SyntaxV2 (convertToNew, convert)
 import qualified Grin.ExtendedSyntax.Pretty as SyntaxV2
-import qualified Grin.ExtendedSyntax.Datalog as Datalog
+import qualified Grin.ExtendedSyntax.SouffleHPT as SouffleHPT
 import Transformations.ExtendedSyntax.Normalisation (normalise)
 
 
@@ -226,7 +226,7 @@ data PipelineStep
   | ConfluenceTest
   | PrintErrors
   | DebugPipelineState
-  | DatalogHPT
+  | SouffleHPT
   deriving (Eq, Show)
 
 pattern DeadCodeElimination :: PipelineStep
@@ -502,7 +502,7 @@ pipelineStep p = do
     PureEval                  showStatistics -> pureEval (EvalPlugin evalPrimOp) showStatistics
     PureEvalPlugin evalPlugin showStatistics -> pureEval evalPlugin showStatistics
     DefinitionalInterpreter evalPlugin showStatistics -> definionalInterpreterEval evalPlugin showStatistics
-    DatalogHPT -> datalogHPT
+    SouffleHPT -> souffleHPT
   after <- use psExp
   let eff = if before == after then None else ExpChanged
       showMS :: Rational -> String
@@ -588,7 +588,7 @@ runHPTPure = use psHPTProgram >>= \case
         liftIO $ printf "type-env error: %s" err
         psTypeEnv .= Nothing
     -- NOTE: This is for testing only
-    -- void $ pipelineStep DatalogHPT
+    -- void $ pipelineStep SouffleHPT
 
 runCByPureWith :: (CBy.CByMapping -> ComputerState -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case
@@ -818,14 +818,14 @@ lintGrin mPhaseName = do
       liftIO $ die "illegal code"
       pure ()
 
--- This is a proof of concept implementation of the Datalog implementation of the HPT.
+-- This is a proof of concept implementation of the Souffle implementation of the HPT.
 -- After the new version of the AST got introduced to the pipeline. This HPT will be wired in
 -- as a default HPT. Meanwhile it simply calculates the HPTResult and prints it on the pipeline.
-datalogHPT :: PipelineM ()
-datalogHPT = do
+souffleHPT :: PipelineM ()
+souffleHPT = do
   exp <- use psExp
   let expV2 = normalise $ SyntaxV2.convertToNew exp
-  res <- liftIO $ Datalog.calculateHPTResult expV2
+  res <- liftIO $ SouffleHPT.calculateHPTResult expV2
   pipelineLog $ show $ plain $ pretty res
 
 -- confluence testing

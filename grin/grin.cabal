@@ -120,7 +120,7 @@ library
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
     Grin.ExtendedSyntax.GADT
-    Grin.ExtendedSyntax.Datalog
+    Grin.ExtendedSyntax.SouffleHPT
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -380,6 +380,7 @@ test-suite grin-test
                      AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
                      AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
+                     AbstractInterpretation.ExtendedSyntax.SouffleHPTSpec
                      ExtendedSyntax.LintSpec
                      ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec

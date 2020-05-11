@@ -6,7 +6,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RecordWildCards #-}
-module Grin.ExtendedSyntax.Datalog (calculateHPTResult) where
+module Grin.ExtendedSyntax.SouffleHPT (calculateHPTResult) where
 
 {-
 This is a proof of concept for souffle based implementation of static analyses.
