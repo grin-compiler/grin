@@ -41,6 +41,17 @@ restorePureAsLast = apoM $ \case
     -- pure x
     pure $ EBindF (Right lhs) pat (Left (EBind rhs (VarPat x) (SReturn (Var x))))
 
+  -- fun params =
+  --   v <- lhs
+  --   rhs
+  Def f ps body@(EBind{}) ->
+    pure $ DefF f ps $ Right body
+
+  -- fun params = pure / store / fetch / update / case
+  Def f ps body -> do
+    x <- deriveNewName "rapl"
+    pure $ DefF f ps $ Right $ EBind body (VarPat x) (SReturn (Var x))
+
   -- rrogram / def
   other -> pure $ fmap Right $ project other
 
