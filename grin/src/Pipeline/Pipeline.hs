@@ -587,6 +587,8 @@ runHPTPure = use psHPTProgram >>= \case
         psErrors %= (err :)
         liftIO $ printf "type-env error: %s" err
         psTypeEnv .= Nothing
+    -- NOTE: This is for testing only
+    -- void $ pipelineStep DatalogHPT
 
 runCByPureWith :: (CBy.CByMapping -> ComputerState -> CBy.CByResult) -> PipelineM ()
 runCByPureWith toCByResult = use psCByProgram >>= \case

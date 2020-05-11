@@ -8,6 +8,13 @@
 {-# LANGUAGE RecordWildCards #-}
 module Grin.ExtendedSyntax.Datalog (calculateHPTResult) where
 
+{-
+This is a proof of concept for souffle based implementation of static analyses.
+
+After merging the new expression syntax tree into the pipeline we need to separate the
+dataflow and control flow fact generation from the implementation of the specific analysis.
+-}
+
 import Control.Monad (forM, forM_, void)
 import Data.Int
 import Language.Souffle.Interpreted as Souffle
@@ -38,13 +45,6 @@ import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as Re
 import AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Pretty ()
 import Paths_grin
 
-{-
-TODO:
-[x] Handle As patterns
-[x] Generate code that always have a single return value (In normalisation)
-[x] Create HPTResult
-[x] Add Datalog program to the resources
--}
 
 data HPT = HPT
 
