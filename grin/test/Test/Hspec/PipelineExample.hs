@@ -68,7 +68,7 @@ instance Example Pipeline where
         let opts = PipelineOpts
               { _poOutputDir = ".output" -- TODO: Random test dir
               , _poFailOnLint = False
-              , _poLogging = False
+              , _poLogConfig = NoLog
               , _poSaveTypeEnv = False
               , _poStatistics = False
               , _poLintOnChange = False

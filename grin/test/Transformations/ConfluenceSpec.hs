@@ -73,7 +73,7 @@ spec = do
 
   it "Random pipeline" $ do
     -- NOTE: This is a random test. This could make fail the build non-related to code changes.
-    let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp", _poFailOnLint = False }
+    let opts = defaultOpts { _poLogConfig = NoLog, _poOutputDir = "/tmp", _poFailOnLint = False }
     forAll arbitrary $ \(seed1, seed2) -> monadicIO $ run $ do
       transformed1 <- randomPipeline (mkStdGen seed1) opts exp
       transformed2 <- randomPipeline (mkStdGen seed2) opts exp
@@ -82,7 +82,7 @@ spec = do
   -- Needs better code generation.
   xit "Random pipeline, random expression" $ property $
     forAll (PP <$> genProg) $ \(PP prog) -> monadicIO $ run $ do
-      let opts = defaultOpts { _poLogging = False, _poOutputDir = "/tmp" }
+      let opts = defaultOpts { _poLogConfig = NoLog, _poOutputDir = "/tmp" }
       transformed1 <- randomPipeline (mkStdGen 0xffaa419371) opts exp
       transformed2 <- randomPipeline (mkStdGen 0x51437291fb) opts exp
       mangleNames transformed1 `sameAs` mangleNames transformed2
