@@ -533,7 +533,7 @@ calcHPTResult (ResultData{..}) = Result.HPTResult memory register function
                      resultVariableSimpleType
                  ++
                  map (\(VariableAbstractLocation n l)
-                      -> case Map.lookup n nameToLoc of
+                      -> case Map.lookup l nameToLoc of
                           Nothing -> mempty
                           Just l  -> Map.singleton
                             (Grin.mkName n)
