@@ -31,3 +31,5 @@ grin/.end-to-end-test/
 *.out.ll
 *.out.s
 .ghc.environment.*
+hie.yaml
+*.lock
