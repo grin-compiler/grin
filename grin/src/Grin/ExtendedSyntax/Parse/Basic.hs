@@ -89,11 +89,14 @@ vec1 p = Vec.fromList <$> list1 p
 bracedList :: Parser a -> Parser [a]
 bracedList p = braces (sepBy p (op ","))
 
+bracedList1 :: Parser a -> Parser [a]
+bracedList1 p = braces (sepBy1 p (op ","))
+
 set :: Ord a => Parser a -> Parser (Set a)
 set p = Set.fromList <$> bracedList p
 
 set1 :: Ord a => Parser a -> Parser (Set a)
-set1 p = Set.fromList <$> bracedList p
+set1 p = Set.fromList <$> bracedList1 p
 
 anySingleBut :: MonadParsec e s m => Token s -> m (Token s)
 anySingleBut t = satisfy (/= t)
