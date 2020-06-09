@@ -6,6 +6,8 @@ import Grin.ExtendedSyntax.Grin
 import Grin.ExtendedSyntax.Pretty
 import Grin.ExtendedSyntax.TypeEnv
 
+import Reducer.ExtendedSyntax.Base (RTVal(..))
+
 -- import AbstractInterpretation.CreatedBy.Pretty
 -- import AbstractInterpretation.CreatedBy.Result (ProducerMap,ProducerGraph(..))
 import AbstractInterpretation.ExtendedSyntax.LiveVariable.Pretty
@@ -49,4 +51,10 @@ instance (SameAs a, SameAs b) => SameAs (a, b) where
 instance SameAs Exp where
   -- | Check if the two expression are the same, if not renders them
   -- in a pretty printed form.
+  sameAs found expected = (PP found) `shouldBe` (PP expected)
+
+instance (Pretty k, Pretty v, Eq k, Eq v) => SameAs (KeyValueMap k v) where
+  sameAs found expected = (PP found) `shouldBe` (PP expected)
+
+instance SameAs RTVal where
   sameAs found expected = (PP found) `shouldBe` (PP expected)

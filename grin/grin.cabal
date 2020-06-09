@@ -118,6 +118,11 @@ library
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
+    Reducer.ExtendedSyntax.Base
+    Reducer.ExtendedSyntax.IO
+    Reducer.ExtendedSyntax.Pure
+    Reducer.ExtendedSyntax.PrimOps
+    Reducer.ExtendedSyntax.LLVM.JIT
     Reducer.Base
     Reducer.IO
     Reducer.LLVM.Base
@@ -390,6 +395,10 @@ test-suite grin-test
                      AbstractInterpretation.SharingSpec
                      AbstractInterpretation.CreatedBySpec
                      Test.Hspec.PipelineExample
+
+                     Reducer.ExtendedSyntax.BaseSpec
+                     Reducer.ExtendedSyntax.IOSpec
+                     Reducer.ExtendedSyntax.PureSpec
   default-language:    Haskell2010
 
 benchmark grin-benchmark
