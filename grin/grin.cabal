@@ -162,16 +162,16 @@ library
     Transformations.ExtendedSyntax.Optimising.CopyPropagation
     Transformations.ExtendedSyntax.Optimising.ConstantPropagation
     Transformations.ExtendedSyntax.Optimising.CSE
+    Transformations.ExtendedSyntax.Optimising.DeadVariableElimination
     Transformations.ExtendedSyntax.Optimising.DeadFunctionElimination
-    Transformations.ExtendedSyntax.Optimising.DeadDataElimination
     Transformations.ExtendedSyntax.Optimising.DeadParameterElimination
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
     Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxing
     Transformations.ExtendedSyntax.Optimising.Inlining
+    Transformations.ExtendedSyntax.Optimising.InterproceduralDeadFunctionElimination
+    Transformations.ExtendedSyntax.Optimising.InterproceduralDeadDataElimination
+    Transformations.ExtendedSyntax.Optimising.InterproceduralDeadParameterElimination
     Transformations.ExtendedSyntax.Optimising.NonSharedElimination
-    Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionElimination
-    Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterElimination
-    Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableElimination
     Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisation
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
 
@@ -333,17 +333,17 @@ test-suite grin-test
                      Transformations.ExtendedSyntax.Optimising.ConstantPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.CopyPropagationSpec
                      Transformations.ExtendedSyntax.Optimising.CSESpec
-                     Transformations.ExtendedSyntax.Optimising.DeadDataEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.DeadVariableEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.DeadFunctionEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.DeadParameterEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisationSpec
                      Transformations.ExtendedSyntax.Optimising.EvaluatedCaseEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.GeneralizedUnboxingSpec
                      Transformations.ExtendedSyntax.Optimising.InliningSpec
+                     Transformations.ExtendedSyntax.Optimising.InterproceduralDeadDataEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.InterproceduralDeadFunctionEliminationSpec
+                     Transformations.ExtendedSyntax.Optimising.InterproceduralDeadParameterEliminationSpec
                      Transformations.ExtendedSyntax.Optimising.NonSharedEliminationSpec
-                     Transformations.ExtendedSyntax.Optimising.SimpleDeadFunctionEliminationSpec
-                     Transformations.ExtendedSyntax.Optimising.SimpleDeadParameterEliminationSpec
-                     Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableEliminationSpec
-                     Transformations.ExtendedSyntax.Optimising.SparseCaseOptimisationSpec
                      Transformations.ExtendedSyntax.Optimising.TrivialCaseEliminationSpec
 
                      Transformations.Simplifying.RegisterIntroductionSpec

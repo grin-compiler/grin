@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, ViewPatterns #-}
-module Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableEliminationSpec where
+module Transformations.ExtendedSyntax.Optimising.DeadVariableEliminationSpec where
 
-import Transformations.ExtendedSyntax.Optimising.SimpleDeadVariableElimination
+import Transformations.ExtendedSyntax.Optimising.DeadVariableElimination
 import Transformations.ExtendedSyntax.EffectMap
 
 import Test.Hspec
@@ -55,7 +55,7 @@ spec = do
         |]
       let tyEnv   = inferTypeEnv before
           effMap  = effectMap (tyEnv, before)
-          dveExp  = simpleDeadVariableElimination effMap before
+          dveExp  = deadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "do not remove effectful case" $ do
@@ -94,7 +94,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "do not remove effectful case 2" $ do
@@ -120,7 +120,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
 
@@ -141,7 +141,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "pure case" $ do
@@ -167,7 +167,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "effectful case" $ do
@@ -198,7 +198,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "nested effectful case" $ do
@@ -233,7 +233,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "node pattern" $ do
@@ -253,7 +253,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
     it "pattern match" $ do
@@ -276,7 +276,7 @@ spec = do
         |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
 
   -- QUESTION: Does this belong here, or to DeadVariableEliminationSpec?
@@ -324,5 +324,5 @@ spec = do
           |]
       let tyEnv = inferTypeEnv before
           effMap = effectMap (tyEnv, before)
-          dveExp = simpleDeadVariableElimination effMap before
+          dveExp = deadVariableElimination effMap before
       dveExp `sameAs` after
