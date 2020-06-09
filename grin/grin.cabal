@@ -133,6 +133,11 @@ library
     Reducer.LLVM.TypeGen
     Reducer.PrimOps
     Reducer.Pure
+    Reducer.ExtendedSyntax.LLVM.Base
+    Reducer.ExtendedSyntax.LLVM.CodeGen
+    Reducer.ExtendedSyntax.LLVM.InferType
+    Reducer.ExtendedSyntax.LLVM.PrimOps
+    Reducer.ExtendedSyntax.LLVM.TypeGen
     Test.Assertions
     Test.Check
     Test.Grammar
