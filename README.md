@@ -107,8 +107,7 @@ Also check the corresponding [source code](https://github.com/grin-compiler/ghc-
 
 i.e.
 - [Lambda/Syntax.hs](https://github.com/grin-compiler/ghc-grin/tree/master/lambda-grin/src/Lambda/Syntax.hs) - front-end language defintion
-- [Lambda/GrinCodeGenBoxed.hs](https://github.com/grin-compiler/ghc-grin/tree/master/lambda-grin/src/Lambda/GrinCodeGenBoxed.hs) - code generator from front-end language to grin
-
+- [lambda-grin/test](https://github.com/grin-compiler/ghc-grin/tree/master/lambda-grin/test) - directory including generated Lambda and GRIN code
 
 ## Simplifying Transformations
 
