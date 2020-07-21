@@ -4,6 +4,13 @@
 
 - Sam Griffin
 
+<a href="http://holmusk.com/">
+  <img
+    width="30%"
+    src="https://raw.githubusercontent.com/grin-compiler/grin-compiler.github.io/master/assets/holmusk/Holmusk_masterlogo_blue.svg"
+    alt="Holmusk logo" />
+</a>
+
 <h2 align="center">Silver via Patreon</h2>
 
 - Timothy Klim
