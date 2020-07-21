@@ -21,8 +21,14 @@ Also check the GRIN transformation [example from Boquist PhD](http://nbviewer.ju
 
 ## Support
 
-The project is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md). Special thanks to our gold sponsor:
+The project is supported by these awesome [backers](https://github.com/grin-compiler/grin/blob/master/BACKERS.md). Special thanks to our gold sponsors:
 ### *Sam Griffin*
+<a href="http://holmusk.com/">
+  <img
+    width="30%"
+    src="https://raw.githubusercontent.com/grin-compiler/grin-compiler.github.io/master/assets/holmusk/Holmusk_masterlogo_blue.svg"
+    alt="Holmusk logo" />
+</a>
 
 If you'd like to join them, please consider become a backer or sponsor on [Patreon](https://www.patreon.com/csaba_hruska).  
 
