@@ -78,4 +78,5 @@
 - Nico
 - codygman
 - David Eichmann
+- Tyler Weir
 <!--10 end-->
