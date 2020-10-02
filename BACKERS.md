@@ -79,4 +79,5 @@
 - codygman
 - David Eichmann
 - Tyler Weir
+- Brian McKenna
 <!--10 end-->
