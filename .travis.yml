@@ -33,3 +33,12 @@ before_install:
 install:
   - stack update
   - travis_wait 120 stack --no-terminal --install-ghc test --only-dependencies --coverage
+
+script:
+  - mkdir .output
+  - stack test grin:grin-end-to-end-test grin:grin-test --coverage
+  - stack exec grin -- grin/grin/extended-syntax/sum_simple.grin --quiet --continue-on-failed-lint
+
+after_script:
+  - travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj
+  - ./shc --repo-token=8QkWaPJlRbej9X5N5AaXSommTtN7uEqRT combined all
