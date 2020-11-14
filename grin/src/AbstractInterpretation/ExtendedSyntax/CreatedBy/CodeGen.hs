@@ -206,6 +206,11 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
         R r -> emit IR.Move {srcReg = r, dstReg = funResultReg}
       pure Z
 
+    -- NOTE:
+    EBindF (SBlock{}, _) _ _ -> error $
+      "CBy does not handle un(bind)normalized code. " ++
+      "Possible fix: run BindNormalisation before CBy."
+
     -- NOTE: variable patterns
     EBindF (lhs, cgLhs) (VarPat var) (_, cgRhs) -> do
       lhsRes <- cgLhs
@@ -227,6 +232,7 @@ codeGen e = flip evalState emptyCGState $ para folder e >> mkCByProgramM where
       case lhsRes of
         Z -> error $ "pattern mismatch at CreatedBy bind codegen, expected Unit got " ++ show (PP $ ConstTagNode tag args)
         R r -> do
+          -- TODO: handle blocks here as well
           case lhs of
             SReturn val | producesNode val -> do
               addReg var r

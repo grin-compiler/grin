@@ -32,6 +32,19 @@ spec = do
       let (_, errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["undefined variable: p3"]
 
+    it "keeps track of as-pattern-bound variables" $ do
+      let program = withPrimPrelude [prog|
+        grinMain =
+          k0 <- pure 0
+          n0 <- pure (CInt k0)
+          (CInt k1) @ n1 <- pure n0
+          _1 <- pure n1
+          _2 <- pure k1
+          pure ()
+        |]
+      let (_, errors) = lint allWarnings Nothing program
+      lintErrors errors `shouldBe` []
+
   describe "Function call lint" $ do
     it "finds variable used as a function" $ do
       let program = [prog|
@@ -165,6 +178,17 @@ spec = do
           |]
       let (_,errors) = lint allWarnings Nothing program
       lintErrors errors `shouldBe` ["case has more than one default alternatives"]
+
+    it "keeps track of alt-bound variables" $ do
+      let program = [prog|
+            main =
+              n <- pure 3
+              case n of
+                0        @ m1 -> pure m1
+                #default @ m2 -> pure m2
+          |]
+      let (_,errors) = lint allWarnings Nothing program
+      lintErrors errors `shouldBe` []
 
   describe "Store lint" $ do
     it "finds primitive value as argument." $ do

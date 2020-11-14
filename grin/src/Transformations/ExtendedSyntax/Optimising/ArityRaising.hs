@@ -12,6 +12,8 @@ import Control.Monad.State.Strict
 
 import Grin.ExtendedSyntax.Grin (packName, unpackName)
 import Grin.ExtendedSyntax.Syntax
+-- TODO: remove this
+import Grin.ExtendedSyntax.Pretty
 import Grin.ExtendedSyntax.TypeEnv
 import Transformations.ExtendedSyntax.Names
 
@@ -88,7 +90,7 @@ phase1 :: TypeEnv -> Exp -> ArityData
 phase1 te = pdArityData . cata collect where
   collect :: ExpF Phase1Data -> Phase1Data
   collect = \case
-    SAppF fn ps       -> mempty { bdFunCall = map (fn,) ps, bdOther = ps }
+    SAppF fn ps       -> mempty { bdFunCall = map (fn,) ps }
     SFetchF var       -> mempty { bdFetch = Map.singleton var 1 }
     SUpdateF ptr var  -> mempty { bdOther = [ptr, var] }
     SReturnF val -> mempty { bdOther = variableInNode val ++ variableInVar val }
@@ -180,13 +182,12 @@ phase2 n arityData exp = evalVarM 0 exp $ cata change exp where
       | Just aritedParams <- Map.lookup f arityData -> do
         idx <- get
         let qsi = Map.fromList $ map (\(_,i,t) -> (i,t)) aritedParams
-            nsi = Map.fromList $ map (\(n,i,t) -> (n,t)) aritedParams
+            nsi = Map.fromList $ map (\(n,_,t) -> (n,t)) aritedParams
             psi = [1..] `zip` fps
             newPs = flip concatMap psi $ \case
               (_, n) | Just (t, jth) <- Map.lookup n nsi -> newParNames n jth
               (i, n) | Just (t, jth) <- Map.lookup i qsi -> fetchParNames n idx jth
-              -- (i, Undefined{}) | Just (_, jth) <- Map.lookup i qsi -> replicate jth (Undefined dead_t)
-              -- (_, other) -> [other]
+              (_, other) -> [other]
         fetches <- fmap catMaybes $ forM psi $ \case
           (_, n) | Just _ <- Map.lookup n nsi -> pure Nothing
           (i, n) | Just (t, jth) <- Map.lookup i qsi -> do
