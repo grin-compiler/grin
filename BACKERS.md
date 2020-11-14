@@ -1,13 +1,17 @@
 <h1 align="center">Sponsors &amp; Backers</h1>
 
-<h2 align="center">Silver via Patreon</h2>
+<h2 align="center">Gold via Patreon</h2>
 
 - Sam Griffin
+
+<h2 align="center">Silver via Patreon</h2>
+
 - Timothy Klim
 
 <h2 align="center">Bronze via Patreon</h2>
 
 - Stephen Diehl
+- Christopher Goes
 
 <h2 align="center">Generous Backers via Patreon ($50+)</h2>
 
@@ -17,6 +21,7 @@
 - Peter Kadlot
 - Michael Koloberdin
 - William Harvey
+- Steven Kane
 <!--50 end-->
 
 <h2 align="center">Backers via Patreon</h2>
@@ -40,4 +45,23 @@
 - Kametrixom Tikara
 - Denis Redozubov
 - Andrei Dziahel
+- Oleh Stolyar
+- Alberto Centelles
+- Tom Hunger
+- Mirzhan Irkegulov
+- James MacAulay
+- Adam S E
+- Michael
+- Chai T. Rex
+- Malte Brandy
+- Tanner Doshier
+- Brooklyn Zelenka
+- Jaseem Abid
+- Callan McGill
+- Simon
+- Owen Shepherd
+- Aly-Bocar Cissé
+- Ollie Charles
+- Barry Moore
+- Joe Hermaszewski
 <!--10 end-->

@@ -268,7 +268,7 @@ spec = do
       lintErrors errors `shouldBe` []
 
     -- NOTE: Bottom-up typing can only approximate the result of HPT.
-    it "can give false positive errors" $ do
+    it "avoids giving false positives" $ do
       let program = [prog|
           main =
             zero <- pure 0
@@ -291,10 +291,10 @@ spec = do
         |]
       let typeEnv = inferTypeEnv program
       let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for (COne) @ v. Expected pattern of type: {COne[]}, but got: {COne[],CTwo[]}"]
+      lintErrors errors `shouldBe` []
 
   describe "Producer lint" $ do
-    it "finds nodes in single return statment" $ do
+    it "finds nodes in single return statement" $ do
       let program = [prog|
           grinMain =
             pure (COne)
@@ -303,7 +303,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (COne)"]
 
-    it "finds nodes in last return statment" $ do
+    it "finds nodes in last return statement" $ do
       let program = [prog|
           grinMain =
             n <- pure (COne)
@@ -313,7 +313,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CTwo)"]
 
-    it "finds nodes in single return statment in case alternative" $ do
+    it "finds nodes in single return statement in case alternative" $ do
       let program = [prog|
           grinMain =
             zero <- pure 0
@@ -324,7 +324,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (COne)"]
 
-    it "finds nodes in last return statment in case alternative" $ do
+    it "finds nodes in last return statement in case alternative" $ do
       let program = [prog|
           grinMain =
             zero <- pure 0

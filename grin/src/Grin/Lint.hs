@@ -144,7 +144,7 @@ data WarningKind
   deriving (Enum, Eq, Ord, Show)
 
 allWarnings :: [WarningKind]
-allWarnings = [Syntax .. DDE]
+allWarnings = [toEnum 0 ..]
 
 noDDEWarnings :: [WarningKind]
 noDDEWarnings = [Syntax, Semantics]
@@ -304,7 +304,9 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
     -- Exp
     -- The result Fetch should be bound to a variable to make DDE simpler
     (_ :< EBindF leftExp lpat rightExp) -> do
-      let lhsCtx = if notVariable lpat then SEWithoutNodesCtx else SimpleExpCtx
+      let lhsCtx = if (isDDEMode && notVariable lpat)
+                      then SEWithoutNodesCtx
+                      else SimpleExpCtx
       check (EBindF (lhsCtx, leftExp) lpat (ExpCtx, rightExp)) $ do
         syntaxE ExpCtx
         when (isFetchF leftExp && notVariable lpat) (warning DDE [msg $ "The result of Fetch can only be bound to a variable: " ++ plainShow lpat])
@@ -315,8 +317,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
               expectedPatType <- normalizeType <$> mTypeOfValTE typeEnv lpat
               lhsType         <- normalizeType <$> extract leftExp
               pure $ do -- Lint
-                -- NOTE: This can still give false positive errors, because bottom-up typing can only approximate the result of HPT.
-                when (sameType expectedPatType lhsType == Just False) $ do
+                when (subType expectedPatType lhsType == Just False) $ do
                   warning Semantics $ [beforeMsg $ unwords
                     ["Invalid pattern match for", plainShow lpat ++ "." , "Expected pattern of type:", plainShow expectedPatType ++ ",", "but got:", plainShow lhsType]]
 
@@ -396,7 +397,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
 
     (_ :< SStoreF val) -> checkWithChild ctx $ do
       syntaxE SEWithoutNodesCtx
-      syntaxVal_ SimpleValCtx val
+      when isDDEMode $ syntaxVal_ SimpleValCtx val
       forM_ mTypeEnv $ \typeEnv -> do
         -- Store has given a primitive type
         case val of
@@ -451,6 +452,7 @@ lint warningKinds mTypeEnv exp@(Program exts _) =
       syntaxE AltCtx
 
     where
+      isDDEMode = DDE `elem` warningKinds
       syntaxE = syntaxExp ctx
       checkWithChild childCtx m = check ((childCtx,) <$> (getF e)) m
       getF (_ :< f) = f

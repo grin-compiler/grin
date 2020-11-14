@@ -66,7 +66,6 @@ pprint exp = trace (f exp) exp where
     SBlock {} -> "Block"
     a -> show a
 
-
 evalExp :: [External] -> Env -> Exp -> GrinS RTVal
 evalExp exts env exp = case {-pprint-} exp of
   EBind op pat exp -> evalSimpleExp exts env op >>= \v -> evalExp exts (bindPat env v pat) exp
@@ -117,11 +116,11 @@ evalSimpleExp exts env = \case
   SBlock a -> evalExp exts env a
   x -> error $ "evalSimpleExp: " ++ show x
 
-reduceFun :: Program -> Name -> IO RTVal
+reduceFun :: Program -> Name -> IO (RTVal, Maybe Statistics)
 reduceFun (Program exts l) n = do
   store <- emptyStore1
   (val, _, _) <- runRWST (evalExp exts mempty e) m store
-  pure val
+  pure (val, Nothing)
   where
     m = Map.fromList [(n,d) | d@(Def n _ _) <- l]
     e = case Map.lookup n m of

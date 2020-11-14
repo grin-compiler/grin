@@ -271,13 +271,13 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
     ECaseF scrut alts -> typeOfVar scrut >>= \case -- distinct implementation for tagged unions and simple types
       T_SimpleType{} -> do
         opVal <- codeGenVar scrut
-        codeGenCase opVal alts $ \_ -> pure ()
+        codeGenCase opVal opVal alts $ \_ -> pure ()
 
       T_NodeSet nodeSet -> do
         tuScrut <- codeGenVar scrut
         tagVal <- codeGenExtractTag tuScrut
         let valTU = taggedUnion nodeSet
-        codeGenCase tagVal alts $ \case
+        codeGenCase tuScrut tagVal alts $ \case
           NodePat tag args -> case Map.lookup tag $ tuMapping valTU of
             Nothing -> pure ()
             Just mapping -> do
@@ -332,6 +332,7 @@ codeGen typeEnv exp = toModule $ flip execState (emptyEnv {_envTypeEnv = typeEnv
 
     ProgramF exts defs -> do
       -- register prim fun lib
+      runtimeErrorExternal
       mapM registerPrimFunLib exts
       sequence_ (map snd defs) >> pure (O unitCGType unit)
 
@@ -412,8 +413,12 @@ convertStringOperand t o = case (cgType t,o) of
         }
   _ -> o
 
-codeGenCase :: Operand -> [(Alt, CG Result)] -> (CPat -> CG ()) -> CG Result
-codeGenCase opVal alts bindingGen = do
+-- NOTE: scrutValFull may differ from scrutValForSwitch
+-- They are the same when the scrutinee has a primite type,
+-- however, when the scurtinee is a node, scrutValFull holds the entire node value,
+-- and scrutValForSwitch only holds the value of the tag.
+codeGenCase :: Operand -> Operand -> [(Alt, CG Result)] -> (CPat -> CG ()) -> CG Result
+codeGenCase scrutValFull scrutValForSwitch alts bindingGen = do
   curBlockName <- gets _currentBlockName
 
   let isDefault = \case
@@ -424,7 +429,7 @@ codeGenCase opVal alts bindingGen = do
   when (length defaultAlts > 1) $ fail "multiple default patterns"
   let orderedAlts = defaultAlts ++ normalAlts
 
-  mapM_ (flip addConstant opVal) altNames
+  mapM_ (flip addConstant scrutValFull) altNames
 
   (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM orderedAlts $ \(Alt cpat _ _altName, altBody) -> do
     altCPatVal <- getCPatConstant cpat
@@ -458,7 +463,7 @@ codeGenCase opVal alts bindingGen = do
         then (if debugMode then mkName "error_block" else switchExit, altDests)
         else (snd $ head altDests, tail altDests)
   closeBlock $ Switch
-        { operand0'   = opVal
+        { operand0'   = scrutValForSwitch
         , defaultDest = defaultDest -- QUESTION: do we want to catch this error?
         , dests       = normalAltDests
         , metadata'   = []
@@ -582,6 +587,14 @@ registerPrimFunLib ext = do
       TySimple t -> typeGenSimpleType t
       rest       -> error $ "Unsupported type:" ++ show rest
 
+runtimeErrorExternal :: CG ()
+runtimeErrorExternal =
+  external
+    (typeGenSimpleType T_Unit)
+    (mkName "__runtime_error")
+    [(typeGenSimpleType T_Int64, mkName "x0")]
+
+errorBlock :: CG ()
 errorBlock = do
   activeBlock $ mkName "error_block"
   let functionType = FunctionType
@@ -594,7 +607,7 @@ errorBlock = do
     { tailCallKind        = Just Tail
     , callingConvention   = CC.C
     , returnAttributes    = []
-    , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName "_prim_int_print")
+    , function            = Right . ConstantOperand $ GlobalReference (ptr functionType) (mkName "__runtime_error")
     , arguments           = zip [ConstantOperand $ C.Int 64 666] (repeat [])
     , functionAttributes  = []
     , metadata            = []

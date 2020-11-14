@@ -123,7 +123,7 @@ prettyHighlightExternals externals exp = cata prettyExpAlgebra exp where
 
 
 instance Pretty Exp where
-  pretty = prettyProgram Simple
+  pretty = prettyProgram WithExternals
 
 instance Pretty Val where
   pretty = \case
@@ -208,8 +208,13 @@ instance Pretty EffectMap where
 prettyExternals :: [External] -> Doc
 prettyExternals exts = vcat (map prettyExtGroup $ groupBy (\a b -> eEffectful a == eEffectful b && eKind a == eKind b) exts) where
   prettyExtGroup [] = mempty
-  prettyExtGroup l@(a : _) = keyword "primop" <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
-    (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l] <> line)
+  prettyExtGroup l@(a : _) = pretty (eKind a) <+> (if eEffectful a then keyword "effectful" else keyword "pure") <$$> indent 2
+    (vsep [prettyFunction (eName, (eRetType, V.fromList eArgsType)) | External{..} <- l]) <> line
+
+instance Pretty ExternalKind where
+  pretty = \case
+    PrimOp  -> "primop"
+    FFI     -> "ffi"
 
 instance Pretty Ty where
   pretty = \case

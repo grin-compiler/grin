@@ -1,0 +1,6 @@
+outputExtension: "out"
+grinOptions:
+- "--quiet"
+- "--no-prelude"
+- "--idpe"
+- "--save-grin=$$$OUT$$$"

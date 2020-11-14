@@ -602,8 +602,8 @@ spec = do
       dde before `sameAs` after
 
     it "PNode" $ do
-      before <- loadTestData "dead-data-elimination/pnode_before.grin"
-      after  <- loadTestData "dead-data-elimination/pnode_after.grin"
+      before <- loadTestData "dead-data-elimination/pnode.grin"
+      after  <- loadTestData "dead-data-elimination/pnode.grin.expected"
       dde before `sameAs` after
 
     it "PNode Opt" $ do
@@ -676,8 +676,8 @@ spec = do
       dde before `sameAs` after
 
     it "Length" $ do
-      before <- loadTestData "dead-data-elimination/length_before.grin"
-      after  <- loadTestData "dead-data-elimination/length_after.grin"
+      before <- loadTestData "dead-data-elimination/length.grin"
+      after  <- loadTestData "dead-data-elimination/length.grin.expected"
       dde before `sameAs` after
 
   describe "Producer Grouping" $ do

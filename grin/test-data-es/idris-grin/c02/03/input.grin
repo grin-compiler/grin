@@ -1,0 +1,211 @@
+ffi effectful
+  _prim_string_print :: T_String
+                     -> T_Unit
+  
+ffi pure
+  _prim_string_concat :: T_String
+                      -> T_String
+                      -> T_String
+  _prim_string_len :: T_String
+                   -> T_Int64
+  _prim_int_str :: T_Int64
+                -> T_String
+  
+primop pure
+  _prim_int_add :: T_Int64
+                -> T_Int64
+                -> T_Int64
+  _prim_int_sub :: T_Int64
+                -> T_Int64
+                -> T_Int64
+  
+idris_int_sub idris_int_sub0 idris_int_sub1 =
+  (CGrInt idris_int_sub0_1) @ p.1 <- fetch idris_int_sub0
+  (CGrInt idris_int_sub1_1) @ p.0 <- fetch idris_int_sub1
+  idris_int_sub2 <- _prim_int_sub $ idris_int_sub0_1 idris_int_sub1_1
+  v.28 <- pure (CGrInt idris_int_sub2)
+  pure v.28
+
+idris_write_str idris_write_str1 idris_write_str2 =
+  (CGrString idris_write_str2_0) @ p.3 <- fetch idris_write_str2
+  p.2 <- _prim_string_print $ idris_write_str2_0
+  v.29 <- pure (CUnit)
+  pure v.29
+
+idris_str_concat idris_str_concat1 idris_str_concat2 =
+  (CGrString idris_str_concat1_0) @ p.5 <- fetch idris_str_concat1
+  (CGrString idris_str_concat2_0) @ p.4 <- fetch idris_str_concat2
+  idris_str_concat3 <- _prim_string_concat $ idris_str_concat1_0 idris_str_concat2_0
+  v.30 <- pure (CGrString idris_str_concat3)
+  pure v.30
+
+idris_str_len idris_str_len1 =
+  (CGrString idris_str_len2) @ p.6 <- fetch idris_str_len1
+  idris_str_len3 <- _prim_string_len $ idris_str_len2
+  v.31 <- pure (CGrInt idris_str_len3)
+  pure v.31
+
+idris_int_str idris_int_str1 =
+  (CGrInt idris_int_str1_0) @ p.7 <- fetch idris_int_str1
+  idris_int_str2 <- _prim_int_str $ idris_int_str1_0
+  v.32 <- pure (CGrString idris_int_str2)
+  pure v.32
+
+idris_lz_ext idris_lz_ext1 =
+  (CGrInt idris_lz_ext2) @ p.8 <- fetch idris_lz_ext1
+  x.8 <- pure 0
+  idris_lz_ext3 <- _prim_int_add $ idris_lz_ext2 x.8
+  v.33 <- pure (CGrInt idris_lz_ext3)
+  pure v.33
+
+grinMain =
+  r <- "idr_{runMain_0}" $
+  pure ()
+
+idr_Main.longer idr_Main.longer0 idr_Main.longer1 =
+  idr_Main.longer2_val_3 <- idris_str_len $ idr_Main.longer0
+  idr_Main.longer2 <- store idr_Main.longer2_val_3
+  idr_Main.longer2_val <- idris_lz_ext $ idr_Main.longer2
+  idr_Main.longer2_4 <- store idr_Main.longer2_val
+  idr_Main.longer3_val_5 <- idris_str_len $ idr_Main.longer1
+  idr_Main.longer3 <- store idr_Main.longer3_val_5
+  idr_Main.longer3_val <- idris_lz_ext $ idr_Main.longer3
+  idr_Main.longer3_6 <- store idr_Main.longer3_val
+  idr_Main.longer4_val <- "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0" $ idr_Main.longer2_4 idr_Main.longer3_6
+  idr_Main.longer4 <- store idr_Main.longer4_val
+  idr_Main.longer4_val_7 <- fetch idr_Main.longer4
+  case idr_Main.longer4_val_7 of
+    (Cidr_Prelude.Interfaces.GT) @ alt.0 ->
+      fetch idr_Main.longer2_4
+    #default @ alt.1 ->
+      fetch idr_Main.longer3_6
+
+idr_Main.main idr_Main.main0 =
+  y.5 <- pure #"12\n"
+  v.34 <- pure (CGrString y.5)
+  idr_Main.main1 <- store v.34
+  idr_Main.main1_val_8 <- idris_write_str $ idr_Main.main0 idr_Main.main1
+  idr_Main.main1_10 <- store idr_Main.main1_val_8
+  v.35 <- pure (Cidr_MkUnit)
+  idr_Main.main1_11 <- store v.35
+  y.6 <- pure #"Hello"
+  v.36 <- pure (CGrString y.6)
+  idr_Main.main2 <- store v.36
+  y.7 <- pure #"World!"
+  v.37 <- pure (CGrString y.7)
+  idr_Main.main3 <- store v.37
+  idr_Main.main2_val_15 <- idr_Main.longer $ idr_Main.main2 idr_Main.main3
+  idr_Main.main2_17 <- store idr_Main.main2_val_15
+  idr_Main.main2_val_14 <- idris_int_str $ idr_Main.main2_17
+  idr_Main.main2_18 <- store idr_Main.main2_val_14
+  y.8 <- pure #"\n"
+  v.38 <- pure (CGrString y.8)
+  idr_Main.main3_20 <- store v.38
+  idr_Main.main2_val_13 <- idris_str_concat $ idr_Main.main2_18 idr_Main.main3_20
+  idr_Main.main2_21 <- store idr_Main.main2_val_13
+  idr_Main.main2_val_12 <- idris_write_str $ idr_Main.main0 idr_Main.main2_21
+  idr_Main.main2_22 <- store idr_Main.main2_val_12
+  v.39 <- pure (Cidr_MkUnit)
+  idr_Main.main2_23 <- store v.39
+  y.9 <- pure #"3.1622776601683795\n"
+  v.40 <- pure (CGrString y.9)
+  idr_Main.main3_26 <- store v.40
+  idr_Main.main3_val_24 <- idris_write_str $ idr_Main.main0 idr_Main.main3_26
+  idr_Main.main3_27 <- store idr_Main.main3_val_24
+  v.41 <- pure (Cidr_MkUnit)
+  pure v.41
+
+"idr_{EVAL_0}" "idr_{EVAL_0}0" =
+  "idr_{EVAL_0}0_val" <- fetch "idr_{EVAL_0}0"
+  fetch "idr_{EVAL_0}0"
+
+"idr_{runMain_0}" =
+  v.42 <- pure (CErased)
+  "idr_{runMain_0}0" <- store v.42
+  "idr_{runMain_0}0_val" <- idr_Main.main $ "idr_{runMain_0}0"
+  "idr_{runMain_0}0_29" <- store "idr_{runMain_0}0_val"
+  "idr_{EVAL_0}" $ "idr_{runMain_0}0_29"
+
+"idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:01" =
+  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:01_val" <- fetch "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:01"
+  case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:01_val" of
+    (CGrInt "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0") @ alt.2 ->
+      case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0" of
+        0 @ alt.3 ->
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00_val" <- fetch "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00"
+          case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00_val" of
+            (CGrInt "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0_30") @ alt.4 ->
+              case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0_30" of
+                0 @ alt.5 ->
+                  v.43 <- pure (Cidr_Prelude.Interfaces.EQ)
+                  pure v.43
+                #default @ alt.6 ->
+                  y.10 <- pure 1
+                  v.44 <- pure (CGrInt y.10)
+                  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02" <- store v.44
+                  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02"
+                  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_32" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val"
+                  v.45 <- pure (Cidr_Prelude.Interfaces.GT)
+                  pure v.45
+            #default @ alt.7 ->
+              y.11 <- pure 1
+              v.46 <- pure (CGrInt y.11)
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_35" <- store v.46
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val_33" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_35"
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_36" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val_33"
+              v.47 <- pure (Cidr_Prelude.Interfaces.GT)
+              pure v.47
+        #default @ alt.8 ->
+          y.12 <- pure 1
+          v.48 <- pure (CGrInt y.12)
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_39" <- store v.48
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val_37" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:01" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_39"
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_40" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val_37"
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00_val_41" <- fetch "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00"
+          case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00_val_41" of
+            (CGrInt "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0_42") @ alt.9 ->
+              case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0_42" of
+                0 @ alt.10 ->
+                  v.49 <- pure (Cidr_Prelude.Interfaces.LT)
+                  pure v.49
+                #default @ alt.11 ->
+                  y.13 <- pure 1
+                  v.50 <- pure (CGrInt y.13)
+                  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03" <- store v.50
+                  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03"
+                  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_44" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val"
+                  "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0" $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_44" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_40"
+            #default @ alt.12 ->
+              y.14 <- pure 1
+              v.51 <- pure (CGrInt y.14)
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_47" <- store v.51
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val_45" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_47"
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_48" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val_45"
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0" $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_48" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_40"
+    #default @ alt.13 ->
+      y.15 <- pure 1
+      v.52 <- pure (CGrInt y.15)
+      "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_51" <- store v.52
+      "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val_49" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:01" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_51"
+      "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_52" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_val_49"
+      "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00_val_53" <- fetch "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00"
+      case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00_val_53" of
+        (CGrInt "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0_54") @ alt.14 ->
+          case "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0_cpat_LInt64_0_54" of
+            0 @ alt.15 ->
+              v.53 <- pure (Cidr_Prelude.Interfaces.LT)
+              pure v.53
+            #default @ alt.16 ->
+              y.16 <- pure 1
+              v.54 <- pure (CGrInt y.16)
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_57" <- store v.54
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val_55" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_57"
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_58" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val_55"
+              "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0" $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_58" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_52"
+        #default @ alt.17 ->
+          y.17 <- pure 1
+          v.55 <- pure (CGrInt y.17)
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_61" <- store v.55
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val_59" <- idris_int_sub $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:00" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_61"
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_62" <- store "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_val_59"
+          "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:0" $ "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:03_62" "idr_Prelude.Interfaces.Prelude.Nat.@Prelude.Interfaces.Ord$Nat:!compare:02_52"

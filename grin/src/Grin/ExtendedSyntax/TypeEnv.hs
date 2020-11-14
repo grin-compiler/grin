@@ -11,8 +11,8 @@ import Data.Map (Map)
 import Data.Set (Set)
 import Data.Vector (Vector)
 import qualified Data.Map as Map
-import qualified Data.Set as Set (fromList, toList)
-import qualified Data.Vector as Vector (fromList, toList, map)
+import qualified Data.Set as Set
+import qualified Data.Vector as Vector
 import Data.Bifunctor (bimap)
 import Data.Monoid
 import Data.Maybe (fromMaybe)
@@ -180,6 +180,29 @@ sameType _ (T_SimpleType T_Dead)                = Nothing
 sameType (T_SimpleType T_UnspecifiedLocation) _ = Nothing
 sameType _ (T_SimpleType T_UnspecifiedLocation) = Nothing
 sameType t1 t2 = Just $ t1 == t2
+
+subType :: Type -> Type -> Maybe Bool
+subType (T_SimpleType T_Dead) _ = Nothing
+subType _ (T_SimpleType T_Dead) = Nothing
+subType (T_SimpleType T_UnspecifiedLocation) _ = Nothing
+subType _ (T_SimpleType T_UnspecifiedLocation) = Nothing
+subType (T_SimpleType st1) (T_SimpleType st2) = Just $ simpleSubType st1 st2
+subType (T_NodeSet t1) (T_NodeSet t2) = do -- t1 <: t2
+  let ks1     = Map.keysSet t1
+  let ks2     = Map.keysSet t2
+  let subset  = ks1 `Set.isSubsetOf` ks2
+  pure $ subset && and  [ Vector.length v1 == Vector.length v2
+                          && (Vector.all id (Vector.zipWith simpleSubType v1 v2))
+                        | (t,v1)  <- Map.toList t1
+                        , Just v2 <- pure $ Map.lookup t t2
+                        ]
+subType _ _ = Nothing
+
+simpleSubType :: SimpleType -> SimpleType -> Bool
+simpleSubType T_UnspecifiedLocation (T_Location l) = True
+simpleSubType (T_Location ls1) (T_Location ls2) =
+  (Set.fromList ls1) `Set.isSubsetOf` (Set.fromList ls2)
+simpleSubType t1 t2 = t1 == t2
 
 ptrLocations :: TypeEnv -> Name -> [Loc]
 ptrLocations te p = case variableType te p of

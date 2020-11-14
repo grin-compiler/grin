@@ -105,3 +105,43 @@ spec = do
         funB c = pure ()
       |]
     deadFunctionElimination before `sameAs` after
+
+  it "externals" $ do
+    let before = [prog|
+        primop effectful
+          _prim_int_print :: T_Int64 -> T_Unit
+          _prim_read_int  :: T_Int64
+
+        primop pure
+          _prim_int_add   :: T_Int64 -> T_Int64 -> T_Int64
+
+        grinMain =
+          k  <- pure 0
+          _1 <- funA k
+          _2 <- _prim_int_print k
+          funB k
+
+        funA a = pure ()
+        funB b = funC b
+        funC c = pure ()
+
+        deadFunA d =
+          i <- _prim_read_int
+          pure d
+        deadFunB e = deadFunA e
+      |]
+    let after = [prog|
+        primop effectful
+          _prim_int_print :: T_Int64 -> T_Unit
+
+        grinMain =
+          k  <- pure 0
+          _1 <- funA k
+          _2 <- _prim_int_print k
+          funB k
+
+        funA a = pure ()
+        funB b = funC b
+        funC c = pure ()
+      |]
+    deadFunctionElimination before `sameAs` after

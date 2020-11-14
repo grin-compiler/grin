@@ -1,0 +1,171 @@
+ffi effectful
+  _prim_string_print :: T_String
+                     -> T_Unit
+  
+ffi pure
+  _prim_string_concat :: T_String
+                      -> T_String
+                      -> T_String
+  _prim_string_lt :: T_String
+                  -> T_String
+                  -> T_Int64
+  _prim_string_eq :: T_String
+                  -> T_String
+                  -> T_Int64
+  
+idris_write_str idris_write_str1 idris_write_str2 =
+  (CGrString idris_write_str2_0) @ p.1 <- fetch idris_write_str2
+  p.0 <- _prim_string_print $ idris_write_str2_0
+  v.29 <- pure (CUnit)
+  pure v.29
+
+idris_str_concat idris_str_concat1 idris_str_concat2 =
+  (CGrString idris_str_concat1_0) @ p.3 <- fetch idris_str_concat1
+  (CGrString idris_str_concat2_0) @ p.2 <- fetch idris_str_concat2
+  idris_str_concat3 <- _prim_string_concat $ idris_str_concat1_0 idris_str_concat2_0
+  v.30 <- pure (CGrString idris_str_concat3)
+  pure v.30
+
+idris_str_eq idris_str_eq1 idris_str_eq2 =
+  (CGrString idris_str_eq1_0) @ p.5 <- fetch idris_str_eq1
+  (CGrString idris_str_eq2_0) @ p.4 <- fetch idris_str_eq2
+  idris_str_eq3 <- _prim_string_eq $ idris_str_eq1_0 idris_str_eq2_0
+  v.31 <- pure (CGrInt idris_str_eq3)
+  pure v.31
+
+idris_str_lt idris_str_lt1 idris_str_lt2 =
+  (CGrString idris_str_lt1_0) @ p.7 <- fetch idris_str_lt1
+  (CGrString idris_str_lt2_0) @ p.6 <- fetch idris_str_lt2
+  idris_str_lt3 <- _prim_string_lt $ idris_str_lt1_0 idris_str_lt2_0
+  v.32 <- pure (CGrInt idris_str_lt3)
+  pure v.32
+
+grinMain =
+  r <- "idr_{runMain_0}" $
+  pure ()
+
+idr_Main.main idr_Main.main0 =
+  v.33 <- pure (CErased)
+  idr_Main.main1 <- store v.33
+  v.34 <- pure (CErased)
+  idr_Main.main2 <- store v.34
+  v.35 <- pure (C"idr_{U_Main.{main_0}_1}")
+  idr_Main.main3 <- store v.35
+  y.3 <- pure #"David Bowie"
+  v.36 <- pure (CGrString y.3)
+  idr_Main.main4 <- store v.36
+  y.4 <- pure #"Joni Mitchell"
+  v.37 <- pure (CGrString y.4)
+  idr_Main.main5 <- store v.37
+  idr_Main.main4_val_4 <- "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:0" $ idr_Main.main4 idr_Main.main5
+  idr_Main.main4_6 <- store idr_Main.main4_val_4
+  idr_Main.main4_val_7 <- fetch idr_Main.main4_6
+  idr_Main.main4_val <- case idr_Main.main4_val_7 of
+    (Cidr_Prelude.Interfaces.LT) @ alt.0 ->
+      v.38 <- pure (Cidr_Prelude.Bool.True)
+      pure v.38
+    #default @ alt.1 ->
+      v.39 <- pure (Cidr_Prelude.Bool.False)
+      pure v.39
+  idr_Main.main4_8 <- store idr_Main.main4_val
+  idr_Main.main1_val <- idr_Prelude.Interactive.printLn' $ idr_Main.main1 idr_Main.main2 idr_Main.main3 idr_Main.main4_8 idr_Main.main0
+  idr_Main.main1_9 <- store idr_Main.main1_val
+  v.40 <- pure (CErased)
+  idr_Main.main2_11 <- store v.40
+  v.41 <- pure (CErased)
+  idr_Main.main3_13 <- store v.41
+  v.42 <- pure (C"idr_{U_Main.{main_0}_1}")
+  idr_Main.main4_15 <- store v.42
+  y.5 <- pure #"David Bowie"
+  v.43 <- pure (CGrString y.5)
+  idr_Main.main5_19 <- store v.43
+  y.6 <- pure #"Joni Mitchell"
+  v.44 <- pure (CGrString y.6)
+  idr_Main.main6 <- store v.44
+  idr_Main.main5_val_17 <- "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:0" $ idr_Main.main5_19 idr_Main.main6
+  idr_Main.main5_20 <- store idr_Main.main5_val_17
+  idr_Main.main5_val_21 <- fetch idr_Main.main5_20
+  idr_Main.main5_val_16 <- case idr_Main.main5_val_21 of
+    (Cidr_Prelude.Interfaces.GT) @ alt.2 ->
+      v.45 <- pure (Cidr_Prelude.Bool.True)
+      pure v.45
+    #default @ alt.3 ->
+      v.46 <- pure (Cidr_Prelude.Bool.False)
+      pure v.46
+  idr_Main.main5_22 <- store idr_Main.main5_val_16
+  idr_Prelude.Interactive.printLn' $ idr_Main.main2_11 idr_Main.main3_13 idr_Main.main4_15 idr_Main.main5_22 idr_Main.main0
+
+idr_Prelude.Interactive.printLn' idr_Prelude.Interactive.printLn'0 idr_Prelude.Interactive.printLn'1 idr_Prelude.Interactive.printLn'2 idr_Prelude.Interactive.printLn'3 idr_Prelude.Interactive.printLn'4 =
+  idr_Prelude.Interactive.printLn'5_val_24 <- "idr_{APPLY_0}" $ idr_Prelude.Interactive.printLn'2 idr_Prelude.Interactive.printLn'3
+  idr_Prelude.Interactive.printLn'5 <- store idr_Prelude.Interactive.printLn'5_val_24
+  y.7 <- pure #"\n"
+  v.47 <- pure (CGrString y.7)
+  idr_Prelude.Interactive.printLn'6 <- store v.47
+  idr_Prelude.Interactive.printLn'5_val_23 <- idris_str_concat $ idr_Prelude.Interactive.printLn'5 idr_Prelude.Interactive.printLn'6
+  idr_Prelude.Interactive.printLn'5_25 <- store idr_Prelude.Interactive.printLn'5_val_23
+  idr_Prelude.Interactive.printLn'5_val <- idris_write_str $ idr_Prelude.Interactive.printLn'4 idr_Prelude.Interactive.printLn'5_25
+  idr_Prelude.Interactive.printLn'5_26 <- store idr_Prelude.Interactive.printLn'5_val
+  v.48 <- pure (Cidr_MkUnit)
+  pure v.48
+
+"idr_{APPLY_0}" "idr_{APPLY_0}0" "idr_{APPLY_0}1" =
+  "idr_{APPLY_0}0_val" <- fetch "idr_{APPLY_0}0"
+  case "idr_{APPLY_0}0_val" of
+    (C"idr_{U_Main.{main_0}_1}") @ alt.4 ->
+      "idr_Main.{main_0}" $ "idr_{APPLY_0}1"
+    #default @ alt.5 ->
+      v.49 <- pure (CErased)
+      pure v.49
+
+"idr_{EVAL_0}" "idr_{EVAL_0}0" =
+  "idr_{EVAL_0}0_val" <- fetch "idr_{EVAL_0}0"
+  fetch "idr_{EVAL_0}0"
+
+"idr_Main.{main_0}" "idr_Main.{main_0}0" =
+  "idr_Main.{main_0}0_val" <- fetch "idr_Main.{main_0}0"
+  case "idr_Main.{main_0}0_val" of
+    (Cidr_Prelude.Bool.False) @ alt.6 ->
+      y.8 <- pure #"False"
+      v.50 <- pure (CGrString y.8)
+      pure v.50
+    (Cidr_Prelude.Bool.True) @ alt.7 ->
+      y.9 <- pure #"True"
+      v.51 <- pure (CGrString y.9)
+      pure v.51
+
+"idr_{runMain_0}" =
+  v.52 <- pure (CErased)
+  "idr_{runMain_0}0" <- store v.52
+  "idr_{runMain_0}0_val" <- idr_Main.main $ "idr_{runMain_0}0"
+  "idr_{runMain_0}0_28" <- store "idr_{runMain_0}0_val"
+  "idr_{EVAL_0}" $ "idr_{runMain_0}0_28"
+
+"idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:0" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:00" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:01" =
+  "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:02_val" <- idris_str_eq $ "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:00" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:01"
+  "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:02" <- store "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:02_val"
+  "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:02_val_29" <- fetch "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:02"
+  case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:02_val_29" of
+    (CGrInt "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:0_cpat_LInt64_0") @ alt.8 ->
+      case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:0_cpat_LInt64_0" of
+        0 @ alt.9 ->
+          "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:03_val" <- idris_str_lt $ "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:00" "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:01"
+          "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:03" <- store "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:03_val"
+          "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:03_val_30" <- fetch "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:03"
+          case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:03_val_30" of
+            (CGrInt "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:0_cpat_LInt64_0_31") @ alt.10 ->
+              case "idr_Prelude.Interfaces.Prelude.Interfaces.@Prelude.Interfaces.Ord$String:!compare:0_cpat_LInt64_0_31" of
+                0 @ alt.11 ->
+                  v.53 <- pure (Cidr_Prelude.Interfaces.GT)
+                  pure v.53
+                #default @ alt.12 ->
+                  v.54 <- pure (Cidr_Prelude.Interfaces.LT)
+                  pure v.54
+            #default @ alt.13 ->
+              v.55 <- pure (Cidr_Prelude.Interfaces.LT)
+              pure v.55
+        #default @ alt.14 ->
+          v.56 <- pure (Cidr_Prelude.Interfaces.EQ)
+          pure v.56
+    #default @ alt.15 ->
+      v.57 <- pure (Cidr_Prelude.Interfaces.EQ)
+      pure v.57

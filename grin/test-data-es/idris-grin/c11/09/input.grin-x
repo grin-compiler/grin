@@ -1,0 +1,190 @@
+ffi effectful
+  _prim_string_print :: T_String -> T_Unit
+
+ffi pure
+  _prim_string_concat :: T_String -> T_String -> T_String
+
+primop pure
+  _prim_int_sub :: T_Int64 -> T_Int64 -> T_Int64
+
+idris_int_sub idris_int_sub0 idris_int_sub1 =
+  (CGrInt idris_int_sub0_1) @ p.1 <- fetch idris_int_sub0
+  (CGrInt idris_int_sub1_1) @ p.0 <- fetch idris_int_sub1
+  idris_int_sub2 <- _prim_int_sub $ idris_int_sub0_1 idris_int_sub1_1
+  v.29 <- pure (CGrInt idris_int_sub2)
+  pure v.29
+
+idris_write_str idris_write_str1 idris_write_str2 =
+  (CGrString idris_write_str2_0) @ p.3 <- fetch idris_write_str2
+  p.2 <- _prim_string_print $ idris_write_str2_0
+  v.30 <- pure (CUnit)
+  pure v.30
+
+idris_str_concat idris_str_concat1 idris_str_concat2 =
+  (CGrString idris_str_concat1_0) @ p.5 <- fetch idris_str_concat1
+  (CGrString idris_str_concat2_0) @ p.4 <- fetch idris_str_concat2
+  idris_str_concat3 <- _prim_string_concat $ idris_str_concat1_0 idris_str_concat2_0
+  v.31 <- pure (CGrString idris_str_concat3)
+  pure v.31
+
+grinMain =
+  r <- "idr_{runMain_0}" $
+  pure ()
+
+idr_Main.loopPrint0 idr_Main.loopPrint00 =
+  v.32 <- pure (C"idr_{U_Main.{loopPrint0_0}_1}" idr_Main.loopPrint00)
+  idr_Main.loopPrint01 <- store v.32
+  v.33 <- pure (C"idr_{U_Main.{loopPrint0_2}_1}" idr_Main.loopPrint00)
+  idr_Main.loopPrint02 <- store v.33
+  v.34 <- pure (Cidr_Main.Do idr_Main.loopPrint01 idr_Main.loopPrint02)
+  pure v.34
+
+idr_Main.loopPrint1 idr_Main.loopPrint10 =
+  v.35 <- pure (C"idr_{U_Main.{loopPrint0_0}_1}" idr_Main.loopPrint10)
+  idr_Main.loopPrint11 <- store v.35
+  v.36 <- pure (C"idr_{U_Main.{loopPrint1_5}_1}" idr_Main.loopPrint10)
+  idr_Main.loopPrint12 <- store v.36
+  v.37 <- pure (Cidr_Main.Do idr_Main.loopPrint11 idr_Main.loopPrint12)
+  pure v.37
+
+idr_Main.run idr_Main.run0 idr_Main.run1 idr_Main.run2 =
+  idr_Main.run0_val <- fetch idr_Main.run0
+  case idr_Main.run0_val of
+    (Cidr_Main.Dry) @ alt.0 ->
+      y.10 <- pure #"Out of fuel\n"
+      v.38 <- pure (CGrString y.10)
+      idr_Main.run3 <- store v.38
+      idr_Main.run3_val <- idris_write_str $ idr_Main.run2 idr_Main.run3
+      idr_Main.run3_16 <- store idr_Main.run3_val
+      v.39 <- pure (Cidr_MkUnit)
+      pure v.39
+    (Cidr_Main.More idr_Main.run3_17) @ alt.1 ->
+      (Cidr_Main.Do idr_Main.run4 idr_Main.run5) @ idr_Main.run1_val <- fetch idr_Main.run1
+      idr_Main.run6_val <- "idr_{APPLY_0}" $ idr_Main.run4 idr_Main.run2
+      idr_Main.run6 <- store idr_Main.run6_val
+      idr_Main.run7_val <- "idr_{EVAL_0}" $ idr_Main.run3_17
+      idr_Main.run7 <- store idr_Main.run7_val
+      idr_Main.run8_val_18 <- "idr_{APPLY_0}" $ idr_Main.run5 idr_Main.run6
+      idr_Main.run8 <- store idr_Main.run8_val_18
+      idr_Main.run8_val <- "idr_{EVAL_0}" $ idr_Main.run8
+      idr_Main.run8_19 <- store idr_Main.run8_val
+      idr_Main.run $ idr_Main.run7 idr_Main.run8_19 idr_Main.run2
+
+idr_Main.tank idr_Main.tank0 =
+  idr_Main.tank0_val <- fetch idr_Main.tank0
+  case idr_Main.tank0_val of
+    (CGrInt idr_Main.tank_cpat_LInt64_0) @ alt.2 ->
+      case idr_Main.tank_cpat_LInt64_0 of
+        0 @ alt.3 ->
+          v.40 <- pure (Cidr_Main.Dry)
+          pure v.40
+        #default @ alt.4 ->
+          y.11 <- pure 1
+          v.41 <- pure (CGrInt y.11)
+          idr_Main.tank1 <- store v.41
+          idr_Main.tank1_val <- idris_int_sub $ idr_Main.tank0 idr_Main.tank1
+          idr_Main.tank1_21 <- store idr_Main.tank1_val
+          v.42 <- pure (C"idr_{P_Main.{tank_6}_0}" idr_Main.tank1_21)
+          idr_Main.tank2 <- store v.42
+          v.43 <- pure (Cidr_Main.More idr_Main.tank2)
+          pure v.43
+    #default @ alt.5 ->
+      y.14 <- pure 1
+      v.44 <- pure (CGrInt y.14)
+      idr_Main.tank1_24 <- store v.44
+      idr_Main.tank1_val_22 <- idris_int_sub $ idr_Main.tank0 idr_Main.tank1_24
+      idr_Main.tank1_25 <- store idr_Main.tank1_val_22
+      v.45 <- pure (C"idr_{P_Main.{tank_6}_0}" idr_Main.tank1_25)
+      idr_Main.tank2_27 <- store v.45
+      v.46 <- pure (Cidr_Main.More idr_Main.tank2_27)
+      pure v.46
+
+"idr_{APPLY_0}" "idr_{APPLY_0}0" "idr_{APPLY_0}1" =
+  "idr_{APPLY_0}0_val" <- fetch "idr_{APPLY_0}0"
+  case "idr_{APPLY_0}0_val" of
+    (C"idr_{U_Main.{loopPrint0_0}_1}" "idr_{APPLY_0}2") @ alt.6 ->
+      "idr_Main.{loopPrint0_0}" $ "idr_{APPLY_0}2" "idr_{APPLY_0}1"
+    (C"idr_{U_Main.{loopPrint0_2}_1}" "idr_{APPLY_0}2_28") @ alt.7 ->
+      "idr_Main.{loopPrint0_2}" $ "idr_{APPLY_0}2_28" "idr_{APPLY_0}1"
+    (C"idr_{U_Main.{loopPrint1_5}_1}" "idr_{APPLY_0}2_29") @ alt.8 ->
+      "idr_Main.{loopPrint1_5}" $ "idr_{APPLY_0}2_29" "idr_{APPLY_0}1"
+    #default @ alt.9 ->
+      v.47 <- pure (CErased)
+      pure v.47
+
+"idr_{EVAL_0}" "idr_{EVAL_0}0" =
+  "idr_{EVAL_0}0_val" <- fetch "idr_{EVAL_0}0"
+  case "idr_{EVAL_0}0_val" of
+    (C"idr_{P_Main.{loopPrint0_1}_0}" "idr_{EVAL_0}1") @ alt.10 ->
+      "idr_{EVAL_0}0_val_30" <- "idr_Main.{loopPrint0_1}" $ "idr_{EVAL_0}1"
+      p.6 <- update "idr_{EVAL_0}0" "idr_{EVAL_0}0_val_30"
+      pure "idr_{EVAL_0}0_val_30"
+    (C"idr_{P_Main.{loopPrint1_4}_0}" "idr_{EVAL_0}1_31") @ alt.11 ->
+      "idr_{EVAL_0}0_val_32" <- "idr_Main.{loopPrint1_4}" $ "idr_{EVAL_0}1_31"
+      p.7 <- update "idr_{EVAL_0}0" "idr_{EVAL_0}0_val_32"
+      pure "idr_{EVAL_0}0_val_32"
+    (C"idr_{P_Main.{tank_6}_0}" "idr_{EVAL_0}1_33") @ alt.12 ->
+      "idr_{EVAL_0}0_val_34" <- "idr_Main.{tank_6}" $ "idr_{EVAL_0}1_33"
+      p.8 <- update "idr_{EVAL_0}0" "idr_{EVAL_0}0_val_34"
+      pure "idr_{EVAL_0}0_val_34"
+    #default @ alt.13 ->
+      fetch "idr_{EVAL_0}0"
+
+"idr_Main.{loopPrint0_0}" "idr_Main.{loopPrint0_0}0" "idr_Main.{loopPrint0_0}1" =
+  y.17 <- pure #"\n"
+  v.48 <- pure (CGrString y.17)
+  "idr_Main.{loopPrint0_0}2" <- store v.48
+  "idr_Main.{loopPrint0_0}2_val_35" <- idris_str_concat $ "idr_Main.{loopPrint0_0}0" "idr_Main.{loopPrint0_0}2"
+  "idr_Main.{loopPrint0_0}2_37" <- store "idr_Main.{loopPrint0_0}2_val_35"
+  "idr_Main.{loopPrint0_0}2_val" <- idris_write_str $ "idr_Main.{loopPrint0_0}1" "idr_Main.{loopPrint0_0}2_37"
+  "idr_Main.{loopPrint0_0}2_38" <- store "idr_Main.{loopPrint0_0}2_val"
+  v.49 <- pure (Cidr_MkUnit)
+  pure v.49
+
+"idr_{runMain_0}" =
+  y.18 <- pure 5
+  v.50 <- pure (CGrInt y.18)
+  "idr_{runMain_0}0" <- store v.50
+  "idr_{runMain_0}0_val_40" <- idr_Main.tank $ "idr_{runMain_0}0"
+  "idr_{runMain_0}0_42" <- store "idr_{runMain_0}0_val_40"
+  y.19 <- pure #"vroom"
+  v.51 <- pure (CGrString y.19)
+  "idr_{runMain_0}1" <- store v.51
+  "idr_{runMain_0}1_val" <- idr_Main.loopPrint0 $ "idr_{runMain_0}1"
+  "idr_{runMain_0}1_44" <- store "idr_{runMain_0}1_val"
+  v.52 <- pure (CErased)
+  "idr_{runMain_0}2" <- store v.52
+  "idr_{runMain_0}0_val_39" <- idr_Main.run $ "idr_{runMain_0}0_42" "idr_{runMain_0}1_44" "idr_{runMain_0}2"
+  "idr_{runMain_0}0_45" <- store "idr_{runMain_0}0_val_39"
+  y.20 <- pure 5
+  v.53 <- pure (CGrInt y.20)
+  "idr_{runMain_0}1_48" <- store v.53
+  "idr_{runMain_0}1_val_46" <- idr_Main.tank $ "idr_{runMain_0}1_48"
+  "idr_{runMain_0}1_49" <- store "idr_{runMain_0}1_val_46"
+  y.21 <- pure #"broom"
+  v.54 <- pure (CGrString y.21)
+  "idr_{runMain_0}2_52" <- store v.54
+  "idr_{runMain_0}2_val_50" <- idr_Main.loopPrint1 $ "idr_{runMain_0}2_52"
+  "idr_{runMain_0}2_53" <- store "idr_{runMain_0}2_val_50"
+  v.55 <- pure (CErased)
+  "idr_{runMain_0}3" <- store v.55
+  "idr_{runMain_0}0_val" <- idr_Main.run $ "idr_{runMain_0}1_49" "idr_{runMain_0}2_53" "idr_{runMain_0}3"
+  "idr_{runMain_0}0_54" <- store "idr_{runMain_0}0_val"
+  "idr_{EVAL_0}" $ "idr_{runMain_0}0_54"
+
+"idr_Main.{loopPrint0_1}" "idr_Main.{loopPrint0_1}0" =
+  idr_Main.loopPrint0 $ "idr_Main.{loopPrint0_1}0"
+
+"idr_Main.{loopPrint0_2}" "idr_Main.{loopPrint0_2}0" "idr_Main.{loopPrint0_2}1" =
+  v.56 <- pure (C"idr_{P_Main.{loopPrint0_1}_0}" "idr_Main.{loopPrint0_2}0")
+  pure v.56
+
+"idr_Main.{loopPrint1_4}" "idr_Main.{loopPrint1_4}0" =
+  idr_Main.loopPrint1 $ "idr_Main.{loopPrint1_4}0"
+
+"idr_Main.{loopPrint1_5}" "idr_Main.{loopPrint1_5}0" "idr_Main.{loopPrint1_5}1" =
+  v.57 <- pure (C"idr_{P_Main.{loopPrint1_4}_0}" "idr_Main.{loopPrint1_5}0")
+  pure v.57
+
+"idr_Main.{tank_6}" "idr_Main.{tank_6}0" =
+  idr_Main.tank $ "idr_Main.{tank_6}0"

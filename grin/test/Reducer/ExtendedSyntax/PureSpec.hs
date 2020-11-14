@@ -2,6 +2,7 @@
 module Reducer.ExtendedSyntax.PureSpec where
 
 import Reducer.ExtendedSyntax.Base
+import Reducer.ExtendedSyntax.PrimOps
 import Reducer.ExtendedSyntax.Pure
 
 import Data.Text
@@ -15,6 +16,10 @@ import Grin.ExtendedSyntax.PrimOpsPrelude
 
 runTests :: IO ()
 runTests = hspec spec
+
+-- TODO: tests for statistics
+simpleEval :: Program -> IO RTVal
+simpleEval prog = reduceFunWithoutStats (EvalPlugin evalPrimOp) prog "grinMain"
 
 spec :: Spec
 spec = do
@@ -32,7 +37,7 @@ spec = do
               #True  @ alt1 -> pure k
               #False @ alt2 -> pure 0
         |]
-        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 7)
+        simpleEval program `shouldReturn` RT_Lit (LInt64 7)
 
     describe "as-patterns" $ do
       it "pure" $ do
@@ -44,7 +49,7 @@ spec = do
             (CInt k2) @ _1 <- pure v1
             pure k2
         |]
-        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 0)
+        simpleEval program `shouldReturn` RT_Lit (LInt64 0)
 
       it "fetch" $ do
         let program = withPrimPrelude [prog|
@@ -56,7 +61,7 @@ spec = do
             (CInt k2) @ _1 <- pure v1
             pure k2
         |]
-        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 0)
+        simpleEval program `shouldReturn` RT_Lit (LInt64 0)
 
     describe "case expressions" $ do
       it "literal scrutinee" $ do
@@ -67,7 +72,7 @@ spec = do
               #True  @ alt1 -> pure alt1
               #False @ alt2 -> pure alt2
         |]
-        reduceFun program "grinMain" `shouldReturn` RT_Lit (LBool True)
+        simpleEval program `shouldReturn` RT_Lit (LBool True)
 
       it "node scrutinee" $ do
         let program = [prog|
@@ -77,7 +82,7 @@ spec = do
               (COne)   @ alt1 -> pure 1
               #default @ alt2 -> pure 0
         |]
-        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 1)
+        simpleEval program `shouldReturn` RT_Lit (LInt64 1)
 
     describe "scoping" $ do
       it "multiple independent calls" $ do
@@ -94,7 +99,7 @@ spec = do
             (CInt k) @ _2 <- pure x
             pure k
         |]
-        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 2)
+        simpleEval program `shouldReturn` RT_Lit (LInt64 2)
 
       it "recursive calls" $ do
         let program = [prog|
@@ -115,15 +120,15 @@ spec = do
               #False @ alt2 ->
                 pure k
         |]
-        reduceFun program "grinMain" `shouldReturn` RT_Lit (LInt64 2)
+        simpleEval program `shouldReturn` RT_Lit (LInt64 2)
 
     describe "complex" $ do
 
       it "sum_simple" $ do
-        reduceFun sumSimple "grinMain" `shouldReturn` RT_Lit (LInt64 50005000)
+        simpleEval sumSimple `shouldReturn` RT_Lit (LInt64 50005000)
 
       it "sum_simple_opt" $ do
-        reduceFun sumSimpleOpt "grinMain" `shouldReturn` RT_Lit (LInt64 50005000)
+        simpleEval sumSimpleOpt `shouldReturn` RT_Lit (LInt64 50005000)
 
 
 sumSimple :: Exp

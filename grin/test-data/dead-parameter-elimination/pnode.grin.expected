@@ -1,0 +1,68 @@
+
+grinMain =
+  a0 <- pure (CInt 5)
+  a1 <- pure (CInt 5)
+  a2 <- pure (CInt 5)
+  p0 <- store a0
+  p1 <- store a1
+  p2 <- store a2
+  foo3 <- pure (P3foo)
+  pfoo3 <- store foo3
+  foo3ap <- pure (Fap pfoo3 p0)
+  pfoo3ap <- store foo3ap
+  foo2 <- eval $ pfoo3ap
+  pfoo2 <- store foo2
+  foo2ap <- pure (Fap pfoo2 p1)
+  pfoo2ap <- store foo2ap
+  foo1 <- eval $ pfoo2ap
+  pfoo1 <- store foo1
+  foo1ap <- pure (Fap pfoo1 p2)
+  pfoo1ap <- store foo1ap
+  fooRet <- eval $ pfoo1ap
+  pure fooRet
+
+foo y0 =
+  z0 <- pure (#undefined :: #ptr)
+  x0 <- pure (#undefined :: #ptr)
+  y0' <- eval $ y0
+  pure y0'
+
+apply pf cur =
+  case pf of
+    (P3foo) ->
+      n0 <- pure (P2foo cur)
+      pure n0
+    (P2foo v0) ->
+      n1 <- pure (P1foo v0 cur)
+      pure n1
+    (P1foo v1 v2) ->
+      n2 <- foo $ v2
+      pure n2
+
+ap f x =
+  f' <- eval $ f
+  apply $ f' x
+
+eval p =
+  v <- fetch p
+  case v of
+    (CInt n) ->
+      pure v
+    (P3foo) ->
+      pure v
+    (P2foo v3) ->
+      pure v
+    (P1foo v4 v5) ->
+      pure v
+    (Ffoo b0 b1 b2) ->
+      w0 <- foo $ b1
+      update p w0
+      pure w0
+    (Fapply g y) ->
+      w1 <- apply $ g y
+      update p w1
+      pure w1
+    (Fap h z) ->
+      w2 <- ap $ h z
+      update p w2
+      pure w2

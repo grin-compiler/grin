@@ -224,14 +224,31 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Invalid pattern match for (CInt x). Expected pattern of type: {CInt[T_Dead]}, but got: {CFloat[T_Float]}"]
 
+    it "doesn't alert over-approximated binds" $ do
+      let program = [prog|
+          main =
+            i <- pure (CInt 1)
+            f <- pure (CFloat 1.0)
+            l <- store i
+            update l f
+            v <- fetch l
+            (CFloat f2) <- pure v
+            pure ()
+        |]
+      let typeEnv = inferTypeEnv program
+      let (_, errors) = lint allWarnings (Just typeEnv) program
+      lintErrors errors `shouldBe` []
+
     it "disregards variable patterns" $ do
       let program = [prog|
           main =
-            n0 <- pure (CInt 0)
+            k0 <- pure 0
+            n0 <- pure (CInt k0)
             n1 <- case n0 of
               (CInt c0) -> pure n0
               (CFloat c1) ->
-                a0 <- pure (CFloat 2.0)
+                k1 <- pure 2.0
+                a0 <- pure (CFloat k1)
                 pure a0
             pure ()
         |]
@@ -239,30 +256,8 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` []
 
-    -- NOTE: Bottom-up typing can only approximate the result of HPT.
-    it "can give false positive errors" $ do
-      let program = [prog|
-          main =
-            n0 <- case 0 of
-              0 ->
-                n1 <- pure (CInt 0)
-                pure n1
-              1 ->
-                n2 <- pure (CFloat 0.0)
-                pure n2
-            (CInt x) <- case n0 of
-              (CInt c0) -> pure n0
-              (CFloat c1) ->
-                a0 <- pure (CInt 0)
-                pure a0
-            pure ()
-        |]
-      let typeEnv = inferTypeEnv program
-      let (_, errors) = lint allWarnings (Just typeEnv) program
-      lintErrors errors `shouldBe` ["Invalid pattern match for (CInt x). Expected pattern of type: {CInt[T_Int64]}, but got: {CFloat[T_Float],CInt[T_Int64]}"]
-
   describe "Producer lint" $ do
-    it "finds nodes in single return statment" $ do
+    it "finds nodes in single return statement" $ do
       let program = [prog|
           grinMain =
             pure (CInt 5)
@@ -271,7 +266,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
-    it "finds nodes in last return statment" $ do
+    it "finds nodes in last return statement" $ do
       let program = [prog|
           grinMain =
             n <- pure (CInt 0)
@@ -281,7 +276,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
-    it "finds nodes in single return statment in case alternative" $ do
+    it "finds nodes in single return statement in case alternative" $ do
       let program = [prog|
           grinMain =
             case 0 of
@@ -291,7 +286,7 @@ spec = do
       let (_, errors) = lint allWarnings (Just typeEnv) program
       lintErrors errors `shouldBe` ["Last return expressions can only return non-node values: pure (CInt 5)"]
 
-    it "finds nodes in last return statment in case alternative" $ do
+    it "finds nodes in last return statement in case alternative" $ do
       let program = [prog|
           grinMain =
             case 0 of

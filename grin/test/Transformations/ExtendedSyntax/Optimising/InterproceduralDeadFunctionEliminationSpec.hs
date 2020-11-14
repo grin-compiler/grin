@@ -145,3 +145,21 @@ spec = do
               _prim_int_print $ k0
           |]
       dfe before `sameAs` after
+
+    it "nullary effectful primop" $ do
+      let before = withPrimPrelude [prog|
+            grinMain =
+              k <- f
+              pure ()
+
+            f = _prim_read_string
+          |]
+
+      let after = withPrimPrelude [prog|
+            grinMain =
+              k <- f
+              pure ()
+
+            f = _prim_read_string
+          |]
+      dfe before `sameAs` after
