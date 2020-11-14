@@ -115,6 +115,9 @@ library
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
     Grin.ExtendedSyntax.GADT
+    Pipeline.ExtendedSyntax.Eval
+    Pipeline.ExtendedSyntax.Optimizations
+    Pipeline.ExtendedSyntax.Pipeline
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -321,9 +324,11 @@ test-suite grin-test
                      ExtendedSyntax.LintSpec
                      ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec
+                     ExtendedSyntax.PipelineSpec
                      ExtendedSyntax.PrimOpsSpec
                      ExtendedSyntax.TestSpec
                      Transformations.ExtendedSyntax.BindNormalisationSpec
+                     Transformations.ExtendedSyntax.ConfluenceSpec
                      Transformations.ExtendedSyntax.ConversionSpec
                      Transformations.ExtendedSyntax.MangleNamesSpec
                      Transformations.ExtendedSyntax.StaticSingleAssignmentSpec
@@ -377,6 +382,7 @@ test-suite grin-test
                      Transformations.BindNormalisationSpec
                      Transformations.ConfluenceSpec
                      Transformations.MangleNamesSpec
+                     Samples.ExtendedSyntax.SumListSpec
                      Samples.SumListSpec
                      Samples.ArityFullRemoveSpec
                      LintSpec
