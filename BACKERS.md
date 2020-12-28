@@ -30,6 +30,7 @@
 - William Harvey
 - Steven Kane
 - Carl Hedgren
+- Adam Conner-Sax
 <!--50 end-->
 
 <h2 align="center">Backers via Patreon</h2>
