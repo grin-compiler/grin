@@ -84,4 +84,5 @@
 - Brian McKenna
 - Heneli Kailahi
 - imdoor
+- Gergo Erdi
 <!--10 end-->
