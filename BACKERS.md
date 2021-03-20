@@ -87,4 +87,6 @@
 - imdoor
 - Gergo Erdi
 - David Johnson
+- Soares Chen
+- Jan Hrček
 <!--10 end-->
