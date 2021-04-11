@@ -32,6 +32,8 @@
 - Carl Hedgren
 - Adam Conner-Sax
 - Meng Weng Wong
+- Andrei Dziahel
+- Rune Svendsen
 <!--50 end-->
 
 <h2 align="center">Backers via Patreon</h2>
@@ -54,7 +56,6 @@
 - Alex B
 - Kametrixom Tikara
 - Denis Redozubov
-- Andrei Dziahel
 - Oleh Stolyar
 - Alberto Centelles
 - Tom Hunger
