@@ -1,14 +1,15 @@
 let
-  pkgs = import ./nix/packages.nix {};
-  haskellPkgs = import ./.;
+  sources = import ./nix/sources.nix {};
+  nixpkgs = import sources.nixpkgs {};
+  pkgs = import ./default.nix;
 in
-  haskellPkgs.shellFor {
-    buildInputs = with pkgs.haskellPackages; [
+  pkgs.shellFor {
+    buildInputs = with nixpkgs.haskellPackages; [
       hlint
       ghcid
     ];
 
-    GRIN_CC = "${pkgs.clang_7}/bin/clang";
-    GRIN_OPT = "${pkgs.llvm_7}/bin/opt";
-    GRIN_LLC = "${pkgs.llvm_7}/bin/llc";
+    GRIN_CC = "${nixpkgs.clang_7}/bin/clang";
+    GRIN_OPT = "${nixpkgs.llvm_7}/bin/opt";
+    GRIN_LLC = "${nixpkgs.llvm_7}/bin/llc";
   }
