@@ -1,8 +1,7 @@
 let
-  pkgs = import ./nix/packages.nix {};
-  haskellPkgs = import ./.;
+  pkgs = import ./default.nix;
 in
-  haskellPkgs.shellFor {
+  pkgs.shellFor {
     buildInputs = with pkgs.haskellPackages; [
       hlint
       ghcid
