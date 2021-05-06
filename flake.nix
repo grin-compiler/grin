@@ -34,6 +34,11 @@
           cabal = "latest";
           hlint = "latest";
           haskell-language-server = "latest";
+
+          # Env
+          GRIN_CC = "${pkgs.clang_7}/bin/clang";
+          GRIN_OPT = "${pkgs.llvm_7}/bin/opt";
+          GRIN_LLC = "${pkgs.llvm_7}/bin/llc";
         };
       };
     }
