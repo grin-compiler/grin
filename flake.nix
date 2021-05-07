@@ -27,9 +27,19 @@
       ];
       pkgs = import nixpkgs { inherit system overlays; };
       flake = pkgs.grinProject.flake {};
+      executable = "grin:exe:grin";
+      app = flake-utils.lib.mkApp {
+        name = "grin";
+        exePath = "/bin/grin";
+        drv = self.packages.${system}.${executable};
+      };
     in flake // {
       # Built by `nix build .`
-      defaultPackage = flake.packages."grin:exe:grin";
+      defaultPackage = flake.packages.${executable};
+
+      # `nix run`
+      apps.grin = app;
+      defaultApp = app;
 
       # This is used by `nix develop .` to open a shell for use with
       # `cabal`, `hlint` and `haskell-language-server`
