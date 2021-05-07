@@ -12,6 +12,9 @@
     let
       llvm-overlay = self: super: {
         llvm-config = self.llvm_7;
+        GRIN_CC = "${pkgs.clang_7}/bin/clang";
+        GRIN_OPT = "${pkgs.llvm_7}/bin/opt";
+        GRIN_LLC = "${pkgs.llvm_7}/bin/llc";
       };
       overlays = [ haskellNix.overlay
         (final: prev: {
@@ -48,12 +51,12 @@
           cabal = "latest";
           hlint = "latest";
           haskell-language-server = "latest";
-
-          # Env
-          GRIN_CC = "${pkgs.clang_7}/bin/clang";
-          GRIN_OPT = "${pkgs.llvm_7}/bin/opt";
-          GRIN_LLC = "${pkgs.llvm_7}/bin/llc";
         };
+
+        # Env
+        GRIN_CC = "${pkgs.clang_7}/bin/clang";
+        GRIN_OPT = "${pkgs.llvm_7}/bin/opt";
+        GRIN_LLC = "${pkgs.llvm_7}/bin/llc";
       };
     }
   );
