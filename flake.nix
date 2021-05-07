@@ -10,19 +10,23 @@
   outputs = { self, nixpkgs, flake-utils, haskellNix }:
   flake-utils.lib.eachDefaultSystem (system:
     let
+      llvm-overlay = self: super: {
+        llvm-config = self.llvm_7;
+      };
       overlays = [ haskellNix.overlay
         (final: prev: {
             # This overlay adds our project to pkgs
             grinProject =
-              final.haskell-nix.project' {
+              final.haskell-nix.stackProject' {
+                name = "grin";
                 src = ./.;
-                compiler-nix-name = "ghc8104";
+                compiler-nix-name = "ghc865";
               };
             })
+          llvm-overlay
       ];
       pkgs = import nixpkgs { inherit system overlays; };
       flake = pkgs.grinProject.flake {};
-      packageName = "grin";
     in flake // {
       # Built by `nix build .`
       defaultPackage = flake.packages."grin:exe:grin";
