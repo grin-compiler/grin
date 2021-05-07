@@ -33,3 +33,4 @@ grin/.end-to-end-test/
 .ghc.environment.*
 hie.yaml
 *.lock
+result
