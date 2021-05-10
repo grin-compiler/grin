@@ -92,4 +92,5 @@
 - Jan Hrček
 - Adam Flott
 - Rion Boom Crabhands Keon
+- Shae Erisson
 <!--10 end-->
