@@ -103,6 +103,7 @@ phase1 te = pdArityData . cata collect where
             , isJust mtag
             , p `notElem` (bdOther body)
             , p `notElem` (snd <$> (filter ((/=fn) . fst) (bdFunCall body)))
+            , fn /= "grinMain"
             ]
       in FunData $ case funData of
           [] -> Map.empty
