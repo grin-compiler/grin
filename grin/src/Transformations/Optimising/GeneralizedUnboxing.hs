@@ -92,7 +92,7 @@ functionsToUnbox te (Program exts defs) = result where
 
   nonCandidateTailCallMap = Map.withoutKeys tranisitiveTailCalls result0
   candidateCalledByNonCandidate = (Set.unions $ Map.elems nonCandidateTailCallMap) `Set.intersection` result0
-  result = result0 `Set.difference` candidateCalledByNonCandidate
+  result = Set.delete "grinMain" $ result0 `Set.difference` candidateCalledByNonCandidate
 
   result0 = Set.fromList $ step initial
   initial = map funName $ filter (doesReturnAKnownProduct te . funName) defs
