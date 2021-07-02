@@ -13,9 +13,14 @@ build-type:          Simple
 --extra-source-files:  README.md
 cabal-version:       >=1.10
 
+data-files:
+  datalog/hpt/hpt.dl
+
 library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
+  other-modules:
+    Paths_grin
   exposed-modules:
     AbstractInterpretation.ExtendedSyntax.IR
     AbstractInterpretation.ExtendedSyntax.PrettyIR
@@ -115,6 +120,7 @@ library
     Grin.ExtendedSyntax.TypeEnv
     Grin.ExtendedSyntax.TypeEnvDefs
     Grin.ExtendedSyntax.GADT
+    Grin.ExtendedSyntax.SouffleHPT
     Pipeline.Eval
     Pipeline.Optimizations
     Pipeline.Pipeline
@@ -158,6 +164,7 @@ library
     Transformations.ExtendedSyntax.Optimising.CSE
     Transformations.ExtendedSyntax.Optimising.EvaluatedCaseElimination
     Transformations.ExtendedSyntax.Optimising.TrivialCaseElimination
+    Transformations.ExtendedSyntax.Normalisation
 
     Transformations.BindNormalisation
     Transformations.CountVariableUse
@@ -247,7 +254,8 @@ library
     random,
     set-extra,
     deepseq,
-    binary
+    binary,
+    souffle-haskell
 
   default-language:    Haskell2010
 
@@ -372,6 +380,7 @@ test-suite grin-test
                      AbstractInterpretation.ExtendedSyntax.LiveVariableSpec
                      AbstractInterpretation.ExtendedSyntax.OptimiseAbstractProgramSpec
                      AbstractInterpretation.ExtendedSyntax.SharingSpec
+                     AbstractInterpretation.ExtendedSyntax.SouffleHPTSpec
                      ExtendedSyntax.LintSpec
                      ExtendedSyntax.NametableSpec
                      ExtendedSyntax.ParserSpec

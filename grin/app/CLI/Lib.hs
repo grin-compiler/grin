@@ -134,6 +134,7 @@ pipelineOpts =
   <|> (T <$> transformOpts)
   <|> flg ConfluenceTest "confluence-test" "Checks transformation confluence by generating random two pipelines which reaches the fix points."
   <|> flg PrintErrors "print-errors" "Prints the error log"
+  <|> flg SouffleHPT "souffle-hpt" "Run HPT in souffle"
 
 
 maybeRenderingOpt :: String -> Maybe RenderingOption
@@ -228,7 +229,7 @@ mainWithArgs args = do
     let opts = defaultOpts
                 { _poOutputDir = outputDir
                 , _poFailOnLint = not continueOnLint
-                , _poLogging = not quiet
+                , _poLogConfig = if quiet then NoLog else StdoutLog
                 , _poSaveBinary = saveBinary
                 , _poCFiles = cFiles
                 }

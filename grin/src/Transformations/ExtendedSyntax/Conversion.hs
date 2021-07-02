@@ -9,6 +9,7 @@ import Data.Functor.Foldable as Foldable
 
 import qualified Data.Map    as M
 import qualified Data.Vector as V
+import qualified Data.Set    as S
 
 import Control.Monad
 import Control.Monad.Identity
@@ -26,14 +27,16 @@ import qualified Grin.ExtendedSyntax.Grin as New
 import qualified Grin.ExtendedSyntax.Syntax as New
 import qualified Grin.ExtendedSyntax.SyntaxDefs as New
 import qualified Grin.ExtendedSyntax.TypeEnvDefs as New
+import qualified AbstractInterpretation.ExtendedSyntax.HeapPointsTo.Result as NewHPTResult
+import qualified AbstractInterpretation.HeapPointsTo.Result as HPTResult
 
-import Transformations.Util
-import Transformations.Names
 import Transformations.BindNormalisation
+import Transformations.Names
 import Transformations.Optimising.CopyPropagation
 import Transformations.Optimising.SimpleDeadVariableElimination
-import Transformations.Simplifying.ProducerNameIntroduction
 import Transformations.Simplifying.BindingPatternSimplification
+import Transformations.Simplifying.ProducerNameIntroduction
+import Transformations.Util
 
 
 class Convertible a b where
@@ -280,6 +283,50 @@ instance Convertible New.Ty Ty where
     New.TyCon name tys -> TyCon (convert name) (map convert tys)
     New.TyVar name     -> TyVar (convert name)
     New.TySimple st    -> TySimple (convert st)
+
+instance Convertible NewHPTResult.HPTLocal HPTResult.HPTLocal where
+  convert NewHPTResult.UndefinedProducer = HPTResult.UndefinedProducer
+
+instance Convertible NewHPTResult.SimpleType HPTResult.SimpleType where
+  convert = \case
+    NewHPTResult.T_Int64                -> HPTResult.T_Int64
+    NewHPTResult.T_Word64               -> HPTResult.T_Word64
+    NewHPTResult.T_Float                -> HPTResult.T_Float
+    NewHPTResult.T_Bool                 -> HPTResult.T_Bool
+    NewHPTResult.T_Unit                 -> HPTResult.T_Unit
+    NewHPTResult.T_Location l           -> HPTResult.T_Location l
+    NewHPTResult.T_String               -> HPTResult.T_String
+    NewHPTResult.T_Char                 -> HPTResult.T_Char
+    NewHPTResult.T_UnspecifiedLocation  -> HPTResult.T_UnspecifiedLocation
+    NewHPTResult.Local l                -> HPTResult.Local $ convert l
+
+instance (Convertible a a') => Convertible (Maybe a) (Maybe a') where
+  convert = fmap convert
+
+instance (Convertible a b) => Convertible (V.Vector a) (V.Vector b) where
+  convert = V.map convert
+
+instance (Convertible a a', Convertible b b', Ord a') => Convertible (M.Map a b) (M.Map a' b') where
+  convert = M.mapKeys convert . M.map convert
+
+instance (Convertible a a', Convertible b b') => Convertible (a,b) (a',b') where
+  convert (a,b) = (convert a, convert b)
+
+instance (Convertible a a', Ord a') => Convertible (S.Set a) (S.Set a') where
+  convert = S.map convert
+
+instance Convertible NewHPTResult.NodeSet HPTResult.NodeSet where
+  convert (NewHPTResult.NodeSet ns) = HPTResult.NodeSet $ convert ns
+
+instance Convertible NewHPTResult.TypeSet HPTResult.TypeSet where
+  convert (NewHPTResult.TypeSet st ns) = HPTResult.TypeSet (convert st) (convert ns)
+
+instance Convertible NewHPTResult.HPTResult HPTResult.HPTResult where
+  convert (NewHPTResult.HPTResult memory register function)
+    = HPTResult.HPTResult
+        (convert memory)
+        (convert register)
+        (convert function)
 
 instance Convertible New.ExternalKind ExternalKind where
   convert = \case

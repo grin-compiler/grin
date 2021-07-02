@@ -1,0 +1,358 @@
+.type Function
+.type Variable
+.type Tag
+.type Literal
+.type SimpleType
+.type CodeName = Variable | Function
+
+// External function (name, effectful)
+.decl External(f:Function, effectful:number, ret:SimpleType)
+.decl ExternalParam(f:Function, i:number, st:SimpleType)
+
+// variable
+// example: result <- pure value
+.decl Move(result:Variable, value:Variable)
+
+// literal value
+// example: result <- pure 1
+.decl LitAssign(result:Variable, st:SimpleType, l:Literal)
+
+// node value
+// example: result_node <- pure (Ctag item0 item1)
+.decl Node(result_node:Variable, t:Tag)
+.decl NodeArgument(result_node:Variable, i:number, item:Variable)
+
+// store/fetch/update
+// example: result <- fetch value
+.decl Fetch(result:Variable, value:Variable)
+// example: result <- store value
+.decl Store(result:Variable, value:Variable)
+// example: result <- update target value
+.decl Update(result:Variable, target:Variable, value:Variable)
+
+
+// app a.k.a. call
+// example: call_result <- f value0 value1
+.decl Call(call_result:Variable, f:Function)
+.decl CallArgument(call_result:Variable, i:number, value:Variable)
+
+// bind pattern
+// example: node@(Ctag param0 param1) <- pure input_value
+.decl NodePattern(node:Variable, t:Tag, input_value:Variable)
+.decl NodeParameter(node:Variable, i:number, parameter:Variable)
+
+// function
+// example: f param0 param1 = ...
+.decl FunctionParameter(f:Function, i:number, parameter:Variable)
+
+// case + alt
+// example:
+//  case_result <- case scrut of
+//    alt_name@(Ctag param0 param1) -> basic_block_name arg0 arg1
+.decl Case(case_result:Variable, scrutinee:Variable)
+.decl Alt(case_result:Variable, alt_name:Variable, t:Tag)
+// NOTE: first could be just alt_name since it's unique
+// QUESTION: why the tag here again? Maybe just store it here, and let case_result be alt_name
+.decl AltParameter(case_result:Variable, t:Tag, i:number, parameter:Variable)
+.decl AltLiteral(case_result:Variable, alt_name:Variable, st:SimpleType, l:Literal)
+.decl AltDefault(case_result:Variable, alt_name:Variable)
+
+// pure a.k.a. return value
+// example: pure value
+.decl ReturnValue(n:CodeName, value:Variable)
+
+// instruction ordering
+/* QUESTION: What about f x = pure x
+What is the first instruction?
+*/
+.decl FirstInst(n:CodeName, result:Variable)
+.decl NextInst(prev:Variable, next:Variable)
+
+.decl EntryPoint(n:CodeName)
+
+
+.input External
+.input ExternalParam
+.input Move
+.input LitAssign
+.input Node
+.input NodeArgument
+.input Fetch
+.input Store
+.input Update
+.input Call
+.input CallArgument
+.input NodePattern
+.input NodeParameter
+.input FunctionParameter
+.input Case
+.input Alt
+.input AltParameter
+.input AltLiteral
+.input AltDefault
+.input ReturnValue
+.input FirstInst
+.input NextInst
+.input EntryPoint
+
+// Reachability
+.decl ReachableCode(n:CodeName)
+// .output ReachableCode
+.decl CodeNameInst(n:CodeName, v:Variable)
+// .output CodeNameInst
+
+CodeNameInst(n, v) :-
+  FirstInst(n, v).
+CodeNameInst(n, v) :-
+  CodeNameInst(n, v0),
+  NextInst(v0, v).
+
+ReachableCode(n) :-
+  EntryPoint(n).
+ReachableCode(n) :-
+  ReachableCode(n0),
+  CodeNameInst(n0, v),
+  Call(v, n).
+
+.decl ReachableInst(v:Variable)
+
+ReachableInst(v) :-
+  ReachableCode(n),
+  CodeNameInst(n, v).
+
+// NOTE: For a given pointer, it shows which variable it points to. (Store origin?)
+.decl VarPointsTo(v:Variable, target:Variable)
+// .output VarPointsTo
+
+VarPointsTo(v,t) :-
+  Store(v, t),
+  ReachableInst(v).
+
+VarPointsTo(v,t) :-
+  Move(v, v0),
+  ReachableInst(v),
+  VarPointsTo(v0, t).
+
+VarPointsTo(v,t) :-
+  Update(r, v, t),
+  ReachableInst(r).
+
+VarPointsTo(v,t) :-
+  FunctionParameter(_, i, v),
+  CallArgument(r, i, v0),
+  VarPointsTo(v0, t),
+  ReachableInst(r).
+
+// CreatedBy Computation
+.decl CreatedBy(v:Variable, value:Variable)
+// .output CreatedBy
+
+.decl Heap(orig:Variable, item:Variable)
+.output Heap
+
+Heap(v,i) :- Store(v,i).
+
+// HPT: update
+Heap(heap_orig, sv) :-
+  Update(_, heap, sv),
+  CreatedBy(heap, heap_orig),
+  Heap(heap_orig, _),
+  SharedLocation(heap).
+
+// QUESTION: don't we need this as well?
+// ANSWER: probably not, if we are not concerned with aliases (we need only the unique locations)
+// Heap(heap, sv) :-
+//   Update(_, heap, sv),
+//   SharedLocation(heap).
+
+CreatedBy(n,n) :-
+  LitAssign(n,_,_).
+
+CreatedBy(n, n) :-
+  Node(n, _).
+
+CreatedBy(v, v) :-
+  Store(v, _).
+
+CreatedBy(v,v) :-
+  Update(v,_,_).
+
+CreatedBy(v,v) :-
+  External(f,_,_),
+  Call(v,f).
+
+CreatedBy(v, n_og) :-
+  CreatedBy(n, n_og),
+  Move(v, n).
+
+CreatedBy(v1,v2) :-
+  FunctionParameter(_,_,p),
+  CreatedBy(v1,p),
+  CreatedBy(p,v2).
+
+// HPT: fetch
+CreatedBy(v, item_origin) :-
+  Fetch(v, heap),
+  CreatedBy(heap, heap_orig),
+  Heap(heap_orig, item),
+  CreatedBy(item, item_origin).
+
+// fun param
+CreatedBy(p, val) :-
+  CallArgument(r, i, a),
+  Call(r, f),
+  FunctionParameter(f, i, p),
+  CreatedBy(a, val).
+
+// fun return
+CreatedBy(r, val) :-
+  Call(r, f),
+  ReturnValue(f, v),
+  CreatedBy(v, val).
+
+// Node parameter matching node value created somewhere
+CreatedBy(param, argval) :-
+  NodePattern(v, tag, n),
+  NodeParameter(v, i, param),
+  CreatedBy(n, nval),
+  Node(nval, tag),
+  NodeArgument(nval, i, arg),
+  CreatedBy(arg, argval).
+
+CreatedBy(v, n_og) :-
+  NodePattern(v, _tag, n),
+  CreatedBy(n, n_og).
+
+// Alt value when matched on literal.
+CreatedBy(alt_name, scrut_val) :-
+  Case(case_result, scrut),
+  AltLiteral(case_result, alt_name, _, _),
+  CreatedBy(scrut, scrut_val).
+
+// Alt value when matched on tag
+CreatedBy(alt_name, scrut_val) :-
+  Case(case_result, scrut),
+  Alt(case_result, alt_name, tag),
+  CreatedBy(scrut, scrut_val),
+  // NOTE: this just checks whether the alternative is possible
+  Node(scrut_val, tag).
+
+// CreatedBy of alt parameter when matched on tag
+CreatedBy(parameter, val) :-
+  Case(case_res, scrut),
+  Alt(case_res, _alt_name, tag),
+  AltParameter(case_res, tag, i, parameter),
+  CreatedBy(scrut, scrut_val),
+  Node(scrut_val,tag),
+  NodeArgument(scrut_val,i,val).
+
+// NOTE: every alternative should be related to its return value (via ReturnValue)
+// Result of case/alt when matched on a node.
+CreatedBy(case_result, val) :-
+  Case(case_result, scrut),
+  Alt(case_result, alt_name, alt_tag),
+  CreatedBy(scrut, scrut_og),
+  Node(scrut_og, alt_tag),
+  ReturnValue(alt_name, v),
+  CreatedBy(v, val).
+
+// Result of case/alt when matched on a literal.
+CreatedBy(case_result, val) :-
+  Case(case_result, _),
+  AltLiteral(case_result, alt_name, _, _),
+  ReturnValue(alt_name, v),
+  CreatedBy(v, val).
+
+// QUESTION: could implement liveness check here as well? (ignore alt when impossible)
+// ANSWER: would have to collect all tags of all possible origins of the scrutinee, then check whether all are covered
+// Result of case/alt when matched on the default alternative.
+CreatedBy(case_result, val) :-
+  Case(case_result, _),
+  AltDefault(case_result, alt_name),
+  ReturnValue(alt_name, v),
+  CreatedBy(v, val).
+
+// Type Env
+
+.type NodeParamType = Variable | SimpleType
+.decl AbstractLocation(n: Variable)
+.decl VariableSimpleType(n: Variable, st:SimpleType)
+.decl VariableAbstractLocation(n:Variable, loc:Variable)
+.decl VariableNodeTag(n:Variable, t:Tag)
+.decl VariableNodeParamType(n: Variable, t:Tag, i:number, nt:NodeParamType)
+
+.output AbstractLocation
+AbstractLocation(n) :- Heap(n,_).
+
+.output VariableSimpleType
+VariableSimpleType(n,st) :- LitAssign(n,st,_).
+VariableSimpleType(n,"Unit") :- Update(n,_,_).
+VariableSimpleType(n,st) :- External(f,_,st), Call(n,f).
+VariableSimpleType(n,st) :- ExternalParam(f,i,st), Call(r,f), CallArgument(r,i,n).
+// NOTE: that's nice!
+VariableSimpleType(n,st) :- CreatedBy(n,r), VariableSimpleType(r,st).
+
+.output VariableNodeParamType
+VariableNodeParamType(n,t,i,al)
+  :- Node(n,t), NodeArgument(n,i,arg), CreatedBy(arg,al), AbstractLocation(al).
+VariableNodeParamType(n,t,i,st)
+  :- Node(n,t), NodeArgument(n,i,arg), CreatedBy(arg,v), VariableSimpleType(v,st).
+VariableNodeParamType(n,t,i,ty)
+  :- CreatedBy(n,n0), VariableNodeParamType(n0,t,i,ty).
+
+.output VariableNodeTag
+VariableNodeTag(n,t) :- CreatedBy(n,r), Node(r,t).
+
+// QUESTION: is this basically CreatedBy constrained by AbstractLocation? (i.e. all variables who have pointer producers?)
+.output VariableAbstractLocation
+VariableAbstractLocation(n,n) :- AbstractLocation(n).
+VariableAbstractLocation(n,v) :- CreatedBy(n,v), AbstractLocation(v).
+
+.decl FunName(f: Function)
+// .output FunName
+
+.decl FunReturn(f:Function, n:Variable)
+.output FunReturn
+
+.decl FunParam(f:Function, i:number, n:Variable)
+.output FunParam
+
+FunName("main").
+FunName(f) :- Call(_,f), ReachableCode(f).
+
+FunReturn(f,n) :- FunName(f), ReturnValue(f,n).
+FunReturn(f,n) :- External(f,_,_), Call(n,f).
+
+FunParam(f,i,p) :- FunctionParameter(f,i,p).
+FunParam(f,i,p) :- ExternalParam(f,i,_), Call(r,f), CallArgument(r,i,p).
+
+/* If a concrete instance of the abstract location may be subject to a fetch more than once, */
+.decl SharedLocation(n:Variable)
+// .output SharedLocation
+
+SharedLocation(l) :-
+  AbstractLocation(l), CreatedBy(v,l), NonLinearVar(v).
+
+// For non-linear variables
+// A location may only become shared if it is a possible value of a nonlinear variable.
+// NOTE: linear => not shared  ~   nonlinear <= shared (agrees with the above statement)
+
+.decl NonLinearVar(v:Variable)
+// .output NonLinearVar
+
+// Variable used in different use cases.
+//                   CA F M NP RV
+// CallArgument   CA -- - x xx xx
+// Move           M  -- - - xx xx
+// NodeParameter  NP -- - - -- xx
+// ReturnValue    RV -- - - -- --
+
+NonLinearVar(n) :- CallArgument(f,_,n),   CallArgument(g,_,n), !(f=g).
+NonLinearVar(n) :- CallArgument(_,i,n),   CallArgument(_,j,n), !(i=j).
+NonLinearVar(n) :- CallArgument(_,_,n),   Move(_,n).
+NonLinearVar(n) :- CallArgument(_,_,n),   NodeArgument(_,_,n).
+NonLinearVar(n) :- CallArgument(_,_,n),   ReturnValue(_,n).
+NonLinearVar(n) :- Fetch(r,n),            Fetch(q,n),          !(r=q).
+NonLinearVar(n) :- Move(_,n),             NodeArgument(_,_,n).
+NonLinearVar(n) :- Move(_,n),             ReturnValue(_,n).
+NonLinearVar(n) :- NodeParameter(_,_,n),  ReturnValue(_,n).
