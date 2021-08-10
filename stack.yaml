@@ -23,6 +23,8 @@ extra-deps:
 flags:
   llvm-hs:
     shared-llvm: true
+  grin:
+    with-llvm-hs: true
 
 build:
   test-arguments:

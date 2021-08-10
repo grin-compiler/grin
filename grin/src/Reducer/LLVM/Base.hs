@@ -26,8 +26,6 @@ import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.Linkage as L
 import qualified LLVM.AST as AST
 import LLVM.AST.Global
-import LLVM.Context
-import LLVM.Module
 
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS

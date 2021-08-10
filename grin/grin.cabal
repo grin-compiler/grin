@@ -13,9 +13,22 @@ build-type:          Simple
 --extra-source-files:  README.md
 cabal-version:       >=1.10
 
+flag with-llvm-hs
+  description: Build with llvm-hs
+  default: True
+
 library
   hs-source-dirs:      src
   default-extensions:  OverloadedStrings
+
+  if flag(with-llvm-hs)
+    exposed-modules:
+      Reducer.LLVM.JIT
+    build-depends:
+      llvm-hs ==7.*
+    cpp-options:
+      "-DWITH_LLVM_HS"
+
   exposed-modules:
     AbstractInterpretation.ExtendedSyntax.IR
     AbstractInterpretation.ExtendedSyntax.PrettyIR
@@ -123,7 +136,6 @@ library
     Reducer.LLVM.Base
     Reducer.LLVM.CodeGen
     Reducer.LLVM.InferType
-    Reducer.LLVM.JIT
     Reducer.LLVM.PrimOps
     Reducer.LLVM.TypeGen
     Reducer.PrimOps
@@ -217,7 +229,6 @@ library
     monad-gen,
     free,
     bytestring,
-    llvm-hs ==7.*,
     llvm-hs-pure ==7.*,
     llvm-hs-pretty >=0.6.1,
     inline-c,

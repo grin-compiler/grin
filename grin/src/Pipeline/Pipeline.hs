@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes, PatternSynonyms, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, RankNTypes, PatternSynonyms, TemplateHaskell, CPP #-}
 module Pipeline.Pipeline
   ( PipelineOpts(..)
   , defaultOpts
@@ -83,7 +83,11 @@ import qualified AbstractInterpretation.EffectTracking.CodeGen       as ET
 import qualified AbstractInterpretation.EffectTracking.CodeGenBase   as ET
 import qualified AbstractInterpretation.Sharing.CodeGen              as Sharing
 import qualified Reducer.LLVM.CodeGen as CGLLVM
+
+#ifdef WITH_LLVM_HS
 import qualified Reducer.LLVM.JIT as JITLLVM
+#endif
+
 import System.Environment ( lookupEnv )
 import System.Directory
 import qualified System.Process
@@ -694,8 +698,12 @@ jitLLVM :: PipelineM ()
 jitLLVM = do
   e <- use psExp
   Just typeEnv <- use psTypeEnv
+#ifdef WITH_LLVM_HS
   val <- liftIO $ JITLLVM.eagerJit (CGLLVM.codeGen typeEnv e) "grinMain"
   pipelineLog $ show $ pretty val
+#else
+  pipelineLog $ "LLVM JIT is not supported, GRIN was compiped without llvm-hs."
+#endif
 
 printAST :: PipelineM ()
 printAST = do

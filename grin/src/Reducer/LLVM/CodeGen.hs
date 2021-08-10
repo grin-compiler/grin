@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, TupleSections, DataKinds, RecursiveDo, RecordWildCards, OverloadedStrings, CPP #-}
 
 module Reducer.LLVM.CodeGen
   ( codeGen
@@ -19,6 +19,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.List as List
 import qualified Data.Text as Text
+import qualified Data.Text.Lazy as LazyText
 import qualified Data.ByteString.Short as ShortByteString
 import Data.String (fromString)
 import Text.Printf (printf)
@@ -37,8 +38,12 @@ import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.FunctionAttribute as FA
 import qualified LLVM.AST.RMWOperation as RMWOperation
 import LLVM.AST.Global as Global
+import LLVM.Pretty (ppllvm)
+
+#ifdef WITH_LLVM_HS
 import LLVM.Context
 import LLVM.Module
+#endif
 
 import Control.Monad.Except
 import qualified Data.ByteString.Char8 as BS
@@ -59,10 +64,17 @@ debugMode :: Bool
 debugMode = True
 
 toLLVM :: String -> AST.Module -> IO BS.ByteString
+#ifdef WITH_LLVM_HS
 toLLVM fname mod = withContext $ \ctx -> do
   llvm <- withModuleFromAST ctx mod moduleLLVMAssembly
   BS.writeFile fname llvm
   pure llvm
+#else
+toLLVM fname mod = do
+  let llvm = BS.pack . LazyText.unpack $ ppllvm mod
+  BS.writeFile fname llvm
+  pure llvm
+#endif
 
 codeGenLit :: Lit -> CG C.Constant
 codeGenLit = \case
