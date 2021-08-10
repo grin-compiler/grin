@@ -702,7 +702,7 @@ jitLLVM = do
   val <- liftIO $ JITLLVM.eagerJit (CGLLVM.codeGen typeEnv e) "grinMain"
   pipelineLog $ show $ pretty val
 #else
-  pipelineLog $ "LLVM JIT is not supported, GRIN was compiped without llvm-hs."
+  pipelineLog $ "LLVM JIT is not supported, GRIN was compiled without llvm-hs."
 #endif
 
 printAST :: PipelineM ()
