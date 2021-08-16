@@ -54,7 +54,7 @@ evalSimpleExp :: Env -> SimpleExp -> GrinM RTVal
 evalSimpleExp env s = do
   when debug $ do
     liftIO $ print s
-    void $ liftIO $ getLine
+    void $ liftIO getLine
   case s of
     SApp n a -> do
                 let args = map (evalVal env) a
@@ -65,7 +65,7 @@ evalSimpleExp env s = do
                 evalPrimOpMap <- asks (evalPluginPrimOp . ctxEvalPlugin)
                 if isExternalName exts n
                   then do
-                    let Just evalPrimOp = Map.lookup n evalPrimOpMap
+                    let evalPrimOp = Map.findWithDefault (error $ printf "undefined primop: %s" n) n evalPrimOpMap
                     liftIO $ evalPrimOp args
                   else do
                     Def _ vars body <- reader
