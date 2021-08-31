@@ -258,7 +258,9 @@ library
     random,
     set-extra,
     deepseq,
-    binary
+    binary,
+    unix,
+    libffi
 
   default-language:    Haskell2010
 
