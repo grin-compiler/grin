@@ -11,9 +11,16 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
+import Data.List
+import qualified Data.Text as Text
 import Control.Monad.State
 import Control.Monad.Reader
-import Text.Printf
+import Control.Monad.Except
+
+import Foreign.C.String
+import Foreign.C.Types
+import Foreign.LibFFI
+import System.Posix.DynamicLinker
 
 import Reducer.Base
 import Reducer.PrimOps
@@ -50,6 +57,27 @@ lookupStore i s = IntMap.findWithDefault (error $ printf "missing location: %d" 
 debug :: Bool
 debug = False
 
+toFFIArg :: Ty -> RTVal -> GrinM Arg
+toFFIArg (TySimple T_Int64) (RT_Lit (LInt64 x)) = pure $ argInt64 x
+toFFIArg (TySimple T_Word64) (RT_Lit (LWord64 x)) = pure $ argWord64 x
+toFFIArg (TySimple T_Float) (RT_Lit (LFloat x)) = pure $ argCFloat $ CFloat x
+toFFIArg (TySimple T_Bool) (RT_Lit (LBool x)) = pure $ argInt $ if x then 1 else 0
+toFFIArg (TySimple T_String) (RT_Lit (LString x)) = pure $ argString $ Text.unpack x
+toFFIArg (TySimple T_Char) (RT_Lit (LChar x)) = pure $ argCChar $ castCharToCChar x
+toFFIArg ty arg = throwError $ userError
+    $ printf "Unexpected argument type or value in FFI call: %s :: %s" (show arg) (show ty)
+
+toFFIRet :: Ty -> GrinM (RetType RTVal)
+toFFIRet (TySimple T_Int64) = pure $ withRetType (pure . RT_Lit . LInt64) retInt64
+toFFIRet (TySimple T_Word64) = pure $ withRetType (pure . RT_Lit . LWord64) retWord64
+toFFIRet (TySimple T_Float) = pure $ withRetType (pure . RT_Lit . LFloat . (\case CFloat x -> x)) retCFloat
+toFFIRet (TySimple T_Bool) = pure $ withRetType (pure . RT_Lit . LBool . (/= 0)) retCInt
+toFFIRet (TySimple T_String) = pure $ withRetType (pure . RT_Lit . LString . Text.pack) retString
+toFFIRet (TySimple T_Char) = pure $ withRetType (pure . RT_Lit . LChar . castCCharToChar) retCChar
+toFFIRet (TySimple T_Unit) = pure $ withRetType (const $ pure RT_Unit) retVoid
+toFFIRet ty = throwError $ userError
+    $ printf "Unexpected return type in FFI call: %s" $ show ty
+
 evalSimpleExp :: Env -> SimpleExp -> GrinM RTVal
 evalSimpleExp env s = do
   when debug $ do
@@ -63,13 +91,19 @@ evalSimpleExp env s = do
                     go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (prettyDebug x) (prettyDebug y)
                 exts <- asks ctxExternals
                 evalPrimOpMap <- asks (evalPluginPrimOp . ctxEvalPlugin)
-                if isExternalName exts n
-                  then do
+                let extm = find (\e -> eName e == n) exts
+                case extm of
+                  Just (External _ retTy argsTy _ FFI) -> do
+                    ffiArgs <- zipWithM toFFIArg argsTy args
+                    ffiRet <- toFFIRet retTy
+                    fn <- liftIO $ dlsym Default $ Text.unpack $ unNM n
+                    liftIO $ callFFI fn ffiRet ffiArgs
+                  Just _ -> do
                     let evalPrimOp = Map.findWithDefault (error $ printf "undefined primop: %s" n) n evalPrimOpMap
                     liftIO $ evalPrimOp args
-                  else do
+                  Nothing -> do
                     Def _ vars body <- reader
-                      ((Map.findWithDefault (error $ printf "unknown function: %s" n) n) . ctxProg)
+                      $ Map.findWithDefault (error $ printf "unknown function: %s" n) n . ctxProg
                     evalExp (go env vars args) body
     SReturn v -> pure $ evalVal env v
     SStore v -> do
