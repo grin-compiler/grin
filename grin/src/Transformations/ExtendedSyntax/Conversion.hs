@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -38,6 +39,16 @@ import Transformations.Simplifying.BindingPatternSimplification
 
 class Convertible a b where
   convert :: a -> b
+
+instance Convertible a b => Convertible [a] [b] where
+  convert [] = []
+  convert (x : xs) = convert x : convert xs
+
+instance Convertible a a where
+  convert = id
+
+instance (Convertible a c, Convertible b d) => Convertible (a, b) (c, d) where
+  convert (x, y) = (convert x, convert y)
 
 instance Convertible TagType New.TagType where
   convert = \case
@@ -95,6 +106,17 @@ instance Convertible ExternalKind New.ExternalKind where
     PrimOp -> New.PrimOp
     FFI    -> New.FFI
 
+instance Convertible OS New.OS where
+    convert = \case
+      Darwin -> New.Darwin
+      FreeBSD -> New.FreeBSD
+      Linux -> New.Linux
+      Android -> New.Android
+      MinGW -> New.MinGW
+      Win -> New.Win
+      NetBSD -> New.NetBSD
+      OpenBSD -> New.OpenBSD
+
 instance Convertible External New.External where
   convert External{..} = New.External
     (convert eName)
@@ -102,6 +124,7 @@ instance Convertible External New.External where
     (map convert eArgsType)
     eEffectful
     (convert eKind)
+    (convert eLibs)
 
 instance Convertible CPat New.CPat where
   convert = \case
@@ -286,6 +309,17 @@ instance Convertible New.ExternalKind ExternalKind where
     New.PrimOp -> PrimOp
     New.FFI    -> FFI
 
+instance Convertible New.OS OS where
+  convert = \case
+    New.Darwin  -> Darwin
+    New.FreeBSD -> FreeBSD
+    New.Linux   -> Linux
+    New.Android -> Android
+    New.MinGW   -> MinGW
+    New.Win     -> Win
+    New.NetBSD  -> NetBSD
+    New.OpenBSD -> OpenBSD
+
 instance Convertible New.External External where
   convert New.External{..} = External
     (convert eName)
@@ -293,6 +327,7 @@ instance Convertible New.External External where
     (map convert eArgsType)
     eEffectful
     (convert eKind)
+    (convert eLibs)
 
 instance Convertible New.CPat CPat where
   convert = \case

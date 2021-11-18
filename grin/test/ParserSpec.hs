@@ -327,6 +327,12 @@ spec = do
         ffi pure
           newArrayArray :: {Int} -> {State %s} -> {GHC.Prim.Unit {MutableArrayArray %s}}
 
+        ffi effectful
+          linux "libc.so.6"
+          darwin "libc.dylib"
+
+          strcpy :: T_String -> T_String -> T_Unit
+
         grinMain = pure ()
         |]
       let after = Program
@@ -337,6 +343,7 @@ spec = do
                 , eArgsType = [ TySimple T_String ]
                 , eEffectful = True
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "_prim_read_string"
@@ -344,6 +351,7 @@ spec = do
                 , eArgsType = []
                 , eEffectful = True
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "newArrayArray#"
@@ -355,6 +363,7 @@ spec = do
                     ]
                 , eEffectful = True
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "_prim_string_concat"
@@ -365,6 +374,7 @@ spec = do
                     ]
                 , eEffectful = False
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "newArrayArray"
@@ -376,7 +386,18 @@ spec = do
                     ]
                 , eEffectful = False
                 , eKind = FFI
+                , eLibs = []
                 }
+            , External
+                { eName = "strcpy"
+                , eRetType = TySimple T_String
+                , eArgsType =
+                    [ TySimple T_String
+                    , TySimple T_String
+                    ]
+                , eEffectful = True
+                , eKind = FFI
+                , eLibs = [(Linux, "libc.so.6"), (Darwin, "libc.dylib")]}
             ]
             [ Def "grinMain" [] ( SReturn Unit ) ]
       before `sameAs` after
@@ -411,6 +432,7 @@ spec = do
                       ]
                   , eEffectful = False
                   , eKind = PrimOp
+                  , eLibs = []
                   }
               , External
                   { eName = NM { unNM = "_primB" }
@@ -418,6 +440,7 @@ spec = do
                   , eArgsType = [ TySimple T_String ]
                   , eEffectful = False
                   , eKind = PrimOp
+                  , eLibs = []
                   }
               ] []
 

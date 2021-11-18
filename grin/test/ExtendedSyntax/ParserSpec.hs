@@ -368,6 +368,7 @@ spec = do
                 , eArgsType = [ TySimple T_String ]
                 , eEffectful = True
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "_prim_read_string"
@@ -375,6 +376,7 @@ spec = do
                 , eArgsType = []
                 , eEffectful = True
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "newArrayArray#"
@@ -386,6 +388,7 @@ spec = do
                     ]
                 , eEffectful = True
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "_prim_string_concat"
@@ -396,6 +399,7 @@ spec = do
                     ]
                 , eEffectful = False
                 , eKind = PrimOp
+                , eLibs = []
                 }
             , External
                 { eName = "newArrayArray"
@@ -407,6 +411,7 @@ spec = do
                     ]
                 , eEffectful = False
                 , eKind = FFI
+                , eLibs = []
                 }
             ]
             [ Def "grinMain" [] ( SReturn Unit ) ]
@@ -442,6 +447,7 @@ spec = do
                       ]
                   , eEffectful = False
                   , eKind = PrimOp
+                  , eLibs = []
                   }
               , External
                   { eName = NM { unNM = "_primB" }
@@ -449,6 +455,7 @@ spec = do
                   , eArgsType = [ TySimple T_String ]
                   , eEffectful = False
                   , eKind = PrimOp
+                  , eLibs = []
                   }
               ] []
 
