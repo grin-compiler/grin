@@ -7,8 +7,10 @@ module Reducer.Pure
 import Text.Printf
 import Text.PrettyPrint.ANSI.Leijen
 
+import Data.Foldable
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Maybe
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 import Data.List
@@ -19,8 +21,10 @@ import Control.Monad.Except
 
 import Foreign.C.String
 import Foreign.C.Types
+import Foreign.Ptr
 import Foreign.LibFFI
 import System.Posix.DynamicLinker
+import qualified System.Info as Info
 
 import Reducer.Base
 import Reducer.PrimOps
@@ -48,6 +52,7 @@ data Context = Context
   { ctxProg       :: Prog
   , ctxExternals  :: [External]
   , ctxEvalPlugin :: EvalPlugin
+  , ctxForeign    :: Map Name (FunPtr ())
   }
 type GrinM a = ReaderT Context (StateT (StoreMap, Statistics) IO) a
 
@@ -88,18 +93,29 @@ evalSimpleExp env s = do
                 let args = map (evalVal env) a
                     go a [] [] = a
                     go a (x:xs) (y:ys) = go (Map.insert x y a) xs ys
-                    go _ x y = error $ printf "invalid pattern for function: %s %s %s" n (prettyDebug x) (prettyDebug y)
+                    go _ x y =
+                      error $ printf
+                        "invalid pattern for function: %s %s %s"
+                        n
+                        (prettyDebug x)
+                        (prettyDebug y)
                 exts <- asks ctxExternals
                 evalPrimOpMap <- asks (evalPluginPrimOp . ctxEvalPlugin)
                 let extm = find (\e -> eName e == n) exts
                 case extm of
-                  Just (External _ retTy argsTy _ FFI) -> do
+                  Just (External _ retTy argsTy _ FFI _) -> do
                     ffiArgs <- zipWithM toFFIArg argsTy args
                     ffiRet <- toFFIRet retTy
-                    fn <- liftIO $ dlsym Default $ Text.unpack $ unNM n
+                    extFns <- asks ctxForeign
+                    let fn = fromMaybe
+                          (error $ printf "Missing foreign function: %s" n)
+                          (Map.lookup n extFns)
                     liftIO $ callFFI fn ffiRet ffiArgs
                   Just _ -> do
-                    let evalPrimOp = Map.findWithDefault (error $ printf "undefined primop: %s" n) n evalPrimOpMap
+                    let evalPrimOp = Map.findWithDefault
+                          (error $ printf "undefined primop: %s" n)
+                          n
+                          evalPrimOpMap
                     liftIO $ evalPrimOp args
                   Nothing -> do
                     Def _ vars body <- reader
@@ -167,13 +183,47 @@ evalExp env = \case
       x -> error $ printf "evalExp - invalid Case dispatch value: %s" (prettyDebug x)
   exp -> evalSimpleExp env exp
 
+createForeignFns :: [External] -> Map Name (FunPtr ()) -> IO (Map Name (FunPtr ()))
+createForeignFns [] acc = pure acc
+createForeignFns exts@(ext : _) acc = case find (\(os, _) -> toString os == Info.os) (eLibs ext) of
+    Nothing -> do
+        ptr <- dlsym Default $ Text.unpack $ unNM $ eName ext
+        createForeignFns (tail exts) $ Map.insert (eName ext) ptr acc
+    Just (os, lib) -> do
+        let (extWithLib, extNoLib) =
+              partition
+                (\e ->
+                  find
+                    (\(os, l) -> toString os == Info.os)
+                    (eLibs e)
+                  == Just (os, lib))
+                exts
+        acc' <- withDL
+            (Text.unpack lib)
+            [RTLD_LAZY]
+            (\dl -> foldlM (\a e -> do
+                ptr <- dlsym dl (Text.unpack $ unNM $ eName e)
+                pure $ Map.insert (eName e) ptr acc) acc extWithLib)
+        createForeignFns extNoLib acc'
+  where
+    toString :: OS -> String
+    toString = \case
+      Darwin -> "darwin"
+      FreeBSD -> "freebsd"
+      Linux -> "linux"
+      Android -> "linux-android"
+      MinGW -> "mingw32"
+      Win -> "mingw32"
+      NetBSD -> "netbsd"
+      OpenBSD -> "openbsd"
+
 reduceFun :: EvalPlugin -> Program -> Name -> IO (RTVal, Maybe Statistics)
 reduceFun evalPrimOp (Program exts l) n = do
-    (v, (_, s)) <- runStateT (runReaderT (evalExp mempty e) context) (emptyStore, emptyStatistics)
-    pure (v, Just s)
-  where
-    context@(Context m _ _) = Context (Map.fromList [(n,d) | d@(Def n _ _) <- l]) exts evalPrimOp
-    e = case Map.lookup n m of
+    ffiFns <- createForeignFns exts mempty
+    let context@(Context m _ _ _) = Context (Map.fromList [(n,d) | d@(Def n _ _) <- l]) exts evalPrimOp ffiFns
+        e = case Map.lookup n m of
           Nothing -> error $ printf "missing function: %s" n
           Just (Def _ [] a) -> a
           _ -> error $ printf "function %s has arguments" n
+    (v, (_, s)) <- runStateT (runReaderT (evalExp mempty e) context) (emptyStore, emptyStatistics)
+    pure (v, Just s)

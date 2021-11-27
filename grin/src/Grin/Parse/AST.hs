@@ -106,15 +106,41 @@ satisfyM pred parser = do
 
 -- externals
 
+externalBlock :: Parser [External]
 externalBlock = do
   L.indentGuard sc EQ pos1
   ext <- const PrimOp <$> kw "primop" <|> const FFI <$> kw "ffi"
   eff <- const False <$> kw "pure" <|> const True <$> kw "effectful"
   i <- L.indentGuard sc GT pos1
-  some $ try (external ext eff i)
+  libs <- externalLibs i
+  some $ try (external ext eff i libs)
 
-external :: ExternalKind -> Bool -> Pos -> Parser External
-external ext eff i = do
+externOS :: Parser OS
+externOS = choice
+  [ Darwin <$ kw "darwin"
+  , FreeBSD <$ kw "freebsd"
+  , Linux <$ kw "linux"
+  , Android <$ kw "android"
+  , MinGW <$ kw "mingw"
+  , Win <$ kw "win"
+  , NetBSD <$ kw "netbsd"
+  , OpenBSD <$ kw "openbsd"
+  ]
+
+externalLibs :: Pos -> Parser [(OS, Text)]
+externalLibs i =
+  many
+    $ L.indentGuard sc EQ i
+    *> L.lexeme sc
+      ((,)
+      <$> externOS
+      <*> between
+        (char '"')
+        (char '"')
+        (takeWhile1P (Just "library") (/= '"')))
+
+external :: ExternalKind -> Bool -> Pos -> [(OS, Text)] -> Parser External
+external ext eff i libs = do
   L.indentGuard sc EQ i
   name <- var
   L.indentGuard sc GT i >> op "::"
@@ -126,6 +152,7 @@ external ext eff i = do
     , eArgsType   = reverse argTyRev
     , eEffectful  = eff
     , eKind       = ext
+    , eLibs       = libs
     }
 
 tyP :: Parser Ty

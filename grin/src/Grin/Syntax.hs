@@ -37,6 +37,9 @@ data ExternalKind
   | FFI    -- ^ Implemented in C and linked during the linker phase
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
+data OS = Darwin | FreeBSD | Linux | Android | MinGW | Win | NetBSD | OpenBSD
+  deriving (Generic, Data, NFData, Eq, Ord, Show)
+
 data External
   = External
   { eName       :: Name
@@ -44,6 +47,7 @@ data External
   , eArgsType   :: [Ty]
   , eEffectful  :: Bool
   , eKind       :: ExternalKind
+  , eLibs       :: [(OS, Text)]
   }
   deriving (Generic, Data, NFData, Eq, Ord, Show)
 
@@ -124,6 +128,7 @@ externals = \case
 
 deriving instance Binary Name
 deriving instance Binary ExternalKind
+deriving instance Binary OS
 deriving instance Binary External
 deriving instance Binary Ty
 deriving instance Binary SimpleType

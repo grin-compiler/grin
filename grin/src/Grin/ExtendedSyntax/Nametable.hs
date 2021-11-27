@@ -74,8 +74,9 @@ external (External{..}) =
   External <$> nameToIdx eName
            <*> ty eRetType
            <*> mapM ty eArgsType
-           <*> (pure eEffectful)
-           <*> (pure eKind)
+           <*> pure eEffectful
+           <*> pure eKind
+           <*> pure eLibs
 
 -- | Convert Names in the expression to Int identifiers and create
 -- an associated name table.
@@ -147,6 +148,7 @@ restore (exp, nt) = cata build exp where
              (map rty eArgsType)
              eEffectful
              eKind
+             eLibs
 
   rty :: Ty -> Ty
   rty = \case
