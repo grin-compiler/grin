@@ -34,6 +34,7 @@
 - Meng Weng Wong
 - Andrei Dziahel
 - Rune Svendsen
+- Janus Troelsen
 <!--50 end-->
 
 <h2 align="center">Backers via Patreon</h2>
