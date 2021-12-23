@@ -33,7 +33,9 @@ import Data.List (sortBy)
 import Data.Function (on)
 import Grin.ExtendedSyntax.Pretty
 import Debug.Trace
+import Text.Read
 import System.FilePath (takeDirectory)
+import qualified Text.Show.Pretty as PP
 
 import qualified Data.Vector as Vector
 import qualified Data.Set as Set
@@ -104,7 +106,7 @@ mkBoolean = \case
 data EntryPoint         = EntryPoint !CodeName                                  deriving (Eq, Show, Generic)
 data Move               = Move !Variable !Variable                              deriving (Eq, Show, Generic)
 data LitAssign          = LitAssign !Variable !SimpleType !Literal              deriving (Eq, Show, Generic)
-data Node               = Node !Variable !Tag                                   deriving (Eq, Show, Generic)
+data Node               = Node !Variable !Tag !Int32                            deriving (Eq, Show, Generic)
 data NodeArgument       = NodeArgument !Variable !Number !Variable              deriving (Eq, Show, Generic)
 data Fetch              = Fetch !Variable !Variable                             deriving (Eq, Show, Generic)
 data Store              = Store !Variable !Variable                             deriving (Eq, Show, Generic)
@@ -128,7 +130,7 @@ data ExternalParam      = ExternalParam !Function !Number !SimpleType           
 data Heap                     = Heap !Variable !Variable                                deriving (Eq, Show, Generic)
 data AbstractLocation         = AbstractLocation !Loc                                   deriving (Eq, Show, Generic)
 data VariableSimpleType       = VariableSimpleType !Variable !SimpleType                deriving (Eq, Show, Generic)
-data VariableNodeTag          = VariableNodeTag !Variable !Tag                          deriving (Eq, Show, Generic)
+data VariableNodeTag          = VariableNodeTag !Variable !Tag !Int32                   deriving (Eq, Show, Generic)
 data VariableNodeParamType    = VariableNodeParamType !Variable !Tag !Int32 !SimpleType deriving (Eq, Show, Generic)
 data VariableAbstractLocation = VariableAbstractLocation !Variable !Loc                 deriving (Eq, Show, Generic)
 data FunParam                 = FunParam !Function !Int32 !Variable                     deriving (Eq, Show, Generic)
@@ -167,39 +169,129 @@ instance Souffle.Marshal VariableNodeParamType
 instance Souffle.Marshal FunParam
 instance Souffle.Marshal FunReturn
 
-instance Souffle.Fact EntryPoint        where factName = const "EntryPoint"
-instance Souffle.Fact External          where factName = const "External"
-instance Souffle.Fact ExternalParam     where factName = const "ExternalParam"
-instance Souffle.Fact Move              where factName = const "Move"
-instance Souffle.Fact LitAssign         where factName = const "LitAssign"
-instance Souffle.Fact Node              where factName = const "Node"
-instance Souffle.Fact NodeArgument      where factName = const "NodeArgument"
-instance Souffle.Fact Fetch             where factName = const "Fetch"
-instance Souffle.Fact Store             where factName = const "Store"
-instance Souffle.Fact Update            where factName = const "Update"
-instance Souffle.Fact Call              where factName = const "Call"
-instance Souffle.Fact CallArgument      where factName = const "CallArgument"
-instance Souffle.Fact NodePattern       where factName = const "NodePattern"
-instance Souffle.Fact NodeParameter     where factName = const "NodeParameter"
-instance Souffle.Fact Case              where factName = const "Case"
-instance Souffle.Fact Alt               where factName = const "Alt"
-instance Souffle.Fact AltLiteral        where factName = const "AltLiteral"
-instance Souffle.Fact AltDefault        where factName = const "AltDefault"
-instance Souffle.Fact ReturnValue       where factName = const "ReturnValue"
-instance Souffle.Fact FirstInst         where factName = const "FirstInst"
-instance Souffle.Fact NextInst          where factName = const "NextInst"
-instance Souffle.Fact FunctionParameter where factName = const "FunctionParameter"
-instance Souffle.Fact AltParameter      where factName = const "AltParameter"
+instance Souffle.Fact EntryPoint where
+  type FactDirection EntryPoint = 'Souffle.Input
+  factName = const "EntryPoint"
 
-instance Souffle.Fact Heap                      where factName = const "Heap"
-instance Souffle.Fact VariableSimpleType        where factName = const "VariableSimpleType"
-instance Souffle.Fact AbstractLocation          where factName = const "AbstractLocation"
-instance Souffle.Fact VariableAbstractLocation  where factName = const "VariableAbstractLocation"
-instance Souffle.Fact VariableNodeTag           where factName = const "VariableNodeTag"
-instance Souffle.Fact VariableNodeParamType     where factName = const "VariableNodeParamType"
-instance Souffle.Fact FunParam                  where factName = const "FunParam"
-instance Souffle.Fact FunReturn                 where factName = const "FunReturn"
+instance Souffle.Fact External where
+  type FactDirection External = 'Souffle.Input
+  factName = const "External"
 
+instance Souffle.Fact ExternalParam where
+  type FactDirection ExternalParam = 'Souffle.Input
+  factName = const "ExternalParam"
+
+instance Souffle.Fact Move where
+  type FactDirection Move = 'Souffle.Input
+  factName = const "Move"
+
+instance Souffle.Fact LitAssign where
+  type FactDirection LitAssign = 'Souffle.Input
+  factName = const "LitAssign"
+
+instance Souffle.Fact Node where
+  type FactDirection Node = 'Souffle.Input
+  factName = const "Node"
+
+instance Souffle.Fact NodeArgument where
+  type FactDirection NodeArgument = 'Souffle.Input
+  factName = const "NodeArgument"
+
+instance Souffle.Fact Fetch where
+  type FactDirection Fetch = 'Souffle.Input
+  factName = const "Fetch"
+
+instance Souffle.Fact Store where
+  type FactDirection Store = 'Souffle.Input
+  factName = const "Store"
+
+instance Souffle.Fact Update where
+  type FactDirection Update = 'Souffle.Input
+  factName = const "Update"
+
+instance Souffle.Fact Call where
+  type FactDirection Call = 'Souffle.Input
+  factName = const "Call"
+
+instance Souffle.Fact CallArgument where
+  type FactDirection CallArgument = 'Souffle.Input
+  factName = const "CallArgument"
+
+instance Souffle.Fact NodePattern where
+  type FactDirection NodePattern = 'Souffle.Input
+  factName = const "NodePattern"
+
+instance Souffle.Fact NodeParameter where
+  type FactDirection NodeParameter = 'Souffle.Input
+  factName = const "NodeParameter"
+
+instance Souffle.Fact Case where
+  type FactDirection Case = 'Souffle.Input
+  factName = const "Case"
+
+instance Souffle.Fact Alt where
+  type FactDirection Alt = 'Souffle.Input
+  factName = const "Alt"
+
+instance Souffle.Fact AltLiteral where
+  type FactDirection AltLiteral = 'Souffle.Input
+  factName = const "AltLiteral"
+
+instance Souffle.Fact AltDefault where
+  type FactDirection AltDefault = 'Souffle.Input
+  factName = const "AltDefault"
+
+instance Souffle.Fact ReturnValue where
+  type FactDirection ReturnValue = 'Souffle.Input
+  factName = const "ReturnValue"
+
+instance Souffle.Fact FirstInst where
+  type FactDirection FirstInst = 'Souffle.Input
+  factName = const "FirstInst"
+
+instance Souffle.Fact NextInst where
+  type FactDirection NextInst = 'Souffle.Input
+  factName = const "NextInst"
+
+instance Souffle.Fact FunctionParameter where
+  type FactDirection FunctionParameter = 'Souffle.Input
+  factName = const "FunctionParameter"
+
+instance Souffle.Fact AltParameter where
+  type FactDirection AltParameter = 'Souffle.Input
+  factName = const "AltParameter"
+
+instance Souffle.Fact Heap where
+  type FactDirection Heap = 'Souffle.Output
+  factName = const "Heap"
+
+instance Souffle.Fact VariableSimpleType where
+  type FactDirection VariableSimpleType = 'Souffle.Output
+  factName = const "VariableSimpleType"
+
+instance Souffle.Fact AbstractLocation where
+  type FactDirection AbstractLocation = 'Souffle.Output
+  factName = const "AbstractLocation"
+
+instance Souffle.Fact VariableAbstractLocation where
+  type FactDirection VariableAbstractLocation = 'Souffle.Output
+  factName = const "VariableAbstractLocation"
+
+instance Souffle.Fact VariableNodeTag where
+  type FactDirection VariableNodeTag = 'Souffle.Output
+  factName = const "VariableNodeTag"
+
+instance Souffle.Fact VariableNodeParamType where
+  type FactDirection VariableNodeParamType = 'Souffle.Output
+  factName = const "VariableNodeParamType"
+
+instance Souffle.Fact FunParam where
+  type FactDirection FunParam = 'Souffle.Output
+  factName = const "FunParam"
+
+instance Souffle.Fact FunReturn where
+  type FactDirection FunReturn = 'Souffle.Output
+  factName = const "FunReturn"
 
 
 calculateHPTResult :: Grin.Exp -> IO (Maybe Result.HPTResult)
@@ -211,9 +303,13 @@ calculateHPTResult exp = do
   -- which is registered in the data-file part of the cabal file.
   hptProgramDirPath <- takeDirectory <$> getDataFileName "datalog/hpt/hpt.dl"
 
-  let cfg = Souffle.Config hptProgramDirPath (Just "souffle")
-  Souffle.runSouffleWith cfg $ do
-    mprog <- Souffle.init HPT
+  let cfg = Souffle.Config
+          { cfgDatalogDir   = hptProgramDirPath
+          , cfgSouffleBin   = Just "souffle"
+          , cfgFactDir      = Nothing -- Just "."
+          , cfgOutputDir    = Nothing -- Just "."
+          }
+  Souffle.runSouffleWith cfg HPT $ \mprog -> do
     forM mprog $ \prog -> do
       Souffle.addFact prog $ EntryPoint "grinMain"
       para (structure prog) exp
@@ -229,6 +325,7 @@ calculateHPTResult exp = do
         <*> Souffle.getFacts prog -- resultFunReturn
         <*> Souffle.getFacts prog -- resultFunParam
         <*> Souffle.getFacts prog -- heap
+      --liftIO $ PP.pPrint r
       pure $ calcHPTResult r
 
 structure :: Handle HPT -> Grin.ExpF (Grin.Exp, SouffleM ()) -> SouffleM ()
@@ -263,7 +360,7 @@ structure prog = \case
   -- .decl NodeArgument(result_node:Variable, i:number, item:Variable)
   Grin.EBindF ((Grin.SReturn (Grin.ConstTagNode tag items)), lhs) (Grin.VarPat res) (_, rhs) -> do
     lhs
-    Souffle.addFact prog $ Node (Grin.nameText res) (gtagToDtag tag)
+    Souffle.addFact prog $ Node (Grin.nameText res) (gtagToDtag tag) (fromIntegral $ length items)
     Souffle.addFacts prog $
       zipWith (\n v -> NodeArgument (Grin.nameText res) n (Grin.nameText v)) [0..] items
     rhs
@@ -466,15 +563,15 @@ variableNodeMap
   -> Map.Map Text [(Tag, [Set.Set SimpleType])]
 variableNodeMap ns ps = Map.unionsWith (++)
   [ Map.singleton n [(t,ts)]
-  | VariableNodeTag n t <- ns
-  , let ps0 = Map.unionsWith mappend
-            $ mapMaybe (\(VariableNodeParamType n0 t0 i s)
+  | VariableNodeTag n t arity <- ns
+  , let ps0 = Map.unionsWith mappend $ [Map.singleton i Set.empty | i <- [0 .. fromIntegral (arity - 1)]]
+            ++ mapMaybe (\(VariableNodeParamType n0 t0 i s)
                 -> if n == n0 && t == t0
                     then Just $ Map.singleton i (Set.singleton s)
                     else Nothing) ps
   , let ts = case unzip $ Map.toList ps0 of
               (as, es) | as == [0 .. fromIntegral (length as - 1)] -> es
-              (_, es) -> error $ "in positions: " ++ show ps0 -- TODO
+              (_, es) -> error $ "in positions: " ++ show (ps0, n, t) -- TODO
   ]
 
 functionNameMap
@@ -590,8 +687,8 @@ dtagToGtag tag = case Text.unpack tag of
   'C':name -> Grin.Tag Grin.C (Grin.mkName $ Text.pack name)
   'F':name -> Grin.Tag Grin.F (Grin.mkName $ Text.pack name)
   'P':rest -> case Text.splitOn "-" $ Text.pack rest of
-    ["P",(read . show) -> m, name] -> Grin.Tag (Grin.P m) (Grin.NM name)
-    _ -> error $ show tag
+    ["", (readMaybe . Text.unpack) -> Just m, name]  -> Grin.Tag (Grin.P m) (Grin.NM name)
+    l                                         -> error $ "cannot decode tag: " ++ show tag ++ " " ++ show l
 
 literalParams :: Grin.Lit -> (SimpleType, Literal)
 literalParams sv = case sv of
