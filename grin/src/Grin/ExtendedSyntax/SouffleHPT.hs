@@ -306,8 +306,8 @@ calculateHPTResult exp = do
   let cfg = Souffle.Config
           { cfgDatalogDir   = hptProgramDirPath
           , cfgSouffleBin   = Just "souffle"
-          , cfgFactDir      = Nothing -- Just "."
-          , cfgOutputDir    = Nothing -- Just "."
+          , cfgFactDir      = Just "."
+          , cfgOutputDir    = Just "."
           }
   Souffle.runSouffleWith cfg HPT $ \mprog -> do
     forM mprog $ \prog -> do

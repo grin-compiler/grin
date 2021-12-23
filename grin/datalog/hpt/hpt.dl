@@ -19,7 +19,7 @@
 
 // node value
 // example: result_node <- pure (Ctag item0 item1)
-.decl Node(result_node:Variable, t:Tag)
+.decl Node(result_node:Variable, t:Tag, arity:number)
 .decl NodeArgument(result_node:Variable, i:number, item:Variable)
 
 // store/fetch/update
@@ -97,7 +97,7 @@ What is the first instruction?
 
 // Reachability
 .decl ReachableCode(n:CodeName)
-// .output ReachableCode
+.output ReachableCode
 .decl CodeNameInst(n:CodeName, v:Variable)
 // .output CodeNameInst
 
@@ -115,6 +115,7 @@ ReachableCode(n) :-
   Call(v, n).
 
 .decl ReachableInst(v:Variable)
+.output ReachableInst
 
 ReachableInst(v) :-
   ReachableCode(n),
@@ -169,7 +170,7 @@ CreatedBy(n,n) :-
   LitAssign(n,_,_).
 
 CreatedBy(n, n) :-
-  Node(n, _).
+  Node(n, _, _).
 
 CreatedBy(v, v) :-
   Store(v, _).
@@ -215,7 +216,7 @@ CreatedBy(param, argval) :-
   NodePattern(v, tag, n),
   NodeParameter(v, i, param),
   CreatedBy(n, nval),
-  Node(nval, tag),
+  Node(nval, tag, _),
   NodeArgument(nval, i, arg),
   CreatedBy(arg, argval).
 
@@ -235,15 +236,15 @@ CreatedBy(alt_name, scrut_val) :-
   Alt(case_result, alt_name, tag),
   CreatedBy(scrut, scrut_val),
   // NOTE: this just checks whether the alternative is possible
-  Node(scrut_val, tag).
+  Node(scrut_val, tag, _).
 
 // CreatedBy of alt parameter when matched on tag
 CreatedBy(parameter, val) :-
   Case(case_res, scrut),
-  Alt(case_res, _alt_name, tag),
+  Alt(case_res, alt_name, tag),
   AltParameter(case_res, tag, i, parameter),
   CreatedBy(scrut, scrut_val),
-  Node(scrut_val,tag),
+  Node(scrut_val,tag, _),
   NodeArgument(scrut_val,i,val).
 
 // NOTE: every alternative should be related to its return value (via ReturnValue)
@@ -252,7 +253,7 @@ CreatedBy(case_result, val) :-
   Case(case_result, scrut),
   Alt(case_result, alt_name, alt_tag),
   CreatedBy(scrut, scrut_og),
-  Node(scrut_og, alt_tag),
+  Node(scrut_og, alt_tag, _),
   ReturnValue(alt_name, v),
   CreatedBy(v, val).
 
@@ -278,7 +279,7 @@ CreatedBy(case_result, val) :-
 .decl AbstractLocation(n: Variable)
 .decl VariableSimpleType(n: Variable, st:SimpleType)
 .decl VariableAbstractLocation(n:Variable, loc:Variable)
-.decl VariableNodeTag(n:Variable, t:Tag)
+.decl VariableNodeTag(n:Variable, t:Tag, arity:number)
 .decl VariableNodeParamType(n: Variable, t:Tag, i:number, nt:NodeParamType)
 
 .output AbstractLocation
@@ -294,14 +295,14 @@ VariableSimpleType(n,st) :- CreatedBy(n,r), VariableSimpleType(r,st).
 
 .output VariableNodeParamType
 VariableNodeParamType(n,t,i,al)
-  :- Node(n,t), NodeArgument(n,i,arg), CreatedBy(arg,al), AbstractLocation(al).
+  :- Node(n,t,_), NodeArgument(n,i,arg), CreatedBy(arg,al), AbstractLocation(al).
 VariableNodeParamType(n,t,i,st)
-  :- Node(n,t), NodeArgument(n,i,arg), CreatedBy(arg,v), VariableSimpleType(v,st).
+  :- Node(n,t,_), NodeArgument(n,i,arg), CreatedBy(arg,v), VariableSimpleType(v,st).
 VariableNodeParamType(n,t,i,ty)
   :- CreatedBy(n,n0), VariableNodeParamType(n0,t,i,ty).
 
 .output VariableNodeTag
-VariableNodeTag(n,t) :- CreatedBy(n,r), Node(r,t).
+VariableNodeTag(n,t,arity) :- CreatedBy(n,r), Node(r,t,arity).
 
 // QUESTION: is this basically CreatedBy constrained by AbstractLocation? (i.e. all variables who have pointer producers?)
 .output VariableAbstractLocation
