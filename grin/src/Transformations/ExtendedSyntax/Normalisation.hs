@@ -39,7 +39,7 @@ restorePureAsLast = apoM $ \case
     -- v <- lhs
     -- x <- other
     -- pure x
-    pure $ EBindF (Right lhs) pat (Left (EBind rhs (VarPat x) (SReturn (Var x))))
+    pure $ EBindF (Right lhs) pat (Right (EBind rhs (VarPat x) (SReturn (Var x))))
 
   -- fun params =
   --   v <- lhs
@@ -52,8 +52,21 @@ restorePureAsLast = apoM $ \case
     x <- deriveNewName "rapl"
     pure $ DefF f ps $ Right $ EBind body (VarPat x) (SReturn (Var x))
 
+  -- every alt that has a single simple expression that is a program point
+  Alt pat altName body | isNamedProgramPoint body -> do
+    x <- deriveNewName "rapl"
+    pure $ AltF pat altName $ Left $ EBind body (VarPat x) (SReturn (Var x))
+
   -- rrogram / def
   other -> pure $ fmap Right $ project other
+
+isNamedProgramPoint :: Exp -> Bool
+isNamedProgramPoint = \case
+  SApp{}    -> True
+  SStore{}  -> True
+  SFetch{}  -> True
+  SUpdate{} -> True
+  _         -> False
 
 restoreNodePattern :: Exp -> NameM Exp
 restoreNodePattern = apoM $ \case

@@ -33,6 +33,12 @@ spec = describe "Normalisation" $ do
           pureLast5 x =
             y <- pure (CInt x)
             pure y
+
+          pureLast6 x =
+            r <- case y of
+              (CCons a b) @ a2 ->
+                fun1 x
+            fun2 x
         |]
 
     let after = [prog|
@@ -61,5 +67,13 @@ spec = describe "Normalisation" $ do
           pureLast5 x =
             y <- pure (CInt x)
             pure y
+
+          pureLast6 x =
+            r <- case y of
+              (CCons a b) @ a2 ->
+                rapl.5 <- fun1 x
+                pure rapl.5
+            rapl.4 <- fun2 x
+            pure rapl.4
         |]
     (normalise before) `sameAs` after
