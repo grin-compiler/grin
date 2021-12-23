@@ -825,8 +825,10 @@ souffleHPT :: PipelineM ()
 souffleHPT = do
   exp <- use psExp
   let expV2 = normalise $ SyntaxV2.convertToNew exp
+  liftIO $ writeFile "syntax2_program.grin" $ show $ SyntaxV2.WPP expV2
   res <- liftIO $ SouffleHPT.calculateHPTResult expV2
-  pipelineLog $ show $ plain $ pretty res
+  --pipelineLog $ show $ plain $ pretty res
+  liftIO $ writeFile "souffle-hpt-result.out" $ show $ plain $ pretty res
 
 -- confluence testing
 
