@@ -99,4 +99,6 @@
 - Stevan Milic
 - Chris Done
 - Izaak Weiss
+- Lauri Lättilä
+- James
 <!--10 end-->
