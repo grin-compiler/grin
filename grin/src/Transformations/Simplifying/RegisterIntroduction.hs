@@ -10,7 +10,7 @@ import qualified Data.Map as Map
 import qualified Data.List as List
 import Data.Functor.Foldable as Foldable
 import qualified Data.Foldable
-import Data.Functor.Infix
+import Data.Functor.Syntax
 import Control.Monad.State
 import Test.Hspec
 

@@ -16,7 +16,7 @@ import Control.Monad.Trans.Reader
 import qualified Control.Monad.State.Class as CMS
 import qualified Control.Monad.Reader.Class as CMR
 import Data.Bifunctor
-import Data.Functor.Infix
+import Data.Functor.Syntax
 import Data.Functor.Foldable
 import Data.List ((\\))
 import Data.Maybe (fromJust, maybeToList)

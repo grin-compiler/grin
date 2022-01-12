@@ -10,7 +10,7 @@ import Data.Maybe
 import Data.List
 import Data.Function
 import Data.Functor.Foldable as Foldable
-import Data.Functor.Infix
+import Data.Functor.Syntax
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
 import Control.Applicative

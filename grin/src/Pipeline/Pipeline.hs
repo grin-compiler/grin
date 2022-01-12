@@ -118,7 +118,7 @@ import Control.Monad.Extra
 import System.Random
 import Data.Time.Clock
 import Data.Fixed
-import Data.Functor.Infix
+import Data.Functor.Syntax
 import Data.Maybe (isNothing)
 import System.IO (BufferMode(..), hSetBuffering, stdout)
 import Data.Binary as Binary
@@ -344,7 +344,7 @@ data TransformationFunc
 -- TODO: Add n paramter for the transformations that use NameM
 transformationFunc :: Int -> Transformation -> TransformationFunc
 transformationFunc n = \case
-  Vectorisation                   -> WithTypeEnv (newNames <$$> Right <$$> Vectorisation2.vectorisation)
+  Vectorisation                   -> WithTypeEnv (Right . newNames <$$> Vectorisation2.vectorisation)
   GenerateEval                    -> Plain generateEval
   CaseSimplification              -> Plain (noNewNames . caseSimplification)
   SplitFetch                      -> Plain (noNewNames . splitFetch)
@@ -375,7 +375,7 @@ transformationFunc n = \case
   GeneralizedUnboxing             -> WithTypeEnv (Right <$$> generalizedUnboxing)
   ArityRaising                    -> WithTypeEnv (Right <$$> (arityRaising n))
   LateInlining                    -> WithTypeEnv (Right <$$> lateInlining)
-  UnitPropagation                 -> WithTypeEnv (noNewNames <$$> Right <$$> unitPropagation)
+  UnitPropagation                 -> WithTypeEnv (Right . noNewNames <$$> unitPropagation)
   NonSharedElimination            -> WithTypeEnvShr nonSharedElimination
   DeadFunctionElimination         -> WithLVA (noNewNames <$$$$> deadFunctionElimination)
   DeadVariableElimination         -> WithLVA (noNewNames <$$$$> deadVariableElimination)

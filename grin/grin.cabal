@@ -244,7 +244,7 @@ library
     optparse-applicative,
     directory,
     pretty-simple,
-    functor-infix,
+    composition-extra,
     generic-random,
     hspec,
     hspec-core,
@@ -299,7 +299,7 @@ test-suite grin-test
   build-depends:       base >=4.11
                      , containers
                      , filepath
-                     , functor-infix
+                     , composition-extra
                      , grin
                      , hspec
                      , hspec-core
@@ -407,7 +407,7 @@ test-suite grin-end-to-end-test
   build-depends:       base >=4.11
                      , containers
                      , filepath
-                     , functor-infix
+                     , composition-extra
                      , grin
                      , hspec
                      , hspec-core
