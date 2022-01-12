@@ -260,7 +260,8 @@ library
     deepseq,
     binary,
     unix,
-    libffi
+    libffi,
+    data-fix
 
   default-language:    Haskell2010
 
