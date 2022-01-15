@@ -185,7 +185,9 @@ evalExp env = \case
 
 createForeignFns :: [External] -> Map Name (FunPtr ()) -> IO (Map Name (FunPtr ()))
 createForeignFns [] acc = pure acc
-createForeignFns exts@(ext : _) acc = case find (\(os, _) -> toString os == Info.os) (eLibs ext) of
+createForeignFns exts@(ext : _) acc
+  | eKind ext == PrimOp = createForeignFns (tail exts) acc
+  | otherwise = case find (\(os, _) -> toString os == Info.os) (eLibs ext) of
     Nothing -> do
         ptr <- dlsym Default $ Text.unpack $ unNM $ eName ext
         createForeignFns (tail exts) $ Map.insert (eName ext) ptr acc
