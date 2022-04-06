@@ -19,6 +19,7 @@
 
 - Stephen Diehl
 - Christopher Goes
+- Jaap ter Woerds
 
 <h2 align="center">Generous Backers via Patreon ($50+)</h2>
 
