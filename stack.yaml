@@ -13,9 +13,9 @@ extra-deps:
   - set-extra-1.4.1
   - llvm-hs-pretty-0.6.1.0
   - system-posix-redirect-1.1.0.1
-  - github: yatima-inc/llvm-hs
-    commit: 868e23a13942703255979369defdb49ac57b6866
-    branch: llvm-7
+  - github: 414owen/llvm-hs
+    commit: 169e8518b0d9bd425f2daecbcab8b28b54da54dc
+    branch: upgrade-to-ghc-8.10
     subdirs:
       - llvm-hs
       - llvm-hs-pure

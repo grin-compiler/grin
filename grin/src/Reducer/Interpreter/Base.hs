@@ -8,6 +8,7 @@ module Reducer.Interpreter.Base
 
 import Control.Monad.Fail
 import Control.Monad.Trans (MonadIO)
+import Data.Fix (Fix(..))
 import Data.Function (fix)
 import Data.Map.Strict (Map, fromList)
 import Grin.ExtendedSyntax.Syntax hiding (Val)

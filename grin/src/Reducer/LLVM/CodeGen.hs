@@ -434,7 +434,7 @@ codeGenCase opVal alts bindingGen = do
         (Alt DefaultPat _, _) -> True
         _ -> False
       (defaultAlts, normalAlts) = List.partition isDefault alts
-  when (length defaultAlts > 1) $ fail "multiple default patterns"
+  when (length defaultAlts > 1) $ error "multiple default patterns"
   let orderedAlts = defaultAlts ++ normalAlts
 
   (altDests, altValues, altCGTypes) <- fmap List.unzip3 . forM orderedAlts $ \(Alt cpat _, altBody) -> do

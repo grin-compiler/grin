@@ -16,7 +16,6 @@ import qualified Data.Vector as Vector (fromList, toList, map)
 import Data.Bifunctor (bimap)
 import Data.Monoid
 import Data.Maybe (fromMaybe)
-import Data.Functor.Infix ((<$$>))
 import Control.Applicative (liftA2)
 import Control.Monad (join)
 

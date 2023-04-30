@@ -4,7 +4,7 @@ module Lens.Micro.Extra where
 import Lens.Micro.Internal
 import Lens.Micro.Platform
 import Data.Vector as V
-import Data.Functor.Infix ((<$$>))
+import Data.Functor.Syntax ((<$$>))
 import Data.Monoid (Any(..))
 
 

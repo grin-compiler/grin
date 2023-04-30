@@ -12,7 +12,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Vector as Vec
 
-import Data.Functor.Infix
+import Data.Functor.Syntax ((<$$>))
 
 import Control.Monad.State
 
