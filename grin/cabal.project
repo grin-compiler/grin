@@ -1,0 +1,13 @@
+packages: .
+
+source-repository-package
+    type: git
+    location: https://github.com/414owen/llvm-hs.git
+    tag: 169e8518b0d9bd425f2daecbcab8b28b54da54dc
+    subdir: llvm-hs
+
+source-repository-package
+    type: git
+    location: https://github.com/414owen/llvm-hs.git
+    tag: 169e8518b0d9bd425f2daecbcab8b28b54da54dc
+    subdir: llvm-hs-pure

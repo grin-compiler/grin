@@ -1,5 +1,6 @@
 module Reducer.Interpreter.Definitional.CibSpec where
 
+import Data.Fix (Fix(..))
 import Data.Monoid
 import Control.Exception
 import Test.Hspec

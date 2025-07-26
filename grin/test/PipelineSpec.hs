@@ -1,6 +1,6 @@
 module PipelineSpec where
 
-import Data.Functor.Infix ((<$$>))
+import Data.Functor.Syntax ((<$$>))
 import Data.List ((\\), nub)
 import Test.Hspec
 import Test.QuickCheck

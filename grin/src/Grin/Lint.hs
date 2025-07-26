@@ -27,7 +27,7 @@ import Data.String
 import Control.Comonad (extract)
 import qualified Data.Vector as Vector
 import Control.Applicative (liftA2)
-import Data.Functor.Infix ((<$$>))
+import Data.Functor.Syntax ((<$$>))
 
 import Grin.Grin
 import Grin.Pretty

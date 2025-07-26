@@ -31,7 +31,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as Pretty ((<$>))
 import Grin.Pretty (showWide)
 import Control.Arrow ((&&&))
 import Data.Maybe (fromJust)
-import Data.Functor.Infix ((<$$$>))
+import Data.Functor.Syntax ((<$$$>))
 
 
 

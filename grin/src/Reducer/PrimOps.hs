@@ -19,7 +19,7 @@ import Data.Char (chr, ord)
 import Grin.Grin
 import Data.Map.Strict as Map
 import Data.String (fromString)
-import Data.Functor.Infix ((<$$>))
+import Data.Functor.Syntax ((<$$>))
 import Data.Text as Text
 import Control.Monad.IO.Class
 

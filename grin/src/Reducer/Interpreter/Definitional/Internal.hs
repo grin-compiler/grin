@@ -10,6 +10,7 @@ import Control.Monad.Trans (MonadIO)
 import Control.Monad.Trans.Reader hiding (ask, local)
 import Control.Monad.Trans.State hiding (state, get)
 import Data.Either (fromLeft)
+import Data.Fix (Fix)
 import Data.Functor.Foldable
 import Data.Functor.Sum
 import Data.Int
